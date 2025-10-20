@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import type { UserSession } from "@/lib/auth";
@@ -35,6 +35,9 @@ export function ProfileModal({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // ➕ Ajout ref pour la détection de clic extérieur
+  const modalRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!isOpen) {
       setShowPasswordForm(false);
@@ -47,16 +50,24 @@ export function ProfileModal({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape") onClose();
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         onClose();
       }
     };
 
     if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
     }
 
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -91,13 +102,10 @@ export function ProfileModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div
+        ref={modalRef}
         className="relative w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
@@ -107,10 +115,14 @@ export function ProfileModal({
         >
           <X className="h-5 w-5" />
         </button>
+
         <div className="mb-6">
           <h2 className="text-2xl font-semibold text-gray-900">Mon compte</h2>
-          <p className="mt-1 text-sm text-gray-500">Gérez vos informations et vos meubles enregistrés.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Gérez vos informations et vos meubles enregistrés.
+          </p>
         </div>
+
         <div className="space-y-6">
           <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
             <p className="text-sm font-medium text-gray-500">Email</p>
@@ -125,6 +137,7 @@ export function ProfileModal({
             >
               {showPasswordForm ? "Annuler" : "Changer de mot de passe"}
             </button>
+
             {showPasswordForm && (
               <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                 <div>
@@ -172,13 +185,24 @@ export function ProfileModal({
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Mes meubles</h3>
             {meubles.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-500">Vous n&apos;avez pas encore enregistré de meuble.</p>
+              <p className="mt-2 text-sm text-gray-500">
+                Vous n&apos;avez pas encore enregistré de meuble.
+              </p>
             ) : (
               <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {meubles.map((meuble) => (
-                  <li key={`${meuble.userId}-${meuble.name}`} className="flex items-center space-x-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                  <li
+                    key={`${meuble.userId}-${meuble.name}`}
+                    className="flex items-center space-x-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm"
+                  >
                     <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-gray-100">
-                      <Image src={meuble.image} alt={meuble.name} fill className="object-cover" sizes="56px" />
+                      <Image
+                        src={meuble.image}
+                        alt={meuble.name}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
                     </div>
                     <span className="text-sm font-medium text-gray-700">{meuble.name}</span>
                   </li>
