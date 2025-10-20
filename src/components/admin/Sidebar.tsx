@@ -1,0 +1,91 @@
+import { useMemo, type ComponentType } from 'react';
+import { Boxes, FolderKanban, Layers3, LogOut, ShieldHalf, X } from 'lucide-react';
+
+export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'password';
+
+interface SidebarProps {
+  selectedSection: DashboardSection;
+  onSelect: (section: DashboardSection) => void;
+  onLogout: () => void;
+  className?: string;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+}
+
+const navItems: { id: DashboardSection; label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { id: 'models', label: 'Gestion des modèles', icon: Boxes },
+  { id: 'catalogue', label: 'Catalogue & pièces', icon: FolderKanban },
+  { id: 'configs', label: 'Configurations clients', icon: Layers3 },
+  { id: 'password', label: 'Changer le mot de passe', icon: ShieldHalf },
+];
+
+export function Sidebar({
+  selectedSection,
+  onSelect,
+  onLogout,
+  className = '',
+  showCloseButton = false,
+  onClose,
+}: SidebarProps) {
+  const sectionButtons = useMemo(
+    () =>
+      navItems.map(({ id, label, icon: Icon }) => {
+        const isActive = selectedSection === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onSelect(id)}
+            className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+              isActive ? 'bg-amber-50 text-amber-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        );
+      }),
+    [onSelect, selectedSection]
+  );
+
+  return (
+    <aside className={`flex h-full flex-col border-r bg-white px-4 py-8 ${className}`}>
+      {showCloseButton && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="mb-4 ml-auto flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
+      <div className="flex items-center gap-3 px-2">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-600 text-white text-lg font-semibold">
+          AM
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-900">ArchiMeuble</p>
+          <p className="text-xs text-gray-500">Administration</p>
+        </div>
+      </div>
+
+      <nav className="mt-8 flex-1 space-y-2">{sectionButtons}</nav>
+
+      <button
+        type="button"
+        onClick={onLogout}
+        className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 hover:text-gray-900"
+      >
+        <LogOut className="h-4 w-4" />
+        Déconnexion
+      </button>
+
+      <div className="mt-6 rounded-lg bg-amber-50 p-4 text-xs text-amber-700">
+        <p className="font-medium">Astuce</p>
+        <p>Gardez votre navigateur ouvert pour des modifications rapides du catalogue.</p>
+      </div>
+    </aside>
+  );
+}
+
+export default Sidebar;
