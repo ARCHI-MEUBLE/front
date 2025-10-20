@@ -1,0 +1,4 @@
+[
+  { "userId": "u-demo-1", "name": "Armoire M1", "image": "/static/armoire.png" },
+  { "userId": "u-demo-1", "name": "Canapé C2", "image": "/static/canape.png" }
+]

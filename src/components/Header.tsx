@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Bell, ShoppingCart, User } from "lucide-react";
+import { Bell, ShoppingCart } from "lucide-react";
+import { AccountButton } from "@/components/AccountButton";
 
 const navLinks = [
   { href: "#acheter", label: "Acheter" },
@@ -25,13 +26,7 @@ export function Header() {
           </nav>
         </div>
         <div className="flex items-center space-x-3">
-          <button
-            type="button"
-            aria-label="Ouvrir l'espace utilisateur"
-            className="rounded-full border border-transparent p-2 text-gray-600 transition hover:bg-gray-100"
-          >
-            <User className="h-5 w-5" />
-          </button>
+          <AccountButton />
           <button
             type="button"
             aria-label="Voir les notifications"
