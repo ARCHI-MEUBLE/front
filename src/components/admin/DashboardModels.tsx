@@ -245,155 +245,165 @@ export function DashboardModels() {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">Modèles enregistrés</h2>
-        <p className="text-sm text-gray-500">Gérez votre catalogue de meubles et leurs prompts génératifs.</p>
-      </div>
+  <div className="space-y-8">
+    
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+    {/* ✅ Formulaire déplacé au-dessus de la liste */}
+    <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-gray-900">
+        {editingId ? 'Modifier le modèle' : 'Ajouter un modèle'}
+      </h2>
+      <p className="text-sm text-gray-500">
+        {editingId
+          ? 'Mettez à jour les informations du modèle sélectionné.'
+          : 'Renseignez un nouveau modèle pour le catalogue numérique.'}
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            Nom du modèle
+          </label>
+          <input
+            id="name"
+            name="name"
+            required
+            value={formState.name}
+            onChange={handleInputChange}
+            className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
+          />
         </div>
-      )}
-
-      {isLoading ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Chargement des modèles...</div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {sortedModels.map((model) => (
-            <article key={model.id} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
-              {model.image_path && (
-                <img
-                  src={model.image_path}
-                  alt={model.name}
-                  className="mb-4 h-40 w-full rounded-lg object-cover"
-                />
-              )}
-              <h3 className="text-lg font-semibold text-gray-900">{model.name}</h3>
-              <p className="mt-2 text-sm text-gray-600">{model.description}</p>
-              <p className="mt-3 text-xs text-gray-400">Ajouté le {new Date(model.created_at).toLocaleString()}</p>
-              <div className="mt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleEdit(model)}
-                  className="flex-1 rounded-lg border border-amber-200 px-4 py-2 text-sm font-medium text-amber-700 transition-all hover:bg-amber-50"
-                >
-                  Modifier
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(model.id)}
-                  className="flex-1 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-all hover:bg-red-50"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </article>
-          ))}
-          {sortedModels.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-              Aucun modèle enregistré pour le moment.
-            </div>
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            Description
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            required
+            rows={3}
+            value={formState.description}
+            onChange={handleInputChange}
+            className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
+          />
+        </div>
+        <div>
+          <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
+            Prompt interne
+          </label>
+          <textarea
+            id="prompt"
+            name="prompt"
+            required
+            rows={4}
+            value={formState.prompt}
+            onChange={handleInputChange}
+            className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
+          />
+        </div>
+        <div>
+          <label htmlFor="image" className="block text-sm font-medium text-gray-700">
+            Image du modèle
+          </label>
+          <input
+            id="image"
+            name="image"
+            type="file"
+            accept="image/png, image/jpeg"
+            onChange={handleFileChange}
+            className="mt-2 w-full text-sm text-gray-600"
+          />
+          {(preview || formState.imagePath) && (
+            <img
+              src={preview ?? formState.imagePath}
+              alt={formState.name || 'Prévisualisation du modèle'}
+              className="mt-4 h-32 w-full rounded-lg object-cover"
+            />
           )}
         </div>
-      )}
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {editingId ? 'Modifier le modèle' : 'Ajouter un modèle'}
-        </h2>
-        <p className="text-sm text-gray-500">
-          {editingId
-            ? 'Mettez à jour les informations du modèle sélectionné.'
-            : 'Renseignez un nouveau modèle pour le catalogue numérique.'}
-        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="rounded-lg bg-amber-600 px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-75"
+          >
+            {isSubmitting ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Enregistrer'}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100"
+            >
+              Annuler
+            </button>
+          )}
+        </div>
+      </form>
+    </section>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Nom du modèle
-            </label>
-            <input
-              id="name"
-              name="name"
-              required
-              value={formState.name}
-              onChange={handleInputChange}
-              className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
-            />
-          </div>
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              required
-              rows={3}
-              value={formState.description}
-              onChange={handleInputChange}
-              className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
-            />
-          </div>
-          <div>
-            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
-              Prompt interne
-            </label>
-            <textarea
-              id="prompt"
-              name="prompt"
-              required
-              rows={4}
-              value={formState.prompt}
-              onChange={handleInputChange}
-              className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
-            />
-          </div>
-          <div>
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700">
-              Image du modèle
-            </label>
-            <input
-              id="image"
-              name="image"
-              type="file"
-              accept="image/png, image/jpeg"
-              onChange={handleFileChange}
-              className="mt-2 w-full text-sm text-gray-600"
-            />
-            {(preview || formState.imagePath) && (
+    {/* Liste des modèles en dessous */}
+    <div>
+      <h2 className="text-xl font-semibold text-gray-900">Modèles enregistrés</h2>
+      <p className="text-sm text-gray-500">
+        Gérez votre catalogue de meubles et leurs prompts génératifs.
+      </p>
+    </div>
+    {error && (
+      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {error}
+      </div>
+    )}
+
+    {isLoading ? (
+      <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+        Chargement des modèles...
+      </div>
+    ) : (
+      <div className="grid gap-6 md:grid-cols-2">
+        {sortedModels.map((model) => (
+          <article key={model.id} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
+            {model.image_path && (
               <img
-                src={preview ?? formState.imagePath}
-                alt={formState.name || 'Prévisualisation du modèle'}
-                className="mt-4 h-32 w-full rounded-lg object-cover"
+                src={model.image_path}
+                alt={model.name}
+                className="mb-4 h-40 w-full rounded-lg object-cover"
               />
             )}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-lg bg-amber-600 px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-75"
-            >
-              {isSubmitting ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Enregistrer'}
-            </button>
-            {editingId && (
+            <h3 className="text-lg font-semibold text-gray-900">{model.name}</h3>
+            <p className="mt-2 text-sm text-gray-600">{model.description}</p>
+            <p className="mt-3 text-xs text-gray-400">
+              Ajouté le {new Date(model.created_at).toLocaleString()}
+            </p>
+            <div className="mt-4 flex gap-3">
               <button
                 type="button"
-                onClick={resetForm}
-                className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100"
+                onClick={() => handleEdit(model)}
+                className="flex-1 rounded-lg border border-amber-200 px-4 py-2 text-sm font-medium text-amber-700 transition-all hover:bg-amber-50"
               >
-                Annuler
+                Modifier
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => handleDelete(model.id)}
+                className="flex-1 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-all hover:bg-red-50"
+              >
+                Supprimer
+              </button>
+            </div>
+          </article>
+        ))}
+        {sortedModels.length === 0 && (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+            Aucun modèle enregistré pour le moment.
           </div>
-        </form>
-      </section>
-    </div>
-  );
+        )}
+      </div>
+    )}
+  </div>
+);
+
 }
 
 export default DashboardModels;
