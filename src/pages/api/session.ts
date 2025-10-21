@@ -1,38 +1,41 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { clearSessionCookie, getSessionFromRequest } from "@/lib/auth";
-import { getUserById } from "@/lib/db/users";
-import { getMeublesForUser } from "@/lib/db/meubles";
+/**
+ * REDIRECTION - Cette route redirige vers le backend PHP
+ * Utiliser apiClient.auth.getSession() à la place
+ */
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === "GET") {
-    const session = getSessionFromRequest(req);
-    if (!session) {
-      return res.status(401).json({ message: "Session invalide" });
-    }
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-    const user = await getUserById(session.id);
-    if (!user) {
-      clearSessionCookie(res);
-      return res.status(401).json({ message: "Utilisateur introuvable" });
-    }
-
-    const meubles = await getMeublesForUser(user.id);
-
-    return res.status(200).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
+  try {
+    const response = await fetch(`${API_URL}/api/auth/session`, {
+      method: req.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': req.headers.cookie || '',
       },
-      meubles
+      credentials: 'include',
     });
-  }
 
-  if (req.method === "DELETE") {
-    clearSessionCookie(res);
-    return res.status(204).end();
-  }
+    let data = await response.json();
 
-  res.setHeader("Allow", ["GET", "DELETE"]);
-  return res.status(405).json({ message: "Méthode non autorisée" });
+    // Si c'est une requête GET et qu'elle réussit, ajouter un tableau vide de meubles
+    // (compatible avec l'ancien format attendu par le frontend)
+    if (req.method === 'GET' && response.ok && data.user) {
+      data = {
+        user: data.user,
+        meubles: [] // Pour l'instant, pas de gestion des meubles côté PHP
+      };
+    }
+
+    // Transférer les cookies
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      res.setHeader('Set-Cookie', setCookie);
+    }
+
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Erreur de connexion au backend' });
+  }
 }

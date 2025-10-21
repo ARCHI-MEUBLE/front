@@ -184,7 +184,7 @@ export function ProfileModal({
 
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Mes meubles</h3>
-            {meubles.length === 0 ? (
+            {!meubles || meubles.length === 0 ? (
               <p className="mt-2 text-sm text-gray-500">
                 Vous n&apos;avez pas encore enregistré de meuble.
               </p>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { apiClient } from "@/lib/apiClient";
 
 type Mode = "login" | "register";
 
@@ -25,16 +26,10 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const endpoint = mode === "login" ? "/api/login" : "/api/register";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message ?? "Une erreur est survenue");
+      if (mode === "login") {
+        await apiClient.auth.login(email, password);
+      } else {
+        await apiClient.auth.register(email, password, name || undefined);
       }
 
       router.push("/");
