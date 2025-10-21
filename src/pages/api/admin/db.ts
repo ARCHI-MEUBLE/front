@@ -1,6 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
+
+type AdminRow = {
+  email: string;
+  password_hash: string;
+  created_at: string;
+};
 
 type ModelRow = {
   id: number;
@@ -30,6 +36,13 @@ database.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+database.exec(`
+  CREATE TABLE IF NOT EXISTS admins (
+    email TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
-export type { ModelRow };
+export type { AdminRow, ModelRow };
 export default database;

@@ -1,43 +1,48 @@
-import Image from "next/image";
-
-export type ProductTemplate = {
-  id: string;
+/* eslint-disable @next/next/no-img-element */
+export type ProductModel = {
+  id: number;
   name: string;
-  price: number;
-  image: string;
+  description: string;
+  image_path: string | null;
+  created_at: string;
 };
 
 type ProductCardProps = {
-  template: ProductTemplate;
+   model: ProductModel;
 };
+function formatCreatedAt(date: string) {
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    }).format(new Date(date));
+  } catch (error) {
+    return date;
+  }
+}
 
-export function ProductCard({ template }: ProductCardProps) {
+export function ProductCard({ model }: ProductCardProps) {
+  const formattedDate = formatCreatedAt(model.created_at);
+
   return (
-    <article className="group flex flex-col space-y-4">
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow group-hover:shadow-md">
-        <div className="relative aspect-[4/3] w-full">
-          <Image
-            src={template.image}
-            alt={template.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 25vw, 280px"
-            loading="lazy"
-          />
-        </div>
+    <article className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-md">
+      <div className="aspect-square w-full overflow-hidden rounded-2xl bg-gray-100">
+        <img
+          src={model.image_path || "/placeholder.jpg"}
+          alt={model.name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
       </div>
-      <div className="flex flex-col space-y-2">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900">{template.name}</h3>
-          <p className="text-base font-semibold text-accent">{template.price.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</p>
-        </div>
-        <button
-          type="button"
-          className="self-start rounded-full border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
-        >
-          Modifier ce modèle
+       <div className="mt-4 flex flex-1 flex-col">
+        <h3 className="text-lg font-semibold text-gray-900">{model.name}</h3>
+        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{model.description}</p>
+        <p className="mt-3 text-xs text-gray-500">Créé le {formattedDate}</p>
+        <button className="mt-3 w-full rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+          Configurer ce meuble
         </button>
       </div>
     </article>
   );
-}
+  }

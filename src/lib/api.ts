@@ -1,11 +1,13 @@
-import type { ProductTemplate } from "@/components/ProductCard";
-
-export async function fetchTemplates(): Promise<ProductTemplate[]> {
-  const res = await fetch("/api/templates");
-  if (!res.ok) {
+import type { ProductModel } from "@/components/ProductCard";
+async function handleResponse(response: Response) {
+  if (!response.ok) {
     throw new Error("Erreur de chargement");
   }
-
-  const data = (await res.json()) as ProductTemplate[];
+  const data = (await response.json()) as ProductModel[];
   return data;
+  }
+
+export async function fetchModels(): Promise<ProductModel[]> {
+  const res = await fetch("/api/models");
+  return handleResponse(res);
 }

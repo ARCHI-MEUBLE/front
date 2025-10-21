@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
-import { findUserByEmail } from "@/lib/db/users";
+import { findUserByEmail, verifyUserPassword } from "@/lib/db/users";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -15,8 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const user = await findUserByEmail(email);
-
-  if (!user || user.password !== password) {
+  if (!user || !verifyUserPassword(password, user.passwordHash)) {
     return res.status(401).json({ message: "Identifiants invalides" });
   }
 

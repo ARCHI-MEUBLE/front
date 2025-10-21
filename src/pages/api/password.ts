@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSessionFromRequest } from "@/lib/auth";
-import { findUserByEmail, updateUserPassword } from "@/lib/db/users";
+import { findUserByEmail, updateUserPassword, verifyUserPassword } from "@/lib/db/users";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "PUT") {
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const user = await findUserByEmail(session.email);
-  if (!user || user.password !== currentPassword) {
+   if (!user || !verifyUserPassword(currentPassword, user.passwordHash)) {
     return res.status(401).json({ message: "Mot de passe actuel incorrect" });
   }
 
