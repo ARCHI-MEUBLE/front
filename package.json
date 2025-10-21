@@ -9,12 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "better-sqlite3": "^12.4.1",
     "lucide-react": "^0.386.0",
     "next": "^14.2.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.12.7",
     "@types/react": "^18.2.79",
     "@types/react-dom": "^18.2.25",
