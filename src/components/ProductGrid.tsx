@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchModels } from "@/lib/api";
+import { apiClient, FurnitureModel } from "@/lib/apiClient";
 import { ProductCard, ProductModel } from "@/components/ProductCard";
 
 export function ProductGrid() {
@@ -10,8 +10,16 @@ export function ProductGrid() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await fetchModels();
-      setModels(data);
+      const data = await apiClient.models.getAll();
+      // Adapter FurnitureModel vers ProductModel
+      const productModels: ProductModel[] = data.map((model: FurnitureModel) => ({
+        id: model.id,
+        name: model.name,
+        description: model.description || '',
+        image_path: model.image_url || '',
+        created_at: model.created_at
+      }));
+      setModels(productModels);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {

@@ -79,7 +79,7 @@ export function AccountButton() {
     await fetch("/api/session", { method: "DELETE" });
     setSession(null);
     setModalOpen(false);
-    router.push("/login");
+    router.push("/");
   };
 
   const handlePasswordChange = async () => {

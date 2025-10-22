@@ -1,58 +1,88 @@
-import crypto from 'node:crypto';
+/**
+ * REDIRECTION - Cette route redirige vers le backend PHP
+ * Utiliser apiClient.adminAuth.login() à la place
+ */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import db, { type AdminRow } from './db';
-import { ADMIN_COOKIE_VALUE, SEVEN_DAYS_IN_SECONDS, createCookieHeader } from './utils';
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+
+const ADMIN_COOKIE_NAME = 'user_session';
+const ADMIN_COOKIE_VALUE = 'admin';
+const SEVEN_DAYS_IN_SECONDS = 7 * 24 * 60 * 60;
+
+function createAdminCookie(): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const parts = [
+    `${ADMIN_COOKIE_NAME}=${ADMIN_COOKIE_VALUE}`,
+    `Max-Age=${SEVEN_DAYS_IN_SECONDS}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+  ];
+
+  if (isProduction) {
+    parts.push('Secure');
+  }
+
+  return parts.join('; ');
+}
+
+function isAuthenticated(req: NextApiRequest): boolean {
+  const cookies = req.headers.cookie?.split(';').reduce<Record<string, string>>((acc, cookie) => {
+    const [key, value] = cookie.trim().split('=');
+    if (key) acc[key] = value || '';
+    return acc;
+  }, {}) || {};
+
+  return cookies[ADMIN_COOKIE_NAME] === ADMIN_COOKIE_VALUE;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  // Gérer les requêtes GET pour vérifier l'état de connexion
+  if (req.method === 'GET') {
+    if (isAuthenticated(req)) {
+      res.status(200).json({ authenticated: true });
+    } else {
+      res.status(401).json({ authenticated: false });
+    }
+    return;
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'GET, POST');
     res.status(405).json({ error: 'Method Not Allowed' });
     return;
   }
-  const { email, password } = req.body as Partial<Pick<AdminRow, 'email'>> & { password?: string };
-  if (!email || !password) {
-    res.status(400).json({ error: 'Email and password are required' });
-    return;
-  }
-  const statement = db.prepare<AdminRow>('SELECT email, password_hash FROM admins WHERE email = ?');
-  const admin = statement.get(email);
-
-  const isValid = admin ? verifyPassword(password, admin.password_hash) : false;
-  if (!isValid) {
-    res.status(401).json({ error: 'Invalid credentials' });
-    return;
-  }
-
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  res.setHeader(
-    'Set-Cookie',
-    createCookieHeader(ADMIN_COOKIE_VALUE, {
-      maxAge: SEVEN_DAYS_IN_SECONDS,
-      httpOnly: true,
-      sameSite: 'Lax',
-      secure: isProduction,
-    })
-  );
-
-  res.status(200).json({ success: true });
-  }
-
-function verifyPassword(password: string, storedHash: string): boolean {
-  const [salt, key] = storedHash.split(':');
-  if (!salt || !key) {
-    return false;
-  }
 
   try {
-    const derivedKey = crypto.scryptSync(password, Buffer.from(salt, 'hex'), 64);
-    const storedKey = Buffer.from(key, 'hex');
+    const response = await fetch(`${API_URL}/api/admin-auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+      credentials: 'include',
+    });
 
-    if (storedKey.length !== derivedKey.length) {
-      return false;
+    const data = await response.json();
+
+    if (response.ok) {
+      const cookies = [];
+
+      // Transférer le cookie de session PHP du backend
+      const backendCookie = response.headers.get('set-cookie');
+      if (backendCookie) {
+        cookies.push(backendCookie);
+      }
+
+      // Créer un cookie compatible avec le frontend Next.js
+      cookies.push(createAdminCookie());
+
+      res.setHeader('Set-Cookie', cookies);
     }
 
-    return crypto.timingSafeEqual(storedKey, derivedKey);
+    res.status(response.status).json(data);
   } catch (error) {
-    return false;
+    res.status(500).json({ error: 'Erreur de connexion au backend' });
   }
 }

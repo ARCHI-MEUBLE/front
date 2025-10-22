@@ -1,55 +1,80 @@
+/**
+ * REDIRECTION - Cette route redirige vers le backend PHP
+ * Utiliser apiClient.models.* à la place
+ */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import db, { type ModelRow } from './db';
-import { requireAuthentication } from './utils';
 
-type CreateModelPayload = {
-  name?: string;
-  description?: string;
-  prompt?: string;
-  imagePath?: string;
-};
+const ADMIN_COOKIE_NAME = 'user_session';
+const ADMIN_COOKIE_VALUE = 'admin';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!requireAuthentication(req, res)) {
+function isAuthenticated(req: NextApiRequest): boolean {
+  const cookies = req.headers.cookie?.split(';').reduce<Record<string, string>>((acc, cookie) => {
+    const [key, value] = cookie.trim().split('=');
+    if (key) acc[key] = value || '';
+    return acc;
+  }, {}) || {};
+
+  return cookies[ADMIN_COOKIE_NAME] === ADMIN_COOKIE_VALUE;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  // Vérifier l'authentification
+  if (!isAuthenticated(req)) {
+    console.log('Authentication failed - no user_session cookie');
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  switch (req.method) {
-    case 'GET':
-      handleGet(res);
-      break;
-    case 'POST':
-      handlePost(req, res);
-      break;
-    default:
-      res.setHeader('Allow', 'GET, POST');
-      res.status(405).json({ error: 'Method Not Allowed' });
+  console.log('---');
+  console.log('Method:', req.method);
+  console.log('Cookies being sent to backend:', req.headers.cookie);
+  console.log('Has PHPSESSID:', req.headers.cookie?.includes('PHPSESSID') ? 'YES' : 'NO');
+  console.log('Has user_session:', req.headers.cookie?.includes('user_session') ? 'YES' : 'NO');
+
+  try {
+    // Construire l'URL avec les query params si nécessaire
+    let url = `${API_URL}/api/models`;
+    if (req.url?.includes('?')) {
+      const queryString = req.url.split('?')[1];
+      url += `?${queryString}`;
+    }
+
+    console.log('Calling backend URL:', url);
+
+    const response = await fetch(url, {
+      method: req.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': req.headers.cookie || '',
+      },
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
+      credentials: 'include',
+    });
+
+    console.log('Backend response status:', response.status);
+
+    // Vérifier si la réponse est du JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Backend returned non-JSON response:', text);
+      res.status(500).json({ error: 'Le backend a retourné une erreur', details: text.substring(0, 500) });
+      return;
+    }
+
+    const data = await response.json();
+
+    // Transférer les cookies si nécessaire
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      res.setHeader('Set-Cookie', setCookie);
+    }
+
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('Error proxying to backend:', error);
+    res.status(500).json({ error: 'Erreur de connexion au backend', details: String(error) });
   }
-}
-
-function handleGet(res: NextApiResponse) {
-  const statement = db.prepare<ModelRow>('SELECT * FROM models ORDER BY created_at DESC');
-  const models = statement.all();
-  res.status(200).json({ models });
-}
-
-function handlePost(req: NextApiRequest, res: NextApiResponse) {
-  const payload = req.body as CreateModelPayload;
-  const { name, description, prompt, imagePath } = payload;
-
-  if (!name || !description || !prompt || !imagePath) {
-    res.status(400).json({ error: 'All fields are required' });
-    return;
-  }
-
-  const insert = db.prepare<never>(
-    'INSERT INTO models (name, description, prompt, image_path) VALUES (?, ?, ?, ?)' 
-  );
-  const result = insert.run(name, description, prompt, imagePath);
-
-  const id = Number(result.lastInsertRowid);
-  const statement = db.prepare<ModelRow>('SELECT * FROM models WHERE id = ?');
-  const model = statement.get(id);
-
-  res.status(201).json({ model });
 }

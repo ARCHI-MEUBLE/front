@@ -1,16 +1,28 @@
+/**
+ * REDIRECTION - Cette route redirige vers le backend PHP
+ * Utiliser apiClient.models.update/delete à la place
+ */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import db, { type ModelRow } from '../db';
-import { requireAuthentication } from '../utils';
 
-type UpdateModelPayload = {
-  name?: string;
-  description?: string;
-  prompt?: string;
-  imagePath?: string;
-};
+const ADMIN_COOKIE_NAME = 'user_session';
+const ADMIN_COOKIE_VALUE = 'admin';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!requireAuthentication(req, res)) {
+function isAuthenticated(req: NextApiRequest): boolean {
+  const cookies = req.headers.cookie?.split(';').reduce<Record<string, string>>((acc, cookie) => {
+    const [key, value] = cookie.trim().split('=');
+    if (key) acc[key] = value || '';
+    return acc;
+  }, {}) || {};
+
+  return cookies[ADMIN_COOKIE_NAME] === ADMIN_COOKIE_VALUE;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  // Vérifier l'authentification
+  if (!isAuthenticated(req)) {
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
@@ -22,52 +34,32 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  switch (req.method) {
-    case 'PUT':
-      handlePut(req, res, numericId);
-      break;
-    case 'DELETE':
-      handleDelete(res, numericId);
-      break;
-    default:
-      res.setHeader('Allow', 'PUT, DELETE');
-      res.status(405).json({ error: 'Method Not Allowed' });
+  try {
+    let body: any;
+
+    if (req.method === 'PUT') {
+      // Pour PUT, envoyer l'ID dans le body
+      body = { id: numericId, ...req.body };
+    } else if (req.method === 'DELETE') {
+      // Pour DELETE, envoyer l'ID dans le body
+      body = { id: numericId };
+    }
+
+    const response = await fetch(`${API_URL}/api/models`, {
+      method: req.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': req.headers.cookie || '',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('Error proxying to backend:', error);
+    res.status(500).json({ error: 'Erreur de connexion au backend' });
   }
-}
-
-function handlePut(req: NextApiRequest, res: NextApiResponse, id: number) {
-  const payload = req.body as UpdateModelPayload;
-  const { name, description, prompt, imagePath } = payload;
-
-  if (!name || !description || !prompt || !imagePath) {
-    res.status(400).json({ error: 'All fields are required' });
-    return;
-  }
-
-  const update = db.prepare<never>(
-    'UPDATE models SET name = ?, description = ?, prompt = ?, image_path = ? WHERE id = ?'
-  );
-  update.run(name, description, prompt, imagePath, id);
-
-  const select = db.prepare<ModelRow>('SELECT * FROM models WHERE id = ?');
-  const model = select.get(id);
-
-  if (!model) {
-    res.status(404).json({ error: 'Model not found' });
-    return;
-  }
-
-  res.status(200).json({ model });
-}
-
-function handleDelete(res: NextApiResponse, id: number) {
-  const remove = db.prepare<never>('DELETE FROM models WHERE id = ?');
-  const result = remove.run(id);
-
-  if (result.changes === 0) {
-    res.status(404).json({ error: 'Model not found' });
-    return;
-  }
-
-  res.status(200).json({ success: true });
 }
