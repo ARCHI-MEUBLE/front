@@ -12,18 +12,33 @@ Application web Next.js pour ArchiMeuble avec configurateur 3D interactif. Le pr
 
 1. Cloner le repository:
 ```bash
-git clone <votre-repo-front>
+git clone <votre-repo-frontend>
 cd front
 ```
 
-2. Installer les dépendances:
+2. Configurer les variables d'environnement:
+
+Le fichier `.env.local` doit exister avec les variables suivantes :
+
 ```bash
-npm install
+# Si le fichier n'existe pas, copiez .env.example
+cp .env.example .env.local
 ```
 
-3. Vérifier la configuration API dans `src/lib/apiClient.ts`:
-```typescript
-const API_BASE_URL = 'http://localhost:8000';
+Contenu de `.env.local` :
+```env
+# URL du backend PHP (Docker)
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Secret de session (optionnel)
+SESSION_SECRET=archimeuble_secret_2025
+```
+
+**Note importante** : Le fichier `.env.local` est déjà présent dans le repository avec les bonnes valeurs par défaut. Vous n'avez normalement **rien à faire** !
+
+3. Installer les dépendances:
+```bash
+npm install
 ```
 
 ## Démarrage du serveur

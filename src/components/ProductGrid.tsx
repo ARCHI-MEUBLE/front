@@ -16,7 +16,7 @@ export function ProductGrid() {
         id: model.id,
         name: model.name,
         description: model.description || '',
-        image_path: model.image_path || '',
+        image_path: model.image_url || '',
         created_at: model.created_at
       }));
       setModels(productModels);

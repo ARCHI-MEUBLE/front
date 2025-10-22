@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Script from 'next/script';
@@ -25,6 +25,7 @@ export default function ConfiguratorPage() {
   const [color, setColor] = useState('#FFFFFF');
   const [colorLabel, setColorLabel] = useState('Blanc');
   const [price, setPrice] = useState(899);
+  const [doorsOpen, setDoorsOpen] = useState(true); // true = avec portes, false = sans portes
 
   useEffect(() => {
     if (id) {
@@ -44,8 +45,8 @@ export default function ConfiguratorPage() {
       }
 
       // Prix de base
-      if (modelData.base_price) {
-        setPrice(modelData.base_price);
+      if (modelData.price) {
+        setPrice(modelData.price);
       }
 
       // Générer automatiquement le modèle 3D par défaut avec le prompt du template
@@ -127,12 +128,12 @@ export default function ConfiguratorPage() {
   };
 
   // Génère le modèle 3D avec le prompt (comme generateModel)
-  const generateModel = async (prompt: string) => {
-    console.log('Génération du modèle 3D avec prompt:', prompt);
+  const generateModel = useCallback(async (prompt: string) => {
+    console.log('Génération du modèle 3D avec prompt:', prompt, 'doorsOpen:', doorsOpen);
     setGenerating(true);
 
     try {
-      const result = await apiClient.generate.generate(prompt);
+      const result = await apiClient.generate.generate(prompt, !doorsOpen); // closed = !doorsOpen
       console.log('✓ Modèle 3D généré:', result.glb_url);
       setGlbUrl(result.glb_url);
     } catch (error) {
@@ -141,10 +142,10 @@ export default function ConfiguratorPage() {
     } finally {
       setGenerating(false);
     }
-  };
+  }, [doorsOpen]);
 
-  // Met à jour tout: prix et génération 3D (comme updateAll)
-  const updateAll = () => {
+  // useEffect pour régénérer quand la configuration change
+  useEffect(() => {
     if (!templatePrompt) return;
 
     // Modifier les dimensions du prompt du template
@@ -155,41 +156,37 @@ export default function ConfiguratorPage() {
     const newPrice = calculatePrice({ modules, height, depth, finish, socle });
     setPrice(newPrice);
 
-    // Générer le modèle 3D avec un délai
-    setTimeout(() => {
+    // Générer le modèle 3D avec un délai pour debounce
+    const timer = setTimeout(() => {
       generateModel(modifiedPrompt);
     }, 300);
-  };
 
-  // Met à jour uniquement les dimensions (comme updateDimensionsOnly)
-  const updateDimensionsOnly = () => {
-    updateAll();
-  };
+    return () => clearTimeout(timer);
+  }, [templatePrompt, modules, height, depth, socle, finish, generateModel]); // Dépendances
 
   // Handlers pour les changements de contrôles
   const handleModulesChange = (newModules: number) => {
     setModules(newModules);
-    setTimeout(() => updateDimensionsOnly(), 0);
   };
 
   const handleHeightChange = (newHeight: number) => {
     setHeight(newHeight);
-    setTimeout(() => updateDimensionsOnly(), 0);
   };
 
   const handleDepthChange = (newDepth: number) => {
     setDepth(newDepth);
-    setTimeout(() => updateDimensionsOnly(), 0);
   };
 
   const handleSocleChange = (newSocle: string) => {
     setSocle(newSocle);
-    setTimeout(() => updateAll(), 0);
   };
 
   const handleFinishChange = (newFinish: string) => {
     setFinish(newFinish);
-    setTimeout(() => updateAll(), 0);
+  };
+
+  const toggleDoors = () => {
+    setDoorsOpen(!doorsOpen);
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -391,6 +388,27 @@ export default function ConfiguratorPage() {
                   className="color-input"
                 />
                 <span className="color-label">{colorLabel}</span>
+              </div>
+            </div>
+
+            {/* Portes/Tiroirs Section */}
+            <div className="control-group">
+              <label className="control-label">Portes & Tiroirs</label>
+              <div className="button-group">
+                <button
+                  className={`toggle-btn ${doorsOpen ? 'active' : ''}`}
+                  onClick={toggleDoors}
+                  title="Afficher avec portes et tiroirs ouverts"
+                >
+                  Ouverts
+                </button>
+                <button
+                  className={`toggle-btn ${!doorsOpen ? 'active' : ''}`}
+                  onClick={toggleDoors}
+                  title="Masquer les portes et fermer les tiroirs"
+                >
+                  Fermés
+                </button>
               </div>
             </div>
 

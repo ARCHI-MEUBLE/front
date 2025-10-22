@@ -21,8 +21,8 @@ export interface FurnitureModel {
   name: string;
   description: string | null;
   prompt: string;
-  base_price: number | null;
-  image_path: string | null;
+  price: number | null;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -228,8 +228,8 @@ export const modelsApi = {
     name: string;
     description?: string;
     prompt: string;
-    base_price?: number;
-    image_path?: string;
+    price?: number;
+    image_url?: string;
   }): Promise<{ success: boolean; id: number }> {
     return request<{ success: boolean; id: number }>('/api/models', {
       method: 'POST',
@@ -319,8 +319,10 @@ export const configurationsApi = {
 export const generateApi = {
   /**
    * Générer un modèle 3D à partir d'un prompt
+   * @param prompt Le prompt de génération du meuble
+   * @param closed Mode fermé (true = sans portes, false = avec portes)
    */
-  async generate(prompt: string): Promise<{
+  async generate(prompt: string, closed: boolean = false): Promise<{
     success: boolean;
     glb_url: string;
     message: string;
@@ -329,7 +331,7 @@ export const generateApi = {
       '/api/generate',
       {
         method: 'POST',
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, closed }),
       }
     );
   },

@@ -6,7 +6,7 @@ export interface AdminModel {
   name: string;
   description: string;
   prompt: string;
-  image_path: string | null;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -125,6 +125,13 @@ export function DashboardModels() {
     setError(null);
     setIsSubmitting(true);
 
+    // Validation : le prompt doit contenir "b" (planche de base)
+    if (!formState.prompt.includes('b')) {
+      setError('Le prompt doit contenir "b" (planche de base obligatoire)');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       let imagePath = formState.imagePath;
 
@@ -207,13 +214,13 @@ export function DashboardModels() {
       name: model.name,
       description: model.description,
       prompt: model.prompt,
-      imagePath: model.image_path ?? '',
+      imagePath: model.image_url ?? '',
     });
     setFile(null);
     if (preview) {
       URL.revokeObjectURL(preview);
     }
-    setPreview(model.image_path ?? null);
+    setPreview(model.image_url ?? null);
   };
 
   const handleDelete = async (id: number) => {
@@ -366,9 +373,9 @@ export function DashboardModels() {
       <div className="grid gap-6 md:grid-cols-2">
         {sortedModels.map((model) => (
           <article key={model.id} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
-            {model.image_path && (
+            {model.image_url && (
               <img
-                src={model.image_path}
+                src={model.image_url}
                 alt={model.name}
                 className="mb-4 h-40 w-full rounded-lg object-cover"
               />
