@@ -210,7 +210,8 @@ export const modelsApi = {
    * Récupérer tous les modèles
    */
   async getAll(): Promise<FurnitureModel[]> {
-    return request<FurnitureModel[]>('/api/models');
+    const response = await request<{ models: FurnitureModel[] }>('/api/models');
+    return response.models;
   },
 
   /**

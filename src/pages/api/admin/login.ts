@@ -25,11 +25,31 @@ function createAdminCookie(): string {
   return parts.join('; ');
 }
 
+function isAuthenticated(req: NextApiRequest): boolean {
+  const cookies = req.headers.cookie?.split(';').reduce<Record<string, string>>((acc, cookie) => {
+    const [key, value] = cookie.trim().split('=');
+    if (key) acc[key] = value || '';
+    return acc;
+  }, {}) || {};
+
+  return cookies[ADMIN_COOKIE_NAME] === ADMIN_COOKIE_VALUE;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+  // Gérer les requêtes GET pour vérifier l'état de connexion
+  if (req.method === 'GET') {
+    if (isAuthenticated(req)) {
+      res.status(200).json({ authenticated: true });
+    } else {
+      res.status(401).json({ authenticated: false });
+    }
+    return;
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'GET, POST');
     res.status(405).json({ error: 'Method Not Allowed' });
     return;
   }
@@ -47,8 +67,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
 
     if (response.ok) {
+      const cookies = [];
+
+      // Transférer le cookie de session PHP du backend
+      const backendCookie = response.headers.get('set-cookie');
+      if (backendCookie) {
+        cookies.push(backendCookie);
+      }
+
       // Créer un cookie compatible avec le frontend Next.js
-      res.setHeader('Set-Cookie', createAdminCookie());
+      cookies.push(createAdminCookie());
+
+      res.setHeader('Set-Cookie', cookies);
     }
 
     res.status(response.status).json(data);

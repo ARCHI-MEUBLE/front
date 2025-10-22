@@ -13,11 +13,14 @@ export default function ConfiguratorPage() {
   const [generating, setGenerating] = useState(false);
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
 
+  // Prompt du template (comme dans configurator.js)
+  const [templatePrompt, setTemplatePrompt] = useState<string | null>(null);
+
   // Configuration state - valeurs par défaut depuis le prompt du modèle
-  const [modules, setModules] = useState(1);
+  const [modules, setModules] = useState(3);
   const [height, setHeight] = useState(730);
-  const [depth, setDepth] = useState(320);
-  const [socle, setSocle] = useState('metal');
+  const [depth, setDepth] = useState(500);
+  const [socle, setSocle] = useState('none');
   const [finish, setFinish] = useState('mat');
   const [color, setColor] = useState('#FFFFFF');
   const [colorLabel, setColorLabel] = useState('Blanc');
@@ -34,8 +37,9 @@ export default function ConfiguratorPage() {
       const modelData = await apiClient.models.getById(Number(id));
       setModel(modelData);
 
-      // Parser le prompt pour initialiser les valeurs
+      // Stocker le prompt du template (comme dans configurator.js)
       if (modelData.prompt) {
+        setTemplatePrompt(modelData.prompt);
         parsePromptToConfig(modelData.prompt);
       }
 
@@ -44,9 +48,9 @@ export default function ConfiguratorPage() {
         setPrice(modelData.base_price);
       }
 
-      // Générer automatiquement le modèle 3D par défaut
+      // Générer automatiquement le modèle 3D par défaut avec le prompt du template
       if (modelData.prompt) {
-        await generateDefaultModel(modelData.prompt);
+        await generateModel(modelData.prompt);
       }
     } catch (error) {
       console.error('Error loading model:', error);
@@ -55,48 +59,137 @@ export default function ConfiguratorPage() {
     }
   };
 
-  const generateDefaultModel = async (prompt: string) => {
-    setGenerating(true);
-    try {
-      const result = await apiClient.generate.generate(prompt);
-      setGlbUrl(result.glb_url);
-    } catch (error) {
-      console.error('Error generating default 3D model:', error);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   const parsePromptToConfig = (prompt: string) => {
-    // Format: M1(1700,500,730)EFH3(F,T,F)
-    const moduleMatch = prompt.match(/M(\d+)/);
+    // Format: M1(1700,500,730)EbFH3(F,T,F)
     const dimensionsMatch = prompt.match(/\((\d+),(\d+),(\d+)\)/);
 
-    if (moduleMatch) {
-      setModules(parseInt(moduleMatch[1]));
-    }
-
     if (dimensionsMatch) {
-      setHeight(parseInt(dimensionsMatch[3]));
-      setDepth(parseInt(dimensionsMatch[2]));
+      const largeur = parseInt(dimensionsMatch[1]);
+      const profondeur = parseInt(dimensionsMatch[2]);
+      const hauteur = parseInt(dimensionsMatch[3]);
+
+      // Calculer les modules depuis la largeur (500mm par module)
+      setModules(Math.round(largeur / 500));
+      setHeight(hauteur);
+      setDepth(profondeur);
     }
   };
 
-  const handleGenerate = async () => {
-    if (!model) return;
+  // Fonction pour modifier uniquement les dimensions du prompt (comme modifyPromptDimensions)
+  const modifyPromptDimensions = (prompt: string, largeur: number, profondeur: number, hauteur: number): string => {
+    const regex = /^(M[1-5])\((\d+),(\d+),(\d+)\)(.*)$/;
+    const match = prompt.match(regex);
 
+    if (match) {
+      const meubleType = match[1];
+      const reste = match[5];
+      return `${meubleType}(${largeur},${profondeur},${hauteur})${reste}`;
+    }
+
+    console.warn('Impossible de parser le prompt:', prompt);
+    return prompt;
+  };
+
+  // Fonction pour calculer le prix (comme calculatePrice)
+  const calculatePrice = (config: any): number => {
+    let price = 580; // Prix de base incluant EbF
+
+    // Ajouter le prix des modules (150€ par module)
+    price += config.modules * 150;
+
+    // Ajouter le prix de la hauteur (2€ par cm au-dessus de 60cm)
+    const hauteurCm = Math.round(config.height / 10);
+    if (hauteurCm > 60) {
+      price += (hauteurCm - 60) * 2;
+    }
+
+    // Ajouter le prix de la profondeur (3€ par cm)
+    const profondeurCm = Math.round(config.depth / 10);
+    price += profondeurCm * 3;
+
+    // Ajouter le prix de la finition
+    const finitionPrices: { [key: string]: number } = {
+      'mat': 0,
+      'brillant': 60,
+      'bois': 100
+    };
+    price += finitionPrices[config.finish] || 0;
+
+    // Ajouter le prix du socle
+    const soclePrices: { [key: string]: number } = {
+      'none': 0,
+      'metal': 40,
+      'wood': 60
+    };
+    price += soclePrices[config.socle] || 0;
+
+    return price;
+  };
+
+  // Génère le modèle 3D avec le prompt (comme generateModel)
+  const generateModel = async (prompt: string) => {
+    console.log('Génération du modèle 3D avec prompt:', prompt);
     setGenerating(true);
+
     try {
-      // Utiliser le prompt du modèle ou générer un nouveau
-      const prompt = model.prompt;
       const result = await apiClient.generate.generate(prompt);
+      console.log('✓ Modèle 3D généré:', result.glb_url);
       setGlbUrl(result.glb_url);
     } catch (error) {
-      console.error('Error generating 3D model:', error);
-      alert('Erreur lors de la génération du modèle 3D');
+      console.error('Erreur lors de la génération:', error);
+      alert('Erreur lors de la génération du meuble 3D');
     } finally {
       setGenerating(false);
     }
+  };
+
+  // Met à jour tout: prix et génération 3D (comme updateAll)
+  const updateAll = () => {
+    if (!templatePrompt) return;
+
+    // Modifier les dimensions du prompt du template
+    const largeur = modules * 500; // 500mm par module
+    const modifiedPrompt = modifyPromptDimensions(templatePrompt, largeur, depth, height);
+
+    // Calculer le prix
+    const newPrice = calculatePrice({ modules, height, depth, finish, socle });
+    setPrice(newPrice);
+
+    // Générer le modèle 3D avec un délai
+    setTimeout(() => {
+      generateModel(modifiedPrompt);
+    }, 300);
+  };
+
+  // Met à jour uniquement les dimensions (comme updateDimensionsOnly)
+  const updateDimensionsOnly = () => {
+    updateAll();
+  };
+
+  // Handlers pour les changements de contrôles
+  const handleModulesChange = (newModules: number) => {
+    setModules(newModules);
+    setTimeout(() => updateDimensionsOnly(), 0);
+  };
+
+  const handleHeightChange = (newHeight: number) => {
+    setHeight(newHeight);
+    setTimeout(() => updateDimensionsOnly(), 0);
+  };
+
+  const handleDepthChange = (newDepth: number) => {
+    setDepth(newDepth);
+    setTimeout(() => updateDimensionsOnly(), 0);
+  };
+
+  const handleSocleChange = (newSocle: string) => {
+    setSocle(newSocle);
+    setTimeout(() => updateAll(), 0);
+  };
+
+  const handleFinishChange = (newFinish: string) => {
+    setFinish(newFinish);
+    setTimeout(() => updateAll(), 0);
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,7 +268,7 @@ export default function ConfiguratorPage() {
           <div className="viewer-wrapper">
             {/* Model Viewer 3D */}
             <model-viewer
-              src={glbUrl ? `http://localhost:8000${glbUrl}` : ''}
+              src={glbUrl || ''}
               alt={model.name}
               camera-controls
               auto-rotate
@@ -206,7 +299,7 @@ export default function ConfiguratorPage() {
                   <button
                     key={num}
                     className={`toggle-btn ${modules === num ? 'active' : ''}`}
-                    onClick={() => setModules(num)}
+                    onClick={() => handleModulesChange(num)}
                   >
                     {num}
                   </button>
@@ -226,7 +319,7 @@ export default function ConfiguratorPage() {
                 max="1000"
                 value={height}
                 step="10"
-                onChange={(e) => setHeight(Number(e.target.value))}
+                onChange={(e) => handleHeightChange(Number(e.target.value))}
                 className="slider"
               />
               <div className="slider-labels">
@@ -243,7 +336,7 @@ export default function ConfiguratorPage() {
                   <button
                     key={depthValue}
                     className={`toggle-btn ${depth === depthValue ? 'active' : ''}`}
-                    onClick={() => setDepth(depthValue)}
+                    onClick={() => handleDepthChange(depthValue)}
                   >
                     {depthValue / 10}cm
                   </button>
@@ -258,7 +351,7 @@ export default function ConfiguratorPage() {
                 id="socle-select"
                 className="select-input"
                 value={socle}
-                onChange={(e) => setSocle(e.target.value)}
+                onChange={(e) => handleSocleChange(e.target.value)}
               >
                 <option value="none">Sans socle</option>
                 <option value="metal">Métal</option>
@@ -278,7 +371,7 @@ export default function ConfiguratorPage() {
                   <button
                     key={item.value}
                     className={`toggle-btn ${finish === item.value ? 'active' : ''}`}
-                    onClick={() => setFinish(item.value)}
+                    onClick={() => handleFinishChange(item.value)}
                   >
                     {item.label}
                   </button>
@@ -315,17 +408,10 @@ export default function ConfiguratorPage() {
             {/* Actions */}
             <div className="actions">
               <button
-                className="btn btn-primary"
-                onClick={handleGenerate}
-                disabled={generating}
-              >
-                {generating ? 'Génération...' : 'Générer le meuble 3D'}
-              </button>
-              <button
                 className="btn btn-secondary"
                 onClick={() => router.push('/')}
               >
-                Retour
+                Retour à l'accueil
               </button>
             </div>
           </div>

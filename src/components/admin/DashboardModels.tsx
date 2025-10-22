@@ -179,7 +179,9 @@ export function DashboardModels() {
       }
 
       if (!response.ok) {
-        throw new Error('Impossible de sauvegarder le modèle');
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Impossible de sauvegarder le modèle');
       }
 
       const data = (await response.json()) as { model: AdminModel };
