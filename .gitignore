@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Environnement virtuel Python
 .archimeuble/
@@ -16,6 +17,8 @@ log.txt
 # Fichiers IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # OS
 .DS_Store
@@ -24,7 +27,26 @@ Thumbs.db
 # Node / Next.js
 node_modules/
 .next/
+.next/*
+out/
 dist/
+build/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Vercel
+.vercel
+.vercel/*
+
+# Tests
+coverage/
+.nyc_output/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production builds
+*.tsbuildinfo
