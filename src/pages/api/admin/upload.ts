@@ -31,18 +31,28 @@ async function checkBackendAuth(req: NextApiRequest): Promise<boolean> {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Vérifier l'authentification avec le backend
-  const isAuth = await checkBackendAuth(req);
-  if (!isAuth) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
+  console.log('[UPLOAD DEBUG] Method:', req.method);
+  console.log('[UPLOAD DEBUG] Headers:', req.headers);
 
   if (req.method !== 'POST') {
+    console.log('[UPLOAD DEBUG] Method not POST, returning 405');
     res.setHeader('Allow', 'POST');
     res.status(405).json({ error: 'Method Not Allowed' });
     return;
   }
+
+  // Vérifier l'authentification avec le backend
+  console.log('[UPLOAD DEBUG] Checking backend auth...');
+  const isAuth = await checkBackendAuth(req);
+  console.log('[UPLOAD DEBUG] Auth result:', isAuth);
+
+  if (!isAuth) {
+    console.log('[UPLOAD DEBUG] Auth failed, returning 401');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  console.log('[UPLOAD DEBUG] Processing upload...');
 
   const payload = req.body as UploadPayload;
   const { fileName, fileType, data } = payload;
