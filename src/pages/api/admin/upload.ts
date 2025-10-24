@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuthentication } from './utils';
 
 type UploadPayload = {
   fileName?: string;
@@ -12,8 +11,30 @@ type UploadPayload = {
 
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg']);
 
+// Vérifier l'authentification admin auprès du backend
+async function checkBackendAuth(req: NextApiRequest): Promise<boolean> {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  try {
+    const response = await fetch(`${API_URL}/api/admin-auth/session`, {
+      headers: {
+        'Cookie': req.headers.cookie || '',
+      },
+      credentials: 'include',
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Backend auth check failed:', error);
+    return false;
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!requireAuthentication(req, res)) {
+  // Vérifier l'authentification avec le backend
+  const isAuth = await checkBackendAuth(req);
+  if (!isAuth) {
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
