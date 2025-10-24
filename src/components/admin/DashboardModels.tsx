@@ -137,9 +137,11 @@ export function DashboardModels() {
 
       if (file) {
         const base64 = await fileToBase64(file);
-        const uploadResponse = await fetch('/api/admin/upload', {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const uploadResponse = await fetch(`${API_URL}/api/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             fileName: file.name,
             fileType: file.type,
