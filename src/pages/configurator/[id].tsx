@@ -135,7 +135,15 @@ export default function ConfiguratorPage() {
     try {
       const result = await apiClient.generate.generate(prompt, !doorsOpen); // closed = !doorsOpen
       console.log('✓ Modèle 3D généré:', result.glb_url);
-      setGlbUrl(result.glb_url);
+
+      // Si l'URL est relative, la convertir en URL absolue vers le backend
+      let glbUrlAbsolute = result.glb_url;
+      if (glbUrlAbsolute.startsWith('/')) {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        glbUrlAbsolute = `${API_URL}${glbUrlAbsolute}`;
+      }
+
+      setGlbUrl(glbUrlAbsolute);
     } catch (error) {
       console.error('Erreur lors de la génération:', error);
       alert('Erreur lors de la génération du meuble 3D');
