@@ -2,35 +2,22 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import type { GetServerSideProps } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
 
-interface LoginForm {
+interface RegisterForm {
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
-const INITIAL_FORM: LoginForm = {
+const INITIAL_FORM: RegisterForm = {
   email: '',
   password: '',
+  confirmPassword: '',
 };
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
-  if (hasAdminSession(req.headers.cookie)) {
-    return {
-      redirect: {
-        destination: '/admin/dashboard',
-        permanent: false,
-      },
-    };
-  }
-
-  return { props: {} };
-};
-
-export default function AdminLoginPage() {
+export default function AdminRegisterPage() {
   const router = useRouter();
-  const [form, setForm] = useState<LoginForm>(INITIAL_FORM);
+  const [form, setForm] = useState<RegisterForm>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,19 +29,37 @@ export default function AdminLoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    // Validation
+    if (form.password !== form.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (form.password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('/api/admin/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Identifiants incorrects');
+        throw new Error(data.error || 'Une erreur est survenue');
       }
 
+      // Rediriger vers le dashboard après la création
       await router.push('/admin/dashboard');
     } catch (err) {
       setError((err as Error).message ?? 'Une erreur est survenue');
@@ -66,14 +71,14 @@ export default function AdminLoginPage() {
   return (
     <>
       <Head>
-        <title>ArchiMeuble — Administration</title>
+        <title>Créer un compte admin — ArchiMeuble</title>
       </Head>
       <div className="bg-gray-50 min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-8">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold text-gray-900">Espace administrateur</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Créer un compte administrateur</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Connectez-vous pour gérer le catalogue ArchiMeuble.
+              Créez un nouveau compte pour gérer ArchiMeuble.
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,9 +105,24 @@ export default function AdminLoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
                 value={form.password}
+                onChange={handleChange}
+                className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirmer le mot de passe
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={form.confirmPassword}
                 onChange={handleChange}
                 className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
               />
@@ -115,12 +135,12 @@ export default function AdminLoginPage() {
               disabled={isSubmitting}
               className="w-full rounded-lg bg-amber-600 py-2.5 text-white font-medium transition-all duration-200 hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-75"
             >
-              {isSubmitting ? 'Connexion...' : 'Se connecter'}
+              {isSubmitting ? 'Création...' : 'Créer le compte'}
             </button>
 
             <div className="text-center">
-              <Link href="/admin/register" className="text-sm text-amber-600 hover:text-amber-500">
-                Créer un nouveau compte administrateur
+              <Link href="/admin/login" className="text-sm text-amber-600 hover:text-amber-500">
+                Vous avez déjà un compte ? Se connecter
               </Link>
             </div>
           </form>
