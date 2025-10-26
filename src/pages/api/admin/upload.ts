@@ -38,9 +38,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('[UPLOAD PROXY] Backend response data:', data);
 
     // Transférer les cookies de réponse du backend vers le client
-    const backendCookies = response.headers.raw()['set-cookie'];
-    if (backendCookies && backendCookies.length > 0) {
+    const backendCookies = response.headers.getSetCookie?.() || [];
+    if (backendCookies.length > 0) {
       res.setHeader('Set-Cookie', backendCookies);
+    } else {
+      // Fallback: essayer d'obtenir un seul cookie
+      const singleCookie = response.headers.get('set-cookie');
+      if (singleCookie) {
+        res.setHeader('Set-Cookie', singleCookie);
+      }
     }
 
     res.status(response.status).json(data);

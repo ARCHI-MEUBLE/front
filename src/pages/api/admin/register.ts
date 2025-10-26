@@ -49,9 +49,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const cookies = [];
 
       // Transférer tous les cookies de session PHP du backend
-      const backendCookies = response.headers.raw()['set-cookie'];
-      if (backendCookies && backendCookies.length > 0) {
+      const backendCookies = response.headers.getSetCookie?.() || [];
+      if (backendCookies.length > 0) {
         cookies.push(...backendCookies);
+      } else {
+        // Fallback: essayer d'obtenir un seul cookie
+        const singleCookie = response.headers.get('set-cookie');
+        if (singleCookie) {
+          cookies.push(singleCookie);
+        }
       }
 
       // Créer un cookie compatible avec le frontend Next.js
@@ -65,6 +71,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(response.status).json(data);
   } catch (error) {
-    res.status(500).json({ error: 'Erreur de connexion au backend' });
+    console.error('[REGISTER] Error:', error);
+    res.status(500).json({
+      error: 'Erreur de connexion au backend',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }
