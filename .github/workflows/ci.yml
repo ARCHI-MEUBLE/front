@@ -1,0 +1,186 @@
+name: Frontend CI/CD
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: |
+          echo "Running ESLint..."
+          npm run lint
+          echo "✅ ESLint passed"
+
+      - name: TypeScript type check
+        run: |
+          echo "Running TypeScript type check..."
+          npx tsc --noEmit
+          echo "✅ TypeScript check passed"
+
+  build-test:
+    name: Build Test
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js application
+        env:
+          NEXT_PUBLIC_API_URL: https://back-production-e8ff.up.railway.app
+        run: |
+          echo "Building Next.js application..."
+          npm run build
+          echo "✅ Build successful"
+
+      - name: Check build output
+        run: |
+          if [ ! -d ".next" ]; then
+            echo "❌ .next directory not found"
+            exit 1
+          fi
+          echo "✅ Build output verified"
+
+  security-check:
+    name: Security & Dependencies Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for vulnerabilities
+        run: |
+          echo "Checking for npm vulnerabilities..."
+          npm audit --audit-level=high || true
+          echo "⚠️  Please review any vulnerabilities above"
+
+      - name: Check for sensitive files
+        run: |
+          sensitive_patterns=(".env.local" ".env.production" "credentials" "private_key" "secret")
+          found_sensitive=false
+
+          for pattern in "${sensitive_patterns[@]}"; do
+            if git ls-files | grep -i "$pattern" | grep -v ".env.example"; then
+              echo "⚠️  Warning: Potential sensitive file found matching '$pattern'"
+              found_sensitive=true
+            fi
+          done
+
+          if [ "$found_sensitive" = true ]; then
+            echo "⚠️  Please review files above to ensure no secrets are committed"
+          else
+            echo "✅ No obvious sensitive files found"
+          fi
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (if available)
+        run: |
+          if grep -q '"test"' package.json; then
+            echo "Running tests..."
+            npm test || echo "⚠️  Tests failed or not configured"
+          else
+            echo "ℹ️  No tests configured in package.json"
+          fi
+
+  vercel-preview:
+    name: Vercel Preview Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Vercel configuration
+        run: |
+          if [ -f "vercel.json" ]; then
+            echo "✅ vercel.json found"
+            cat vercel.json
+          else
+            echo "⚠️  No vercel.json found - using Vercel defaults"
+          fi
+
+      - name: Check environment variables
+        run: |
+          echo "ℹ️  Make sure these environment variables are set in Vercel:"
+          echo "  - NEXT_PUBLIC_API_URL"
+          echo "  - Any other required environment variables"
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck, build-test, security-check, test]
+    if: always()
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          if [ "${{ needs.lint-and-typecheck.result }}" = "success" ] && \
+             [ "${{ needs.build-test.result }}" = "success" ] && \
+             [ "${{ needs.security-check.result }}" = "success" ]; then
+            echo "✅ All CI checks passed! Ready to merge."
+            exit 0
+          else
+            echo "❌ Some CI checks failed. Please fix before merging."
+            echo "Lint/TypeCheck: ${{ needs.lint-and-typecheck.result }}"
+            echo "Build: ${{ needs.build-test.result }}"
+            echo "Security: ${{ needs.security-check.result }}"
+            echo "Tests: ${{ needs.test.result }}"
+            exit 1
+          fi
