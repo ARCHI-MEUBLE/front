@@ -48,16 +48,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (response.ok) {
       const cookies = [];
 
-      // Transférer le cookie de session PHP du backend
-      const backendCookie = response.headers.get('set-cookie');
-      if (backendCookie) {
-        cookies.push(backendCookie);
+      // Transférer tous les cookies de session PHP du backend
+      const backendCookies = response.headers.raw()['set-cookie'];
+      if (backendCookies && backendCookies.length > 0) {
+        cookies.push(...backendCookies);
       }
 
       // Créer un cookie compatible avec le frontend Next.js
       cookies.push(createAdminCookie());
 
+      // Définir tous les cookies
       res.setHeader('Set-Cookie', cookies);
+
+      console.log('[REGISTER] Cookies set:', cookies);
     }
 
     res.status(response.status).json(data);
