@@ -28,3 +28,6 @@ dist/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Images uploadées en local (dev uniquement)
+public/uploads/
