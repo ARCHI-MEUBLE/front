@@ -1,14 +1,8 @@
-/**
- * API route pour uploader une image (proxifie vers le backend PHP)
- */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-  console.log('[UPLOAD PROXY] Method:', req.method);
-  console.log('[UPLOAD PROXY] Cookies:', req.headers.cookie);
-
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     res.status(405).json({ error: 'Method Not Allowed' });
@@ -16,12 +10,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Transférer la requête vers le backend PHP avec les cookies
+    // Forward cookies from frontend to backend
     const cookieHeader = req.headers.cookie || '';
 
-    console.log('[UPLOAD PROXY] Forwarding to:', `${API_URL}/api/upload`);
-    console.log('[UPLOAD PROXY] Cookie header:', cookieHeader);
-
+    // Proxy request to backend PHP API
     const response = await fetch(`${API_URL}/api/upload`, {
       method: 'POST',
       headers: {
@@ -32,26 +24,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       credentials: 'include',
     });
 
+    // Get response data
     const data = await response.json();
 
-    console.log('[UPLOAD PROXY] Backend response status:', response.status);
-    console.log('[UPLOAD PROXY] Backend response data:', data);
-
-    // Transférer les cookies de réponse du backend vers le client
+    // Forward backend cookies to frontend
     const backendCookies = response.headers.getSetCookie?.() || [];
     if (backendCookies.length > 0) {
-      res.setHeader('Set-Cookie', backendCookies);
-    } else {
-      // Fallback: essayer d'obtenir un seul cookie
-      const singleCookie = response.headers.get('set-cookie');
-      if (singleCookie) {
-        res.setHeader('Set-Cookie', singleCookie);
-      }
+      backendCookies.forEach(cookie => {
+        res.setHeader('Set-Cookie', cookie);
+      });
     }
 
+    // Return response with same status code
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('[UPLOAD PROXY] Error:', error);
-    res.status(500).json({ error: 'Erreur de connexion au backend' });
+    console.error('Upload proxy error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
   }
 }
