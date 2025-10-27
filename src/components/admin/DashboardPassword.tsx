@@ -337,7 +337,7 @@ export function DashboardPassword() {
 
       <div className="mt-6 rounded-lg bg-blue-50 p-4">
         <p className="text-xs text-blue-700">
-          <strong>Note de sécurité :</strong> Les mots de passe sont hashés avec bcrypt avant d'être stockés.
+          <strong>Note de sécurité :</strong> Les mots de passe sont hashés avec bcrypt avant d&apos;être stockés.
           Vous ne pouvez pas voir les mots de passe actuels, seulement les réinitialiser.
         </p>
       </div>

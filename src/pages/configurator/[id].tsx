@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import Script from 'next/script';
 import { apiClient, type FurnitureModel } from '@/lib/apiClient';
 
@@ -27,13 +28,7 @@ export default function ConfiguratorPage() {
   const [price, setPrice] = useState(899);
   const [doorsOpen, setDoorsOpen] = useState(true); // true = avec portes, false = sans portes
 
-  useEffect(() => {
-    if (id) {
-      loadModel();
-    }
-  }, [id]);
-
-  const loadModel = async () => {
+  const loadModel = useCallback(async () => {
     try {
       const modelData = await apiClient.models.getById(Number(id));
       setModel(modelData);
@@ -58,7 +53,14 @@ export default function ConfiguratorPage() {
     } finally {
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadModel();
+    }
+  }, [id, loadModel]);
 
   const parsePromptToConfig = (prompt: string) => {
     // Format: M1(1700,500,730)EbFH3(F,T,F)
@@ -234,7 +236,7 @@ export default function ConfiguratorPage() {
             className="btn btn-primary"
             style={{ marginTop: '24px' }}
           >
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </button>
         </div>
       </div>
@@ -257,10 +259,10 @@ export default function ConfiguratorPage() {
       <nav className="navbar">
         <div className="nav-container">
           <div className="logo">
-            <a href="/">ArchiMeuble</a>
+            <Link href="/">ArchiMeuble</Link>
           </div>
           <ul className="nav-links">
-            <li><a href="/">Accueil</a></li>
+            <li><Link href="/">Accueil</Link></li>
             <li><a href="#" className="active">Configurer</a></li>
           </ul>
         </div>
@@ -437,7 +439,7 @@ export default function ConfiguratorPage() {
                 className="btn btn-secondary"
                 onClick={() => router.push('/')}
               >
-                Retour à l'accueil
+                Retour à l&apos;accueil
               </button>
             </div>
           </div>
