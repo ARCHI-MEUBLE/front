@@ -1,60 +1,44 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuthentication } from './utils';
 
-type UploadPayload = {
-  fileName?: string;
-  fileType?: string;
-  data?: string;
-};
-
-const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg']);
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!requireAuthentication(req, res)) {
-    return;
-  }
-
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     res.status(405).json({ error: 'Method Not Allowed' });
     return;
   }
 
-  const payload = req.body as UploadPayload;
-  const { fileName, fileType, data } = payload;
+  try {
+    // Forward cookies from frontend to backend
+    const cookieHeader = req.headers.cookie || '';
 
-  if (!fileName || !fileType || !data) {
-    res.status(400).json({ error: 'File payload is incomplete' });
-    return;
+    // Proxy request to backend PHP API
+    const response = await fetch(`${API_URL}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': cookieHeader,
+      },
+      body: JSON.stringify(req.body),
+      credentials: 'include',
+    });
+
+    // Get response data
+    const data = await response.json();
+
+    // Forward backend cookies to frontend
+    const backendCookies = response.headers.getSetCookie?.() || [];
+    if (backendCookies.length > 0) {
+      backendCookies.forEach(cookie => {
+        res.setHeader('Set-Cookie', cookie);
+      });
+    }
+
+    // Return response with same status code
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('Upload proxy error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
   }
-
-  if (!ALLOWED_TYPES.has(fileType)) {
-    res.status(400).json({ error: 'Unsupported file type' });
-    return;
-  }
-
-  const cleanBase64 = data.includes(',') ? data.split(',').pop() ?? '' : data;
-
-  if (!cleanBase64) {
-    res.status(400).json({ error: 'Invalid file data' });
-    return;
-  }
-
-  const buffer = Buffer.from(cleanBase64, 'base64');
-
-  const extension = fileType === 'image/png' ? 'png' : 'jpg';
-  const uniqueName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'models');
-
-  fs.mkdirSync(uploadDir, { recursive: true });
-
-  const fullPath = path.join(uploadDir, uniqueName);
-  await fs.promises.writeFile(fullPath, buffer);
-
-  const relativePath = `/uploads/models/${uniqueName}`;
-
-  res.status(200).json({ imagePath: relativePath });
 }
