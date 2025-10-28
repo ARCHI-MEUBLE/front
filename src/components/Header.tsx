@@ -21,8 +21,8 @@ export function Header() {
 
   const handleNotificationClick = () => {
     console.log("🔔 Notification button clicked");
-    // TODO: Implémenter la page de notifications
-    alert("Fonctionnalité notifications à venir !");
+    // TODO: Implémenter le système de notifications client
+    alert("📢 Système de notifications en cours de développement !\n\nBientôt vous pourrez recevoir des notifications pour :\n• Vos commandes\n• Vos configurations\n• Les promotions");
   };
 
   return (
@@ -42,11 +42,13 @@ export function Header() {
         </div>
         <div className="flex items-center space-x-3">
           <AccountButton />
+          {/* Bouton notification désactivé temporairement - TODO: Implémenter notifications client */}
           <button
             type="button"
-            aria-label="Voir les notifications"
+            aria-label="Notifications (bientôt disponible)"
             onClick={handleNotificationClick}
-            className="rounded-full border border-transparent p-2 text-gray-600 transition hover:bg-gray-100"
+            className="rounded-full border border-transparent p-2 text-gray-400 transition hover:bg-gray-100 cursor-not-allowed opacity-50"
+            title="Notifications (bientôt disponible)"
           >
             <Bell className="h-5 w-5" />
           </button>
