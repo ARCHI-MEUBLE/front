@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import Script from 'next/script';
 import dynamic from 'next/dynamic';
 import Viewer from '@/components/configurator/Viewer';
 import Controls from '@/components/configurator/Controls';
@@ -967,12 +966,6 @@ export default function ConfiguratorPage() {
         <title>Configurateur - {model.name} | ArchiMeuble</title>
       </Head>
 
-      {/* Load Model Viewer */}
-      <Script
-        type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.0.1/model-viewer.min.js"
-      />
-
       {/* Navigation */}
       <nav className="navbar">
         <div className="nav-container">
@@ -1424,6 +1417,15 @@ export default function ConfiguratorPage() {
 
             {/* Actions */}
             <div className="actions space-y-2">
+              {/* Bouton Enregistrer Configuration */}
+              <button
+                className="btn btn-primary"
+                onClick={saveConfiguration}
+                title="Sauvegarder cette configuration dans votre compte"
+              >
+                💾 Enregistrer la configuration
+              </button>
+
               <button
                 className="btn btn-secondary"
                 onClick={() => router.push('/')}

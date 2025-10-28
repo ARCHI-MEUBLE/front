@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import Head from 'next/head'
-import Script from 'next/script'
 import { useState } from 'react'
 
 const presets = [
@@ -97,12 +96,6 @@ export default function SelectPage() {
           }
         `}</style>
       </Head>
-
-      <Script
-        type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.0.1/model-viewer.min.js"
-        strategy="lazyOnload"
-      />
       
       <div className="p-8">
         <h1 className="text-2xl font-bold mb-4">Choisir un meuble de départ</h1>

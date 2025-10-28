@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useCustomer } from '@/context/CustomerContext';
-import Script from 'next/script';
 
 interface CartItem {
   id: number;
@@ -365,13 +364,6 @@ export default function Cart() {
           </div>
         )}
       </div>
-
-      {/* Script pour model-viewer */}
-      <Script
-        type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"
-        strategy="afterInteractive"
-      />
     </div>
   );
 }

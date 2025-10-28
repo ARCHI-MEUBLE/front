@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useCustomer } from '@/context/CustomerContext';
 import Image from 'next/image';
-import Script from 'next/script';
 
 interface SavedConfiguration {
   id: number;
@@ -255,13 +254,6 @@ export default function MyConfigurations() {
           </div>
         )}
       </div>
-
-      {/* Script pour model-viewer */}
-      <Script
-        type="module"
-        src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"
-        strategy="afterInteractive"
-      />
     </div>
   );
 }
