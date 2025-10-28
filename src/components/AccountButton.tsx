@@ -71,7 +71,7 @@ export function AccountButton() {
     if (session) {
       setModalOpen(true);
     } else {
-      router.push("/login");
+      router.push("/auth/login");
     }
   };
 
