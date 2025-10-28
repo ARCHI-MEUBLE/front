@@ -64,10 +64,6 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
-<<<<<<< HEAD
-# Images uploadées en local (dev uniquement)
-public/uploads/
-=======
 # Next.js
 .next/
 out/
@@ -82,4 +78,6 @@ next-env.d.ts
 # Fichiers PID
 .frontend-pid.txt
 *.pid
->>>>>>> bf52db4 (fix(front): corrige build Next.js (types, Link, Script, apostrophes))
+
+# Images uploadées en local (dev uniquement)
+public/uploads/

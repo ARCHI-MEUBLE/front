@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // MODE PRODUCTION : Proxier vers backend Railway
   try {
     const cookieHeader = req.headers.cookie || '';
-
+    // Proxy la requête vers l'API PHP du backend
     const response = await fetch(`${API_URL}/api/upload`, {
       method: 'POST',
       headers: {
@@ -73,21 +73,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify(req.body),
       credentials: 'include',
     });
-
+    
+    // Récupérer les données de réponse
     const data = await response.json();
 
-    // Forward backend cookies to frontend
-    const backendCookies = response.headers.getSetCookie?.() || [];
+    // Transférer les cookies du backend vers le frontend
+    const backendCookies = (response.headers as any).getSetCookie?.() || [];
     if (backendCookies.length > 0) {
-      backendCookies.forEach(cookie => {
+      // Plusieurs cookies
+      backendCookies.forEach((cookie: string) => {
         res.setHeader('Set-Cookie', cookie);
       });
+    } else {
+      // Fallback: un seul cookie
+      const singleCookie = response.headers.get('set-cookie');
+      if (singleCookie) {
+        res.setHeader('Set-Cookie', singleCookie);
+      }
     }
 
-    console.log('[PRODUCTION] Image saved on Railway:', data.imagePath);
+    // Retourner la réponse avec le même statut
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('Upload proxy error:', error);
-    res.status(500).json({ error: 'Failed to upload image' });
+    console.error('[UPLOAD PROXY] Error:', error);
+    res.status(500).json({ error: 'Erreur de connexion au backend' });
   }
 }
