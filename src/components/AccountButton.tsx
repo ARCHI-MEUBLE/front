@@ -96,16 +96,14 @@ export function AccountButton() {
       >
         <User className="h-5 w-5" />
       </button>
-      {session && (
-        <ProfileModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          session={session.user}
-          meubles={session.meubles}
-          onLogout={handleLogout}
-          onPasswordChange={handlePasswordChange}
-        />
-      )}
+      <ProfileModal
+        isOpen={modalOpen && !!session}
+        onClose={() => setModalOpen(false)}
+        session={session?.user ?? null}
+        meubles={session?.meubles ?? []}
+        onLogout={handleLogout}
+        onPasswordChange={handlePasswordChange}
+      />
     </>
   );
 }
