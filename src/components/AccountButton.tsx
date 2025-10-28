@@ -12,14 +12,23 @@ type Meuble = {
   image: string;
 };
 
-type SessionResponse = {
-  user: UserSession;
-  meubles: Meuble[];
+// Format de session renvoyé par le backend PHP
+type BackendSessionResponse = {
+  authenticated: boolean;
+  customer?: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    address?: string;
+    created_at: string;
+  };
 };
 
 export function AccountButton() {
   const router = useRouter();
-  const [session, setSession] = useState<SessionResponse | null>(null);
+  const [session, setSession] = useState<BackendSessionResponse | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +40,8 @@ export function AccountButton() {
         const response = await fetch("/api/session");
         if (!isMounted) return;
         if (response.ok) {
-          const data: SessionResponse = await response.json();
+          const data: BackendSessionResponse = await response.json();
+          console.log("📥 Session fetched:", data);
           setSession(data);
         } else {
           setSession(null);
@@ -58,7 +68,7 @@ export function AccountButton() {
     try {
       const response = await fetch("/api/session");
       if (response.ok) {
-        const data: SessionResponse = await response.json();
+        const data: BackendSessionResponse = await response.json();
         setSession(data);
       }
     } catch (error) {
@@ -67,10 +77,20 @@ export function AccountButton() {
   };
 
   const handleClick = () => {
-    if (loading) return;
-    if (session) {
+    console.log("🔘 AccountButton clicked");
+    console.log("📊 Loading:", loading);
+    console.log("👤 Session:", session);
+    
+    if (loading) {
+      console.log("⏳ Loading, returning early");
+      return;
+    }
+    
+    if (session?.authenticated && session?.customer) {
+      console.log("✅ Session exists, opening modal");
       setModalOpen(true);
     } else {
+      console.log("❌ No session, redirecting to /auth/login");
       router.push("/auth/login");
     }
   };
@@ -97,10 +117,14 @@ export function AccountButton() {
         <User className="h-5 w-5" />
       </button>
       <ProfileModal
-        isOpen={modalOpen && !!session}
+        isOpen={modalOpen && session?.authenticated === true && !!session?.customer}
         onClose={() => setModalOpen(false)}
-        session={session?.user ?? null}
-        meubles={session?.meubles ?? []}
+        session={session?.customer ? {
+          id: String(session.customer.id),
+          email: session.customer.email,
+          name: `${session.customer.first_name} ${session.customer.last_name}`,
+        } : null}
+        meubles={[]}
         onLogout={handleLogout}
         onPasswordChange={handlePasswordChange}
       />

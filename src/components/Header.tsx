@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { Bell, ShoppingCart } from "lucide-react";
 import { AccountButton } from "@/components/AccountButton";
 
@@ -11,6 +12,19 @@ const navLinks = [
 ];
 
 export function Header() {
+  const router = useRouter();
+
+  const handleCartClick = () => {
+    console.log("🛒 Cart button clicked");
+    router.push("/cart");
+  };
+
+  const handleNotificationClick = () => {
+    console.log("🔔 Notification button clicked");
+    // TODO: Implémenter la page de notifications
+    alert("Fonctionnalité notifications à venir !");
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -31,6 +45,7 @@ export function Header() {
           <button
             type="button"
             aria-label="Voir les notifications"
+            onClick={handleNotificationClick}
             className="rounded-full border border-transparent p-2 text-gray-600 transition hover:bg-gray-100"
           >
             <Bell className="h-5 w-5" />
@@ -38,6 +53,7 @@ export function Header() {
           <button
             type="button"
             aria-label="Voir le panier"
+            onClick={handleCartClick}
             className="rounded-full border border-transparent p-2 text-gray-600 transition hover:bg-gray-100"
           >
             <ShoppingCart className="h-5 w-5" />
