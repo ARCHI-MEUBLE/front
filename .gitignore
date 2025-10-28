@@ -78,6 +78,5 @@ next-env.d.ts
 # Fichiers PID
 .frontend-pid.txt
 *.pid
-
 # Images uploadées en local (dev uniquement)
 public/uploads/

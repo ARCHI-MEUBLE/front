@@ -62,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // MODE PRODUCTION : Proxier vers backend Railway
   try {
+    // Transférer la requête vers le backend PHP avec les cookies
     const cookieHeader = req.headers.cookie || '';
     // Proxy la requête vers l'API PHP du backend
     const response = await fetch(`${API_URL}/api/upload`, {
@@ -73,8 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify(req.body),
       credentials: 'include',
     });
-    
-    // Récupérer les données de réponse
+  // Récupérer les données de réponse
     const data = await response.json();
 
     // Transférer les cookies du backend vers le frontend
@@ -92,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Retourner la réponse avec le même statut
+  // Retourner la réponse avec le même statut
     res.status(response.status).json(data);
   } catch (error) {
     console.error('[UPLOAD PROXY] Error:', error);
