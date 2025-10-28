@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import type { GetServerSideProps } from 'next';
@@ -9,6 +9,7 @@ import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
+import NotificationsModal from '@/components/admin/NotificationsModal';
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (!hasAdminSession(req.headers.cookie)) {
@@ -28,6 +29,25 @@ export default function AdminDashboardPage() {
   const [selectedSection, setSelectedSection] = useState<DashboardSection>('models');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  useEffect(() => {
+    // Charger le nombre de notifications non lues (si session admin PHP valide)
+    const loadUnread = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/backend/api/admin/notifications.php?unread=true', {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setUnreadCount(data.unread_count || 0);
+      } catch {
+        // ignorer
+      }
+    };
+    loadUnread();
+  }, []);
 
   const handleSelect = (section: DashboardSection) => {
     setSelectedSection(section);
@@ -108,14 +128,29 @@ export default function AdminDashboardPage() {
               <p className="text-sm font-medium text-amber-600">Espace administrateur</p>
               <h1 className="text-2xl font-semibold text-gray-900">Tableau de bord</h1>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsNotifOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <span>🔔</span>
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+              </button>
+            </div>
           </header>
 
           {/* Contenu dynamique */}
@@ -127,6 +162,11 @@ export default function AdminDashboardPage() {
           </div>
         </main>
       </div>
+      <NotificationsModal
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+        onUnreadCountChange={(c) => setUnreadCount(c)}
+      />
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function DashboardPassword() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/admin/users");
+      const response = await fetch("/api/admin-users");
 
       if (!response.ok) {
         throw new Error("Impossible de récupérer les comptes");
@@ -73,7 +73,7 @@ export function DashboardPassword() {
       setUpdating(true);
       setError(null);
 
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch("/api/admin-users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -107,7 +107,7 @@ export function DashboardPassword() {
     }
 
     try {
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch("/api/admin-users", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: userId, type: "user" }),
@@ -336,7 +336,11 @@ export function DashboardPassword() {
       </div>
 
       <div className="mt-6 rounded-lg bg-blue-50 p-4">
+<<<<<<< HEAD
         <p className="text-xs text-blue-700">
+=======
+          <p className="text-xs text-blue-700">
+>>>>>>> bf52db4 (fix(front): corrige build Next.js (types, Link, Script, apostrophes))
           <strong>Note de sécurité :</strong> Les mots de passe sont hashés avec bcrypt avant d&apos;être stockés.
           Vous ne pouvez pas voir les mots de passe actuels, seulement les réinitialiser.
         </p>

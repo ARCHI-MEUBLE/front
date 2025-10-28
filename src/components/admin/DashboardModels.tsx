@@ -256,7 +256,23 @@ export function DashboardModels() {
 
   return (
   <div className="space-y-8">
-    
+    {/* Bouton Configurateur Admin */}
+    <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-2xl p-6 shadow-sm">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">🛠️ Configurateur Admin</h3>
+        <p className="mt-1 text-sm text-gray-600">
+          Créez un nouveau meuble personnalisé en Mode EZ avec le configurateur 3D
+        </p>
+      </div>
+      <a
+        href="/configurator/select"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-6 py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition shadow-md hover:shadow-lg"
+      >
+        Ouvrir le configurateur
+      </a>
+    </div>
 
     {/* ✅ Formulaire déplacé au-dessus de la liste */}
     <section className="rounded-2xl bg-white p-6 shadow-sm">
