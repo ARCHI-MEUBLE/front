@@ -7,6 +7,7 @@ import Sidebar, { type DashboardSection } from '@/components/admin/Sidebar';
 import { DashboardModels } from '@/components/admin/DashboardModels';
 import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
+import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
 
@@ -123,6 +124,7 @@ export default function AdminDashboardPage() {
             {selectedSection === 'models' && <DashboardModels />}
             {selectedSection === 'catalogue' && <DashboardCatalogue />}
             {selectedSection === 'configs' && <DashboardConfigs />}
+            {selectedSection === 'avis' && <DashboardAvis />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>

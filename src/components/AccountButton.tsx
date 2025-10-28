@@ -28,7 +28,10 @@ export function AccountButton() {
 
     const fetchSession = async () => {
       try {
-        const response = await fetch("/api/session");
+        const response = await fetch("/api/session", {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         if (!isMounted) return;
         if (response.ok) {
           const data: SessionResponse = await response.json();
@@ -56,7 +59,10 @@ export function AccountButton() {
 
   const refreshSession = async () => {
     try {
-      const response = await fetch("/api/session");
+      const response = await fetch("/api/session", {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       if (response.ok) {
         const data: SessionResponse = await response.json();
         setSession(data);
@@ -76,7 +82,7 @@ export function AccountButton() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/session", { method: "DELETE" });
+    await fetch("/api/session", { method: "DELETE", credentials: 'include' });
     setSession(null);
     setModalOpen(false);
     router.push("/");
