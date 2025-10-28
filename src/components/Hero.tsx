@@ -2,28 +2,20 @@ import Link from "next/link";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[#F9F9F9]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[url('/images/fond.png')] bg-cover bg-center opacity-80"
-      />
-      <div className="absolute inset-0 bg-white/65 backdrop-blur-sm" aria-hidden="true" />
-
-      <div className="relative mx-auto flex min-h-[420px] max-w-5xl flex-col items-start justify-center px-6 py-20 text-left">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">Collection 2025</p>
-        <h1 className="mt-4 max-w-3xl text-3xl font-semibold text-gray-900 md:text-4xl">
+    <section className="bg-alabaster">
+      <div className="mx-auto flex min-h-[420px] max-w-6xl flex-col items-start justify-center px-6 py-24 text-left">
+        <p className="text-xs font-medium uppercase tracking-[0.4em] text-ink/40">Collection 2025</p>
+        <h1 className="heading-serif mt-6 max-w-3xl text-4xl leading-tight text-ink md:text-[48px]">
           Configurez votre meuble idéal en quelques clics
         </h1>
-        <p className="mt-3 max-w-xl text-base text-gray-600">
-          Choisissez un modèle existant ou créez le vôtre.
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-ink/70">
+          Composez un meuble unique à partir de nos gabarits inspirés des projets clients : dimensions, finitions, options de
+          rangements… chaque détail se personnalise.
         </p>
-        <Link
-          href="#templates"
-          className="mt-8 inline-flex items-center rounded-full border border-gray-300 px-5 py-2 text-sm font-medium text-gray-800 transition hover:bg-white"
-        >
+        <Link href="#templates" className="mt-10 button-elevated">
           Découvrir nos modèles
         </Link>
       </div>
     </section>
   );
-  }
+}

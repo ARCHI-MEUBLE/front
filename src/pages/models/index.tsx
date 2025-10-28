@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 
 export default function ModelsPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#FAFAFA] text-[#1E1E1E]">
+    <div className="flex min-h-screen flex-col bg-alabaster text-ink">
       <Head>
         <title>ArchiMeuble — Nos modèles sur mesure</title>
         <meta

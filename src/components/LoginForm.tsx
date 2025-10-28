@@ -41,20 +41,20 @@ export function LoginForm() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
-      <h1 className="text-2xl font-semibold text-gray-900">
+    <div className="mx-auto w-full max-w-md rounded-[32px] border border-[#e7ded3] bg-white/90 p-10 shadow-lg backdrop-blur">
+      <h1 className="heading-serif text-3xl text-ink">
         {mode === "login" ? "Connexion à ArchiMeuble" : "Créer un compte"}
       </h1>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-4 text-sm leading-relaxed text-ink/70">
         {mode === "login"
           ? "Renseignez vos identifiants pour accéder à vos projets."
           : "Créez votre espace personnel pour sauvegarder vos meubles."}
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {mode === "register" && (
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
               Nom (optionnel)
             </label>
             <input
@@ -62,12 +62,12 @@ export function LoginForm() {
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             />
           </div>
         )}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
             Email
           </label>
           <input
@@ -76,11 +76,11 @@ export function LoginForm() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
             Mot de passe
           </label>
           <input
@@ -90,7 +90,7 @@ export function LoginForm() {
             minLength={6}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
 
@@ -99,15 +99,15 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[#14100f] disabled:cursor-not-allowed disabled:bg-ink/60"
         >
           {loading ? "Veuillez patienter..." : mode === "login" ? "Se connecter" : "Créer mon compte"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-8 text-center text-sm text-ink/60">
         {mode === "login" ? "Pas encore de compte ?" : "Déjà inscrit ?"}{" "}
-        <button type="button" onClick={toggleMode} className="text-sm font-semibold text-amber-600 hover:underline">
+        <button type="button" onClick={toggleMode} className="font-semibold text-ink hover:underline">
           {mode === "login" ? "Créer un compte" : "Se connecter"}
         </button>
       </p>

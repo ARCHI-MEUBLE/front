@@ -92,7 +92,7 @@ export function AccountButton() {
         type="button"
         aria-label="Ouvrir l'espace utilisateur"
         onClick={handleClick}
-        className="rounded-full border border-transparent p-2 text-gray-600 transition hover:bg-gray-100"
+        className="rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-[#e9dfd4]"
       >
         <User className="h-5 w-5" />
       </button>
