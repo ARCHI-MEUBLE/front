@@ -336,11 +336,7 @@ export function DashboardPassword() {
       </div>
 
       <div className="mt-6 rounded-lg bg-blue-50 p-4">
-<<<<<<< HEAD
         <p className="text-xs text-blue-700">
-=======
-          <p className="text-xs text-blue-700">
->>>>>>> bf52db4 (fix(front): corrige build Next.js (types, Link, Script, apostrophes))
           <strong>Note de sécurité :</strong> Les mots de passe sont hashés avec bcrypt avant d&apos;être stockés.
           Vous ne pouvez pas voir les mots de passe actuels, seulement les réinitialiser.
         </p>

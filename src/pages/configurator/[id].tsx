@@ -138,14 +138,14 @@ export default function ConfiguratorPage() {
     } finally {
       setLoading(false);
     }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, router.query.prompt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   useEffect(() => {
-      if (id) {
-        loadModel();
-      }
-    }, [id, loadModel]);
+    if (id) {
+      loadModel();
+    }
+  }, [id, loadModel]);
 
   const parsePromptToConfig = (prompt: string) => {
     // Format: M1(1700,500,730)EbFH3(F,T,F)
@@ -849,6 +849,7 @@ export default function ConfiguratorPage() {
             className="btn btn-primary"
             style={{ marginTop: '24px' }}
           >
+            Retour à l&apos;accueil
             Retour à l&apos;accueil
           </button>
         </div>
