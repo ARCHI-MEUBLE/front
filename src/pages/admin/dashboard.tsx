@@ -7,6 +7,7 @@ import Sidebar, { type DashboardSection } from '@/components/admin/Sidebar';
 import { DashboardModels } from '@/components/admin/DashboardModels';
 import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
+import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
 import NotificationsModal from '@/components/admin/NotificationsModal';
@@ -26,7 +27,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [selectedSection, setSelectedSection] = useState<DashboardSection>('models');
+  const [selectedSection, setSelectedSection] = useState<DashboardSection>('orders');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -153,11 +154,12 @@ export default function AdminDashboardPage() {
             </div>
           </header>
 
-          {/* Contenu dynamique */}
-          <div className="mx-auto max-w-6xl p-8 space-y-10">
+          {/* Contenu dynamique - Remplir toute la largeur */}
+          <div className="w-full p-6 space-y-6">
             {selectedSection === 'models' && <DashboardModels />}
             {selectedSection === 'catalogue' && <DashboardCatalogue />}
             {selectedSection === 'configs' && <DashboardConfigs />}
+            {selectedSection === 'orders' && <DashboardOrders />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>
