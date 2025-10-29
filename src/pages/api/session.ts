@@ -1,14 +1,14 @@
 /**
- * REDIRECTION - Cette route redirige vers le backend PHP
- * Utiliser apiClient.auth.getSession() à la place
+ * API Proxy - Session client
+ * Proxie vers le backend PHP
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const response = await fetch(`${API_URL}/api/auth/session`, {
+    const response = await fetch(`${API_URL}/backend/api/customers/session.php`, {
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -17,25 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       credentials: 'include',
     });
 
-    let data = await response.json();
+    const data = await response.json();
 
-    // Si c'est une requête GET et qu'elle réussit, ajouter un tableau vide de meubles
-    // (compatible avec l'ancien format attendu par le frontend)
-    if (req.method === 'GET' && response.ok && data.user) {
-      data = {
-        user: data.user,
-        meubles: [] // Pour l'instant, pas de gestion des meubles côté PHP
-      };
-    }
-
-    // Transférer les cookies
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
+    // Forward backend cookies to frontend
+    const backendCookies = response.headers.getSetCookie?.() || [];
+    if (backendCookies.length > 0) {
+      backendCookies.forEach(cookie => {
+        res.setHeader('Set-Cookie', cookie);
+      });
     }
 
     res.status(response.status).json(data);
   } catch (error) {
-    res.status(500).json({ error: 'Erreur de connexion au backend' });
+    console.error('Session proxy error:', error);
+    res.status(500).json({ error: 'Failed to check session' });
   }
 }

@@ -301,7 +301,8 @@ export const configurationsApi = {
     user_session: string;
     prompt: string;
     price: number;
-    glb_url?: string;
+    glb_url?: string | null;
+    metadata?: any; // Metadata optionnelles pour configuration enrichie
   }): Promise<{ success: boolean; message: string; id: number }> {
     return request<{ success: boolean; message: string; id: number }>(
       '/api/configurations',

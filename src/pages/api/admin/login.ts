@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const response = await fetch(`${API_URL}/api/admin-auth/login`, {
+    const response = await fetch(`${API_URL}/backend/api/admin-auth/login.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

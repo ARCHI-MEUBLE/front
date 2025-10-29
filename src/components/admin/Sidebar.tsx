@@ -1,7 +1,7 @@
 import { useMemo, type ComponentType } from 'react';
-import { Boxes, FolderKanban, Layers3, LogOut, ShieldHalf, X } from 'lucide-react';
+import { Boxes, FolderKanban, Layers3, LogOut, ShieldHalf, ShoppingCart, X } from 'lucide-react';
 
-export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'password';
+export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'orders' | 'password';
 
 interface SidebarProps {
   selectedSection: DashboardSection;
@@ -16,6 +16,7 @@ const navItems: { id: DashboardSection; label: string; icon: ComponentType<{ cla
   { id: 'models', label: 'Gestion des modèles', icon: Boxes },
   { id: 'catalogue', label: 'Catalogue & pièces', icon: FolderKanban },
   { id: 'configs', label: 'Configurations clients', icon: Layers3 },
+  { id: 'orders', label: 'Gestion des commandes', icon: ShoppingCart },
   { id: 'password', label: 'Changer le mot de passe', icon: ShieldHalf },
 ];
 
@@ -80,10 +81,6 @@ export function Sidebar({
         Déconnexion
       </button>
 
-      <div className="mt-6 rounded-lg bg-amber-50 p-4 text-xs text-amber-700">
-        <p className="font-medium">Astuce</p>
-        <p>Gardez votre navigateur ouvert pour des modifications rapides du catalogue.</p>
-      </div>
     </aside>
   );
 }

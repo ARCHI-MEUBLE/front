@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Appeler le backend PHP pour détruire la session
-    await fetch(`${API_URL}/api/admin-auth/logout`, {
+    await fetch(`${API_URL}/backend/api/admin-auth/logout.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

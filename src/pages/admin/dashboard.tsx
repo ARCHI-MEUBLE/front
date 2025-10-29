@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import type { GetServerSideProps } from 'next';
@@ -7,8 +7,10 @@ import Sidebar, { type DashboardSection } from '@/components/admin/Sidebar';
 import { DashboardModels } from '@/components/admin/DashboardModels';
 import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
+import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
+import NotificationsModal from '@/components/admin/NotificationsModal';
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (!hasAdminSession(req.headers.cookie)) {
@@ -25,9 +27,28 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [selectedSection, setSelectedSection] = useState<DashboardSection>('models');
+  const [selectedSection, setSelectedSection] = useState<DashboardSection>('orders');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  useEffect(() => {
+    // Charger le nombre de notifications non lues (si session admin PHP valide)
+    const loadUnread = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/backend/api/admin/notifications.php?unread=true', {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setUnreadCount(data.unread_count || 0);
+      } catch {
+        // ignorer
+      }
+    };
+    loadUnread();
+  }, []);
 
   const handleSelect = (section: DashboardSection) => {
     setSelectedSection(section);
@@ -108,25 +129,46 @@ export default function AdminDashboardPage() {
               <p className="text-sm font-medium text-amber-600">Espace administrateur</p>
               <h1 className="text-2xl font-semibold text-gray-900">Tableau de bord</h1>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsNotifOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <span>🔔</span>
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+              </button>
+            </div>
           </header>
 
-          {/* Contenu dynamique */}
-          <div className="mx-auto max-w-6xl p-8 space-y-10">
+          {/* Contenu dynamique - Remplir toute la largeur */}
+          <div className="w-full p-6 space-y-6">
             {selectedSection === 'models' && <DashboardModels />}
             {selectedSection === 'catalogue' && <DashboardCatalogue />}
             {selectedSection === 'configs' && <DashboardConfigs />}
+            {selectedSection === 'orders' && <DashboardOrders />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>
       </div>
+      <NotificationsModal
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+        onUnreadCountChange={(c) => setUnreadCount(c)}
+      />
     </div>
   );
 }

@@ -14,7 +14,7 @@ type Meuble = {
 type ProfileModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  session: UserSession;
+  session: UserSession | null;
   meubles: Meuble[];
   onLogout: () => void;
   onPasswordChange?: () => void;
@@ -71,6 +71,11 @@ export function ProfileModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+  
+  // Vérification de sécurité
+  if (!session) {
+    return null;
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
