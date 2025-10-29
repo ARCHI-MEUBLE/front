@@ -315,20 +315,29 @@ export function DashboardConfigs() {
                 );
               })()}
 
-              {/* Aperçu 3D */}
-              {selectedConfig.glb_url && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">🎯 Modèle 3D</h4>
+              {/* Fichiers téléchargeables */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">🎯 Fichiers pour la menuiserie</h4>
+                <div className="flex flex-wrap gap-3">
+                  {selectedConfig.glb_url && (
+                    <a
+                      href={selectedConfig.glb_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition"
+                    >
+                      📦 Télécharger le fichier GLB
+                    </a>
+                  )}
                   <a
-                    href={selectedConfig.glb_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-amber-600 hover:text-amber-700 underline"
+                    href={`http://localhost:8000/backend/api/files/dxf.php?id=${selectedConfig.id}`}
+                    download={`configuration_${selectedConfig.id}.dxf`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                   >
-                    Télécharger le fichier GLB
+                    📐 Télécharger le fichier DXF
                   </a>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
