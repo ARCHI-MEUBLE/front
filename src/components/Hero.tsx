@@ -1,20 +1,48 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function Hero() {
   return (
-    <section className="bg-alabaster">
-      <div className="mx-auto flex min-h-[420px] max-w-6xl flex-col items-start justify-center px-6 py-24 text-left">
-        <p className="text-xs font-medium uppercase tracking-[0.4em] text-ink/40">Collection 2025</p>
-        <h1 className="heading-serif mt-6 max-w-3xl text-4xl leading-tight text-ink md:text-[48px]">
-          Configurez votre meuble idéal en quelques clics
-        </h1>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-ink/70">
-          Composez un meuble unique à partir de nos gabarits inspirés des projets clients : dimensions, finitions, options de
-          rangements… chaque détail se personnalise.
-        </p>
-        <Link href="#templates" className="mt-10 button-elevated">
-          Découvrir nos modèles
-        </Link>
+    <section className="relative w-full">
+      <div className="relative h-[420px] md:h-[560px] lg:h-[720px] w-full overflow-hidden">
+        <Image
+          src="/images/banniere_salon.jpeg"
+          alt="Salon — ArchiMeuble"
+          fill
+          className="object-cover"
+          priority
+        />
+
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/40" />
+
+        {/* Content: left-aligned block with generous left padding on larger screens */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-y-0 left-0 flex w-full items-center">
+            <div className="max-w-3xl px-6 md:px-12 lg:px-24">
+              <p className="text-sm font-medium uppercase tracking-wider text-white/80">Collection 2025</p>
+
+              <h1 className="heading-serif mt-4 text-3xl font-bold leading-tight drop-shadow-md md:text-5xl lg:text-6xl text-white">
+                Configurez votre meuble idéal en quelques clics
+              </h1>
+              <div className="mt-6 flex gap-4">
+                <Link
+                  href="#templates"
+                  className="inline-flex items-center rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-95"
+                >
+                  Découvrir nos modèles
+                </Link>
+
+                <Link
+                  href="/configurator"
+                  className="inline-flex items-center rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/5"
+                >
+                  Configurer
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

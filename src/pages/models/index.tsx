@@ -1,7 +1,6 @@
 import Head from "next/head";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
-import { FiltersBar } from "@/components/FiltersBar";
 import { ProductGrid } from "@/components/ProductGrid";
 import { Footer } from "@/components/Footer";
 
@@ -17,9 +16,8 @@ export default function ModelsPage() {
       </Head>
       <Header />
       <main className="flex flex-1 flex-col">
-        <Hero />
-        <FiltersBar />
-        <ProductGrid />
+  <Hero />
+  <ProductGrid />
       </main>
       <Footer />
     </div>
