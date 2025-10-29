@@ -16,10 +16,23 @@ const navLinks = [
   { href: "/#contact", label: "Contact" }
 ];
 
+interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  related_id?: number;
+  related_type?: string;
+}
+
 export function Header() {
   const router = useRouter();
   const { customer } = useCustomer();
   const [cartCount, setCartCount] = useState(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement | null>(null);
 
@@ -41,6 +54,59 @@ export function Header() {
     };
     loadCartCount();
   }, [customer]);
+
+  // Charger les notifications
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!customer) return;
+      try {
+        const res = await fetch("http://localhost:8000/backend/api/notifications/index.php?limit=10", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unread_count || 0);
+        }
+      } catch (err) {
+        console.error("Erreur chargement notifications:", err);
+      }
+    };
+    loadNotifications();
+
+    // Recharger toutes les 30 secondes
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [customer]);
+
+  const markAsRead = async (notificationId: number) => {
+    try {
+      await fetch(`http://localhost:8000/backend/api/notifications/index.php/${notificationId}/read`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      // Recharger les notifications
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Erreur marquage notification:", err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await fetch("http://localhost:8000/backend/api/notifications/index.php/read-all", {
+        method: "PUT",
+        credentials: "include",
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Erreur marquage toutes notifications:", err);
+    }
+  };
 
   const handleNavClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
@@ -135,24 +201,76 @@ export function Header() {
         </div>
         <div className="flex items-center gap-3">
           <AccountButton />
-          <div className="relative" ref={notificationRef}>
-            <button
-              type="button"
-              aria-label="Voir les notifications"
-              aria-haspopup="dialog"
-              aria-expanded={isNotificationsOpen}
-              onClick={() => setNotificationsOpen((prev) => !prev)}
-              className="rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-[#e9dfd4]"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-            {isNotificationsOpen ? (
-              <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-[#dfd3c5] bg-white p-5 text-sm text-ink/70 shadow-xl">
-                <p className="heading-serif text-lg text-ink">Notifications</p>
-                <p className="mt-2 text-sm leading-relaxed">Aucune nouvelle notification.</p>
-              </div>
-            ) : null}
-          </div>
+          {customer && (
+            <div className="relative" ref={notificationRef}>
+              <button
+                type="button"
+                aria-label="Voir les notifications"
+                aria-haspopup="dialog"
+                aria-expanded={isNotificationsOpen}
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                className="relative rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-[#e9dfd4]"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ink px-1 text-xs font-semibold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              {isNotificationsOpen ? (
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl border border-[#dfd3c5] bg-white shadow-xl">
+                  <div className="sticky top-0 bg-white p-4 border-b border-[#dfd3c5] flex items-center justify-between">
+                    <p className="heading-serif text-lg text-ink">Notifications</p>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs text-ink/70 hover:text-ink underline"
+                      >
+                        Tout marquer comme lu
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    {notifications.length === 0 ? (
+                      <p className="p-4 text-sm text-ink/70 text-center">
+                        Aucune nouvelle notification.
+                      </p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-3 mb-2 rounded-lg cursor-pointer transition ${
+                            notif.is_read
+                              ? "bg-white hover:bg-[#f9f7f5]"
+                              : "bg-[#f0e2d0] hover:bg-[#e9dfd4]"
+                          }`}
+                          onClick={() => {
+                            if (!notif.is_read) markAsRead(notif.id);
+                            if (notif.related_type === "order" && notif.related_id) {
+                              router.push("/my-orders");
+                              setNotificationsOpen(false);
+                            }
+                          }}
+                        >
+                          <p className="text-sm font-semibold text-ink">{notif.title}</p>
+                          <p className="text-xs text-ink/70 mt-1">{notif.message}</p>
+                          <p className="text-xs text-ink/50 mt-2">
+                            {new Date(notif.created_at).toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
           <Link
             href="/cart"
             aria-label="Voir le panier"

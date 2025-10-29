@@ -29,8 +29,10 @@ export function ProfileModal({
   onPasswordChange
 }: ProfileModalProps) {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showDeleteForm, setShowDeleteForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,8 +43,10 @@ export function ProfileModal({
   useEffect(() => {
     if (!isOpen) {
       setShowPasswordForm(false);
+      setShowDeleteForm(false);
       setCurrentPassword("");
       setNewPassword("");
+      setDeletePassword("");
       setStatusMessage(null);
       setError(null);
     }
@@ -99,6 +103,40 @@ export function ProfileModal({
       setCurrentPassword("");
       setNewPassword("");
       onPasswordChange?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!confirm("Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.")) {
+      return;
+    }
+
+    setLoading(true);
+    setStatusMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch("http://localhost:8000/backend/api/account/delete.php", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: deletePassword })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Impossible de supprimer le compte");
+      }
+
+      alert("Votre compte a été supprimé avec succès");
+      onLogout();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
@@ -183,6 +221,48 @@ export function ProfileModal({
                 </button>
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 {statusMessage && <p className="text-sm text-emerald-600">{statusMessage}</p>}
+              </form>
+            )}
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteForm((value) => !value)}
+              className="w-full rounded-full border-2 border-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-red-600 transition hover:bg-red-50"
+            >
+              {showDeleteForm ? "Annuler" : "Supprimer mon compte"}
+            </button>
+
+            {showDeleteForm && (
+              <form onSubmit={handleDeleteAccount} className="mt-4 space-y-4">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-xs text-red-800 font-semibold">
+                    ⚠️ ATTENTION : Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50" htmlFor="deletePassword">
+                    Confirmer avec votre mot de passe
+                  </label>
+                  <input
+                    id="deletePassword"
+                    name="deletePassword"
+                    type="password"
+                    required
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/10"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-full bg-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-600/60"
+                >
+                  {loading ? "Suppression..." : "Confirmer la suppression"}
+                </button>
+                {error && <p className="text-sm text-red-500">{error}</p>}
               </form>
             )}
           </div>
