@@ -290,6 +290,7 @@ export default function MyConfigurations() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </>
   );
