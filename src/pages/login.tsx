@@ -5,22 +5,23 @@ import { parseSessionFromCookieHeader } from "@/lib/auth";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-alabaster text-ink">
       <Head>
         <title>Connexion | ArchiMeuble</title>
       </Head>
-      <main className="flex flex-1 items-center justify-center px-4 py-16">
-        <div className="w-full max-w-4xl rounded-3xl bg-white/80 p-8 shadow-2xl backdrop-blur">
-          <div className="grid gap-10 md:grid-cols-2">
-            <div className="hidden flex-col justify-center rounded-2xl bg-amber-50 p-8 md:flex">
-              <h2 className="text-3xl font-semibold text-amber-900">Votre espace ArchiMeuble</h2>
-              <p className="mt-4 text-sm text-amber-800">
-                Accédez à vos meubles sauvegardés, suivez vos projets et personnalisez vos configurations en toute simplicité.
+      <main className="flex flex-1 items-center justify-center px-6 py-24">
+        <div className="w-full max-w-4xl rounded-[40px] border border-[#e0d7cc] bg-white/80 p-12 shadow-xl backdrop-blur">
+          <div className="grid gap-12 md:grid-cols-2">
+            <div className="hidden flex-col justify-center rounded-[32px] bg-alabaster/80 p-8 md:flex">
+              <h2 className="heading-serif text-3xl text-ink">Votre espace ArchiMeuble</h2>
+              <p className="mt-4 text-sm leading-relaxed text-ink/70">
+                Accédez à vos meubles sauvegardés, suivez vos projets et personnalisez vos configurations en toute
+                simplicité.
               </p>
-              <ul className="mt-6 space-y-3 text-sm text-amber-900">
-                <li className="rounded-xl bg-white/70 p-3 shadow-sm">Sauvegarde illimitée de vos meubles configurés</li>
-                <li className="rounded-xl bg-white/70 p-3 shadow-sm">Suivi des commandes en temps réel</li>
-                <li className="rounded-xl bg-white/70 p-3 shadow-sm">Accès rapide à l&apos;assistance personnalisée</li>
+              <ul className="mt-8 space-y-3 text-sm text-ink/80">
+                <li className="rounded-2xl bg-white/60 px-4 py-3 shadow-sm">Sauvegarde illimitée de vos meubles configurés</li>
+                <li className="rounded-2xl bg-white/60 px-4 py-3 shadow-sm">Suivi des commandes en temps réel</li>
+                <li className="rounded-2xl bg-white/60 px-4 py-3 shadow-sm">Accès rapide à l&apos;assistance personnalisée</li>
               </ul>
             </div>
             <div className="flex items-center justify-center">

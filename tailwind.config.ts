@@ -5,10 +5,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        accent: "#C2410C"
+        accent: "#B49272",
+        ink: "#2F2A26",
+        alabaster: "#F6F1EB"
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"]
+        sans: ["'Source Sans 3'", "system-ui", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
+        serif: ["'Playfair Display'", "Georgia", "serif"]
       }
     }
   },
