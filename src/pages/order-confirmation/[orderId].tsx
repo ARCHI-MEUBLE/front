@@ -122,7 +122,7 @@ export default function OrderConfirmationPage() {
           <Breadcrumb
             items={[
               { label: "Accueil", href: "/" },
-              { label: "Panier", href: "/panier" },
+              { label: "Panier", href: "/cart" },
               { label: "Paiement", href: "/checkout" },
               { label: "Confirmation" },
             ]}

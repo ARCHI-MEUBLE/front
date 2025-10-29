@@ -189,7 +189,7 @@ export default function Checkout() {
           <Breadcrumb
             items={[
               { label: 'Accueil', href: '/' },
-              { label: 'Panier', href: '/panier' },
+              { label: 'Panier', href: '/cart' },
               { label: 'Paiement' }
             ]}
           />
@@ -473,7 +473,7 @@ export default function Checkout() {
 
                 <div className="mt-4 text-center">
                   <Link
-                    href="/panier"
+                    href="/cart"
                     className="text-sm text-blue-600 hover:text-blue-700"
                   >
                     ← Retour au panier

@@ -835,7 +835,7 @@ export default function ConfiguratorPage() {
 
       // Rediriger vers le panier
       alert(`✅ ${configName} ajouté au panier!\n\nPrix: ${price}€`);
-      router.push('/panier');
+      router.push('/cart');
     } catch (err: any) {
       console.error('Erreur saveConfiguration:', err);
       alert(`❌ Erreur lors de l'ajout au panier:\n${err.message}`);

@@ -153,7 +153,7 @@ export default function MyConfigurations() {
               <div>
                 <p className="font-medium text-sm">{toast.message}</p>
                 {toast.type === 'success' && (
-                  <Link href="/panier" className="text-xs underline mt-1 block">
+                  <Link href="/cart" className="text-xs underline mt-1 block">
                     Voir le panier →
                   </Link>
                 )}
