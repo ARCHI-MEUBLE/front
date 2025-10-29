@@ -320,13 +320,6 @@ export function DashboardPassword() {
         </div>
       </div>
 
-      {/* Note de sécurité - sobre */}
-      <div className="border border-gray-300 bg-gray-50 p-3">
-        <p className="text-xs text-gray-700">
-          <strong>Note de sécurité :</strong> Les mots de passe sont hashés avec bcrypt avant d&apos;être stockés.
-          Vous ne pouvez pas voir les mots de passe actuels, seulement les réinitialiser.
-        </p>
-      </div>
     </section>
   );
 }

@@ -81,10 +81,6 @@ export function Sidebar({
         Déconnexion
       </button>
 
-      <div className="mt-6 rounded-lg bg-amber-50 p-4 text-xs text-amber-700">
-        <p className="font-medium">Astuce</p>
-        <p>Gardez votre navigateur ouvert pour des modifications rapides du catalogue.</p>
-      </div>
     </aside>
   );
 }
