@@ -824,7 +824,7 @@ export default function ConfiguratorPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          configuration_id: result.configuration_id,
+          configuration_id: result.configuration.id,
           quantity: 1
         })
       });
