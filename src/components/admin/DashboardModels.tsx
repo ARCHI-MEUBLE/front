@@ -343,7 +343,7 @@ export function DashboardModels() {
             <img
               src={preview ?? formState.imagePath}
               alt={formState.name || 'Prévisualisation du modèle'}
-              className="mt-3 h-72 w-full object-contain border border-gray-200"
+              className="mt-3 w-full border border-gray-200"
             />
           )}
         </div>
@@ -394,7 +394,7 @@ export function DashboardModels() {
               <img
                 src={model.image_url}
                 alt={model.name}
-                className="mb-3 h-80 w-full object-contain border border-gray-200"
+                className="mb-3 w-full border border-gray-200"
               />
             )}
             <h3 className="text-sm font-semibold text-gray-900">{model.name}</h3>
