@@ -189,7 +189,6 @@ export default function Checkout() {
           <Breadcrumb
             items={[
               { label: 'Accueil', href: '/' },
-              { label: 'Mes Configurations', href: '/my-configurations' },
               { label: 'Panier', href: '/panier' },
               { label: 'Paiement' }
             ]}

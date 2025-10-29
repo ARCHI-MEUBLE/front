@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ShoppingCart, Package, FolderOpen, Home, User } from "lucide-react";
+import { ShoppingCart, Package, Home, User } from "lucide-react";
 import { useCustomer } from "@/context/CustomerContext";
 import { useEffect, useState } from "react";
 
@@ -64,18 +64,6 @@ export function UserNavigation() {
 
             {customer && (
               <>
-                <Link
-                  href="/my-configurations"
-                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive("/my-configurations")
-                      ? "text-gray-900 bg-gray-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  <span className="hidden sm:inline">Mes configurations</span>
-                </Link>
-
                 <Link
                   href="/panier"
                   className={`relative inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${

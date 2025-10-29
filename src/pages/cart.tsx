@@ -173,7 +173,6 @@ export default function Cart() {
           <Breadcrumb
             items={[
               { label: 'Accueil', href: '/' },
-              { label: 'Mes Configurations', href: '/my-configurations' },
               { label: 'Panier' }
             ]}
           />
@@ -203,13 +202,13 @@ export default function Cart() {
               Votre panier est vide
             </h3>
             <p className="text-gray-600 mb-6">
-              Ajoutez des configurations pour les commander
+              Créez votre première configuration de meuble
             </p>
-            <Link 
-              href="/my-configurations"
+            <Link
+              href="/"
               className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-              Voir mes configurations
+              Créer une configuration
             </Link>
           </div>
         ) : (
@@ -346,11 +345,11 @@ export default function Cart() {
                 </button>
 
                 <div className="mt-4 text-center">
-                  <Link 
-                    href="/my-configurations"
+                  <Link
+                    href="/"
                     className="text-sm text-blue-600 hover:text-blue-700"
                   >
-                    ← Continuer mes achats
+                    ← Créer une autre configuration
                   </Link>
                 </div>
 

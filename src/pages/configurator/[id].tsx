@@ -79,10 +79,6 @@ export default function ConfiguratorPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Save success modal
-  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
-  const [savedConfigName, setSavedConfigName] = useState('');
-
   // Vérifier si l'utilisateur est admin au chargement
   useEffect(() => {
     const checkAdminSession = async () => {
@@ -821,12 +817,28 @@ export default function ConfiguratorPage() {
       }
 
       const result = await response.json();
-      // Ouvrir le modal de succès au lieu d'une alerte
-      setSavedConfigName(configName);
-      setShowSaveSuccessModal(true);
+
+      // Ajouter au panier immédiatement après sauvegarde
+      const cartResponse = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          configuration_id: result.configuration_id,
+          quantity: 1
+        })
+      });
+
+      if (!cartResponse.ok) {
+        throw new Error('Erreur lors de l\'ajout au panier');
+      }
+
+      // Rediriger vers le panier
+      alert(`✅ ${configName} ajouté au panier!\n\nPrix: ${price}€`);
+      router.push('/panier');
     } catch (err: any) {
       console.error('Erreur saveConfiguration:', err);
-      alert(`❌ Erreur lors de l'enregistrement:\n${err.message}`);
+      alert(`❌ Erreur lors de l'ajout au panier:\n${err.message}`);
     }
   };
 
@@ -1420,13 +1432,13 @@ export default function ConfiguratorPage() {
 
             {/* Actions */}
             <div className="actions space-y-2">
-              {/* Bouton Enregistrer Configuration */}
+              {/* Bouton Ajouter au panier */}
               <button
                 className="btn btn-primary"
                 onClick={saveConfiguration}
-                title="Sauvegarder cette configuration dans votre compte"
+                title="Ajouter cette configuration au panier"
               >
-                💾 Enregistrer la configuration
+                🛒 Ajouter au panier
               </button>
 
               <button
@@ -1477,52 +1489,6 @@ export default function ConfiguratorPage() {
         }}
       />
 
-      {/* Modal de succès après sauvegarde */}
-      {showSaveSuccessModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowSaveSuccessModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-300 max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center mb-4">
-              <div className="text-4xl mb-3">✅</div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Configuration sauvegardée !
-              </h2>
-              <p className="text-sm text-gray-700 mb-1">
-                <strong>{savedConfigName}</strong>
-              </p>
-              <p className="text-xs text-gray-600">
-                Prix: {price}€
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowSaveSuccessModal(false)}
-                className="w-full bg-gray-900 text-white px-4 py-3 text-sm font-medium hover:bg-gray-800"
-              >
-                ✏️ Continuer l'édition
-              </button>
-              <button
-                onClick={() => router.push('/my-configurations')}
-                className="w-full border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                📁 Voir mes configurations
-              </button>
-              <button
-                onClick={() => router.push('/panier')}
-                className="w-full border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                🛒 Aller au panier
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

@@ -141,7 +141,6 @@ export default function MyOrders() {
           <Breadcrumb
             items={[
               { label: 'Accueil', href: '/' },
-              { label: 'Mes Configurations', href: '/my-configurations' },
               { label: 'Mes Commandes' }
             ]}
           />
