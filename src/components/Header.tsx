@@ -6,7 +6,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, ShoppingCart } from "lucide-react";
 import { AccountButton } from "@/components/AccountButton";
-import { useSampleCart } from "@/contexts/SampleCartContext";
+import { useCustomer } from "@/context/CustomerContext";
 
 const navLinks = [
   { href: "/", label: "Accueil" },
@@ -18,10 +18,29 @@ const navLinks = [
 
 export function Header() {
   const router = useRouter();
-  const { items } = useSampleCart();
-  const itemCount = items.length;
+  const { customer } = useCustomer();
+  const [cartCount, setCartCount] = useState(0);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement | null>(null);
+
+  // Charger le nombre d'articles dans le panier de meubles
+  useEffect(() => {
+    const loadCartCount = async () => {
+      if (!customer) return;
+      try {
+        const res = await fetch("http://localhost:8000/backend/api/cart/index.php", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCartCount(data.items?.length || 0);
+        }
+      } catch (err) {
+        console.error("Erreur chargement panier:", err);
+      }
+    };
+    loadCartCount();
+  }, [customer]);
 
   const handleNavClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
@@ -135,14 +154,14 @@ export function Header() {
             ) : null}
           </div>
           <Link
-            href="/panier"
+            href="/cart"
             aria-label="Voir le panier"
             className="relative rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-[#e9dfd4]"
           >
             <ShoppingCart className="h-5 w-5" />
-            {itemCount > 0 ? (
+            {cartCount > 0 ? (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ink px-1 text-xs font-semibold text-white">
-                {itemCount}
+                {cartCount}
               </span>
             ) : null}
           </Link>
