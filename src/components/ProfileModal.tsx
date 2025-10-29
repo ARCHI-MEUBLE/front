@@ -88,9 +88,10 @@ export function ProfileModal({
     setError(null);
 
     try {
-      const response = await fetch("/api/password", {
+      const response = await fetch("http://localhost:8000/backend/api/account/password.php", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ currentPassword, newPassword })
       });
 
