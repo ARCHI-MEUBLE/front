@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
+import { UserNavigation } from '@/components/UserNavigation';
+import { Breadcrumb } from '@/components/Breadcrumb';
 
 interface CartItem {
   id: number;
@@ -140,46 +143,53 @@ export default function Cart() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement du panier...</p>
+      <>
+        <Head>
+          <title>Mon Panier - ArchiMeuble</title>
+        </Head>
+        <UserNavigation />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Chargement du panier...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   const isEmpty = !cart || cart.items.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+    <>
+      <Head>
+        <title>Mon Panier - ArchiMeuble</title>
+      </Head>
+      <UserNavigation />
+
+      <div className="min-h-screen bg-gray-50">
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Breadcrumb
+            items={[
+              { label: 'Accueil', href: '/' },
+              { label: 'Mes Configurations', href: '/my-configurations' },
+              { label: 'Panier' }
+            ]}
+          />
+
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900">
                 🛒 Mon Panier
               </h1>
               {!isEmpty && (
-                <p className="mt-1 text-gray-600">
+                <p className="mt-1 text-sm text-gray-600">
                   {cart.item_count} article{cart.item_count > 1 ? 's' : ''} dans votre panier
                 </p>
               )}
             </div>
-            
-            <Link 
-              href="/my-configurations"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              ← Mes configurations
-            </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
             {error}
@@ -365,5 +375,6 @@ export default function Cart() {
         )}
       </div>
     </div>
+  </>
   );
 }

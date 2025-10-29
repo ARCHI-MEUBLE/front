@@ -1,7 +1,10 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
+import { UserNavigation } from '@/components/UserNavigation';
+import { Breadcrumb } from '@/components/Breadcrumb';
 
 interface CartItem {
   configuration: {
@@ -142,10 +145,9 @@ export default function Checkout() {
       }
 
       const result = await response.json();
-      
+
       // Succès ! Rediriger vers la page de confirmation
-      alert(`✅ Commande créée avec succès!\n\nNuméro de commande: ${result.order.order_number}\n\nVous allez être redirigé vers vos commandes.`);
-      router.push('/my-orders');
+      router.push(`/order-confirmation/${result.order.id}`);
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la commande');
     } finally {
@@ -155,12 +157,18 @@ export default function Checkout() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+      <>
+        <Head>
+          <title>Paiement - ArchiMeuble</title>
+        </Head>
+        <UserNavigation />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Chargement...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -169,18 +177,29 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            💳 Finaliser la commande
-          </h1>
-        </div>
-      </div>
+    <>
+      <Head>
+        <title>Paiement - ArchiMeuble</title>
+      </Head>
+      <UserNavigation />
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="min-h-screen bg-gray-50">
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Breadcrumb
+            items={[
+              { label: 'Accueil', href: '/' },
+              { label: 'Mes Configurations', href: '/my-configurations' },
+              { label: 'Panier', href: '/panier' },
+              { label: 'Paiement' }
+            ]}
+          />
+
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              💳 Finaliser la commande
+            </h1>
+          </div>
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
             {error}
@@ -454,8 +473,8 @@ export default function Checkout() {
                 </button>
 
                 <div className="mt-4 text-center">
-                  <Link 
-                    href="/cart"
+                  <Link
+                    href="/panier"
                     className="text-sm text-blue-600 hover:text-blue-700"
                   >
                     ← Retour au panier
@@ -465,7 +484,8 @@ export default function Checkout() {
             </div>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
