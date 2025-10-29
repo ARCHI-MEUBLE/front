@@ -8,20 +8,30 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 
 interface OrderItem {
   id: number;
-  configuration_name: string;
-  prompt: string;
-  config_data: any;
+  configuration_id: number;
   quantity: number;
-  unit_price: number;
-  total_price: number;
-  production_status: string;
+  added_at: string;
+  configuration: {
+    id: number;
+    name: string;
+    prompt: string;
+    price: number;
+    glb_url: string;
+    thumbnail_url?: string;
+    config_data?: any;
+    created_at: string;
+  };
+  // Champs ajoutés par formatForFrontend du backend
+  price?: number;
+  name?: string;
+  production_status?: string;
 }
 
 interface Order {
   id: number;
   order_number: string;
   status: string;
-  total_amount: number;
+  total: number; // Le backend renvoie 'total', pas 'total_amount'
   shipping_address: string;
   payment_method: string;
   payment_status: string;
@@ -214,7 +224,7 @@ export default function MyOrders() {
                         <span className="text-gray-600">💰</span>
                         <div>
                           <p className="text-sm text-gray-500">Montant total</p>
-                          <p className="font-semibold text-gray-900">{order.total_amount}€</p>
+                          <p className="font-semibold text-gray-900">{order.total}€</p>
                         </div>
                       </div>
 
@@ -312,28 +322,30 @@ export default function MyOrders() {
                 </h3>
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item) => (
-                    <div 
+                    <div
                       key={item.id}
                       className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
                     >
                       <div className="flex-grow">
                         <h4 className="font-semibold text-gray-900">
-                          {item.configuration_name}
+                          {item.name || item.configuration.name}
                         </h4>
                         <p className="text-sm text-gray-600 mt-1">
-                          Quantité: {item.quantity} × {item.unit_price}€
+                          Quantité: {item.quantity} × {item.price || item.configuration.price}€
                         </p>
-                        {item.config_data && item.config_data.dimensions && (
+                        {item.configuration.config_data && item.configuration.config_data.dimensions && (
                           <p className="text-xs text-gray-500 mt-1">
-                            {item.config_data.dimensions.width} × {item.config_data.dimensions.depth} × {item.config_data.dimensions.height} mm
+                            {item.configuration.config_data.dimensions.width} × {item.configuration.config_data.dimensions.depth} × {item.configuration.config_data.dimensions.height} mm
                           </p>
                         )}
-                        <p className="text-sm text-gray-600 mt-2">
-                          <span className="font-medium">Statut production:</span> {item.production_status}
-                        </p>
+                        {item.production_status && (
+                          <p className="text-sm text-gray-600 mt-2">
+                            <span className="font-medium">Statut production:</span> {item.production_status}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-gray-900">{item.total_price}€</p>
+                        <p className="font-bold text-gray-900">{(item.price || item.configuration.price) * item.quantity}€</p>
                       </div>
                     </div>
                   ))}
@@ -354,7 +366,7 @@ export default function MyOrders() {
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center text-xl font-bold">
                   <span>Total</span>
-                  <span>{selectedOrder.total_amount}€</span>
+                  <span>{selectedOrder.total}€</span>
                 </div>
               </div>
             </div>

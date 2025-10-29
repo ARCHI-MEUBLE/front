@@ -100,9 +100,11 @@ export function DashboardPassword() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (deleteConfirm !== userId) {
-      setDeleteConfirm(userId);
+  const handleDeleteAccount = async (accountId: string | number, accountType: "user" | "admin") => {
+    const accountKey = `${accountType}-${accountId}`;
+
+    if (deleteConfirm !== accountKey) {
+      setDeleteConfirm(accountKey);
       return;
     }
 
@@ -110,16 +112,17 @@ export function DashboardPassword() {
       const response = await fetch("/api/admin-users", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: userId, type: "user" }),
+        body: JSON.stringify({ id: accountId, type: accountType }),
       });
 
       if (!response.ok) {
-        throw new Error("Échec de la suppression");
+        const data = await response.json();
+        throw new Error(data.error || "Échec de la suppression");
       }
 
       setDeleteConfirm(null);
       await fetchAccounts();
-      alert("Utilisateur supprimé avec succès");
+      alert(`${accountType === "admin" ? "Administrateur" : "Utilisateur"} supprimé avec succès`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de la suppression");
     }
@@ -206,22 +209,20 @@ export function DashboardPassword() {
                     </div>
                   </div>
 
-                  {account.type === "user" && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteUser(account.id);
-                      }}
-                      className={`ml-2 border p-1 ${
-                        deleteConfirm === account.id
-                          ? "bg-red-50 text-red-600 border-red-300"
-                          : "border-gray-300 text-gray-400 hover:text-red-600 hover:border-red-300"
-                      }`}
-                      title={deleteConfirm === account.id ? "Cliquez pour confirmer" : "Supprimer"}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAccount(account.id, account.type);
+                    }}
+                    className={`ml-2 border p-1 ${
+                      deleteConfirm === `${account.type}-${account.id}`
+                        ? "bg-red-50 text-red-600 border-red-300"
+                        : "border-gray-300 text-gray-400 hover:text-red-600 hover:border-red-300"
+                    }`}
+                    title={deleteConfirm === `${account.type}-${account.id}` ? "Cliquez pour confirmer" : "Supprimer"}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
             ))}
