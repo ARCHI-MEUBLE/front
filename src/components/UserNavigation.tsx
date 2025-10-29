@@ -99,21 +99,17 @@ export function UserNavigation() {
           {/* User menu */}
           <div className="flex items-center">
             {customer ? (
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-gray-900">
-                    {customer.first_name} {customer.last_name}
-                  </p>
-                  <p className="text-xs text-gray-500">{customer.email}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center gap-2 border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">Déconnexion</span>
-                </button>
-              </div>
+              <Link
+                href="/account"
+                className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive("/account")
+                    ? "text-gray-900 bg-gray-100"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                <User className="h-5 w-5" />
+                <span className="hidden sm:inline">Mon compte</span>
+              </Link>
             ) : (
               <Link
                 href="/auth/login"
