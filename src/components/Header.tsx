@@ -12,7 +12,8 @@ const navLinks = [
   { href: "/", label: "Accueil" },
   { href: "/models", label: "Nos modèles" },
   { href: "/#couleurs", label: "Couleurs" },
-  { href: "/#avis", label: "Avis" },
+  { href: "/avis", label: "Avis" },
+  { href: "/showrooms", label: "Showrooms" },
   { href: "/#contact", label: "Contact" }
 ];
 

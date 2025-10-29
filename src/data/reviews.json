@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1",
+    "authorName": "Marine D.",
+    "rating": 5,
+    "text": "Très bonne expérience, le meuble correspondait exactement à ce que j'attendais.",
+    "date": "2025-10-10"
+  },
+  {
+    "id": "2",
+    "authorName": "Paul L.",
+    "rating": 4,
+    "text": "Livraison rapide et service client réactif.",
+    "date": "2025-09-20"
+  }
+]
