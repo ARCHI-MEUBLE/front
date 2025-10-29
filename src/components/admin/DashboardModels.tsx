@@ -343,7 +343,7 @@ export function DashboardModels() {
             <img
               src={preview ?? formState.imagePath}
               alt={formState.name || 'Prévisualisation du modèle'}
-              className="mt-3 h-48 w-full object-cover border border-gray-200"
+              className="mt-3 h-72 w-full object-cover border border-gray-200"
             />
           )}
         </div>
@@ -387,14 +387,14 @@ export function DashboardModels() {
         Chargement des modèles...
       </div>
     ) : (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {sortedModels.map((model) => (
           <article key={model.id} className="border border-gray-200 bg-white p-3">
             {model.image_url && (
               <img
                 src={model.image_url}
                 alt={model.name}
-                className="mb-3 h-56 w-full object-cover border border-gray-200"
+                className="mb-3 h-80 w-full object-cover border border-gray-200"
               />
             )}
             <h3 className="text-sm font-semibold text-gray-900">{model.name}</h3>
