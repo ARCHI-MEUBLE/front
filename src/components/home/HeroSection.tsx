@@ -31,19 +31,19 @@ export function HeroSection() {
             Des dressings aux bibliothèques monumentales, ArchiMeuble conçoit des pièces uniques, pérennes et parfaitement
             adaptées à votre intérieur.
           </p>
-          <div className="mt-12 flex flex-col gap-4 sm:flex-row">
-            <Link href="/models" className="button-elevated">
+          <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Link href="/models" className="button-elevated flex-1 sm:flex-none justify-center">
               Découvrir nos modèles
             </Link>
             {isMobileDevice ? (
-              <Link href={`tel:${PHONE_URI}`} className="button-outline">
+              <Link href={`tel:${PHONE_URI}`} className="button-outline flex-1 sm:flex-none justify-center">
                 Appeler l'atelier
               </Link>
             ) : (
               <button
                 type="button"
                 onClick={() => setShowDesktopNumber(true)}
-                className="button-outline"
+                className="button-outline flex-1 sm:flex-none justify-center"
                 aria-label={showDesktopNumber ? "Numéro de téléphone" : "Révéler le numéro de téléphone"}
                 aria-live="polite"
                 disabled={showDesktopNumber}
@@ -51,7 +51,7 @@ export function HeroSection() {
                 {showDesktopNumber ? PHONE_NUMBER : "Appeler l'atelier"}
               </button>
             )}
-            <Link href="/contact-request" className="button-outline">
+            <Link href="/contact-request" className="button-outline flex-1 sm:flex-none justify-center">
               Faire une demande
             </Link>
           </div>

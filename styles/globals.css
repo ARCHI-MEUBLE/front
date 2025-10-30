@@ -41,7 +41,7 @@ h4,
 
 /* ==================== BUTTONS ==================== */
 .button-elevated {
-  @apply inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white transition duration-200 ease-out;
+  @apply inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white transition duration-200 ease-out whitespace-nowrap;
 }
 
 .button-elevated:hover {
@@ -53,7 +53,7 @@ h4,
 }
 
 .button-outline {
-  @apply inline-flex items-center justify-center rounded-full border border-primary px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-primary transition duration-200 ease-out;
+  @apply inline-flex items-center justify-center rounded-full border border-primary px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-primary transition duration-200 ease-out whitespace-nowrap;
 }
 
 .button-outline:hover {
