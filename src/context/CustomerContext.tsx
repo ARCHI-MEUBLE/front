@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { getApiUrl } from '@/lib/apiUrl';
 
 interface Customer {
   id: number;
@@ -37,7 +38,6 @@ interface RegisterData {
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api`;
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -49,7 +49,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const checkSession = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/customers/session.php`, {
+      const res = await fetch(getApiUrl('customers/session.php'), {
         credentials: 'include', // Important pour les sessions
       });
       
@@ -67,7 +67,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE_URL}/customers/login.php`, {
+    const res = await fetch(getApiUrl('customers/login.php'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -84,7 +84,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (data: RegisterData) => {
-    const res = await fetch(`${API_BASE_URL}/customers/register.php`, {
+    const res = await fetch(getApiUrl('customers/register.php'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -102,7 +102,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE_URL}/customers/session.php`, {
+      await fetch(getApiUrl('customers/session.php'), {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -114,7 +114,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   };
 
   const updateProfile = async (data: Partial<Customer>) => {
-    const res = await fetch(`${API_BASE_URL}/customers/profile.php`, {
+    const res = await fetch(getApiUrl('customers/profile.php'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
