@@ -796,7 +796,7 @@ export default function ConfiguratorPage() {
       };
 
       // Appel à l'API
-      const response = await fetch('http://localhost:8000/backend/api/configurations/save.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/configurations/save.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -819,7 +819,7 @@ export default function ConfiguratorPage() {
       const result = await response.json();
 
       // Ajouter au panier immédiatement après sauvegarde
-      const cartResponse = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+      const cartResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

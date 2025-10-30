@@ -47,7 +47,7 @@ export default function NotificationsModal({
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch('http://localhost:8000/backend/api/admin/notifications.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/notifications.php', {
         credentials: 'include',
       });
 
@@ -71,7 +71,7 @@ export default function NotificationsModal({
 
   const markAsRead = async (notificationId: number) => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/admin/notifications.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/notifications.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -93,7 +93,7 @@ export default function NotificationsModal({
 
   const markAllAsRead = async () => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/admin/notifications.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/notifications.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

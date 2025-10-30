@@ -52,7 +52,7 @@ export default function Cart() {
 
   const loadCart = async () => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php', {
         credentials: 'include',
       });
 
@@ -75,7 +75,7 @@ export default function Cart() {
     setUpdatingItems(prev => new Set(prev).add(configurationId));
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -106,7 +106,7 @@ export default function Cart() {
     if (!confirm('Retirer cet article du panier ?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/cart/index.php?configuration_id=${configurationId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php?configuration_id=${configurationId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -127,7 +127,7 @@ export default function Cart() {
     if (!confirm('Vider tout le panier ?')) return;
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php', {
         method: 'DELETE',
         credentials: 'include',
       });

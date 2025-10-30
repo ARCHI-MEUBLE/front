@@ -86,7 +86,7 @@ export default function Account() {
   const loadOrders = async () => {
     setIsLoadingOrders(true);
     try {
-      const response = await fetch('http://localhost:8000/backend/api/orders/list.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/list.php', {
         credentials: 'include',
       });
 
@@ -112,7 +112,7 @@ export default function Account() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/customers/delete.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/customers/delete.php', {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -162,7 +162,7 @@ export default function Account() {
     setSaveSuccess('');
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/customers/update.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/customers/update.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -212,7 +212,7 @@ export default function Account() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/customers/change-password.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/customers/change-password.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

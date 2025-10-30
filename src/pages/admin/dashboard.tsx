@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
     // Charger le nombre de notifications non lues (si session admin PHP valide)
     const loadUnread = async () => {
       try {
-        const res = await fetch('http://localhost:8000/backend/api/admin/notifications.php?unread=true', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/notifications.php?unread=true', {
           credentials: 'include',
         });
         if (!res.ok) return;
