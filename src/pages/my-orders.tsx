@@ -40,18 +40,18 @@ interface Order {
 }
 
 const STATUS_LABELS: { [key: string]: { label: string; color: string; icon: string } } = {
-  pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
-  confirmed: { label: 'Confirmée', color: 'bg-blue-100 text-blue-800', icon: '✅' },
-  in_production: { label: 'En production', color: 'bg-purple-100 text-purple-800', icon: '🔨' },
-  shipped: { label: 'Expédiée', color: 'bg-indigo-100 text-indigo-800', icon: '🚚' },
-  delivered: { label: 'Livrée', color: 'bg-green-100 text-green-800', icon: '📦' },
-  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-800', icon: '❌' }
+  pending: { label: 'En attente', color: 'bg-warning-light text-warning', icon: '⏳' },
+  confirmed: { label: 'Confirmée', color: 'bg-info-light text-info', icon: '✅' },
+  in_production: { label: 'En production', color: 'bg-warning-light text-warning', icon: '🔨' },
+  shipped: { label: 'Expédiée', color: 'bg-info-light text-info', icon: '🚚' },
+  delivered: { label: 'Livrée', color: 'bg-success-light text-success', icon: '📦' },
+  cancelled: { label: 'Annulée', color: 'bg-error-light text-error', icon: '❌' }
 };
 
 const PAYMENT_STATUS_LABELS: { [key: string]: { label: string; color: string } } = {
-  pending: { label: 'En attente', color: 'text-yellow-600' },
-  paid: { label: 'Payé', color: 'text-green-600' },
-  failed: { label: 'Échec', color: 'text-red-600' }
+  pending: { label: 'En attente', color: 'text-warning' },
+  paid: { label: 'Payé', color: 'text-success' },
+  failed: { label: 'Échec', color: 'text-error' }
 };
 
 export default function MyOrders() {
@@ -128,10 +128,10 @@ export default function MyOrders() {
           <title>Mes Commandes - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-bg-light flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-text-secondary">Chargement...</p>
           </div>
         </div>
       </>
@@ -145,7 +145,7 @@ export default function MyOrders() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-bg-light">
         {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb
@@ -157,32 +157,32 @@ export default function MyOrders() {
 
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-text-primary">
                 📦 Mes Commandes
               </h1>
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-text-secondary">
                 {orders.length} commande{orders.length > 1 ? 's' : ''}
               </p>
             </div>
           </div>
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          <div className="alert alert-error mb-6">
             {error}
           </div>
         )}
 
         {orders.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+          <div className="card text-center py-12">
             <div className="text-6xl mb-4">📦</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-semibold text-text-primary mb-2">
               Aucune commande
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-text-secondary mb-6">
               Passez votre première commande pour la retrouver ici
             </p>
-            <Link 
+            <Link
               href="/my-configurations"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="btn-primary"
             >
               Voir mes configurations
             </Link>
@@ -194,22 +194,22 @@ export default function MyOrders() {
               const paymentInfo = PAYMENT_STATUS_LABELS[order.payment_status] || PAYMENT_STATUS_LABELS.pending;
               
               return (
-                <div 
+                <div
                   key={order.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition"
+                  className="card overflow-hidden"
                 >
-                  <div className="p-6">
+                  <div>
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">
+                        <h3 className="text-xl font-bold text-text-primary mb-1">
                           Commande #{order.order_number}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-text-tertiary">
                           Passée le {formatDate(order.created_at)}
                         </p>
                       </div>
-                      
+
                       <div className="text-right">
                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${statusInfo.color}`}>
                           <span>{statusInfo.icon}</span>
@@ -221,17 +221,17 @@ export default function MyOrders() {
                     {/* Infos */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-600">💰</span>
+                        <span className="text-text-secondary">💰</span>
                         <div>
-                          <p className="text-sm text-gray-500">Montant total</p>
-                          <p className="font-semibold text-gray-900">{order.total}€</p>
+                          <p className="text-sm text-text-tertiary">Montant total</p>
+                          <p className="font-semibold text-text-primary">{order.total}€</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-600">💳</span>
+                        <span className="text-text-secondary">💳</span>
                         <div>
-                          <p className="text-sm text-gray-500">Paiement</p>
+                          <p className="text-sm text-text-tertiary">Paiement</p>
                           <p className={`font-semibold ${paymentInfo.color}`}>
                             {paymentInfo.label}
                           </p>
@@ -239,10 +239,10 @@ export default function MyOrders() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-600">📍</span>
+                        <span className="text-text-secondary">📍</span>
                         <div>
-                          <p className="text-sm text-gray-500">Livraison</p>
-                          <p className="font-semibold text-gray-900 text-sm">
+                          <p className="text-sm text-text-tertiary">Livraison</p>
+                          <p className="font-semibold text-text-primary text-sm">
                             {order.shipping_address.split(',')[0]}...
                           </p>
                         </div>
@@ -253,7 +253,7 @@ export default function MyOrders() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => loadOrderDetails(order.id)}
-                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        className="btn-primary"
                       >
                         👁️ Voir les détails
                       </button>
@@ -268,22 +268,22 @@ export default function MyOrders() {
 
       {/* Modal détails de commande */}
       {selectedOrder && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={() => setSelectedOrder(null)}
         >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+          <div
+            className="bg-bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b sticky top-0 bg-white">
+            <div className="p-6 border-b border-border-light sticky top-0 bg-bg-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-text-primary">
                   Commande #{selectedOrder.order_number}
                 </h2>
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-text-tertiary hover:text-text-secondary text-2xl"
                 >
                   ×
                 </button>
@@ -293,21 +293,21 @@ export default function MyOrders() {
             <div className="p-6 space-y-6">
               {/* Status */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <h3 className="text-lg font-semibold text-text-primary mb-3">
                   Statut de la commande
                 </h3>
                 <div className="flex items-center gap-2">
                   {Object.keys(STATUS_LABELS).slice(0, 5).map((status, index) => {
                     const statusInfo = STATUS_LABELS[status];
                     const isActive = Object.keys(STATUS_LABELS).indexOf(selectedOrder.status) >= index;
-                    
+
                     return (
                       <div key={status} className="flex items-center gap-2">
-                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${isActive ? statusInfo.color : 'bg-gray-200 text-gray-400'}`}>
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${isActive ? statusInfo.color : 'bg-border-light text-text-tertiary'}`}>
                           {statusInfo.icon}
                         </div>
                         {index < 4 && (
-                          <div className={`h-1 w-8 ${isActive ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+                          <div className={`h-1 w-8 ${isActive ? 'bg-primary' : 'bg-border-light'}`}></div>
                         )}
                       </div>
                     );
@@ -317,35 +317,35 @@ export default function MyOrders() {
 
               {/* Articles */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <h3 className="text-lg font-semibold text-text-primary mb-3">
                   Articles commandés
                 </h3>
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
+                      className="flex items-start gap-4 p-4 bg-bg-light rounded-lg"
                     >
                       <div className="flex-grow">
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-text-primary">
                           {item.name || item.configuration.name}
                         </h4>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-text-secondary mt-1">
                           Quantité: {item.quantity} × {item.price || item.configuration.price}€
                         </p>
                         {item.configuration.config_data && item.configuration.config_data.dimensions && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-text-tertiary mt-1">
                             {item.configuration.config_data.dimensions.width} × {item.configuration.config_data.dimensions.depth} × {item.configuration.config_data.dimensions.height} mm
                           </p>
                         )}
                         {item.production_status && (
-                          <p className="text-sm text-gray-600 mt-2">
+                          <p className="text-sm text-text-secondary mt-2">
                             <span className="font-medium">Statut production:</span> {item.production_status}
                           </p>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-gray-900">{(item.price || item.configuration.price) * item.quantity}€</p>
+                        <p className="font-bold text-text-primary">{(item.price || item.configuration.price) * item.quantity}€</p>
                       </div>
                     </div>
                   ))}
@@ -354,17 +354,17 @@ export default function MyOrders() {
 
               {/* Adresse de livraison */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <h3 className="text-lg font-semibold text-text-primary mb-3">
                   Adresse de livraison
                 </h3>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-700">{selectedOrder.shipping_address}</p>
+                <div className="p-4 bg-bg-light rounded-lg">
+                  <p className="text-text-primary">{selectedOrder.shipping_address}</p>
                 </div>
               </div>
 
               {/* Total */}
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center text-xl font-bold">
+              <div className="border-t border-border-light pt-4">
+                <div className="flex justify-between items-center text-xl font-bold text-text-primary">
                   <span>Total</span>
                   <span>{selectedOrder.total}€</span>
                 </div>
