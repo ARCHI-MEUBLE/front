@@ -19,11 +19,7 @@ export default function SamplesPage() {
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink/70">
               Touchez et ressentez nos finitions. Commandez vos échantillons physiques pour évaluer les couleurs et textures qui donneront vie à votre meuble sur mesure.
             </p>
-            <div className="mt-8 flex gap-4">
-              <Link href="/#couleurs" className="button-elevated">
-                Découvrir les finitions
-              </Link>
-            </div>
+            
           </div>
         </section>
 
