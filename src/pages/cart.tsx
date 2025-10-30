@@ -206,7 +206,7 @@ export default function Cart() {
               Créez votre première configuration de meuble
             </p>
             <Link
-              href="/"
+              href="/models"
               className="btn-primary inline-flex"
             >
               Créer une configuration
@@ -348,7 +348,7 @@ export default function Cart() {
 
                 <div className="mt-4 text-center">
                   <Link
-                    href="/"
+                    href="/models"
                     className="text-sm text-primary hover:text-primary-hover"
                   >
                     ← Créer une autre configuration

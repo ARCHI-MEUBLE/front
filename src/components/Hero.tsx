@@ -32,13 +32,6 @@ export function Hero() {
                 >
                   Découvrir nos modèles
                 </Link>
-
-                <Link
-                  href="/configurator"
-                  className="inline-flex items-center rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/5"
-                >
-                  Configurer
-                </Link>
               </div>
             </div>
           </div>
