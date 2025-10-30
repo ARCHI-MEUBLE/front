@@ -37,7 +37,7 @@ export function HeroSection() {
             </Link>
             {isMobileDevice ? (
               <Link href={`tel:${PHONE_URI}`} className="button-outline">
-                Appeler l’atelier
+                Appeler l'atelier
               </Link>
             ) : (
               <button
@@ -48,9 +48,12 @@ export function HeroSection() {
                 aria-live="polite"
                 disabled={showDesktopNumber}
               >
-                {showDesktopNumber ? PHONE_NUMBER : "Appeler l’atelier"}
+                {showDesktopNumber ? PHONE_NUMBER : "Appeler l'atelier"}
               </button>
             )}
+            <Link href="/contact-request" className="button-outline">
+              Faire une demande
+            </Link>
           </div>
         </div>
         <div className="flex-1">
