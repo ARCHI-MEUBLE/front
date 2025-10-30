@@ -23,12 +23,12 @@ interface CartData {
 export default function Checkout() {
   const router = useRouter();
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
-  
+
   const [cart, setCart] = useState<CartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     shipping_address: '',
     shipping_city: '',
@@ -45,14 +45,14 @@ export default function Checkout() {
 
   useEffect(() => {
     if (authLoading) return;
-    
+
     if (!isAuthenticated) {
       router.push('/auth/login?redirect=/checkout');
       return;
     }
 
     loadCart();
-    
+
     // Pré-remplir avec les infos du client
     if (customer) {
       setFormData(prev => ({
@@ -76,13 +76,13 @@ export default function Checkout() {
       }
 
       const data = await response.json();
-      
+
       if (!data.items || data.items.length === 0) {
         // Panier vide, rediriger
         router.push('/cart');
         return;
       }
-      
+
       setCart(data);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
@@ -93,7 +93,7 @@ export default function Checkout() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
@@ -122,8 +122,8 @@ export default function Checkout() {
     try {
       // Préparer les adresses
       const shippingAddress = `${formData.shipping_address}, ${formData.shipping_postal_code} ${formData.shipping_city}, ${formData.shipping_country}`;
-      const billingAddress = formData.billing_same 
-        ? shippingAddress 
+      const billingAddress = formData.billing_same
+        ? shippingAddress
         : `${formData.billing_address}, ${formData.billing_postal_code} ${formData.billing_city}, ${formData.billing_country}`;
 
       // Créer la commande
@@ -162,10 +162,10 @@ export default function Checkout() {
           <title>Paiement - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-bg-light flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-text-secondary">Chargement...</p>
           </div>
         </div>
       </>
@@ -183,7 +183,7 @@ export default function Checkout() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-bg-light">
         {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb
@@ -195,12 +195,12 @@ export default function Checkout() {
           />
 
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
-              💳 Finaliser la commande
+            <h1 className="text-2xl font-bold text-text-primary">
+              Finaliser la commande
             </h1>
           </div>
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          <div className="alert alert-error mb-6">
             {error}
           </div>
         )}
@@ -210,14 +210,14 @@ export default function Checkout() {
             {/* Formulaire */}
             <div className="lg:col-span-2 space-y-6">
               {/* Adresse de livraison */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  📦 Adresse de livraison
+              <div className="card p-6">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
+                  Adresse de livraison
                 </h2>
-                
+
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="label mb-2">
                       Adresse *
                     </label>
                     <input
@@ -226,14 +226,14 @@ export default function Checkout() {
                       required
                       value={formData.shipping_address}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="input"
                       placeholder="123 Rue Example"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="label mb-2">
                         Code postal *
                       </label>
                       <input
@@ -242,13 +242,13 @@ export default function Checkout() {
                         required
                         value={formData.shipping_postal_code}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="input"
                         placeholder="75001"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="label mb-2">
                         Ville *
                       </label>
                       <input
@@ -257,14 +257,14 @@ export default function Checkout() {
                         required
                         value={formData.shipping_city}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="input"
                         placeholder="Paris"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="label mb-2">
                       Pays *
                     </label>
                     <input
@@ -273,7 +273,7 @@ export default function Checkout() {
                       required
                       value={formData.shipping_country}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="input"
                       placeholder="France"
                     />
                   </div>
@@ -281,11 +281,11 @@ export default function Checkout() {
               </div>
 
               {/* Adresse de facturation */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  📄 Adresse de facturation
+              <div className="card p-6">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
+                  Adresse de facturation
                 </h2>
-                
+
                 <div className="mb-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -293,16 +293,16 @@ export default function Checkout() {
                       name="billing_same"
                       checked={formData.billing_same}
                       onChange={handleChange}
-                      className="w-5 h-5"
+                      className="w-5 h-5 accent-primary"
                     />
-                    <span className="text-gray-700">Identique à l&apos;adresse de livraison</span>
+                    <span className="text-text-primary">Identique à l&apos;adresse de livraison</span>
                   </label>
                 </div>
 
                 {!formData.billing_same && (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="label mb-2">
                         Adresse *
                       </label>
                       <input
@@ -311,14 +311,14 @@ export default function Checkout() {
                         required
                         value={formData.billing_address}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="input"
                         placeholder="123 Rue Example"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="label mb-2">
                           Code postal *
                         </label>
                         <input
@@ -327,13 +327,13 @@ export default function Checkout() {
                           required
                           value={formData.billing_postal_code}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="input"
                           placeholder="75001"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="label mb-2">
                           Ville *
                         </label>
                         <input
@@ -342,14 +342,14 @@ export default function Checkout() {
                           required
                           value={formData.billing_city}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="input"
                           placeholder="Paris"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="label mb-2">
                         Pays *
                       </label>
                       <input
@@ -358,7 +358,7 @@ export default function Checkout() {
                         required
                         value={formData.billing_country}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="input"
                         placeholder="France"
                       />
                     </div>
@@ -367,62 +367,62 @@ export default function Checkout() {
               </div>
 
               {/* Mode de paiement */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  💳 Mode de paiement
+              <div className="card p-6">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
+                  Mode de paiement
                 </h2>
-                
+
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition">
+                  <label className="flex items-center gap-3 p-4 border-2 border-border-light rounded-lg cursor-pointer hover:border-primary transition">
                     <input
                       type="radio"
                       name="payment_method"
                       value="card"
                       checked={formData.payment_method === 'card'}
                       onChange={handleChange}
-                      className="w-5 h-5"
+                      className="w-5 h-5 accent-primary"
                     />
-                    <span className="font-medium">💳 Carte bancaire</span>
+                    <span className="font-medium text-text-primary">💳 Carte bancaire</span>
                   </label>
 
-                  <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition">
+                  <label className="flex items-center gap-3 p-4 border-2 border-border-light rounded-lg cursor-pointer hover:border-primary transition">
                     <input
                       type="radio"
                       name="payment_method"
                       value="transfer"
                       checked={formData.payment_method === 'transfer'}
                       onChange={handleChange}
-                      className="w-5 h-5"
+                      className="w-5 h-5 accent-primary"
                     />
-                    <span className="font-medium">🏦 Virement bancaire</span>
+                    <span className="font-medium text-text-primary">🏦 Virement bancaire</span>
                   </label>
 
-                  <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition">
+                  <label className="flex items-center gap-3 p-4 border-2 border-border-light rounded-lg cursor-pointer hover:border-primary transition">
                     <input
                       type="radio"
                       name="payment_method"
                       value="check"
                       checked={formData.payment_method === 'check'}
                       onChange={handleChange}
-                      className="w-5 h-5"
+                      className="w-5 h-5 accent-primary"
                     />
-                    <span className="font-medium">📝 Chèque</span>
+                    <span className="font-medium text-text-primary">📝 Chèque</span>
                   </label>
                 </div>
               </div>
 
               {/* Notes */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  📝 Notes (optionnel)
+              <div className="card p-6">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
+                  Notes (optionnel)
                 </h2>
-                
+
                 <textarea
                   name="notes"
                   value={formData.notes}
                   onChange={handleChange}
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="textarea"
                   placeholder="Instructions de livraison, commentaires..."
                 />
               </div>
@@ -430,33 +430,33 @@ export default function Checkout() {
 
             {/* Récapitulatif */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-4">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <div className="card p-6 sticky top-4">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
                   Récapitulatif
                 </h2>
 
                 <div className="space-y-3 mb-6">
                   {cart.items.map((item) => (
                     <div key={item.configuration.id} className="flex justify-between text-sm">
-                      <span className="text-gray-600">
+                      <span className="text-text-secondary">
                         {item.configuration.name} × {item.quantity}
                       </span>
-                      <span className="font-semibold">
+                      <span className="font-semibold text-text-primary">
                         {item.configuration.price * item.quantity}€
                       </span>
                     </div>
                   ))}
 
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between text-gray-600 mb-2">
+                  <div className="border-t border-border-light pt-3">
+                    <div className="flex justify-between text-text-secondary mb-2">
                       <span>Sous-total</span>
                       <span className="font-semibold">{cart.total}€</span>
                     </div>
-                    <div className="flex justify-between text-gray-600 mb-2">
+                    <div className="flex justify-between text-text-secondary mb-2">
                       <span>Livraison</span>
-                      <span className="font-semibold text-green-600">Gratuite</span>
+                      <span className="font-semibold text-success">Gratuite</span>
                     </div>
-                    <div className="flex justify-between text-lg font-bold text-gray-900">
+                    <div className="flex justify-between text-lg font-bold text-text-primary">
                       <span>Total</span>
                       <span>{cart.total}€</span>
                     </div>
@@ -466,7 +466,7 @@ export default function Checkout() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary w-full"
                 >
                   {isSubmitting ? 'Traitement...' : `Confirmer la commande (${cart.total}€)`}
                 </button>
@@ -474,7 +474,7 @@ export default function Checkout() {
                 <div className="mt-4 text-center">
                   <Link
                     href="/cart"
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-primary hover:text-primary-hover"
                   >
                     ← Retour au panier
                   </Link>

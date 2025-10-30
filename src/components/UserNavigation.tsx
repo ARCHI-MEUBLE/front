@@ -5,10 +5,11 @@ import { useRouter } from "next/router";
 import { ShoppingCart, Package, Home, User } from "lucide-react";
 import { useCustomer } from "@/context/CustomerContext";
 import { useEffect, useState } from "react";
+import { AccountButton } from "@/components/AccountButton";
 
 export function UserNavigation() {
   const router = useRouter();
-  const { customer, logout } = useCustomer();
+  const { customer } = useCustomer();
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
@@ -30,99 +31,74 @@ export function UserNavigation() {
     loadCartCount();
   }, [customer]);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
-
   const isActive = (path: string) => router.pathname === path;
 
   return (
-    <nav className="border-b border-gray-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-gray-900">
-              ArchiMeuble
-            </Link>
-          </div>
+    <header className="sticky top-0 z-50 border-b border-border-light bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="heading-serif text-[28px] font-semibold tracking-tight text-ink"
+          aria-label="ArchiMeuble"
+        >
+          ArchiMeuble
+        </Link>
 
-          {/* Navigation principale */}
-          <div className="flex items-center space-x-1">
-            <Link
-              href="/"
-              className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
-                isActive("/")
-                  ? "text-gray-900"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              <span className="hidden sm:inline">Accueil</span>
-            </Link>
+        {/* Navigation principale */}
+        <nav className="hidden items-center gap-10 text-sm font-medium uppercase tracking-[0.2em] text-ink/70 md:flex">
+          <Link
+            href="/"
+            className={`transition ${
+              isActive("/") ? "text-ink" : "hover:text-ink"
+            }`}
+          >
+            Accueil
+          </Link>
 
-            {customer && (
-              <>
-                <Link
-                  href="/cart"
-                  className={`relative inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive("/cart")
-                      ? "text-gray-900 bg-gray-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  <span className="hidden sm:inline">Panier</span>
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-
-                <Link
-                  href="/my-orders"
-                  className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive("/my-orders")
-                      ? "text-gray-900 bg-gray-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  <Package className="h-4 w-4" />
-                  <span className="hidden sm:inline">Mes commandes</span>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* User menu */}
-          <div className="flex items-center">
-            {customer ? (
+          {customer && (
+            <>
               <Link
-                href="/account"
-                className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive("/account")
-                    ? "text-gray-900 bg-gray-100"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                href="/cart"
+                className={`transition ${
+                  isActive("/cart") ? "text-ink" : "hover:text-ink"
                 }`}
               >
-                <User className="h-5 w-5" />
-                <span className="hidden sm:inline">Mon compte</span>
+                Panier
               </Link>
-            ) : (
+
               <Link
-                href="/auth/login"
-                className="inline-flex items-center gap-2 bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-800"
+                href="/my-orders"
+                className={`transition ${
+                  isActive("/my-orders") ? "text-ink" : "hover:text-ink"
+                }`}
               >
-                <User className="h-4 w-4" />
-                <span>Connexion</span>
+                Mes commandes
               </Link>
-            )}
-          </div>
+            </>
+          )}
+        </nav>
+
+        {/* Right section - Account button and cart */}
+        <div className="flex items-center gap-3">
+          <AccountButton />
+          {customer && (
+            <Link
+              href="/cart"
+              aria-label="Voir le panier"
+              className="relative rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-alabaster"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ink px-1 text-xs font-semibold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
 

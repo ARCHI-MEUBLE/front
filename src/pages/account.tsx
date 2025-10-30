@@ -251,8 +251,8 @@ export default function Account() {
           <title>Mon compte - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        <div className="min-h-screen bg-bg-light flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       </>
     );
@@ -265,30 +265,30 @@ export default function Account() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-bg-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar */}
             <aside className="lg:w-64 flex-shrink-0">
-              <div className="bg-white border border-gray-200">
+              <div className="card">
                 {/* Header utilisateur */}
-                <div className="p-4 border-b border-gray-200">
-                  <p className="text-sm text-gray-500">Bonjour</p>
-                  <p className="text-base font-semibold text-gray-900">
+                <div className="pb-4 border-b border-border-light">
+                  <p className="text-sm text-text-secondary">Bonjour</p>
+                  <p className="text-base font-semibold text-text-primary">
                     {customer?.first_name} {customer?.last_name}
                   </p>
                 </div>
 
                 {/* Menu */}
-                <nav className="p-2">
+                <nav className="p-2 mt-4">
                   {/* Mes achats */}
                   <div className="mb-4">
                     <button
                       onClick={() => setActiveSection('orders')}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors rounded-lg ${
                         activeSection === 'orders'
-                          ? 'text-gray-900 bg-gray-100'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'text-white bg-primary'
+                          : 'text-text-primary hover:bg-bg-light'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -303,10 +303,10 @@ export default function Account() {
                   <div className="mb-4">
                     <button
                       onClick={() => setActiveSection('profile')}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors rounded-lg ${
                         activeSection === 'profile'
-                          ? 'text-gray-900 bg-gray-100'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'text-white bg-primary'
+                          : 'text-text-primary hover:bg-bg-light'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -321,10 +321,10 @@ export default function Account() {
                   <div className="mb-4">
                     <button
                       onClick={() => setActiveSection('help')}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors rounded-lg ${
                         activeSection === 'help'
-                          ? 'text-gray-900 bg-gray-100'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'text-white bg-primary'
+                          : 'text-text-primary hover:bg-bg-light'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -335,10 +335,10 @@ export default function Account() {
                     </button>
                   </div>
 
-                  <div className="border-t border-gray-200 pt-2">
+                  <div className="border-t border-border-light pt-2 mt-2">
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-primary hover:bg-bg-light transition-colors rounded-lg"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Déconnexion</span>
@@ -346,7 +346,7 @@ export default function Account() {
 
                     <button
                       onClick={handleDeleteAccount}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-error hover:bg-error-light transition-colors rounded-lg"
                     >
                       <Trash2 className="h-4 w-4" />
                       <span>Supprimer mon compte</span>
@@ -361,19 +361,19 @@ export default function Account() {
               {/* Section: Mes achats */}
               {activeSection === 'orders' && (
                 <div>
-                  <h1 className="text-2xl font-semibold text-gray-900 mb-6">Mes achats</h1>
+                  <h1 className="text-2xl font-semibold text-text-primary mb-6">Mes achats</h1>
 
                   {/* Achats en cours */}
                   <section className="mb-8">
-                    <h2 className="text-lg font-medium text-gray-900 mb-4">Mes achats en cours</h2>
+                    <h2 className="text-lg font-medium text-text-primary mb-4">Mes achats en cours</h2>
                     {isLoadingOrders ? (
-                      <div className="bg-white border border-gray-200 p-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                      <div className="card p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                       </div>
                     ) : ordersInProgress.length === 0 ? (
-                      <div className="bg-white border border-gray-200 p-8 text-center">
-                        <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-600">Vous n'avez pas d'achats en cours.</p>
+                      <div className="card p-8 text-center">
+                        <Package className="h-12 w-12 text-text-tertiary mx-auto mb-3" />
+                        <p className="text-text-secondary">Vous n'avez pas d'achats en cours.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -381,20 +381,20 @@ export default function Account() {
                           <Link
                             key={order.id}
                             href="/my-orders"
-                            className="block bg-white border border-gray-200 p-4 hover:border-gray-400 transition-colors"
+                            className="block card p-4 hover:shadow-lg"
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-text-primary">
                                   Commande #{order.order_number}
                                 </p>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <p className="text-sm text-text-secondary mt-1">
                                   {new Date(order.created_at).toLocaleDateString('fr-FR')}
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-semibold text-gray-900">{order.total}€</p>
-                                <p className="text-xs text-gray-500 mt-1">{order.status}</p>
+                                <p className="text-sm font-semibold text-text-primary">{order.total}€</p>
+                                <p className="text-xs text-text-secondary mt-1">{order.status}</p>
                               </div>
                             </div>
                           </Link>
@@ -405,10 +405,10 @@ export default function Account() {
 
                   {/* Achats terminés */}
                   <section>
-                    <h2 className="text-lg font-medium text-gray-900 mb-4">Mes achats terminés</h2>
+                    <h2 className="text-lg font-medium text-text-primary mb-4">Mes achats terminés</h2>
                     {ordersCompleted.length === 0 ? (
-                      <div className="bg-white border border-gray-200 p-8 text-center">
-                        <p className="text-gray-600">Vous n'avez pas d'achats terminés.</p>
+                      <div className="card p-8 text-center">
+                        <p className="text-text-secondary">Vous n'avez pas d'achats terminés.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -416,20 +416,20 @@ export default function Account() {
                           <Link
                             key={order.id}
                             href="/my-orders"
-                            className="block bg-white border border-gray-200 p-4 hover:border-gray-400 transition-colors"
+                            className="block card p-4 hover:shadow-lg"
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-text-primary">
                                   Commande #{order.order_number}
                                 </p>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <p className="text-sm text-text-secondary mt-1">
                                   {new Date(order.created_at).toLocaleDateString('fr-FR')}
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-semibold text-gray-900">{order.total}€</p>
-                                <p className="text-xs text-gray-500 mt-1">{order.status}</p>
+                                <p className="text-sm font-semibold text-text-primary">{order.total}€</p>
+                                <p className="text-xs text-text-secondary mt-1">{order.status}</p>
                               </div>
                             </div>
                           </Link>
@@ -443,29 +443,29 @@ export default function Account() {
               {/* Section: Mon profil */}
               {activeSection === 'profile' && (
                 <div>
-                  <h1 className="text-2xl font-semibold text-gray-900 mb-6">Mon profil</h1>
+                  <h1 className="text-2xl font-semibold text-text-primary mb-6">Mon profil</h1>
 
                   {/* Messages de succès/erreur */}
                   {saveSuccess && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-sm">
+                    <div className="alert alert-success mb-4">
                       {saveSuccess}
                     </div>
                   )}
                   {saveError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <div className="alert alert-error mb-4">
                       {saveError}
                     </div>
                   )}
 
                   <div className="space-y-4">
                     {/* Informations personnelles */}
-                    <div className="bg-white border border-gray-200 p-6">
+                    <div className="card">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-medium text-gray-900">Mes informations personnelles</h2>
+                        <h2 className="text-lg font-medium text-text-primary">Mes informations personnelles</h2>
                         {editingField !== 'personal' && (
                           <button
                             onClick={handleEditPersonal}
-                            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition"
+                            className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition"
                           >
                             <Edit2 className="h-4 w-4" />
                             Modifier
@@ -477,48 +477,48 @@ export default function Account() {
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="label mb-2">
                                 Prénom
                               </label>
                               <input
                                 type="text"
                                 value={formData.first_name}
                                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                                className="input"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="label mb-2">
                                 Nom
                               </label>
                               <input
                                 type="text"
                                 value={formData.last_name}
                                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                                className="input"
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="label mb-2">
                               Email
                             </label>
                             <input
                               type="email"
                               value={formData.email}
                               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                              className="input"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="label mb-2">
                               Téléphone
                             </label>
                             <input
                               type="tel"
                               value={formData.phone}
                               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                              className="input"
                               placeholder="Optionnel"
                             />
                           </div>
@@ -526,7 +526,7 @@ export default function Account() {
                             <button
                               onClick={handleSavePersonal}
                               disabled={saveLoading}
-                              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50"
+                              className="btn-primary"
                             >
                               <Check className="h-4 w-4" />
                               {saveLoading ? 'Enregistrement...' : 'Enregistrer'}
@@ -534,7 +534,7 @@ export default function Account() {
                             <button
                               onClick={handleCancelEdit}
                               disabled={saveLoading}
-                              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                              className="btn-secondary"
                             >
                               <X className="h-4 w-4" />
                               Annuler
@@ -544,22 +544,22 @@ export default function Account() {
                       ) : (
                         <div className="space-y-3">
                           <div className="flex items-center gap-3 text-sm">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="text-gray-600">Nom :</span>
-                            <span className="font-medium text-gray-900">
+                            <User className="h-4 w-4 text-text-tertiary" />
+                            <span className="text-text-secondary">Nom :</span>
+                            <span className="font-medium text-text-primary">
                               {customer?.first_name} {customer?.last_name}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 text-sm">
-                            <Mail className="h-4 w-4 text-gray-400" />
-                            <span className="text-gray-600">Email :</span>
-                            <span className="font-medium text-gray-900">{customer?.email}</span>
+                            <Mail className="h-4 w-4 text-text-tertiary" />
+                            <span className="text-text-secondary">Email :</span>
+                            <span className="font-medium text-text-primary">{customer?.email}</span>
                           </div>
                           {customer?.phone && (
                             <div className="flex items-center gap-3 text-sm">
-                              <Phone className="h-4 w-4 text-gray-400" />
-                              <span className="text-gray-600">Téléphone :</span>
-                              <span className="font-medium text-gray-900">{customer.phone}</span>
+                              <Phone className="h-4 w-4 text-text-tertiary" />
+                              <span className="text-text-secondary">Téléphone :</span>
+                              <span className="font-medium text-text-primary">{customer.phone}</span>
                             </div>
                           )}
                         </div>
@@ -567,13 +567,13 @@ export default function Account() {
                     </div>
 
                     {/* Mot de passe */}
-                    <div className="bg-white border border-gray-200 p-6">
+                    <div className="card">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-medium text-gray-900">Mot de passe</h2>
+                        <h2 className="text-lg font-medium text-text-primary">Mot de passe</h2>
                         {editingField !== 'password' && (
                           <button
                             onClick={handleEditPassword}
-                            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition"
+                            className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition"
                           >
                             <Edit2 className="h-4 w-4" />
                             Modifier
@@ -584,44 +584,44 @@ export default function Account() {
                       {editingField === 'password' ? (
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="label mb-2">
                               Mot de passe actuel
                             </label>
                             <input
                               type="password"
                               value={passwordData.current_password}
                               onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                              className="input"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="label mb-2">
                               Nouveau mot de passe
                             </label>
                             <input
                               type="password"
                               value={passwordData.new_password}
                               onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                              className="input"
                               placeholder="Minimum 6 caractères"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="label mb-2">
                               Confirmer le nouveau mot de passe
                             </label>
                             <input
                               type="password"
                               value={passwordData.confirm_password}
                               onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900"
+                              className="input"
                             />
                           </div>
                           <div className="flex gap-2 pt-2">
                             <button
                               onClick={handleSavePassword}
                               disabled={saveLoading}
-                              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50"
+                              className="btn-primary"
                             >
                               <Check className="h-4 w-4" />
                               {saveLoading ? 'Enregistrement...' : 'Enregistrer'}
@@ -629,7 +629,7 @@ export default function Account() {
                             <button
                               onClick={handleCancelEdit}
                               disabled={saveLoading}
-                              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                              className="btn-secondary"
                             >
                               <X className="h-4 w-4" />
                               Annuler
@@ -638,9 +638,9 @@ export default function Account() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-3 text-sm">
-                          <Lock className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Mot de passe :</span>
-                          <span className="font-medium text-gray-900">••••••••</span>
+                          <Lock className="h-4 w-4 text-text-tertiary" />
+                          <span className="text-text-secondary">Mot de passe :</span>
+                          <span className="font-medium text-text-primary">••••••••</span>
                         </div>
                       )}
                     </div>
@@ -651,44 +651,44 @@ export default function Account() {
               {/* Section: Aide et contact */}
               {activeSection === 'help' && (
                 <div>
-                  <h1 className="text-2xl font-semibold text-gray-900 mb-6">Aide et contact</h1>
+                  <h1 className="text-2xl font-semibold text-text-primary mb-6">Aide et contact</h1>
 
                   <div className="space-y-4">
-                    <div className="bg-white border border-gray-200 p-6">
-                      <h2 className="text-lg font-medium text-gray-900 mb-4">Questions fréquentes</h2>
+                    <div className="card">
+                      <h2 className="text-lg font-medium text-text-primary mb-4">Questions fréquentes</h2>
                       <div className="space-y-3">
-                        <div className="border-b border-gray-200 pb-3">
-                          <h3 className="text-sm font-medium text-gray-900 mb-2">Comment passer une commande ?</h3>
-                          <p className="text-sm text-gray-600">
+                        <div className="border-b border-border-light pb-3">
+                          <h3 className="text-sm font-medium text-text-primary mb-2">Comment passer une commande ?</h3>
+                          <p className="text-sm text-text-secondary">
                             Configurez votre meuble depuis la page d'accueil, ajoutez-le au panier, puis validez votre commande.
                           </p>
                         </div>
-                        <div className="border-b border-gray-200 pb-3">
-                          <h3 className="text-sm font-medium text-gray-900 mb-2">Quels sont les délais de livraison ?</h3>
-                          <p className="text-sm text-gray-600">
+                        <div className="border-b border-border-light pb-3">
+                          <h3 className="text-sm font-medium text-text-primary mb-2">Quels sont les délais de livraison ?</h3>
+                          <p className="text-sm text-text-secondary">
                             Les délais de livraison varient en fonction de votre commande. Vous recevrez une estimation après validation.
                           </p>
                         </div>
                         <div>
-                          <h3 className="text-sm font-medium text-gray-900 mb-2">Comment modifier ma commande ?</h3>
-                          <p className="text-sm text-gray-600">
+                          <h3 className="text-sm font-medium text-text-primary mb-2">Comment modifier ma commande ?</h3>
+                          <p className="text-sm text-text-secondary">
                             Contactez notre service client pour toute modification de commande en cours.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-white border border-gray-200 p-6">
-                      <h2 className="text-lg font-medium text-gray-900 mb-4">Nous contacter</h2>
+                    <div className="card">
+                      <h2 className="text-lg font-medium text-text-primary mb-4">Nous contacter</h2>
                       <div className="space-y-3 text-sm">
-                        <p className="text-gray-600">
-                          <span className="font-medium text-gray-900">Email :</span> contact@archimeuble.com
+                        <p className="text-text-secondary">
+                          <span className="font-medium text-text-primary">Email :</span> contact@archimeuble.com
                         </p>
-                        <p className="text-gray-600">
-                          <span className="font-medium text-gray-900">Téléphone :</span> 01 23 45 67 89
+                        <p className="text-text-secondary">
+                          <span className="font-medium text-text-primary">Téléphone :</span> 01 23 45 67 89
                         </p>
-                        <p className="text-gray-600">
-                          <span className="font-medium text-gray-900">Horaires :</span> Lundi - Vendredi, 9h - 18h
+                        <p className="text-text-secondary">
+                          <span className="font-medium text-text-primary">Horaires :</span> Lundi - Vendredi, 9h - 18h
                         </p>
                       </div>
                     </div>

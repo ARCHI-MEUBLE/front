@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { Trash2 } from 'lucide-react';
 
 interface CartItem {
   id: number;
@@ -30,7 +31,7 @@ interface CartData {
 export default function Cart() {
   const router = useRouter();
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
-  
+
   const [cart, setCart] = useState<CartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,7 +39,7 @@ export default function Cart() {
 
   useEffect(() => {
     if (authLoading) return;
-    
+
     if (!isAuthenticated) {
       router.push('/auth/login?redirect=/cart');
       return;
@@ -148,10 +149,10 @@ export default function Cart() {
           <title>Mon Panier - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-bg-light flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement du panier...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-text-secondary">Chargement du panier...</p>
           </div>
         </div>
       </>
@@ -167,7 +168,7 @@ export default function Cart() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-bg-light">
         {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb
@@ -179,34 +180,34 @@ export default function Cart() {
 
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                🛒 Mon Panier
+              <h1 className="text-2xl font-bold text-text-primary">
+                Mon Panier
               </h1>
               {!isEmpty && (
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-text-secondary">
                   {cart.item_count} article{cart.item_count > 1 ? 's' : ''} dans votre panier
                 </p>
               )}
             </div>
           </div>
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          <div className="alert alert-error mb-6">
             {error}
           </div>
         )}
 
         {isEmpty ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+          <div className="text-center py-12 card">
             <div className="text-6xl mb-4">🛒</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-semibold text-text-primary mb-2">
               Votre panier est vide
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-text-secondary mb-6">
               Créez votre première configuration de meuble
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="btn-primary inline-flex"
             >
               Créer une configuration
             </Link>
@@ -217,15 +218,15 @@ export default function Cart() {
             <div className="lg:col-span-2 space-y-4">
               {cart.items.map((item) => {
                 const isUpdating = updatingItems.has(item.configuration_id);
-                
+
                 return (
-                  <div 
+                  <div
                     key={item.id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                    className="card p-6"
                   >
                     <div className="flex gap-6">
                       {/* Preview 3D */}
-                      <div className="flex-shrink-0 w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                      <div className="flex-shrink-0 w-32 h-32 bg-gradient-to-br from-bg-light to-border-light rounded-lg flex items-center justify-center">
                         {item.configuration.glb_url ? (
                           <model-viewer
                             src={item.configuration.glb_url}
@@ -243,16 +244,16 @@ export default function Cart() {
                       <div className="flex-grow">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <h3 className="text-lg font-semibold text-text-primary">
                               {item.configuration.name}
                             </h3>
                             {item.configuration.config_data && item.configuration.config_data.dimensions && (
-                              <p className="text-sm text-gray-500 mt-1">
+                              <p className="text-sm text-text-secondary mt-1">
                                 {item.configuration.config_data.dimensions.width} × {item.configuration.config_data.dimensions.depth} × {item.configuration.config_data.dimensions.height} mm
                               </p>
                             )}
                           </div>
-                          <p className="text-xl font-bold text-gray-900">
+                          <p className="text-xl font-bold text-text-primary">
                             {item.configuration.price}€
                           </p>
                         </div>
@@ -263,17 +264,17 @@ export default function Cart() {
                             <button
                               onClick={() => updateQuantity(item.configuration_id, item.quantity - 1)}
                               disabled={isUpdating || item.quantity <= 1}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold"
+                              className="w-8 h-8 rounded-lg bg-bg-light hover:bg-border-light disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold text-text-primary"
                             >
                               −
                             </button>
-                            <span className="w-12 text-center font-semibold">
+                            <span className="w-12 text-center font-semibold text-text-primary">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() => updateQuantity(item.configuration_id, item.quantity + 1)}
                               disabled={isUpdating}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold"
+                              className="w-8 h-8 rounded-lg bg-bg-light hover:bg-border-light disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold text-text-primary"
                             >
                               +
                             </button>
@@ -283,17 +284,18 @@ export default function Cart() {
 
                           <button
                             onClick={() => removeItem(item.configuration_id)}
-                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                            className="text-error hover:text-error text-sm font-medium flex items-center gap-2"
                           >
-                            🗑️ Retirer
+                            <Trash2 className="h-4 w-4" />
+                            Retirer
                           </button>
                         </div>
 
                         {/* Sous-total */}
-                        <div className="mt-3 pt-3 border-t">
+                        <div className="mt-3 pt-3 border-t border-border-light">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Sous-total:</span>
-                            <span className="text-lg font-semibold text-gray-900">
+                            <span className="text-sm text-text-secondary">Sous-total:</span>
+                            <span className="text-lg font-semibold text-text-primary">
                               {item.configuration.price * item.quantity}€
                             </span>
                           </div>
@@ -307,30 +309,30 @@ export default function Cart() {
               {/* Bouton vider le panier */}
               <button
                 onClick={clearCart}
-                className="w-full py-3 text-red-600 hover:text-red-700 text-sm font-medium"
+                className="w-full py-3 text-error hover:text-error text-sm font-medium"
               >
-                🗑️ Vider le panier
+                Vider le panier
               </button>
             </div>
 
             {/* Récapitulatif */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-4">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <div className="card p-6 sticky top-4">
+                <h2 className="text-xl font-bold text-text-primary mb-4">
                   Récapitulatif
                 </h2>
 
                 <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-text-secondary">
                     <span>Sous-total</span>
                     <span className="font-semibold">{cart.total}€</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
+                  <div className="flex justify-between text-text-secondary">
                     <span>Livraison</span>
-                    <span className="font-semibold text-green-600">Gratuite</span>
+                    <span className="font-semibold text-success">Gratuite</span>
                   </div>
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between text-lg font-bold text-gray-900">
+                  <div className="border-t border-border-light pt-3">
+                    <div className="flex justify-between text-lg font-bold text-text-primary">
                       <span>Total</span>
                       <span>{cart.total}€</span>
                     </div>
@@ -339,7 +341,7 @@ export default function Cart() {
 
                 <button
                   onClick={() => router.push('/checkout')}
-                  className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
+                  className="btn-primary w-full"
                 >
                   Commander ({cart.total}€)
                 </button>
@@ -347,14 +349,14 @@ export default function Cart() {
                 <div className="mt-4 text-center">
                   <Link
                     href="/"
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-primary hover:text-primary-hover"
                   >
                     ← Créer une autre configuration
                   </Link>
                 </div>
 
                 {/* Infos supplémentaires */}
-                <div className="mt-6 pt-6 border-t space-y-2 text-sm text-gray-600">
+                <div className="mt-6 pt-6 border-t border-border-light space-y-2 text-sm text-text-secondary">
                   <div className="flex items-start gap-2">
                     <span>✅</span>
                     <span>Livraison gratuite en France</span>

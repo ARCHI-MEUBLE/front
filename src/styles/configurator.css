@@ -1,6 +1,6 @@
 /**
  * ArchiMeuble - Configurator CSS
- * Copié depuis back/frontend/css/configurator.css
+ * Intégration au système de style unifié
  */
 
 /* ===== CONFIGURATOR LAYOUT ===== */
@@ -13,7 +13,7 @@
 /* ===== LEFT: 3D VIEWER ===== */
 .viewer-section {
     flex: 1;
-    background-color: #F8F8F8;
+    background-color: #F6F1EB; /* alabaster */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -49,8 +49,8 @@
 .spinner {
     width: 50px;
     height: 50px;
-    border: 4px solid #E5E5E5;
-    border-top-color: #FF6B35;
+    border: 4px solid #D7C9B9; /* border-neutral */
+    border-top-color: #B49272; /* primary */
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -61,7 +61,7 @@
 
 .loading-overlay p {
     margin-top: 24px;
-    color: #6B6B6B;
+    color: #6B6360; /* text-secondary */
     font-weight: 500;
 }
 
@@ -69,7 +69,7 @@
 .config-panel {
     width: 420px;
     background-color: #FFFFFF;
-    border-left: 1px solid #E5E5E5;
+    border-left: 1px solid #E0D7CC; /* border-light */
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -77,7 +77,7 @@
 
 .panel-header {
     padding: 48px 24px;
-    border-bottom: 1px solid #E5E5E5;
+    border-bottom: 1px solid #E0D7CC; /* border-light */
 }
 
 .panel-header h1 {
@@ -85,12 +85,12 @@
     font-weight: 700;
     margin-bottom: 8px;
     letter-spacing: -0.5px;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
 }
 
 .panel-header .subtitle {
     font-size: 14px;
-    color: #6B6B6B;
+    color: #6B6360; /* text-secondary */
 }
 
 .panel-content {
@@ -107,7 +107,7 @@
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 16px;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
 }
 
 /* ===== BUTTON GROUPS (toggle buttons) ===== */
@@ -121,23 +121,23 @@
     flex: 1;
     min-width: 60px;
     padding: 12px 16px;
-    background-color: #F8F8F8;
-    border: 2px solid #E5E5E5;
+    background-color: #F6F1EB; /* alabaster */
+    border: 2px solid #E0D7CC; /* border-light */
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .toggle-btn:hover {
-    border-color: #FF6B35;
+    border-color: #B49272; /* primary */
 }
 
 .toggle-btn.active {
-    background-color: #FF6B35;
-    border-color: #FF6B35;
+    background-color: #B49272; /* primary */
+    border-color: #B49272; /* primary */
     color: white;
 }
 
@@ -146,7 +146,7 @@
     width: 100%;
     height: 6px;
     border-radius: 3px;
-    background: #E5E5E5;
+    background: #E0D7CC; /* border-light */
     outline: none;
     -webkit-appearance: none;
 }
@@ -157,7 +157,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #FF6B35;
+    background: #B49272; /* primary */
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -170,7 +170,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #FF6B35;
+    background: #B49272; /* primary */
     cursor: pointer;
     border: none;
 }
@@ -180,26 +180,26 @@
     justify-content: space-between;
     margin-top: 8px;
     font-size: 12px;
-    color: #6B6B6B;
+    color: #6B6360; /* text-secondary */
 }
 
 /* ===== SELECT INPUT ===== */
 .select-input {
     width: 100%;
     padding: 12px 16px;
-    background-color: #F8F8F8;
-    border: 2px solid #E5E5E5;
+    background-color: #F6F1EB; /* alabaster */
+    border: 2px solid #E0D7CC; /* border-light */
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
     cursor: pointer;
     transition: border-color 0.3s ease;
 }
 
 .select-input:focus {
     outline: none;
-    border-color: #FF6B35;
+    border-color: #B49272; /* primary */
 }
 
 /* ===== COLOR PICKER ===== */
@@ -212,21 +212,21 @@
 .color-input {
     width: 60px;
     height: 40px;
-    border: 2px solid #E5E5E5;
+    border: 2px solid #E0D7CC; /* border-light */
     border-radius: 8px;
     cursor: pointer;
 }
 
 .color-label {
     font-size: 14px;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
     font-weight: 500;
 }
 
 /* ===== DIVIDER ===== */
 .divider {
     height: 1px;
-    background-color: #E5E5E5;
+    background-color: #E0D7CC; /* border-light */
     margin: 48px 0;
 }
 
@@ -234,21 +234,21 @@
 .price-section {
     text-align: center;
     padding: 24px;
-    background-color: #F8F8F8;
+    background-color: #F6F1EB; /* alabaster */
     border-radius: 12px;
     margin-bottom: 48px;
 }
 
 .price-label {
     font-size: 14px;
-    color: #6B6B6B;
+    color: #6B6360; /* text-secondary */
     margin-bottom: 8px;
 }
 
 .price-value {
     font-size: 48px;
     font-weight: 700;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
     line-height: 1;
 }
 
@@ -272,24 +272,24 @@
 }
 
 .btn-primary {
-    background-color: #FF6B35;
+    background-color: #B49272; /* primary */
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #E55A2B;
+    background-color: #A07A5A; /* primary-hover */
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+    box-shadow: 0 8px 20px rgba(180, 146, 114, 0.3);
 }
 
 .btn-secondary {
     background-color: transparent;
-    color: #2C2C2C;
-    border: 2px solid #E5E5E5;
+    color: #2F2A26; /* secondary */
+    border: 2px solid #E0D7CC; /* border-light */
 }
 
 .btn-secondary:hover {
-    border-color: #2C2C2C;
+    border-color: #2F2A26; /* secondary */
 }
 
 /* ===== NAVBAR ===== */
@@ -297,7 +297,7 @@
     position: sticky;
     top: 0;
     background-color: #FFFFFF;
-    border-bottom: 1px solid #E5E5E5;
+    border-bottom: 1px solid #E0D7CC; /* border-light */
     z-index: 1000;
     padding: 16px 0;
 }
@@ -314,7 +314,7 @@
 .logo a {
     font-size: 24px;
     font-weight: 700;
-    color: #2C2C2C;
+    color: #2F2A26; /* secondary */
     text-decoration: none;
     letter-spacing: -0.5px;
 }
@@ -326,7 +326,7 @@
 }
 
 .nav-links a {
-    color: #6B6B6B;
+    color: #6B6360; /* text-secondary */
     text-decoration: none;
     font-weight: 500;
     transition: color 0.3s ease;
@@ -334,7 +334,7 @@
 
 .nav-links a:hover,
 .nav-links a.active {
-    color: #FF6B35;
+    color: #B49272; /* primary */
 }
 
 /* ===== RESPONSIVE ===== */
