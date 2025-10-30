@@ -112,7 +112,7 @@ export default function ShowroomsPage() {
   const jsonLd = buildLocalBusinessJsonLd(showrooms);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#FAFAFA] text-[#1E1E1E]">
+    <div className="flex min-h-screen flex-col bg-bg-light text-text-primary">
       <Head>
         <title>Showrooms — ArchiMeuble</title>
         <meta name="description" content="Trouver un showroom ArchiMeuble près de chez vous" />
@@ -122,17 +122,17 @@ export default function ShowroomsPage() {
       <main className="flex flex-1 flex-col items-center justify-start px-4 py-10">
         {/* Hero */}
         <section className="w-full max-w-6xl">
-          <h1 className="mb-3 text-4xl font-bold">Trouvez votre showroom</h1>
-          <p className="mb-6 max-w-2xl text-gray-600">
-            Venez découvrir nos matériaux, toucher les finitions et rencontrer nos concepteurs dans l’un de nos showrooms.
+          <h1 className="mb-3 text-4xl font-bold text-text-primary">Trouvez votre showroom</h1>
+          <p className="mb-6 max-w-2xl text-text-secondary">
+            Venez découvrir nos matériaux, toucher les finitions et rencontrer nos concepteurs dans l'un de nos showrooms.
           </p>
-          <div className="mb-8 flex max-w-xl items-center gap-3 rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
-            <svg className="ml-2 h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.387a1 1 0 01-1.414 1.414l-4.387-4.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z" clipRule="evenodd"/></svg>
+          <div className="mb-8 flex max-w-xl items-center gap-3 rounded-xl border border-border-light bg-white p-2 shadow-sm">
+            <svg className="ml-2 h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.387a1 1 0 01-1.414 1.414l-4.387-4.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z" clipRule="evenodd"/></svg>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher une ville, une adresse..."
-              className="w-full rounded-lg p-3 outline-none"
+              className="w-full rounded-lg p-3 outline-none text-text-primary placeholder-text-tertiary"
             />
           </div>
         </section>
@@ -140,7 +140,7 @@ export default function ShowroomsPage() {
         {/* Liste */}
         <section className="grid w-full max-w-6xl grid-cols-1 gap-6 md:grid-cols-2">
           {loading && (
-            <div className="col-span-full rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-500">
+            <div className="col-span-full rounded-xl border border-border-light bg-white p-10 text-center text-text-secondary">
               Chargement des showrooms...
             </div>
           )}
@@ -148,7 +148,7 @@ export default function ShowroomsPage() {
             <ShowroomCard key={s.id} showroom={s} />
           ))}
           {filtered.length === 0 && (
-            <div className="col-span-full rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-500">
+            <div className="col-span-full rounded-xl border border-border-light bg-white p-10 text-center text-text-secondary">
               Aucun showroom ne correspond à votre recherche.
             </div>
           )}
@@ -172,21 +172,21 @@ function ShowroomCard({ showroom }: { showroom: Showroom }) {
   const mailHref = showroom.email ? `mailto:${showroom.email}` : undefined;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition hover:shadow-xl">
+    <article className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-md transition hover:shadow-xl">
       {showroom.imageUrl && (
         <div className="h-40 w-full overflow-hidden">
           <img src={showroom.imageUrl} alt={showroom.name} className="h-full w-full object-cover" />
         </div>
       )}
       <div className="p-6">
-        <h3 className="text-xl font-semibold">{showroom.name}</h3>
-        <p className="mt-1 text-gray-600">
+        <h3 className="text-xl font-semibold text-text-primary">{showroom.name}</h3>
+        <p className="mt-1 text-text-secondary">
           {showroom.address}, {showroom.postalCode} {showroom.city}
         </p>
         {showroom.services && (
           <div className="mt-3 flex flex-wrap gap-2">
             {showroom.services.map((svc) => (
-              <span key={svc} className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+              <span key={svc} className="badge-secondary">
                 {svc}
               </span>
             ))}
@@ -195,11 +195,11 @@ function ShowroomCard({ showroom }: { showroom: Showroom }) {
 
         {/* Horaires */}
         {showroom.openingHours && (
-          <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-700">
+          <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-text-secondary">
             {showroom.openingHours.map((h) => (
-              <div key={h.day} className="flex items-center justify-between border-b border-dashed border-gray-100 py-1">
-                <span className="text-gray-500">{h.day}</span>
-                <span className="font-medium">{h.closed ? 'Fermé' : `${h.open} - ${h.close}`}</span>
+              <div key={h.day} className="flex items-center justify-between border-b border-dashed border-border-light py-1">
+                <span className="text-text-tertiary">{h.day}</span>
+                <span className="font-medium text-text-primary">{h.closed ? 'Fermé' : `${h.open} - ${h.close}`}</span>
               </div>
             ))}
           </div>
@@ -207,20 +207,20 @@ function ShowroomCard({ showroom }: { showroom: Showroom }) {
 
         {/* Actions */}
         <div className="mt-6 flex flex-wrap gap-3">
-          <a href={itineraryHref} target="_blank" rel="noreferrer" className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">
+          <a href={itineraryHref} target="_blank" rel="noreferrer" className="btn-primary py-2 px-4 text-sm">
             Itinéraire
           </a>
           {telHref && (
-            <a href={telHref} className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            <a href={telHref} className="btn-secondary py-2 px-4 text-sm">
               Appeler
             </a>
           )}
           {mailHref && (
-            <a href={mailHref} className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            <a href={mailHref} className="btn-secondary py-2 px-4 text-sm">
               Écrire
             </a>
           )}
-          <a href={showroom.bookingUrl || `/contact?showroom=${encodeURIComponent(showroom.name)}`} className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+          <a href={showroom.bookingUrl || `/contact?showroom=${encodeURIComponent(showroom.name)}`} className="btn-primary py-2 px-4 text-sm">
             Prendre RDV
           </a>
         </div>

@@ -682,10 +682,10 @@ export default function Account() {
                       <h2 className="text-lg font-medium text-text-primary mb-4">Nous contacter</h2>
                       <div className="space-y-3 text-sm">
                         <p className="text-text-secondary">
-                          <span className="font-medium text-text-primary">Email :</span> contact@archimeuble.com
+                          <span className="font-medium text-text-primary">Email :</span> pro.archimeuble@gmail.com
                         </p>
                         <p className="text-text-secondary">
-                          <span className="font-medium text-text-primary">Téléphone :</span> 01 23 45 67 89
+                          <span className="font-medium text-text-primary">Téléphone : 06 01 06 28 67</span> 
                         </p>
                         <p className="text-text-secondary">
                           <span className="font-medium text-text-primary">Horaires :</span> Lundi - Vendredi, 9h - 18h
