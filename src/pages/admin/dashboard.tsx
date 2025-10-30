@@ -13,6 +13,9 @@ import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
 import NotificationsModal from '@/components/admin/NotificationsModal';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (!hasAdminSession(req.headers.cookie)) {
     return {

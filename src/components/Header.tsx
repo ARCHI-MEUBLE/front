@@ -8,6 +8,9 @@ import { Bell, ShoppingCart } from "lucide-react";
 import { AccountButton } from "@/components/AccountButton";
 import { useCustomer } from "@/context/CustomerContext";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 const navLinks = [
   { href: "/", label: "Accueil" },
   { href: "/models", label: "Nos modèles" },

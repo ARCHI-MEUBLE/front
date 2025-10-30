@@ -7,6 +7,9 @@ import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import Image from 'next/image';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 interface SavedConfiguration {
   id: number;
   name: string;

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Eye, User, Calendar, Euro } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 interface AdminConfiguration {
   id: number;
   customer_email: string | null;

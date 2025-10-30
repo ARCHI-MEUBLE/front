@@ -6,6 +6,9 @@ import { ShoppingCart, Package, Home, User } from "lucide-react";
 import { useCustomer } from "@/context/CustomerContext";
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 export function UserNavigation() {
   const router = useRouter();
   const { customer, logout } = useCustomer();

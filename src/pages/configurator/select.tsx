@@ -3,6 +3,9 @@ import Image from 'next/image'
 import Head from 'next/head'
 import { useState } from 'react'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 const presets = [
   { 
     id: 'M1', 

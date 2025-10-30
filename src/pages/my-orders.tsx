@@ -6,6 +6,9 @@ import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+
 interface OrderItem {
   id: number;
   configuration_id: number;
