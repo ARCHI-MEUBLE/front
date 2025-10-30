@@ -22,7 +22,7 @@ export default function HomePage({ colors }: HomePageProps) {
   return (
     <div className="flex min-h-screen flex-col bg-alabaster text-ink">
       <Head>
-        <title>ArchiMeuble — Fabricant de meubles sur mesure</title>
+        <title>Archimeuble</title>
         <meta
           name="description"
           content="Archimeuble, menuisiers à Lille, conçoit et fabrique des meubles sur mesure durables : dressing, bibliothèque, buffet, bureau ou meuble TV pour votre intérieur."
