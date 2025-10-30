@@ -79,7 +79,7 @@ export default function MyOrders() {
 
   const loadOrders = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/list.php', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/list.php`, {
         credentials: 'include',
       });
 

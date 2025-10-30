@@ -45,7 +45,7 @@ export function Header() {
     const loadCartCount = async () => {
       if (!customer) return;
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/cart/index.php`, {
           credentials: "include",
         });
         if (res.ok) {
@@ -64,7 +64,7 @@ export function Header() {
     const loadNotifications = async () => {
       if (!customer) return;
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/notifications/index.php?limit=10", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/notifications/index.php?limit=10`, {
           credentials: "include",
         });
         if (res.ok) {
@@ -101,7 +101,7 @@ export function Header() {
 
   const markAllAsRead = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/notifications/index.php/read-all", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/notifications/index.php/read-all`, {
         method: "PUT",
         credentials: "include",
       });
