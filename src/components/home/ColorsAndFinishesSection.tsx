@@ -222,7 +222,7 @@ export function ColorsAndFinishesSection({ colors }: ColorsAndFinishesSectionPro
             <Link href="/models" className="button-elevated">
               Découvrir nos collections
             </Link>
-            <Link href="/panier" className="button-outline">
+            <Link href="/samples" className="button-outline">
               Commander un échantillon
             </Link>
           </div>
