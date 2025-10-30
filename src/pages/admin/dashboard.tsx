@@ -133,6 +133,14 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                onClick={() => router.push('/')}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100"
+              >
+                <span>🏠</span>
+                <span>Accueil</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsNotifOpen(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
