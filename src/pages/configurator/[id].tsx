@@ -864,7 +864,6 @@ export default function ConfiguratorPage() {
             style={{ marginTop: '24px' }}
           >
             Retour à l&apos;accueil
-            Retour à l&apos;accueil
           </button>
         </div>
       </div>

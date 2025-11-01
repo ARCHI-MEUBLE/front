@@ -11,7 +11,7 @@ export default function AvisPage() {
         <meta name="description" content="Avis clients sur ArchiMeuble" />
       </Head>
       <Header />
-      <main className="flex flex-1 flex-col items-center justify-start px-4 py-10">
+      <main className="flex-1">
         <Reviews />
       </main>
       <Footer />
