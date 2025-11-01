@@ -14,7 +14,7 @@ const navLinks = [
   { href: "/samples", label: "Échantillons" },
   { href: "/avis", label: "Avis" },
   { href: "/showrooms", label: "Showrooms" },
-  { href: "/#contact", label: "Contact" }
+  { href: "/contact-request", label: "Contact" }
 ];
 
 interface Notification {
