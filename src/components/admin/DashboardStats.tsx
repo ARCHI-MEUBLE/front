@@ -120,10 +120,12 @@ export function DashboardStats() {
   }));
 
   // Formater les données hebdomadaires
-  const weeklyData = charts.weekly.map((item) => ({
-    name: `S${item.week_num}`,
-    count: item.count,
-  }));
+  const weeklyData = charts.weekly && charts.weekly.length > 0
+    ? charts.weekly.map((item) => ({
+        name: `S${item.week_num}`,
+        count: item.count,
+      }))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -235,15 +237,21 @@ export function DashboardStats() {
         {/* Bar Chart - 4 dernières semaines */}
         <div className="border border-gray-200 p-4 bg-white">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">RDV par Semaine (4 dernières)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#2f2a26" name="Rendez-vous" />
-            </BarChart>
-          </ResponsiveContainer>
+          {weeklyData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#2f2a26" name="Rendez-vous" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-gray-500 text-sm">
+              Aucun rendez-vous dans les 4 dernières semaines
+            </div>
+          )}
         </div>
       </div>
 
