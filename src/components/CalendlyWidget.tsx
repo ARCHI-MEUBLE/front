@@ -70,21 +70,35 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
         return;
       }
 
-      console.log('✅ Rendez-vous planifié sur Calendly', e.data);
+      console.log('✅ Rendez-vous planifié sur Calendly - Payload complet:', JSON.stringify(e.data, null, 2));
 
       try {
         const payload = e.data.payload;
 
-        // Extraire les informations de l'événement
+        // Vérifier la structure du payload
+        if (!payload) {
+          console.error('❌ Payload manquant dans l\'événement Calendly');
+          return;
+        }
+
+        console.log('📦 Structure du payload:', {
+          hasEvent: !!payload.event,
+          hasInvitee: !!payload.invitee,
+          hasEventType: !!payload.event_type,
+          payloadKeys: Object.keys(payload)
+        });
+
+        // Extraire les informations avec des vérifications
         const eventData = {
-          event_uri: payload.event.uri,
-          invitee_uri: payload.invitee.uri,
-          name: payload.invitee.name || 'Client',
-          email: payload.invitee.email || '',
-          event_type: payload.event_type.name || 'Rendez-vous',
-          start_time: payload.event.start_time,
-          end_time: payload.event.end_time,
-          timezone: payload.invitee.timezone || 'Europe/Paris',
+          event_uri: payload.event?.uri || '',
+          invitee_uri: payload.invitee?.uri || '',
+          name: payload.invitee?.name || 'Client',
+          email: payload.invitee?.email || '',
+          // Le nom du type d'événement peut être dans différents endroits
+          event_type: payload.event_type?.name || payload.event?.type || 'Rendez-vous',
+          start_time: payload.event?.start_time || new Date().toISOString(),
+          end_time: payload.event?.end_time || new Date().toISOString(),
+          timezone: payload.invitee?.timezone || 'Europe/Paris',
           config_url: '',
           notes: '',
         };
