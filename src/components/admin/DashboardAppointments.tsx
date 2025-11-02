@@ -359,9 +359,18 @@ export function DashboardAppointments() {
                 <div className="space-y-1 text-xs">
                   <p><span className="font-medium">Nom:</span> {selectedAppointment.client_name}</p>
                   <p><span className="font-medium">Email:</span> {selectedAppointment.client_email}</p>
-                  {selectedAppointment.phone_number && (
-                    <p><span className="font-medium">Téléphone:</span> {selectedAppointment.phone_number}</p>
-                  )}
+                  <p>
+                    <span className="font-medium">Téléphone:</span>{' '}
+                    {selectedAppointment.phone_number ? (
+                      <a href={`tel:${selectedAppointment.phone_number}`} className="text-blue-600 hover:underline">
+                        {selectedAppointment.phone_number}
+                      </a>
+                    ) : (
+                      <span className="text-orange-600 italic">
+                        Non renseigné - Contacter par email
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
 
