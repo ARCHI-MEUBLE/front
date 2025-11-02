@@ -16,7 +16,9 @@ const NOTIFICATION_ICONS: { [key: string]: string } = {
   new_order: '🛒',
   order_update: '📝',
   payment: '💳',
-  system: '⚙️'
+  system: '⚙️',
+  calendly_phone: '📞',
+  calendly_video: '🎥'
 };
 
 export default function NotificationsModal({
