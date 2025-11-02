@@ -11,6 +11,8 @@ interface CalendlyAppointment {
   timezone: string;
   config_url: string | null;
   additional_notes: string | null;
+  meeting_url: string | null;
+  phone_number: string | null;
   status: string;
   confirmation_sent: boolean;
   reminder_24h_sent: boolean;
@@ -310,6 +312,9 @@ export function DashboardAppointments() {
                 <div className="space-y-1 text-xs">
                   <p><span className="font-medium">Nom:</span> {selectedAppointment.client_name}</p>
                   <p><span className="font-medium">Email:</span> {selectedAppointment.client_email}</p>
+                  {selectedAppointment.phone_number && (
+                    <p><span className="font-medium">Téléphone:</span> {selectedAppointment.phone_number}</p>
+                  )}
                 </div>
               </div>
 
@@ -326,6 +331,26 @@ export function DashboardAppointments() {
                   <p><span className="font-medium">Statut:</span> {STATUS_LABELS[selectedAppointment.status]?.label || selectedAppointment.status}</p>
                 </div>
               </div>
+
+              {/* Lien de visioconférence */}
+              {selectedAppointment.meeting_url && (
+                <div className="border border-green-200 bg-green-50 p-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    🎥 Lien de Visioconférence
+                  </h3>
+                  <a
+                    href={selectedAppointment.meeting_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block px-4 py-2 text-xs font-medium bg-green-600 text-white hover:bg-green-700 border-0"
+                  >
+                    Rejoindre la visioconférence →
+                  </a>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Lien: {selectedAppointment.meeting_url}
+                  </p>
+                </div>
+              )}
 
               {/* Configuration URL */}
               {selectedAppointment.config_url && (
