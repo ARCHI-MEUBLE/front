@@ -9,6 +9,7 @@ import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
+import { DashboardSamples } from '@/components/admin/DashboardSamples';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
 import NotificationsModal from '@/components/admin/NotificationsModal';
@@ -178,6 +179,7 @@ export default function AdminDashboardPage() {
             {selectedSection === 'configs' && <DashboardConfigs />}
             {selectedSection === 'orders' && <DashboardOrders />}
             {selectedSection === 'avis' && <DashboardAvis />}
+            {selectedSection === 'samples' && <DashboardSamples />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>

@@ -25,15 +25,20 @@ export default function SamplesPage() {
       .listPublic()
       .then((data) => {
         if (!mounted) return;
+        console.log('📦 Données échantillons reçues:', data);
+        console.log('📋 Matériaux disponibles:', Object.keys(data));
         setMaterials(data);
         // Choisir un matériau par défaut (ordre défini ou premier dispo)
         const first = MATERIAL_ORDER.find((m) => data[m]?.length)
           || Object.keys(data)[0]
           || null;
+        console.log('🎯 Matériau sélectionné:', first);
         setSelectedMaterial(first);
         // Plus de sélection de type: on combine toutes les couleurs du matériau
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('❌ Erreur chargement échantillons:', err);
+      })
       .finally(() => mounted && setLoading(false));
     return () => {
       mounted = false;
@@ -42,18 +47,28 @@ export default function SamplesPage() {
 
   const typesForSelected = useMemo<SampleType[]>(() => {
     if (!selectedMaterial) return [];
-    return materials[selectedMaterial] || [];
+    const types = materials[selectedMaterial] || [];
+    console.log(`🔍 Types pour "${selectedMaterial}":`, types);
+    if (types.length > 0) {
+      console.log('🔍 Premier type:', types[0]);
+      console.log('🔍 Couleurs du premier type:', types[0].colors);
+    }
+    return types;
   }, [materials, selectedMaterial]);
 
   const colorsForMaterial = useMemo(() => {
+    console.log('🔍 Types sélectionnés:', typesForSelected);
     const list = typesForSelected.flatMap((t) => t.colors || []);
+    console.log('🎨 Liste couleurs avant déduplication:', list.length);
     // Optionnel: dédoublonner par nom si la même couleur existe dans plusieurs types
     const map = new Map<string, typeof list[number]>();
     for (const c of list) {
       const key = `${(c.name || '').toLowerCase()}|${c.image_url || c.hex || ''}`;
       if (!map.has(key)) map.set(key, c);
     }
-    return Array.from(map.values());
+    const colors = Array.from(map.values());
+    console.log('🎨 Couleurs finales:', colors.length, colors);
+    return colors;
   }, [typesForSelected]);
 
   return (

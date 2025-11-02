@@ -114,6 +114,47 @@ async function request<T>(
 }
 
 /**
+ * Fonction utilitaire pour faire des requêtes vers les API routes Next.js
+ * N'ajoute PAS de préfixe API_BASE_URL car les routes Next.js sont locales
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const defaultOptions: RequestInit = {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  };
+
+  const config = { ...defaultOptions, ...options };
+
+  try {
+    const response = await fetch(endpoint, config);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new ApiClientError(
+        data.error || `Erreur HTTP ${response.status}`,
+        response.status,
+        data
+      );
+    }
+
+    return data as T;
+  } catch (error) {
+    if (error instanceof ApiClientError) {
+      throw error;
+    }
+    throw new ApiClientError(
+      error instanceof Error ? error.message : 'Erreur réseau inconnue'
+    );
+  }
+}
+
+/**
  * API Client - Authentification utilisateur
  */
 export const authApi = {
@@ -227,7 +268,7 @@ export interface SampleType {
 
 export const samplesApi = {
   async listPublic(): Promise<Record<string, SampleType[]>> {
-    const res = await request<{ success: boolean; materials: Record<string, SampleType[]> }>(
+    const res = await apiRequest<{ success: boolean; materials: Record<string, SampleType[]> }>(
       '/api/samples'
     );
     return res.materials || {};
@@ -235,49 +276,49 @@ export const samplesApi = {
 
   // Admin endpoints
   async adminList(): Promise<SampleType[]> {
-    const res = await request<{ success: boolean; data: SampleType[] }>(
+    const res = await apiRequest<{ success: boolean; data: SampleType[] }>(
       '/api/admin/samples'
     );
     return res.data;
   },
 
   async createType(payload: { name: string; material: string; description?: string; position?: number }): Promise<{ success: boolean; id: number }> {
-    return request('/api/admin/samples', {
+    return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'create_type', ...payload }),
     });
   },
 
   async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'>>): Promise<{ success: boolean }> {
-    return request('/api/admin/samples', {
+    return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_type', id, ...payload }),
     });
   },
 
   async deleteType(id: number): Promise<{ success: boolean }> {
-    return request('/api/admin/samples', {
+    return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'delete_type', id }),
     });
   },
 
   async createColor(payload: { type_id: number; name: string; hex?: string; image_url?: string; position?: number }): Promise<{ success: boolean; id: number }> {
-    return request('/api/admin/samples', {
+    return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'create_color', ...payload }),
     });
   },
 
   async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'>>): Promise<{ success: boolean }> {
-    return request('/api/admin/samples', {
+    return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_color', id, ...payload }),
     });
   },
 
   async deleteColor(id: number): Promise<{ success: boolean }> {
-    return request('/api/admin/samples', {
+    return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'delete_color', id }),
     });

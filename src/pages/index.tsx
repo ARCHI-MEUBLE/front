@@ -77,7 +77,7 @@ const swatchByKey: Record<string, string> = {
   brun2: "#b17a55",
   brun_fonce: "#7b4b30",
   grise: "#b7b2ac",
-  jaune: "#d6a546",
+  jaune: "#D6A546",
   kaki: "#8b8a5c",
   noire: "#1f1d1b",
   orange: "#d37a4a",
