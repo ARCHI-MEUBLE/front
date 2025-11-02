@@ -51,7 +51,9 @@ export function DashboardAppointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<CalendlyAppointment | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
 
   useEffect(() => {
     loadAppointments();
@@ -123,6 +125,45 @@ export function DashboardAppointments() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleAction = async (appointmentId: number, action: 'cancel' | 'complete') => {
+    if (!confirm(`Êtes-vous sûr de vouloir ${action === 'cancel' ? 'annuler' : 'marquer comme terminé'} ce rendez-vous ?`)) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    setActionMessage('');
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/backend/api/calendly/appointment-actions.php?id=${appointmentId}&action=${action}`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'action');
+      }
+
+      const data = await response.json();
+      setActionMessage(data.message || 'Action réussie');
+
+      // Recharger les rendez-vous
+      await loadAppointments();
+
+      // Fermer le modal après 1 seconde
+      setTimeout(() => {
+        setSelectedAppointment(null);
+        setActionMessage('');
+      }, 1000);
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'action');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -304,6 +345,12 @@ export function DashboardAppointments() {
             </div>
 
             <div className="p-4 space-y-4">
+              {actionMessage && (
+                <div className="p-3 border border-green-300 bg-green-50 text-green-700 text-sm">
+                  {actionMessage}
+                </div>
+              )}
+
               {/* Client */}
               <div className="border border-gray-200 p-3">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">
@@ -401,10 +448,31 @@ export function DashboardAppointments() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-200 flex justify-end">
+            <div className="p-4 border-t border-gray-200 flex justify-between">
+              <div className="flex gap-2">
+                {selectedAppointment.status === 'scheduled' && (
+                  <>
+                    <button
+                      onClick={() => handleAction(selectedAppointment.id, 'complete')}
+                      className="px-3 py-2 text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                      disabled={isActionLoading}
+                    >
+                      ✅ Marquer terminé
+                    </button>
+                    <button
+                      onClick={() => handleAction(selectedAppointment.id, 'cancel')}
+                      className="px-3 py-2 text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                      disabled={isActionLoading}
+                    >
+                      ❌ Annuler
+                    </button>
+                  </>
+                )}
+              </div>
               <button
-                onClick={() => setSelectedAppointment(null)}
-                className="px-4 py-2 text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:border-gray-900"
+                onClick={() => !isActionLoading && setSelectedAppointment(null)}
+                className="px-4 py-2 text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:border-gray-900 disabled:opacity-50"
+                disabled={isActionLoading}
               >
                 Fermer
               </button>

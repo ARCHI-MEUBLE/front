@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import type { GetServerSideProps } from 'next';
 import { Menu } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 import Sidebar, { type DashboardSection } from '@/components/admin/Sidebar';
 import { DashboardModels } from '@/components/admin/DashboardModels';
 import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import { DashboardAppointments } from '@/components/admin/DashboardAppointments';
+import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
+import { DashboardStats } from '@/components/admin/DashboardStats';
+import { DashboardEmailTemplates } from '@/components/admin/DashboardEmailTemplates';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
@@ -34,6 +38,7 @@ export default function AdminDashboardPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const lastNotificationIdRef = useRef<number>(0);
 
   useEffect(() => {
     // Charger le nombre de notifications non lues (si session admin PHP valide)
@@ -50,6 +55,71 @@ export default function AdminDashboardPage() {
       }
     };
     loadUnread();
+
+    // Polling pour les nouvelles notifications (toutes les 30 secondes)
+    const pollNotifications = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/backend/api/admin/notifications.php?limit=5', {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.notifications && data.notifications.length > 0) {
+          const latestNotif = data.notifications[0];
+
+          // Si on a une nouvelle notification (ID plus grand que le dernier connu)
+          if (latestNotif.id > lastNotificationIdRef.current) {
+            lastNotificationIdRef.current = latestNotif.id;
+
+            // Afficher un toast uniquement si ce n'est pas la première fois
+            if (lastNotificationIdRef.current > latestNotif.id - 1) {
+              const icon = latestNotif.type === 'visio' ? '🎥' : '📞';
+              toast.success(
+                `${icon} Nouveau rendez-vous\n${latestNotif.message}`,
+                {
+                  duration: 5000,
+                  position: 'bottom-right',
+                  style: {
+                    background: '#f6f1eb',
+                    color: '#2f2a26',
+                    border: '1px solid #2f2a26',
+                  },
+                }
+              );
+            }
+
+            // Recharger le compteur
+            loadUnread();
+          }
+        }
+      } catch {
+        // ignorer
+      }
+    };
+
+    // Initialiser avec la dernière notification
+    const initLastNotification = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/backend/api/admin/notifications.php?limit=1', {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.notifications && data.notifications.length > 0) {
+          lastNotificationIdRef.current = data.notifications[0].id;
+        }
+      } catch {
+        // ignorer
+      }
+    };
+
+    initLastNotification();
+
+    // Démarrer le polling
+    const intervalId = setInterval(pollNotifications, 30000); // 30 secondes
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleSelect = (section: DashboardSection) => {
@@ -171,6 +241,9 @@ export default function AdminDashboardPage() {
             {selectedSection === 'configs' && <DashboardConfigs />}
             {selectedSection === 'orders' && <DashboardOrders />}
             {selectedSection === 'appointments' && <DashboardAppointments />}
+            {selectedSection === 'calendar' && <DashboardCalendar />}
+            {selectedSection === 'stats' && <DashboardStats />}
+            {selectedSection === 'email-templates' && <DashboardEmailTemplates />}
             {selectedSection === 'avis' && <DashboardAvis />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
@@ -181,6 +254,7 @@ export default function AdminDashboardPage() {
         onClose={() => setIsNotifOpen(false)}
         onUnreadCountChange={(c) => setUnreadCount(c)}
       />
+      <Toaster />
     </div>
   );
 }
