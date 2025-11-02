@@ -91,38 +91,21 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
           eventKeys: payload.event ? Object.keys(payload.event) : []
         });
 
-        console.log('👤 Invitee complet:', payload.invitee);
-        console.log('📅 Event complet:', payload.event);
+        console.log('👤 Invitee URI:', payload.invitee?.uri);
+        console.log('📅 Event URI:', payload.event?.uri);
 
-        // Extraire les informations avec des vérifications
+        // On envoie simplement les URIs, le backend récupérera les données via l'API Calendly
         const eventData = {
-          event_uri: payload.event?.uri || '',
           invitee_uri: payload.invitee?.uri || '',
-          name: payload.invitee?.name || 'Client',
-          email: payload.invitee?.email || '',
-          // Le nom du type d'événement peut être dans différents endroits
-          event_type: payload.event_type?.name || payload.event?.type || 'Rendez-vous',
-          start_time: payload.event?.start_time || new Date().toISOString(),
-          end_time: payload.event?.end_time || new Date().toISOString(),
-          timezone: payload.invitee?.timezone || 'Europe/Paris',
-          config_url: '',
-          notes: '',
+          event_uri: payload.event?.uri || '',
         };
 
-        // Rechercher l'URL de configuration dans les réponses
-        if (payload.questions_and_responses) {
-          payload.questions_and_responses.forEach((qr: any) => {
-            const question = qr.question?.toLowerCase() || '';
-            if (question.includes('configuration') || question.includes('lien')) {
-              eventData.config_url = qr.response || '';
-            }
-            if (question.includes('note') || question.includes('information')) {
-              eventData.notes = qr.response || '';
-            }
-          });
+        if (!eventData.invitee_uri || !eventData.event_uri) {
+          console.error('❌ URIs manquantes dans le payload Calendly');
+          return;
         }
 
-        console.log('📧 Envoi des emails de confirmation...', eventData);
+        console.log('📧 Envoi de la demande de confirmation au backend...', eventData);
 
         // Appeler notre API backend pour envoyer les emails de confirmation
         const response = await fetch('http://localhost:8000/backend/api/calendly/send-confirmation.php', {
