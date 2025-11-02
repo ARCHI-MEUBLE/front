@@ -9,6 +9,7 @@ import Image from 'next/image';
 
 interface SavedConfiguration {
   id: number;
+  template_id: number | null;
   name: string;
   prompt: string;
   config_data: any;
@@ -49,7 +50,22 @@ export default function MyConfigurations() {
       }
 
       const data = await response.json();
-      setConfigurations(data.configurations || []);
+      const items = (data.configurations || []).map((raw: any) => {
+        let parsed: any = raw;
+        // Normaliser: decoder config_string -> config_data et exposer name/thumbnails
+        try {
+          if (raw.config_string && !raw.config_data) {
+            const cfg = JSON.parse(raw.config_string);
+            parsed.config_data = cfg;
+            if (!raw.name && cfg.name) parsed.name = cfg.name;
+            if (!raw.thumbnail_url && cfg.thumbnail_url) parsed.thumbnail_url = cfg.thumbnail_url;
+          }
+        } catch (_) {}
+        // Valeur par défaut pour le nom
+        if (!parsed.name) parsed.name = `Configuration #${raw.id}`;
+        return parsed as SavedConfiguration;
+      });
+      setConfigurations(items);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
     } finally {
@@ -107,6 +123,42 @@ export default function MyConfigurations() {
     }
   };
 
+  const handleViewConfiguration = (config: SavedConfiguration) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const serialized = JSON.stringify(config);
+        window.localStorage.setItem(`archimeuble:configuration:${config.id}`, serialized);
+        window.localStorage.setItem('archimeuble:configuration:last', serialized);
+      } catch (storageError) {
+        console.warn('Impossible de sauvegarder la configuration dans localStorage:', storageError);
+      }
+    }
+
+    let templateKey: string | null = null;
+    if (config.prompt) {
+      const match = config.prompt.match(/^([A-Za-z0-9]+)\(/);
+      templateKey = match ? match[1] : null;
+    }
+
+    if (!templateKey && config.template_id) {
+      templateKey = String(config.template_id);
+    }
+
+    if (!templateKey) {
+      router.push('/configurator/select');
+      return;
+    }
+
+    const query = new URLSearchParams();
+    query.set('mode', 'edit');
+    query.set('configId', String(config.id));
+    if (config.prompt) {
+      query.set('prompt', config.prompt);
+    }
+
+    router.push(`/configurator/${templateKey}?${query.toString()}`);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { 
@@ -123,10 +175,10 @@ export default function MyConfigurations() {
           <title>Mes Configurations - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-bg-light flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-text-secondary">Chargement...</p>
           </div>
         </div>
       </>
@@ -140,27 +192,23 @@ export default function MyConfigurations() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-bg-light">
         {/* Toast Notification */}
         {toast && (
-          <div className={`fixed top-4 right-4 z-50 px-6 py-4 border ${
-            toast.type === 'success'
-              ? 'bg-green-50 border-green-300 text-green-800'
-              : 'bg-red-50 border-red-300 text-red-800'
-          } shadow-lg`}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{toast.type === 'success' ? '✅' : '❌'}</span>
-              <div>
-                <p className="font-medium text-sm">{toast.message}</p>
-                {toast.type === 'success' && (
-                  <Link href="/cart" className="text-xs underline mt-1 block">
-                    Voir le panier →
-                  </Link>
-                )}
+          <div className="fixed top-4 right-4 z-50 w-[320px]">
+            <div className={`alert ${toast.type === 'success' ? 'alert-success' : 'alert-error'} shadow-lg`}> 
+              <div className="flex items-start gap-3 w-full">
+                <span className="text-xl">{toast.type === 'success' ? '✅' : '❌'}</span>
+                <div className="flex-1">
+                  <p className="text-sm">{toast.message}</p>
+                  {toast.type === 'success' && (
+                    <Link href="/cart" className="text-xs underline mt-1 inline-block">
+                      Voir le panier →
+                    </Link>
+                  )}
+                </div>
+                <button onClick={() => setToast(null)} className="text-text-secondary hover:text-text-primary">✕</button>
               </div>
-              <button onClick={() => setToast(null)} className="ml-4 text-gray-500 hover:text-gray-700">
-                ✕
-              </button>
             </div>
           </div>
         )}
@@ -169,48 +217,39 @@ export default function MyConfigurations() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb
             items={[
-              { label: 'Accueil', href: '/' },
-              { label: 'Mes Configurations' }
+              { label: 'Mon compte', href: '/account' },
+              { label: 'Mes configurations' }
             ]}
           />
 
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Mes Configurations
+              <h1 className="text-2xl font-semibold text-text-primary">
+                Mes configurations
               </h1>
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-text-secondary">
                 Bienvenue {customer?.first_name} {customer?.last_name}
               </p>
             </div>
 
             <Link
               href="/configurator/select"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 text-sm font-medium hover:bg-gray-800"
+              className="btn-primary"
             >
               ➕ Nouvelle configuration
             </Link>
           </div>
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-            {error}
-          </div>
+          <div className="alert alert-error mb-6">{error}</div>
         )}
 
         {configurations.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📦</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Aucune configuration sauvegardée
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Créez votre première configuration pour la retrouver ici
-            </p>
-            <Link 
-              href="/configurator/select"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              Commencer une configuration
+          <div className="card p-10 text-center">
+            <div className="text-6xl mb-3">📦</div>
+            <h3 className="text-lg font-medium text-text-primary mb-1">Aucune configuration sauvegardée</h3>
+            <p className="text-text-secondary mb-5">Créez votre première configuration pour la retrouver ici</p>
+            <Link href="/configurator/select" className="btn-primary inline-flex items-center gap-2">
+              ➕ Commencer une configuration
             </Link>
           </div>
         ) : (
@@ -218,10 +257,10 @@ export default function MyConfigurations() {
             {configurations.map((config) => (
               <div 
                 key={config.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition"
+                className="card overflow-hidden hover:shadow-lg transition"
               >
                 {/* Preview 3D */}
-                <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                <div className="aspect-video bg-gradient-to-br from-bg-light to-bg-default flex items-center justify-center">
                   {config.glb_url ? (
                     <div className="w-full h-full relative">
                       {/* Utiliser model-viewer pour afficher le GLB */}
@@ -240,14 +279,14 @@ export default function MyConfigurations() {
 
                 {/* Info */}
                 <div className="p-5">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <h3 className="text-base font-medium text-text-primary mb-2">
                     {config.name}
                   </h3>
                   
-                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                  <div className="space-y-2 text-sm text-text-secondary mb-4">
                     <div className="flex items-center gap-2">
                       <span>💰</span>
-                      <span className="font-semibold text-gray-900">{config.price}€</span>
+                      <span className="font-semibold text-text-primary">{config.price}€</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span>📅</span>
@@ -267,13 +306,13 @@ export default function MyConfigurations() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleAddToCart(config.id)}
-                      className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                      className="btn-primary"
                     >
                       🛒 Ajouter
                     </button>
                     <button
-                      onClick={() => router.push(`/configurator/${config.id}`)}
-                      className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                      onClick={() => handleViewConfiguration(config)}
+                      className="btn-secondary"
                     >
                       👁️ Voir
                     </button>
@@ -281,7 +320,7 @@ export default function MyConfigurations() {
 
                   <button
                     onClick={() => handleDelete(config.id)}
-                    className="w-full mt-2 px-4 py-2 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 transition"
+                    className="w-full mt-2 btn-secondary text-error hover:bg-error-light"
                   >
                     🗑️ Supprimer
                   </button>

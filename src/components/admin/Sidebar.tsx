@@ -1,7 +1,7 @@
 import { useMemo, type ComponentType } from 'react';
-import { Boxes, FolderKanban, Layers3, LogOut, ShieldHalf, ShoppingCart, X, MessageSquare, Calendar, CalendarDays } from 'lucide-react';
+import { Boxes, FolderKanban, Layers3, LogOut, ShieldHalf, ShoppingCart, X, MessageSquare, Calendar, CalendarDays, Palette } from 'lucide-react';
 
-export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'orders' | 'appointments' | 'calendar' | 'avis' | 'password';
+export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'orders' | 'appointments' | 'calendar' | 'avis' | 'samples' | 'password';
 
 interface SidebarProps {
   selectedSection: DashboardSection;
@@ -20,6 +20,7 @@ const navItems: { id: DashboardSection; label: string; icon: ComponentType<{ cla
   { id: 'appointments', label: 'Rendez-vous Calendly', icon: Calendar },
   { id: 'calendar', label: 'Calendrier Visuel', icon: CalendarDays },
   { id: 'avis', label: 'Avis clients', icon: MessageSquare },
+  { id: 'samples', label: 'Échantillons de façades', icon: Palette },
   { id: 'password', label: 'Changer le mot de passe', icon: ShieldHalf },
 ];
 

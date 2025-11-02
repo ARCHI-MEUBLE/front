@@ -12,6 +12,7 @@ import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import { DashboardAppointments } from '@/components/admin/DashboardAppointments';
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
+import { DashboardSamples } from '@/components/admin/DashboardSamples';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
 import NotificationsModal from '@/components/admin/NotificationsModal';
@@ -210,6 +211,14 @@ export default function AdminDashboardPage() {
               </button>
               <button
                 type="button"
+                onClick={() => router.push('/admin/samples')}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <span>🎨</span>
+                <span>Échantillons</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsNotifOpen(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
@@ -241,6 +250,7 @@ export default function AdminDashboardPage() {
             {selectedSection === 'appointments' && <DashboardAppointments />}
             {selectedSection === 'calendar' && <DashboardCalendar />}
             {selectedSection === 'avis' && <DashboardAvis />}
+            {selectedSection === 'samples' && <DashboardSamples />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>

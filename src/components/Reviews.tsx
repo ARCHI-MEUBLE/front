@@ -112,29 +112,29 @@ export function Reviews() {
   };
 
   return (
-    <div className="w-full bg-gradient-to-b from-white to-gray-50">
-      <div className="mx-auto max-w-6xl px-4 py-12">
+    <div className="w-full">
+      <div className="section-container-sm">
         {/* Hero Section */}
-        <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-gray-900">
+        <div className="mb-10 text-center">
+          <h1 className="heading-serif mb-3 text-4xl font-semibold text-ink">
             Avis de nos clients
           </h1>
-          <p className="mx-auto max-w-2xl text-lg text-gray-600">
+          <p className="mx-auto max-w-2xl text-base text-text-secondary">
             Découvrez ce que nos clients pensent de nos meubles sur mesure
           </p>
           
           {/* Stats rapides */}
           {reviews.length > 0 && (
-            <div className="mt-8 flex justify-center gap-8">
-              <div className="rounded-lg bg-white px-6 py-4 shadow-sm">
-                <div className="text-3xl font-bold text-amber-600">{reviews.length}</div>
-                <div className="text-sm text-gray-600">Avis clients</div>
+            <div className="mt-8 flex justify-center gap-6">
+              <div className="card px-6 py-4">
+                <div className="text-3xl font-semibold text-primary">{reviews.length}</div>
+                <div className="text-sm text-text-secondary">Avis clients</div>
               </div>
-              <div className="rounded-lg bg-white px-6 py-4 shadow-sm">
-                <div className="text-3xl font-bold text-amber-600">
+              <div className="card px-6 py-4">
+                <div className="text-3xl font-semibold text-primary">
                   {(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)}
                 </div>
-                <div className="text-sm text-gray-600">Note moyenne</div>
+                <div className="text-sm text-text-secondary">Note moyenne</div>
               </div>
             </div>
           )}
@@ -143,13 +143,13 @@ export function Reviews() {
         {/* Review form or login prompt */}
 
         {loadingSession ? (
-          <div className="mb-12 text-center text-gray-600">Chargement...</div>
+          <div className="mb-12 text-center text-text-secondary">Chargement...</div>
         ) : sessionUser ? (
           showForm ? (
             <div className="mb-12">
               <button
                 type="button"
-                className="mb-4 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                className="mb-4 btn-secondary"
                 onClick={() => setShowForm(false)}
               >
                 Annuler
@@ -160,7 +160,7 @@ export function Reviews() {
             <div className="mb-12 flex justify-center">
               <button
                 type="button"
-                className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-8 py-3 text-lg font-semibold text-white shadow-lg transition hover:from-amber-600 hover:to-amber-700 hover:shadow-xl"
+                className="btn-primary px-8 py-3 text-base"
                 onClick={() => setShowForm(true)}
               >
                 Laisser un avis
@@ -168,20 +168,20 @@ export function Reviews() {
             </div>
           )
         ) : (
-          <div className="mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-amber-50 to-white shadow-md">
-            <div className="flex flex-col items-center gap-6 p-8 sm:flex-row sm:justify-between">
+          <div className="mb-12 card">
+            <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
               <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg">
-                  <User className="h-8 w-8" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-sm">
+                  <User className="h-7 w-7" />
                 </div>
                 <div className="text-center sm:text-left">
-                  <div className="text-lg font-semibold text-gray-900">Partagez votre expérience</div>
-                  <div className="mt-1 text-sm text-gray-600">Connectez-vous pour laisser un avis et des photos</div>
+                  <div className="text-base font-semibold text-ink">Partagez votre expérience</div>
+                  <div className="mt-1 text-sm text-text-secondary">Connectez-vous pour laisser un avis et des photos</div>
                 </div>
               </div>
               <Link 
                 href="/login" 
-                className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-amber-600 hover:to-amber-700 hover:shadow-xl"
+                className="btn-primary"
               >
                 Se connecter
               </Link>
@@ -191,8 +191,8 @@ export function Reviews() {
 
         {/* Reviews list */}
         {reviews.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center shadow-sm">
-            <p className="text-gray-500">Soyez le premier à laisser un avis !</p>
+          <div className="card p-12 text-center">
+            <p className="text-text-secondary">Soyez le premier à laisser un avis !</p>
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2">
@@ -208,26 +208,26 @@ export function Reviews() {
 
 function ReviewItem({ review }: { review: Review }) {
   return (
-    <article className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
+    <article className="group overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm transition-all duration-300 hover:shadow-md">
       <div className="p-6">
         {/* Header avec avatar et info */}
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md">
-            <User className="h-7 w-7" />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm">
+            <User className="h-6 w-6" />
           </div>
           <div className="flex-1">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">{review.authorName}</h3>
-                <p className="text-sm text-gray-500">{formatDate(review.date)}</p>
+                <h3 className="text-base font-semibold text-ink">{review.authorName}</h3>
+                <p className="text-xs text-text-tertiary">{formatDate(review.date)}</p>
               </div>
               {/* Étoiles */}
               <div className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => (
                   <svg
                     key={i}
-                    className={`h-5 w-5 ${
-                      i < review.rating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 text-gray-200'
+                    className={`h-4 w-4 ${
+                      i < review.rating ? 'fill-primary text-primary' : 'fill-border-light text-border-light'
                     }`}
                     viewBox="0 0 20 20"
                   >
@@ -240,12 +240,12 @@ function ReviewItem({ review }: { review: Review }) {
         </div>
 
         {/* Texte de l'avis */}
-        <div className="mt-4 rounded-lg bg-gray-50 p-4">
-          <p className="text-gray-700 leading-relaxed">{review.text}</p>
+        <div className="mt-4 rounded-2xl bg-bg-light p-4">
+          <p className="leading-relaxed text-text-primary">{review.text}</p>
         </div>
 
         {/* Badge vérifié (optionnel) */}
-        <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
+        <div className="mt-4 flex items-center gap-2 text-xs text-success">
           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
@@ -295,16 +295,18 @@ function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string)
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
-      <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4">
-        <h3 className="text-lg font-semibold text-white">Partagez votre expérience</h3>
-        <p className="text-sm text-amber-100">Connecté en tant que <strong>{authorName}</strong></p>
+    <form onSubmit={handleSubmit} className="mb-12 card">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-ink">Partagez votre expérience</h3>
+          <p className="text-sm text-text-secondary">Connecté en tant que <strong>{authorName}</strong></p>
+        </div>
       </div>
-      
-      <div className="p-6 space-y-5">
+
+      <div className="space-y-5">
         {/* Rating interactif */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Votre note</label>
+          <label className="label">Votre note</label>
           <div className="flex gap-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -318,8 +320,8 @@ function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string)
                 <svg
                   className={`h-8 w-8 ${
                     star <= (hoveredRating || rating)
-                      ? 'fill-amber-400 text-amber-400'
-                      : 'fill-gray-200 text-gray-200'
+                      ? 'fill-primary text-primary'
+                      : 'fill-border-light text-border-light'
                   } transition-colors`}
                   viewBox="0 0 20 20"
                 >
@@ -327,7 +329,7 @@ function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string)
                 </svg>
               </button>
             ))}
-            <span className="ml-2 text-sm font-medium text-gray-600">
+            <span className="ml-2 text-sm font-medium text-text-secondary">
               {rating === 5 ? 'Excellent' : rating === 4 ? 'Très bien' : rating === 3 ? 'Bien' : rating === 2 ? 'Moyen' : 'Mauvais'}
             </span>
           </div>
@@ -335,7 +337,7 @@ function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string)
 
         {/* Textarea */}
         <div>
-          <label htmlFor="review-text" className="mb-2 block text-sm font-medium text-gray-700">
+          <label htmlFor="review-text" className="label">
             Votre avis
           </label>
           <textarea
@@ -344,9 +346,9 @@ function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string)
             onChange={(e) => setText(e.target.value)}
             rows={5}
             placeholder="Racontez-nous votre expérience avec nos meubles..."
-            className="w-full resize-none rounded-xl border border-gray-300 p-4 text-sm transition focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            className="textarea resize-none"
           />
-          <div className="mt-2 text-right text-xs text-gray-500">{text.length} caractères</div>
+          <div className="mt-2 text-right text-xs text-text-tertiary">{text.length} caractères</div>
         </div>
 
         {/* Bouton submit */}
@@ -354,7 +356,7 @@ function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string)
           <button
             type="submit"
             disabled={submitting || !text.trim()}
-            className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3 font-semibold text-white shadow-lg transition hover:from-amber-600 hover:to-amber-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-primary"
           >
             {submitting ? (
               <span className="flex items-center gap-2">

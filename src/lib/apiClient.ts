@@ -114,6 +114,47 @@ async function request<T>(
 }
 
 /**
+ * Fonction utilitaire pour faire des requêtes vers les API routes Next.js
+ * N'ajoute PAS de préfixe API_BASE_URL car les routes Next.js sont locales
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const defaultOptions: RequestInit = {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  };
+
+  const config = { ...defaultOptions, ...options };
+
+  try {
+    const response = await fetch(endpoint, config);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new ApiClientError(
+        data.error || `Erreur HTTP ${response.status}`,
+        response.status,
+        data
+      );
+    }
+
+    return data as T;
+  } catch (error) {
+    if (error instanceof ApiClientError) {
+      throw error;
+    }
+    throw new ApiClientError(
+      error instanceof Error ? error.message : 'Erreur réseau inconnue'
+    );
+  }
+}
+
+/**
  * API Client - Authentification utilisateur
  */
 export const authApi = {
@@ -201,6 +242,104 @@ export const adminAuthApi = {
     return request<{ admin: Admin }>('/api/admin-auth/session');
   },
 };
+
+/**
+ * API Client - Échantillons
+ */
+export interface SampleColor {
+  id: number;
+  type_id: number;
+  name: string;
+  hex: string | null;
+  image_url: string | null;
+  active: number;
+  position: number;
+}
+
+export interface SampleType {
+  id: number;
+  name: string;
+  material: string;
+  description: string | null;
+  active: number;
+  position: number;
+  colors: SampleColor[];
+}
+
+export const samplesApi = {
+  async listPublic(): Promise<Record<string, SampleType[]>> {
+    const res = await apiRequest<{ success: boolean; materials: Record<string, SampleType[]> }>(
+      '/api/samples'
+    );
+    return res.materials || {};
+  },
+
+  // Admin endpoints
+  async adminList(): Promise<SampleType[]> {
+    const res = await apiRequest<{ success: boolean; data: SampleType[] }>(
+      '/api/admin/samples'
+    );
+    return res.data;
+  },
+
+  async createType(payload: { name: string; material: string; description?: string; position?: number }): Promise<{ success: boolean; id: number }> {
+    return apiRequest('/api/admin/samples', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_type', ...payload }),
+    });
+  },
+
+  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'>>): Promise<{ success: boolean }> {
+    return apiRequest('/api/admin/samples', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update_type', id, ...payload }),
+    });
+  },
+
+  async deleteType(id: number): Promise<{ success: boolean }> {
+    return apiRequest('/api/admin/samples', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete_type', id }),
+    });
+  },
+
+  async createColor(payload: { type_id: number; name: string; hex?: string; image_url?: string; position?: number }): Promise<{ success: boolean; id: number }> {
+    return apiRequest('/api/admin/samples', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_color', ...payload }),
+    });
+  },
+
+  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'>>): Promise<{ success: boolean }> {
+    return apiRequest('/api/admin/samples', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update_color', id, ...payload }),
+    });
+  },
+
+  async deleteColor(id: number): Promise<{ success: boolean }> {
+    return apiRequest('/api/admin/samples', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete_color', id }),
+    });
+  },
+};
+
+/** Upload utilitaire pour images (admin) */
+export async function uploadImage(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+  const fileType = file.type || 'image/jpeg';
+
+  const res = await request<{ success: boolean; imagePath: string }>('/api/upload', {
+    method: 'POST',
+    body: JSON.stringify({ fileName: file.name, fileType, data: base64 }),
+  });
+  return res.imagePath;
+}
 
 /**
  * API Client - Modèles de meubles
@@ -347,6 +486,7 @@ export const apiClient = {
   models: modelsApi,
   configurations: configurationsApi,
   generate: generateApi,
+  samples: samplesApi,
 };
 
 export default apiClient;
