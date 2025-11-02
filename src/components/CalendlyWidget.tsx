@@ -27,6 +27,23 @@ interface CalendlyWidgetProps {
 }
 
 /**
+ * Interface pour l'événement Calendly
+ */
+interface CalendlyEvent {
+  event: string;
+  payload: {
+    event: {
+      uri: string;
+    };
+    invitee: {
+      name: string;
+      email: string;
+      uri: string;
+    };
+  };
+}
+
+/**
  * Composant d'intégration Calendly pour la prise de rendez-vous
  *
  * Affiche un widget Calendly inline avec un état de chargement
@@ -45,6 +62,74 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
     setIsMounted(true);
     // Log pour debugging
     console.log('🔍 Calendly Widget URL:', calendlyUrl);
+
+    // Écouter les événements Calendly
+    const handleCalendlyEvent = async (e: MessageEvent) => {
+      // Vérifier que c'est bien un événement Calendly
+      if (!e.data.event || e.data.event !== 'calendly.event_scheduled') {
+        return;
+      }
+
+      console.log('✅ Rendez-vous planifié sur Calendly', e.data);
+
+      try {
+        const payload = e.data.payload;
+
+        // Extraire les informations de l'événement
+        const eventData = {
+          event_uri: payload.event.uri,
+          invitee_uri: payload.invitee.uri,
+          name: payload.invitee.name || 'Client',
+          email: payload.invitee.email || '',
+          event_type: payload.event_type.name || 'Rendez-vous',
+          start_time: payload.event.start_time,
+          end_time: payload.event.end_time,
+          timezone: payload.invitee.timezone || 'Europe/Paris',
+          config_url: '',
+          notes: '',
+        };
+
+        // Rechercher l'URL de configuration dans les réponses
+        if (payload.questions_and_responses) {
+          payload.questions_and_responses.forEach((qr: any) => {
+            const question = qr.question?.toLowerCase() || '';
+            if (question.includes('configuration') || question.includes('lien')) {
+              eventData.config_url = qr.response || '';
+            }
+            if (question.includes('note') || question.includes('information')) {
+              eventData.notes = qr.response || '';
+            }
+          });
+        }
+
+        console.log('📧 Envoi des emails de confirmation...', eventData);
+
+        // Appeler notre API backend pour envoyer les emails de confirmation
+        const response = await fetch('http://localhost:8000/backend/api/calendly/send-confirmation.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(eventData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log('✅ Emails de confirmation envoyés avec succès', result);
+        } else {
+          console.error('❌ Erreur lors de l\'envoi des emails', result);
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'appel API:', error);
+      }
+    };
+
+    window.addEventListener('message', handleCalendlyEvent);
+
+    return () => {
+      window.removeEventListener('message', handleCalendlyEvent);
+    };
   }, [calendlyUrl]);
 
   if (!isMounted) {
