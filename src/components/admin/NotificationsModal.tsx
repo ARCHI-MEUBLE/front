@@ -120,7 +120,10 @@ export default function NotificationsModal({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // SQLite CURRENT_TIMESTAMP retourne une date UTC au format 'YYYY-MM-DD HH:MM:SS'
+    // On ajoute 'Z' pour indiquer explicitement qu'elle est en UTC
+    const utcDateString = dateString.includes('Z') ? dateString : dateString.replace(' ', 'T') + 'Z';
+    const date = new Date(utcDateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
