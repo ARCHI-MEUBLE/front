@@ -70,7 +70,8 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
         return;
       }
 
-      console.log('✅ Rendez-vous planifié sur Calendly - Payload complet:', JSON.stringify(e.data, null, 2));
+      console.log('✅ Rendez-vous planifié sur Calendly - Payload complet:', e.data);
+      console.log('📋 Payload stringifié:', JSON.stringify(e.data, null, 2));
 
       try {
         const payload = e.data.payload;
@@ -85,8 +86,13 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
           hasEvent: !!payload.event,
           hasInvitee: !!payload.invitee,
           hasEventType: !!payload.event_type,
-          payloadKeys: Object.keys(payload)
+          payloadKeys: Object.keys(payload),
+          inviteeKeys: payload.invitee ? Object.keys(payload.invitee) : [],
+          eventKeys: payload.event ? Object.keys(payload.event) : []
         });
+
+        console.log('👤 Invitee complet:', payload.invitee);
+        console.log('📅 Event complet:', payload.event);
 
         // Extraire les informations avec des vérifications
         const eventData = {
