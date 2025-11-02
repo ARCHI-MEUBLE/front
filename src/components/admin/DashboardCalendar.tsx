@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Calendar, dateFnsLocalizer, Views, SlotInfo } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 const locales = {
   'fr': fr,
@@ -15,6 +17,9 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
+
+// Wrap Calendar with Drag and Drop
+const DnDCalendar = withDragAndDrop(Calendar);
 
 interface CalendlyAppointment {
   id: number;
@@ -231,7 +236,7 @@ export function DashboardCalendar() {
 
       {/* Calendrier */}
       <div className="border border-gray-200 bg-white p-4" style={{ height: '700px' }}>
-        <Calendar
+        <DnDCalendar
           localizer={localizer}
           events={events}
           startAccessor="start"
@@ -245,7 +250,6 @@ export function DashboardCalendar() {
           date={date}
           onNavigate={setDate}
           eventPropGetter={eventStyleGetter}
-          draggableAccessor={() => true}
           onEventDrop={handleEventDrop}
           resizable={false}
           messages={{
