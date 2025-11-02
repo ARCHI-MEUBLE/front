@@ -1,16 +1,78 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import Viewer from '@/components/configurator/Viewer';
 import Controls from '@/components/configurator/Controls';
 import Price from '@/components/configurator/Price';
-import StylePresets from '@/components/configurator/StylePresets';
 import AuthModal from '@/components/auth/AuthModal';
-import { apiClient, type FurnitureModel } from '@/lib/apiClient';
-import { applyStylePreset, type StylePreset } from '@/utils/stylePresets';
+import { apiClient, type FurnitureModel, type SampleType, type SampleColor } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
+
+const MATERIAL_ORDER = [
+  'Aggloméré',
+  'MDF + revêtement (mélaminé)',
+  'Plaqué bois'
+];
+
+const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
+  agglomere: 'Aggloméré',
+  mdf_melamine: 'MDF + revêtement (mélaminé)',
+  plaque_bois: 'Plaqué bois'
+};
+
+const MATERIAL_ABBR_BY_KEY: Record<string, string> = {
+  agglomere: 'Ag',
+  mdf_melamine: 'Mm',
+  plaque_bois: 'Pl'
+};
+
+const BESTSELLER_COLOR_LABELS = new Set([
+  'Blanc',
+  'Blanc | Bord contreplaqué',
+  'Chêne'
+]);
+
+const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
+  agglomere: 0,
+  mdf_melamine: 70,
+  plaque_bois: 140
+};
+
+const DEFAULT_COLOR_HEX = '#D8C7A1';
+
+function normalizeMaterialKey(value: string | null | undefined): string {
+  if (!value) {
+    return 'agglomere';
+  }
+
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (normalized.includes('agglom')) {
+    return 'agglomere';
+  }
+  if (normalized.includes('mdf') || normalized.includes('melamine')) {
+    return 'mdf_melamine';
+  }
+  if (normalized.includes('plaque') || normalized.includes('bois')) {
+    return 'plaque_bois';
+  }
+  if (normalized.includes('brillant') || normalized.includes('satin')) {
+    return 'mdf_melamine';
+  }
+  if (normalized.includes('mat')) {
+    return 'agglomere';
+  }
+
+  return 'agglomere';
+}
+
+function materialLabelFromKey(key: string): string {
+  return MATERIAL_LABEL_BY_KEY[key] || key;
+}
 
 export default function ConfiguratorPage() {
   const router = useRouter();
@@ -21,6 +83,11 @@ export default function ConfiguratorPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
+  const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
+  const [editingConfigName, setEditingConfigName] = useState<string>('');
+  const [initialConfigApplied, setInitialConfigApplied] = useState(true);
+  const [skipNextAutoGenerate, setSkipNextAutoGenerate] = useState(false);
+  const isEditing = Boolean(editingConfigId);
 
   // Prompt du template (comme dans configurator.js)
   const [templatePrompt, setTemplatePrompt] = useState<string | null>(null);
@@ -30,15 +97,18 @@ export default function ConfiguratorPage() {
   const [height, setHeight] = useState(730);
   const [depth, setDepth] = useState(500);
   const [socle, setSocle] = useState('none');
-  const [finish, setFinish] = useState('mat');
-  const [color, setColor] = useState('#FFFFFF');
-  const [colorLabel, setColorLabel] = useState('Blanc');
+  const [finish, setFinish] = useState('Aggloméré');
+  const [color, setColor] = useState(DEFAULT_COLOR_HEX);
+  const [colorLabel, setColorLabel] = useState('Aggloméré naturel');
+  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
+  const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
+  const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
+  const [materialsLoading, setMaterialsLoading] = useState(false);
   const [price, setPrice] = useState(899);
   const [doorsOpen, setDoorsOpen] = useState(true); // true = avec portes, false = sans portes
   
   // Mode EZ/Expert
   const [isExpertMode, setIsExpertMode] = useState(false);
-  const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(undefined);
   const [customPrompt, setCustomPrompt] = useState(''); // Pour le mode Expert
 
   // Nouvelles options Mode EZ
@@ -74,6 +144,97 @@ export default function ConfiguratorPage() {
     f: false,  // Fond (désactivé par défaut)
   });
 
+  const orderedMaterialLabels = useMemo(() => {
+    const collected = new Set<string>();
+    const ordered: string[] = [];
+
+    for (const label of MATERIAL_ORDER) {
+      if (!collected.has(label)) {
+        ordered.push(label);
+        collected.add(label);
+      }
+    }
+
+    Object.keys(materialsMap)
+      .filter((label) => !collected.has(label))
+      .sort((a, b) => a.localeCompare(b, 'fr'))
+      .forEach((label) => {
+        ordered.push(label);
+        collected.add(label);
+      });
+
+    return ordered;
+  }, [materialsMap]);
+
+  const selectedMaterialKey = useMemo(() => normalizeMaterialKey(finish), [finish]);
+
+  const selectedMaterialLabel = useMemo(
+    () => materialLabelFromKey(selectedMaterialKey),
+    [selectedMaterialKey]
+  );
+
+  const materialTypesForSelection = useMemo<SampleType[]>(() => {
+    if (!selectedMaterialLabel) {
+      return [];
+    }
+    return materialsMap[selectedMaterialLabel] || [];
+  }, [materialsMap, selectedMaterialLabel]);
+
+  const colorsForMaterial = useMemo<SampleColor[]>(() => {
+    const list: SampleColor[] = [];
+    const seen = new Set<number>();
+    for (const type of materialTypesForSelection) {
+      for (const colorOption of type.colors || []) {
+        if (seen.has(colorOption.id)) {
+          continue;
+        }
+        seen.add(colorOption.id);
+        list.push(colorOption);
+      }
+    }
+    return list;
+  }, [materialTypesForSelection]);
+
+  const selectedColorOption = useMemo<SampleColor | null>(() => {
+    if (selectedColorId == null) {
+      return null;
+    }
+    return colorsForMaterial.find((option) => option.id === selectedColorId) || null;
+  }, [colorsForMaterial, selectedColorId]);
+
+  useEffect(() => {
+    if (!colorsForMaterial.length) {
+      if (selectedColorId !== null) {
+        setSelectedColorId(null);
+      }
+      return;
+    }
+
+    if (selectedColorId !== null && colorsForMaterial.some((option) => option.id === selectedColorId)) {
+      return;
+    }
+
+    const fallback = colorsForMaterial.find((option) => option.name && option.name.toLowerCase() === colorLabel.toLowerCase());
+    const nextColor = fallback || colorsForMaterial[0];
+    setSelectedColorId(nextColor.id);
+  }, [colorsForMaterial, selectedColorId, colorLabel]);
+
+  useEffect(() => {
+    if (selectedColorOption) {
+      setColor(selectedColorOption.hex || DEFAULT_COLOR_HEX);
+      setColorLabel(selectedColorOption.name || selectedMaterialLabel);
+      setSelectedColorImage(selectedColorOption.image_url || null);
+      return;
+    }
+
+    // Aucun échantillon sélectionné : conserver la couleur actuelle mais mettre à jour l'étiquette matériau
+    setColor(DEFAULT_COLOR_HEX);
+    setColorLabel(selectedMaterialLabel);
+    if (!colorsForMaterial.length) {
+      setSelectedColorImage(null);
+    }
+  }, [selectedColorOption, colorsForMaterial.length, selectedMaterialLabel]);
+
   // Auth modal
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -95,6 +256,58 @@ export default function ConfiguratorPage() {
     };
     checkAdminSession();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMaterials = async () => {
+      try {
+        setMaterialsLoading(true);
+        const data = await apiClient.samples.listPublic();
+        if (cancelled) {
+          return;
+        }
+        setMaterialsMap(data);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Impossible de récupérer les matériaux disponibles', error);
+        }
+      } finally {
+        if (!cancelled) {
+          setMaterialsLoading(false);
+        }
+      }
+    };
+
+    loadMaterials();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+
+    const modeParam = Array.isArray(router.query.mode) ? router.query.mode[0] : router.query.mode;
+    const configIdParam = Array.isArray(router.query.configId) ? router.query.configId[0] : router.query.configId;
+
+    if (modeParam === 'edit' && configIdParam) {
+      const parsedId = Number(configIdParam);
+      if (!Number.isNaN(parsedId)) {
+        setEditingConfigId(parsedId);
+        setInitialConfigApplied(false);
+        setSkipNextAutoGenerate(false);
+      }
+    } else {
+      setEditingConfigId(null);
+      setEditingConfigName('');
+      setInitialConfigApplied(true);
+      setSkipNextAutoGenerate(false);
+    }
+  }, [router.isReady, router.query.mode, router.query.configId]);
 
   // loadModel: récupère un modèle depuis l'API si id numérique,
   // sinon utilise le paramètre prompt fourni (par ex. depuis la page /configurator/select)
@@ -146,21 +359,282 @@ export default function ConfiguratorPage() {
     }
   }, [id, loadModel]);
 
-  const parsePromptToConfig = (prompt: string) => {
-    // Format: M1(1700,500,730)EbFH3(F,T,F)
-    const dimensionsMatch = prompt.match(/\((\d+),(\d+),(\d+)\)/);
-
-    if (dimensionsMatch) {
-      const largeur = parseInt(dimensionsMatch[1]);
-      const profondeur = parseInt(dimensionsMatch[2]);
-      const hauteur = parseInt(dimensionsMatch[3]);
-
-      // Calculer les modules depuis la largeur (500mm par module)
-      setModules(Math.round(largeur / 500));
-      setHeight(hauteur);
+  const parsePromptToConfig = useCallback((prompt: string) => {
+    // Format attendu (exemples):
+    // M2(2000,450,700)EbFP2H3(T,,)D, S2, etc.
+    // 1) Dimensions
+    const dims = prompt.match(/\((\d+),(\d+),(\d+)\)/);
+    if (dims) {
+      const largeur = parseInt(dims[1]);
+      const profondeur = parseInt(dims[2]);
+      const hauteur = parseInt(dims[3]);
+      setModules(Math.max(1, Math.round(largeur / 500)));
       setDepth(profondeur);
+      setHeight(hauteur);
     }
-  };
+
+    // 2) Planches de base: EbF = toutes, sinon lettres individuelles
+    const compact = prompt.replace(/\s+/g, '');
+    if (compact.includes('EbF')) {
+      setBasePlanches({ b: true, h: true, g: true, d: true, f: true });
+    } else {
+      setBasePlanches({
+        b: /b/.test(compact),
+        h: /h/.test(compact),
+        g: /g/.test(compact),
+        d: /d/.test(compact),
+        f: /F/.test(compact),
+      });
+    }
+
+    // 3) Socle: S (metal) / S2 (wood)
+    if (/S2/.test(compact)) setSocle('wood');
+    else if (/S(?!\d)/.test(compact)) setSocle('metal');
+    else setSocle('none');
+
+    // 4) Portes: P / P2
+    if (/P2/.test(compact)) setDoors(2);
+    else if (/P(?!\d)/.test(compact)) setDoors(1);
+    else setDoors(0);
+
+    // 5) Structure Hn(...): shelves et drawers (T)
+    const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+    if (hStruct) {
+      const n = parseInt(hStruct[1]);
+      const inner = hStruct[2];
+      const drawersCount = (inner.match(/T/g) || []).length;
+      setDrawers(drawersCount);
+      setShelves(Math.max(0, n - 1));
+    } else {
+      setShelves(0);
+      setDrawers(0);
+    }
+
+    // 6) Penderie/Dressing
+    setHasDressing(/D/.test(compact));
+  }, []);
+
+  useEffect(() => {
+    if (!router.isReady || !editingConfigId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveGlbUrl = (url: string | null | undefined) => {
+      if (!url || typeof url !== 'string') {
+        return null;
+      }
+
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      return `${baseUrl}/${url}`;
+    };
+
+    const loadSavedConfiguration = async () => {
+      let configuration: any = null;
+
+      if (typeof window !== 'undefined') {
+        const stored =
+          window.localStorage.getItem(`archimeuble:configuration:${editingConfigId}`) ??
+          window.localStorage.getItem('archimeuble:configuration:last');
+
+        if (stored) {
+          try {
+            configuration = JSON.parse(stored);
+          } catch (error) {
+            console.warn('Impossible de parser la configuration stockée', error);
+          }
+        }
+      }
+
+      if (!configuration) {
+        try {
+          const response = await fetch(`http://localhost:8000/backend/api/configurations/list.php?id=${editingConfigId}`, {
+            credentials: 'include'
+          });
+
+          if (response.ok) {
+            const payload = await response.json();
+            configuration = payload.configuration ?? null;
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement de la configuration existante:', error);
+        }
+      }
+
+      if (!configuration) {
+        setInitialConfigApplied(true);
+        return;
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      let configData = configuration.config_data ?? null;
+      if (!configData && configuration.config_string) {
+        try {
+          configData = JSON.parse(configuration.config_string);
+        } catch (error) {
+          console.warn('Configuration config_string invalide', error);
+        }
+      }
+
+      const promptSource = configuration.prompt || (typeof router.query.prompt === 'string' ? router.query.prompt : null);
+      if (promptSource) {
+        setTemplatePrompt(promptSource);
+        parsePromptToConfig(promptSource);
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      if (configData && typeof configData === 'object') {
+        if (configData.dimensions) {
+          if (typeof configData.dimensions.modules === 'number' && configData.dimensions.modules > 0) {
+            setModules(configData.dimensions.modules);
+          } else if (typeof configData.dimensions.width === 'number') {
+            setModules(Math.max(1, Math.round(configData.dimensions.width / 500)));
+          }
+
+          if (typeof configData.dimensions.depth === 'number') {
+            setDepth(configData.dimensions.depth);
+          }
+
+          if (typeof configData.dimensions.height === 'number') {
+            setHeight(configData.dimensions.height);
+          }
+        }
+
+        if (configData.styling) {
+          const savedMaterialKey = normalizeMaterialKey(
+            (configData.styling as any).materialKey ||
+            (configData.styling as any).material ||
+            configData.styling.finish ||
+            null
+          );
+          const savedMaterialLabel = typeof (configData.styling as any).materialLabel === 'string'
+            ? (configData.styling as any).materialLabel
+            : materialLabelFromKey(savedMaterialKey);
+          setFinish(savedMaterialLabel);
+
+          if (configData.styling.colorId !== undefined && configData.styling.colorId !== null) {
+            const numericColorId = Number(configData.styling.colorId);
+            if (!Number.isNaN(numericColorId)) {
+              setSelectedColorId(numericColorId);
+            }
+          }
+
+          if (typeof configData.styling.color === 'string') {
+            setColor(configData.styling.color);
+          }
+
+          if (typeof configData.styling.colorLabel === 'string') {
+            setColorLabel(configData.styling.colorLabel);
+          } else {
+            setColorLabel(savedMaterialLabel);
+          }
+
+          if (typeof (configData.styling as any).colorImage === 'string') {
+            setSelectedColorImage((configData.styling as any).colorImage);
+          }
+
+          if (typeof configData.styling.socle === 'string') {
+            setSocle(configData.styling.socle);
+          }
+        }
+
+        if (configData.features) {
+          if (typeof configData.features.doorsOpen === 'boolean') {
+            setDoorsOpen(configData.features.doorsOpen);
+          }
+          if (typeof configData.features.doors === 'number') {
+            setDoors(configData.features.doors);
+          }
+          if (typeof configData.features.drawers === 'number') {
+            setDrawers(configData.features.drawers);
+          }
+          if (typeof configData.features.shelves === 'number') {
+            setShelves(configData.features.shelves);
+          }
+          if (typeof configData.features.hasDressing === 'boolean') {
+            setHasDressing(configData.features.hasDressing);
+          }
+        }
+
+        const defaultBasePlanches = { b: false, h: true, g: true, d: true, f: false };
+        if (configData.basePlanches) {
+          setBasePlanches({
+            b: typeof configData.basePlanches.b === 'boolean' ? configData.basePlanches.b : defaultBasePlanches.b,
+            h: typeof configData.basePlanches.h === 'boolean' ? configData.basePlanches.h : defaultBasePlanches.h,
+            g: typeof configData.basePlanches.g === 'boolean' ? configData.basePlanches.g : defaultBasePlanches.g,
+            d: typeof configData.basePlanches.d === 'boolean' ? configData.basePlanches.d : defaultBasePlanches.d,
+            f: typeof configData.basePlanches.f === 'boolean' ? configData.basePlanches.f : defaultBasePlanches.f
+          });
+        } else {
+          setBasePlanches(defaultBasePlanches);
+        }
+
+        if (configData.mode) {
+          setIsExpertMode(!!configData.mode.isExpertMode);
+          setUseAdvancedMode(!!configData.mode.useAdvancedMode);
+
+          if (configData.mode.isExpertMode && promptSource) {
+            setCustomPrompt(promptSource);
+          }
+        } else {
+          setIsExpertMode(false);
+          setUseAdvancedMode(false);
+        }
+
+        if (configData.advancedZones) {
+          setRootZone(configData.advancedZones);
+        } else {
+          setRootZone({
+            id: 'root',
+            type: 'leaf',
+            content: 'empty'
+          });
+        }
+      }
+
+        if (cancelled) {
+          return;
+        }
+
+      if (typeof configuration.price !== 'undefined') {
+        setPrice(Number(configuration.price));
+      }
+
+      const derivedName = (configData && configData.name) ? String(configData.name) : (configuration.name ?? `Configuration #${configuration.id}`);
+      setEditingConfigName(derivedName);
+
+      const resolvedGlb = resolveGlbUrl(configuration.glb_url ?? (configData ? configData.thumbnail_url : null));
+      setGlbUrl(resolvedGlb);
+
+      if (!cancelled && resolvedGlb) {
+        setSkipNextAutoGenerate(true);
+      }
+
+      if (!cancelled) {
+        setInitialConfigApplied(true);
+      }
+    };
+
+    loadSavedConfiguration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router.isReady, router.query.prompt, editingConfigId, parsePromptToConfig]);
 
   // ========== FONCTIONS DE GESTION DES ZONES/COMPARTIMENTS ==========
   
@@ -437,13 +911,9 @@ export default function ConfiguratorPage() {
     const profondeurCm = Math.round(config.depth / 10);
     price += profondeurCm * 3;
 
-    // Ajouter le prix de la finition
-    const finitionPrices: { [key: string]: number } = {
-      'mat': 0,
-      'brillant': 60,
-      'bois': 100
-    };
-    price += finitionPrices[config.finish] || 0;
+    // Ajouter le prix du matériau sélectionné
+    const materialKey = normalizeMaterialKey(config.finish);
+    price += MATERIAL_PRICE_BY_KEY[materialKey] || 0;
 
     // Ajouter le prix du socle (CORRIGÉ)
     const soclePrices: { [key: string]: number } = {
@@ -512,7 +982,12 @@ export default function ConfiguratorPage() {
     console.log('🔍 useAdvancedMode:', useAdvancedMode);
     console.log('🔍 isExpertMode:', isExpertMode);
     
-    if (!templatePrompt || isExpertMode) return; // Ne pas régénérer en mode Expert via cet effect
+    if (!templatePrompt || isExpertMode || !initialConfigApplied) return; // Ne pas régénérer tant que la configuration initiale n'est pas appliquée
+
+    if (skipNextAutoGenerate) {
+      setSkipNextAutoGenerate(false);
+      return;
+    }
 
     // Construire le prompt complet avec toutes les options
     const largeur = modules * 500; // 500mm par module
@@ -598,11 +1073,11 @@ export default function ConfiguratorPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [templatePrompt, modules, height, depth, socle, finish, shelves, drawers, doors, basePlanches, hasDressing, useAdvancedMode, rootZone, isExpertMode, generateModel, buildPromptFromZoneTree]); // Dépendances
+  }, [templatePrompt, modules, height, depth, socle, finish, shelves, drawers, doors, basePlanches, hasDressing, useAdvancedMode, rootZone, isExpertMode, generateModel, buildPromptFromZoneTree, initialConfigApplied, skipNextAutoGenerate]); // Dépendances
   
   // useEffect séparé pour le mode EXPERT (régénération manuelle du customPrompt)
   useEffect(() => {
-    if (!isExpertMode || !customPrompt) return;
+  if (!isExpertMode || !customPrompt || !initialConfigApplied) return;
 
     // En mode Expert, utiliser directement le customPrompt
     const newPrice = calculatePrice({ 
@@ -624,7 +1099,7 @@ export default function ConfiguratorPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [customPrompt, isExpertMode, modules, height, depth, finish, socle, shelves, drawers, doors, generateModel]); // Dépendances mode Expert
+  }, [customPrompt, isExpertMode, modules, height, depth, finish, socle, shelves, drawers, doors, generateModel, initialConfigApplied]); // Dépendances mode Expert
 
   // Handlers pour les changements de contrôles
   const handleModulesChange = (newModules: number) => {
@@ -644,57 +1119,21 @@ export default function ConfiguratorPage() {
   };
 
   const handleFinishChange = (newFinish: string) => {
-    setFinish(newFinish);
+    const label = materialLabelFromKey(newFinish);
+    setFinish(label);
+    setColor(DEFAULT_COLOR_HEX);
+    setColorLabel(label);
   };
 
   const toggleDoors = () => {
     setDoorsOpen(!doorsOpen);
   };
 
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const colorValue = e.target.value;
-    setColor(colorValue);
-
-    // Déterminer le nom de la couleur
-    const colorNames: { [key: string]: string } = {
-      '#FFFFFF': 'Blanc',
-      '#000000': 'Noir',
-      '#FF6B35': 'Orange',
-      '#8B4513': 'Marron',
-      '#D3D3D3': 'Gris'
-    };
-
-    setColorLabel(colorNames[colorValue.toUpperCase()] || 'Personnalisé');
-  };
-
-  // Handler pour l'application d'un preset de style
-  const handleSelectPreset = (preset: StylePreset) => {
-    setSelectedPresetId(preset.id);
-    
-    // Appliquer les valeurs du preset
-    setFinish(preset.config.finish);
-    setColor(preset.config.color);
-    setSocle(preset.config.socle ? 'wood' : 'none');
-    
-    // Appliquer les dimensions si disponibles
-    if (preset.config.baseDimensions) {
-      const { width, depth: presetDepth, height: presetHeight } = preset.config.baseDimensions;
-      setModules(Math.round(width / 500));
-      setDepth(presetDepth);
-      setHeight(presetHeight);
-    }
-    
-    // Mettre à jour le label de couleur
-    const colorNames: { [key: string]: string } = {
-      '#FFFFFF': 'Blanc',
-      '#000000': 'Noir',
-      '#8B4513': 'Marron',
-      '#F5DEB3': 'Bois clair',
-      '#2C2C2C': 'Noir mat',
-      '#E8E8E8': 'Gris',
-      '#654321': 'Brun foncé'
-    };
-    setColorLabel(colorNames[preset.config.color] || 'Personnalisé');
+  const handleSelectColorOption = (option: SampleColor) => {
+    setSelectedColorId(option.id);
+    setColor(option.hex || DEFAULT_COLOR_HEX);
+    setColorLabel(option.name || selectedMaterialLabel);
+    setSelectedColorImage(option.image_url || null);
   };
 
   // Enregistrer la configuration (création d'une Configuration côté backend)
@@ -702,13 +1141,24 @@ export default function ConfiguratorPage() {
     // Vérifier l'authentification
     if (!isAuthenticated || !customer) {
       // Rediriger vers la page de connexion avec retour au configurateur
-      router.push(`/auth/login?redirect=/configurator/${id}`);
+      const redirectTarget = encodeURIComponent(router.asPath || `/configurator/${id}`);
+      router.push(`/auth/login?redirect=${redirectTarget}`);
       return;
     }
 
     // Demander un nom pour la configuration
-    const configName = prompt('Nom de cette configuration :');
-    if (!configName) return;
+    const isEdit = !!editingConfigId;
+    const promptLabel = isEdit ? 'Mettre à jour le nom de cette configuration :' : 'Nom de cette configuration :';
+    const configNameInput = prompt(promptLabel, editingConfigName || '');
+    if (configNameInput === null) {
+      return;
+    }
+
+    const configName = configNameInput.trim();
+    if (!configName) {
+      alert('❌ Le nom de la configuration ne peut pas être vide.');
+      return;
+    }
 
     try {
       const largeur = modules * 500;
@@ -775,9 +1225,13 @@ export default function ConfiguratorPage() {
           height
         },
         styling: {
+          materialKey: selectedMaterialKey,
+          materialLabel: selectedMaterialLabel,
           finish,
           color,
           colorLabel,
+          colorId: selectedColorId,
+          colorImage: selectedColorImage,
           socle
         },
         features: {
@@ -789,10 +1243,21 @@ export default function ConfiguratorPage() {
         },
         mode: {
           isExpertMode,
-          useAdvancedMode,
-          selectedPreset: selectedPresetId || null
+          useAdvancedMode
         },
-        basePlanches
+        basePlanches: { ...basePlanches },
+        advancedZones: useAdvancedMode ? rootZone : null
+      };
+
+      const payload: Record<string, any> = {
+        id: editingConfigId ?? undefined,
+        name: configName,
+        model_id: model?.id || null,
+        prompt: fullPrompt,
+        config_data: configData,
+        glb_url: glbUrl,
+        price: price,
+        thumbnail_url: glbUrl
       };
 
       // Appel à l'API
@@ -800,45 +1265,50 @@ export default function ConfiguratorPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          name: configName,
-          model_id: model?.id || null,
-          prompt: fullPrompt,
-          config_data: configData,
-          glb_url: glbUrl,
-          price: price,
-          thumbnail_url: glbUrl // Utiliser le GLB comme thumbnail pour l'instant
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Erreur lors de la sauvegarde');
+        let errorMessage = 'Erreur lors de la sauvegarde';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch (_) {
+          // ignore parsing errors
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      setEditingConfigName(configName);
 
-      // Ajouter au panier immédiatement après sauvegarde
-      const cartResponse = await fetch('http://localhost:8000/backend/api/cart/index.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          configuration_id: result.configuration.id,
-          quantity: 1
-        })
-      });
+      if (typeof window !== 'undefined' && result.configuration) {
+        try {
+          const enrichedConfiguration = {
+            ...result.configuration
+          };
 
-      if (!cartResponse.ok) {
-        throw new Error('Erreur lors de l\'ajout au panier');
+          if (enrichedConfiguration.config_string && !enrichedConfiguration.config_data) {
+            try {
+              enrichedConfiguration.config_data = JSON.parse(enrichedConfiguration.config_string);
+            } catch (parseError) {
+              console.warn('Impossible de parser la configuration retournée', parseError);
+            }
+          }
+
+          const serialized = JSON.stringify(enrichedConfiguration);
+          window.localStorage.setItem(`archimeuble:configuration:${result.configuration.id}`, serialized);
+          window.localStorage.setItem('archimeuble:configuration:last', serialized);
+        } catch (storageError) {
+          console.warn('Impossible de mettre à jour la configuration stockée', storageError);
+        }
       }
 
-      // Rediriger vers le panier
-      alert(`✅ ${configName} ajouté au panier!\n\nPrix: ${price}€`);
-      router.push('/cart');
+      alert(`✅ Configuration "${configName}" ${isEdit ? 'mise à jour' : 'enregistrée'}`);
+      router.push('/my-configurations');
     } catch (err: any) {
       console.error('Erreur saveConfiguration:', err);
-      alert(`❌ Erreur lors de l'ajout au panier:\n${err.message}`);
+  alert(`❌ Erreur lors de l'enregistrement:\n${err.message}`);
     }
   };
 
@@ -1040,16 +1510,6 @@ export default function ConfiguratorPage() {
           </div>
 
           <div className="panel-content">
-            {/* Style Presets - Visible en mode EZ uniquement */}
-            {!isExpertMode && (
-              <div className="mb-6">
-                <StylePresets 
-                  onSelectPreset={handleSelectPreset}
-                  selectedPresetId={selectedPresetId}
-                />
-              </div>
-            )}
-
             {/* Mode Expert: Éditeur de Prompt */}
             {isExpertMode && (
               <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-300">
@@ -1231,72 +1691,134 @@ export default function ConfiguratorPage() {
               </div>
             )}
 
-            {/* Finition Section */}
+            {/* Matériaux Section */}
             <div className="control-group">
-              <label className="control-label">Finition</label>
-              <div className="button-group">
-                {[
-                  { value: 'mat', label: 'Mat' },
-                  { value: 'brillant', label: 'Brillant' },
-                  { value: 'bois', label: 'Bois' }
-                ].map((item) => (
-                  <button
-                    key={item.value}
-                    className={`toggle-btn ${finish === item.value ? 'active' : ''}`}
-                    onClick={() => handleFinishChange(item.value)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+              <label className="control-label">Matériaux</label>
+              <p className="text-xs text-gray-500 mb-3">
+                Sélectionnez d&apos;abord la structure. Les teintes disponibles s&apos;adapteront automatiquement.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {orderedMaterialLabels.length === 0 && (
+                  <span className="col-span-full text-xs text-gray-500">Aucun matériau disponible pour le moment.</span>
+                )}
+                {orderedMaterialLabels.map((label) => {
+                  const key = normalizeMaterialKey(label);
+                  const isActive = selectedMaterialKey === key;
+                  const abbr = MATERIAL_ABBR_BY_KEY[key] || label.split(' ').map((word) => word.charAt(0)).join('').slice(0, 3).toUpperCase();
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        if (selectedMaterialKey !== key) {
+                          handleFinishChange(key);
+                          setSelectedColorId(null);
+                          setSelectedColorImage(null);
+                        }
+                      }}
+                      className={`flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition ${
+                        isActive
+                          ? 'border-amber-500 bg-white text-ink shadow-sm'
+                          : 'border-[#E3E3E3] bg-[#F7F7F7] text-ink/70 hover:border-amber-300'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+                          isActive ? 'border-amber-400 bg-white text-ink/80' : 'border-[#DDDDDD] bg-white text-ink/60'
+                        } text-[11px] font-semibold uppercase`}
+                      >
+                        {abbr}
+                      </span>
+                      <span className="leading-snug text-[13px] font-semibold text-ink">{label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Couleur Section - Améliorée */}
+            {/* Couleurs / Teintes Section */}
             <div className="control-group">
-              <label className="control-label" htmlFor="color-picker">Couleur Principale</label>
-              <div className="space-y-2">
-                {/* Color picker */}
-                <div className="color-picker-wrapper flex items-center gap-3">
-                  <input
-                    type="color"
-                    id="color-picker"
-                    value={color}
-                    onChange={handleColorChange}
-                    className="color-input w-16 h-16 rounded cursor-pointer border-2 border-gray-300"
-                  />
-                  <div>
-                    <span className="color-label font-semibold">{colorLabel}</span>
-                    <p className="text-xs text-gray-500">{color}</p>
+              <label className="control-label">Couleurs</label>
+              <p className="text-xs text-gray-500 mb-3">
+                Choisissez ensuite la finition précise correspondant au matériau sélectionné.
+              </p>
+
+              {materialsLoading ? (
+                <div className="text-sm text-gray-500">Chargement des échantillons…</div>
+              ) : colorsForMaterial.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+                  Aucune teinte n&apos;est encore disponible pour {selectedMaterialLabel}.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                  <div className="flex flex-1 flex-wrap gap-2">
+                    {colorsForMaterial.map((option) => {
+                      const isActive = selectedColorId === option.id;
+                      const isBestseller = option.name ? BESTSELLER_COLOR_LABELS.has(option.name.trim()) : false;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => handleSelectColorOption(option)}
+                          className={`group flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-left text-sm transition ${
+                            isActive ? 'border-amber-500 bg-white text-ink shadow-sm' : 'border-[#E3E3E3] bg-[#F7F7F7] text-ink/80 hover:border-amber-300'
+                          }`}
+                        >
+                          <span
+                            className="inline-flex h-7 w-7 flex-shrink-0 overflow-hidden rounded-full border border-[#D8D8D8]"
+                            style={{ backgroundColor: option.image_url ? undefined : (option.hex || DEFAULT_COLOR_HEX) }}
+                          >
+                            {option.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={option.image_url}
+                                alt={option.name || 'Échantillon matériau'}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </span>
+                          <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                            {option.name || 'Teinte personnalisée'}
+                            {isBestseller && (
+                              <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase text-white">Bestseller</span>
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  {selectedColorOption && (
+                    <div className="w-full max-w-xs rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Sélectionné</p>
+                      <h4 className="mt-1 text-sm font-semibold text-ink">
+                        {selectedColorOption.name || colorLabel}
+                      </h4>
+                      <p className="text-xs text-gray-500">{selectedMaterialLabel}</p>
+                      <div
+                        className="mt-3 h-36 w-full overflow-hidden rounded-xl border border-gray-100"
+                        style={{ backgroundColor: selectedColorOption.image_url ? undefined : (selectedColorOption.hex || DEFAULT_COLOR_HEX) }}
+                      >
+                        {selectedColorOption.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={selectedColorOption.image_url} alt={selectedColorOption.name || colorLabel} className="h-full w-full object-cover" />
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-4 w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-ink/80 transition hover:border-ink/40 hover:text-ink"
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            window.open('/samples', '_blank');
+                          }
+                        }}
+                      >
+                        Besoin d&apos;aide ? Voir tous les échantillons
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {/* Couleurs prédéfinies */}
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { hex: '#FFFFFF', name: 'Blanc' },
-                    { hex: '#000000', name: 'Noir' },
-                    { hex: '#8B4513', name: 'Marron' },
-                    { hex: '#F5DEB3', name: 'Beige' },
-                    { hex: '#A0522D', name: 'Brun' },
-                    { hex: '#D3D3D3', name: 'Gris' },
-                    { hex: '#2C3E50', name: 'Bleu foncé' },
-                    { hex: '#E74C3C', name: 'Rouge' }
-                  ].map(c => (
-                    <button
-                      key={c.hex}
-                      onClick={() => {
-                        setColor(c.hex);
-                        setColorLabel(c.name);
-                      }}
-                      className="w-10 h-10 rounded border-2 hover:scale-110 transition"
-                      style={{ 
-                        backgroundColor: c.hex,
-                        borderColor: color === c.hex ? '#3B82F6' : '#E5E7EB'
-                      }}
-                      title={c.name}
-                    />
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Nombre de Portes */}
@@ -1431,13 +1953,13 @@ export default function ConfiguratorPage() {
 
             {/* Actions */}
             <div className="actions space-y-2">
-              {/* Bouton Ajouter au panier */}
+              {/* Bouton Enregistrer la configuration */}
               <button
                 className="btn btn-primary"
                 onClick={saveConfiguration}
-                title="Ajouter cette configuration au panier"
+                title={isEditing ? 'Mettre à jour cette configuration' : 'Enregistrer cette configuration dans Mes configurations'}
               >
-                🛒 Ajouter au panier
+                {isEditing ? '💾 Mettre à jour la configuration' : '📝 Enregistrer la configuration'}
               </button>
 
               <button

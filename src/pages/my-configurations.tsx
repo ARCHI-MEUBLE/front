@@ -50,7 +50,22 @@ export default function MyConfigurations() {
       }
 
       const data = await response.json();
-      setConfigurations(data.configurations || []);
+      const items = (data.configurations || []).map((raw: any) => {
+        let parsed: any = raw;
+        // Normaliser: decoder config_string -> config_data et exposer name/thumbnails
+        try {
+          if (raw.config_string && !raw.config_data) {
+            const cfg = JSON.parse(raw.config_string);
+            parsed.config_data = cfg;
+            if (!raw.name && cfg.name) parsed.name = cfg.name;
+            if (!raw.thumbnail_url && cfg.thumbnail_url) parsed.thumbnail_url = cfg.thumbnail_url;
+          }
+        } catch (_) {}
+        // Valeur par défaut pour le nom
+        if (!parsed.name) parsed.name = `Configuration #${raw.id}`;
+        return parsed as SavedConfiguration;
+      });
+      setConfigurations(items);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
     } finally {
@@ -106,6 +121,42 @@ export default function MyConfigurations() {
       setToast({ message: err.message, type: 'error' });
       setTimeout(() => setToast(null), 4000);
     }
+  };
+
+  const handleViewConfiguration = (config: SavedConfiguration) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const serialized = JSON.stringify(config);
+        window.localStorage.setItem(`archimeuble:configuration:${config.id}`, serialized);
+        window.localStorage.setItem('archimeuble:configuration:last', serialized);
+      } catch (storageError) {
+        console.warn('Impossible de sauvegarder la configuration dans localStorage:', storageError);
+      }
+    }
+
+    let templateKey: string | null = null;
+    if (config.prompt) {
+      const match = config.prompt.match(/^([A-Za-z0-9]+)\(/);
+      templateKey = match ? match[1] : null;
+    }
+
+    if (!templateKey && config.template_id) {
+      templateKey = String(config.template_id);
+    }
+
+    if (!templateKey) {
+      router.push('/configurator/select');
+      return;
+    }
+
+    const query = new URLSearchParams();
+    query.set('mode', 'edit');
+    query.set('configId', String(config.id));
+    if (config.prompt) {
+      query.set('prompt', config.prompt);
+    }
+
+    router.push(`/configurator/${templateKey}?${query.toString()}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -260,24 +311,7 @@ export default function MyConfigurations() {
                       🛒 Ajouter
                     </button>
                     <button
-                      onClick={() => {
-                        // Cas idéal: on a un prompt sauvegardé -> on ouvre le configurateur avec la clé template et le prompt
-                        if (config.prompt) {
-                          const match = config.prompt.match(/^([A-Za-z0-9]+)\(/);
-                          const templateKey = match ? match[1] : (config.template_id ? String(config.template_id) : 'M1');
-                          router.push(`/configurator/${templateKey}?prompt=${encodeURIComponent(config.prompt)}`);
-                          return;
-                        }
-
-                        // Sinon, si on a un template_id numérique, on ouvre sur ce modèle (sans prompt)
-                        if (config.template_id && Number(config.template_id) > 0) {
-                          router.push(`/configurator/${config.template_id}`);
-                          return;
-                        }
-
-                        // Fallback: renvoyer vers la sélection
-                        router.push('/configurator/select');
-                      }}
+                      onClick={() => handleViewConfiguration(config)}
                       className="btn-secondary"
                     >
                       👁️ Voir
