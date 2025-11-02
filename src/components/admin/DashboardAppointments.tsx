@@ -30,16 +30,30 @@ interface AppointmentsResponse {
   offset: number;
 }
 
+interface Stats {
+  total: number;
+  scheduled: number;
+  completed: number;
+  cancelled: number;
+}
+
+const STATUS_LABELS: { [key: string]: { label: string; icon: string } } = {
+  scheduled: { label: 'Prévu', icon: '📅' },
+  completed: { label: 'Terminé', icon: '✅' },
+  cancelled: { label: 'Annulé', icon: '❌' },
+};
+
 export function DashboardAppointments() {
   const [appointments, setAppointments] = useState<CalendlyAppointment[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<CalendlyAppointment | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     loadAppointments();
-  }, [statusFilter]);
+  }, [filterStatus]);
 
   const loadAppointments = async () => {
     setIsLoading(true);
@@ -47,8 +61,8 @@ export function DashboardAppointments() {
 
     try {
       let url = 'http://localhost:8000/backend/api/calendly/appointments.php';
-      if (statusFilter !== 'all') {
-        url += `?status=${statusFilter}`;
+      if (filterStatus !== 'all') {
+        url += `?status=${filterStatus}`;
       }
 
       const response = await fetch(url, {
@@ -63,29 +77,22 @@ export function DashboardAppointments() {
       }
 
       const data: AppointmentsResponse = await response.json();
-      setAppointments(data.appointments || []);
-      setTotal(data.total || 0);
+      const appts = data.appointments || [];
+      setAppointments(appts);
+
+      // Calculer les stats
+      const statsData: Stats = {
+        total: data.total || 0,
+        scheduled: appts.filter(a => a.status === 'scheduled').length,
+        completed: appts.filter(a => a.status === 'completed').length,
+        cancelled: appts.filter(a => a.status === 'cancelled').length,
+      };
+      setStats(statsData);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig: { [key: string]: { label: string; className: string } } = {
-      scheduled: { label: 'Prévu', className: 'bg-blue-100 text-blue-800' },
-      completed: { label: 'Terminé', className: 'bg-green-100 text-green-800' },
-      cancelled: { label: 'Annulé', className: 'bg-red-100 text-red-800' },
-    };
-
-    const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
-
-    return (
-      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${config.className}`}>
-        {config.label}
-      </span>
-    );
   };
 
   const getEventTypeIcon = (eventType: string) => {
@@ -105,183 +112,279 @@ export function DashboardAppointments() {
     return start > now;
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="mb-4 text-4xl">⏳</div>
-          <p className="text-gray-600">Chargement des rendez-vous...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-sm">Chargement...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg bg-red-50 p-4 border border-red-200">
-        <p className="text-red-700">{error}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Rendez-vous Calendly</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {total} rendez-vous au total
-          </p>
+      {/* Stats - Design sobre */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="border border-gray-200 p-3">
+            <p className="text-xs text-gray-500 uppercase">Total</p>
+            <p className="text-xl font-semibold text-gray-900">{stats.total}</p>
+          </div>
+          <div className="border border-gray-200 p-3">
+            <p className="text-xs text-gray-500 uppercase">Prévus</p>
+            <p className="text-xl font-semibold text-gray-900">{stats.scheduled}</p>
+          </div>
+          <div className="border border-gray-200 p-3">
+            <p className="text-xs text-gray-500 uppercase">Terminés</p>
+            <p className="text-xl font-semibold text-gray-900">{stats.completed}</p>
+          </div>
+          <div className="border border-gray-200 p-3">
+            <p className="text-xs text-gray-500 uppercase">Annulés</p>
+            <p className="text-xl font-semibold text-gray-900">{stats.cancelled}</p>
+          </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="scheduled">Prévus</option>
-            <option value="completed">Terminés</option>
-            <option value="cancelled">Annulés</option>
-          </select>
-
+      {/* Filters - Design sobre */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        <button
+          onClick={() => setFilterStatus('all')}
+          className={`px-3 py-1.5 text-xs font-medium border whitespace-nowrap ${
+            filterStatus === 'all'
+              ? 'bg-gray-900 text-white border-gray-900'
+              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
+          }`}
+        >
+          Tous
+        </button>
+        {Object.entries(STATUS_LABELS).map(([status, info]) => (
           <button
-            onClick={loadAppointments}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            key={status}
+            onClick={() => setFilterStatus(status)}
+            className={`px-3 py-1.5 text-xs font-medium border whitespace-nowrap ${
+              filterStatus === status
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
+            }`}
           >
-            🔄 Actualiser
+            {info.icon} {info.label}
           </button>
-        </div>
+        ))}
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="p-3 border border-red-300 bg-red-50 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Table - Design sobre sans shadow */}
       {appointments.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-          <div className="text-6xl mb-4">📭</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun rendez-vous</h3>
-          <p className="text-gray-500">
-            {statusFilter === 'all'
-              ? 'Aucun rendez-vous Calendly pour le moment'
-              : `Aucun rendez-vous avec le statut "${statusFilter}"`}
+        <div className="text-center py-12 border border-gray-200 bg-white">
+          <div className="text-4xl mb-3">📅</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Aucun rendez-vous</h3>
+          <p className="text-sm text-gray-600">
+            {filterStatus === 'all'
+              ? 'Aucun rendez-vous pour le moment'
+              : `Aucun rendez-vous avec le statut "${STATUS_LABELS[filterStatus]?.label}"`
+            }
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-          {appointments.map((appointment) => {
-            const upcoming = isUpcoming(appointment.start_time);
-            const icon = getEventTypeIcon(appointment.event_type);
+        <div className="border border-gray-200 bg-white">
+          <table className="w-full">
+            <thead className="border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Heure</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Réservé le</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {appointments.map((appointment) => {
+                const statusInfo = STATUS_LABELS[appointment.status] || STATUS_LABELS.scheduled;
+                const upcoming = isUpcoming(appointment.start_time);
+                const icon = getEventTypeIcon(appointment.event_type);
 
-            return (
-              <div
-                key={appointment.id}
-                className={`rounded-lg border-2 p-6 transition-all hover:shadow-lg ${
-                  upcoming
-                    ? 'border-blue-300 bg-blue-50'
-                    : 'border-gray-200 bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-3xl ${
-                      upcoming ? 'bg-blue-100' : 'bg-gray-100'
-                    }`}>
-                      {icon}
-                    </div>
-
-                    <div className="flex-grow">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {appointment.client_name}
-                        </h3>
-                        {getStatusBadge(appointment.status)}
+                return (
+                  <tr key={appointment.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{icon}</span>
+                        <span className="text-xs font-medium text-gray-900">
+                          {appointment.event_type}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs">
+                        <div className="font-medium text-gray-900">{appointment.client_name}</div>
+                        <div className="text-gray-500">{appointment.client_email}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs">
+                        <div className="font-medium text-gray-900">
+                          {appointment.formatted_start || appointment.start_time}
+                        </div>
                         {upcoming && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                          <span className="inline-flex items-center gap-1 text-green-600 text-xs">
                             ⏰ À venir
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-900 text-xs font-medium">
+                        <span>{statusInfo.icon}</span>
+                        <span>{statusInfo.label}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {formatDate(appointment.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setSelectedAppointment(appointment)}
+                        className="text-xs font-medium text-gray-900 hover:underline"
+                      >
+                        Voir détails →
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="font-medium">📧 Email:</span>
-                          <a
-                            href={`mailto:${appointment.client_email}`}
-                            className="text-blue-600 hover:underline"
-                          >
-                            {appointment.client_email}
-                          </a>
-                        </div>
+      {/* Modal détails - Design sobre */}
+      {selectedAppointment && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedAppointment(null)}
+        >
+          <div
+            className="bg-white border border-gray-300 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Rendez-vous {getEventTypeIcon(selectedAppointment.event_type)} {selectedAppointment.event_type}
+                </h2>
+                <button
+                  onClick={() => setSelectedAppointment(null)}
+                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
 
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="font-medium">🏷️ Type:</span>
-                          <span>{appointment.event_type}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="font-medium">📅 Date:</span>
-                          <span className="font-semibold text-gray-900">
-                            {appointment.formatted_start || appointment.start_time}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="font-medium">⏱️ Durée:</span>
-                          <span>
-                            {appointment.formatted_time ||
-                              `${appointment.formatted_start} - ${appointment.formatted_end}`}
-                          </span>
-                        </div>
-
-                        {appointment.config_url && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <span className="font-medium">🔗 Configuration:</span>
-                            <a
-                              href={appointment.config_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              Voir la config
-                            </a>
-                          </div>
-                        )}
-
-                        {appointment.additional_notes && (
-                          <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm">
-                            <span className="font-medium text-gray-700">📝 Notes:</span>
-                            <p className="mt-1 text-gray-600">{appointment.additional_notes}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-xs text-gray-500">
-                      Réservé le {new Date(appointment.created_at).toLocaleDateString('fr-FR')}
-                    </div>
-                    <div className="flex flex-col gap-1 text-xs">
-                      {appointment.confirmation_sent && (
-                        <span className="flex items-center gap-1 text-green-600">
-                          ✓ Confirmation envoyée
-                        </span>
-                      )}
-                      {appointment.reminder_24h_sent && (
-                        <span className="flex items-center gap-1 text-green-600">
-                          ✓ Rappel 24h envoyé
-                        </span>
-                      )}
-                      {appointment.reminder_1h_sent && (
-                        <span className="flex items-center gap-1 text-green-600">
-                          ✓ Rappel 1h envoyé
-                        </span>
-                      )}
-                    </div>
-                  </div>
+            <div className="p-4 space-y-4">
+              {/* Client */}
+              <div className="border border-gray-200 p-3">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                  Informations Client
+                </h3>
+                <div className="space-y-1 text-xs">
+                  <p><span className="font-medium">Nom:</span> {selectedAppointment.client_name}</p>
+                  <p><span className="font-medium">Email:</span> {selectedAppointment.client_email}</p>
                 </div>
               </div>
-            );
-          })}
+
+              {/* Détails rendez-vous */}
+              <div className="border border-gray-200 p-3">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                  Détails du Rendez-vous
+                </h3>
+                <div className="space-y-1 text-xs">
+                  <p><span className="font-medium">Type:</span> {selectedAppointment.event_type}</p>
+                  <p><span className="font-medium">Date:</span> {selectedAppointment.formatted_start || selectedAppointment.start_time}</p>
+                  <p><span className="font-medium">Durée:</span> {selectedAppointment.formatted_time || `${selectedAppointment.formatted_start} - ${selectedAppointment.formatted_end}`}</p>
+                  <p><span className="font-medium">Fuseau horaire:</span> {selectedAppointment.timezone}</p>
+                  <p><span className="font-medium">Statut:</span> {STATUS_LABELS[selectedAppointment.status]?.label || selectedAppointment.status}</p>
+                </div>
+              </div>
+
+              {/* Configuration URL */}
+              {selectedAppointment.config_url && (
+                <div className="border border-gray-200 p-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    Configuration
+                  </h3>
+                  <a
+                    href={selectedAppointment.config_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline break-all"
+                  >
+                    {selectedAppointment.config_url}
+                  </a>
+                </div>
+              )}
+
+              {/* Notes additionnelles */}
+              {selectedAppointment.additional_notes && (
+                <div className="border border-gray-200 p-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    Notes Additionnelles
+                  </h3>
+                  <p className="text-xs text-gray-700 whitespace-pre-wrap">
+                    {selectedAppointment.additional_notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Status emails */}
+              <div className="border border-gray-200 p-3">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                  Emails Envoyés
+                </h3>
+                <div className="space-y-1 text-xs">
+                  <p className={selectedAppointment.confirmation_sent ? 'text-green-600' : 'text-gray-500'}>
+                    {selectedAppointment.confirmation_sent ? '✓' : '○'} Email de confirmation
+                  </p>
+                  <p className={selectedAppointment.reminder_24h_sent ? 'text-green-600' : 'text-gray-500'}>
+                    {selectedAppointment.reminder_24h_sent ? '✓' : '○'} Rappel 24h avant
+                  </p>
+                  <p className={selectedAppointment.reminder_1h_sent ? 'text-green-600' : 'text-gray-500'}>
+                    {selectedAppointment.reminder_1h_sent ? '✓' : '○'} Rappel 1h avant
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => setSelectedAppointment(null)}
+                className="px-4 py-2 text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:border-gray-900"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
