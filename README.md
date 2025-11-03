@@ -21,8 +21,8 @@ cd front
 Le fichier `.env.local` doit exister avec les variables suivantes :
 
 ```bash
-# Si le fichier n'existe pas, copiez .env.example
-cp .env.example .env.local
+# Si le fichier n'existe pas, copiez .env.local
+cp .env.local .env.local.local
 ```
 
 Contenu de `.env.local` :
