@@ -1304,11 +1304,32 @@ export default function ConfiguratorPage() {
         }
       }
 
-      alert(`✅ Configuration "${configName}" ${isEdit ? 'mise à jour' : 'enregistrée'}`);
-      router.push('/my-configurations');
+      // Ajouter au panier immédiatement après sauvegarde
+      const configId = result.configuration?.id || result.configuration_id;
+      if (!configId) {
+        throw new Error('ID de configuration manquant dans la réponse');
+      }
+
+      const cartResponse = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          configuration_id: configId,
+          quantity: 1
+        })
+      });
+
+      if (!cartResponse.ok) {
+        throw new Error('Erreur lors de l\'ajout au panier');
+      }
+
+      // Rediriger vers le panier
+      alert(`✅ ${configName} ajouté au panier!\n\nPrix: ${price}€`);
+      router.push('/cart');
     } catch (err: any) {
       console.error('Erreur saveConfiguration:', err);
-  alert(`❌ Erreur lors de l'enregistrement:\n${err.message}`);
+      alert(`❌ Erreur lors de l'ajout au panier:\n${err.message}`);
     }
   };
 
@@ -1953,13 +1974,13 @@ export default function ConfiguratorPage() {
 
             {/* Actions */}
             <div className="actions space-y-2">
-              {/* Bouton Enregistrer la configuration */}
+              {/* Bouton Ajouter au panier */}
               <button
                 className="btn btn-primary"
                 onClick={saveConfiguration}
-                title={isEditing ? 'Mettre à jour cette configuration' : 'Enregistrer cette configuration dans Mes configurations'}
+                title="Ajouter cette configuration au panier"
               >
-                {isEditing ? '💾 Mettre à jour la configuration' : '📝 Enregistrer la configuration'}
+                🛒 Ajouter au panier
               </button>
 
               <button
