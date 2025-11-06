@@ -20,7 +20,7 @@ export default function DashboardPayments() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`/api/admin/payment-analytics?period=${filters.period}`, {
+      const response = await fetch(`http://localhost:8000/backend/api/admin/payment-analytics.php?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -36,7 +36,7 @@ export default function DashboardPayments() {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch(`/api/admin/recent-transactions?period=${filters.period}`, {
+      const response = await fetch(`http://localhost:8000/backend/api/admin/recent-transactions.php?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -50,7 +50,7 @@ export default function DashboardPayments() {
 
   const handleExportCSV = async () => {
     try {
-      const response = await fetch(`/api/admin/export-payments?period=${filters.period}`, {
+      const response = await fetch(`http://localhost:8000/backend/api/admin/export-payments.php?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
