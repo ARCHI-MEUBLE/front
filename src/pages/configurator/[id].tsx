@@ -381,17 +381,23 @@ export default function ConfiguratorPage() {
             setHeight(hauteur);
         }
 
-        // 2) Planches de base: EbF = toutes, sinon lettres individuelles
+        // 2) Planches de base: E = enveloppe (h, g, d), F = fond, b = base
         const compact = prompt.replace(/\s+/g, '');
-        if (compact.includes('EbF')) {
+        const hasE = /E/.test(compact); // Enveloppe = h + g + d
+        const hasF = /F/.test(compact); // Fond
+        const hasB = /b/.test(compact); // Base
+
+        if (hasE && hasF && hasB) {
+            // E + F + b = toutes les planches
             setBasePlanches({ b: true, h: true, g: true, d: true, f: true });
         } else {
+            // Parser individuellement
             setBasePlanches({
-                b: /b/.test(compact),
-                h: /h/.test(compact),
-                g: /g/.test(compact),
-                d: /d/.test(compact),
-                f: /F/.test(compact),
+                b: hasB,
+                h: hasE || /h/.test(compact), // E inclut h, g, d
+                g: hasE || /g/.test(compact),
+                d: hasE || /d/.test(compact),
+                f: hasF,
             });
         }
 
