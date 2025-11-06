@@ -313,12 +313,24 @@ export default function AdminOrders() {
                         {formatDate(order.created_at)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => loadOrderDetails(order.id)}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                        >
-                          Voir détails →
-                        </button>
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => loadOrderDetails(order.id)}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            Voir détails →
+                          </button>
+
+                          {order.payment_status === 'paid' && (
+                            <button
+                              onClick={() => window.open(`http://localhost:8000/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
+                              className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
+                              title="Télécharger la facture"
+                            >
+                              📄 Facture
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
