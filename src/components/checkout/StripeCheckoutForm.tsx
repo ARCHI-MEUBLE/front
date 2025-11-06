@@ -53,7 +53,7 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
         }
 
         // Mettre à jour la commande avec le payment intent ID
-        await fetch(`http://localhost:8000/backend/api/orders/${orderId}/payment-confirmed.php`, {
+        await fetch(`http://localhost:8000/backend/api/orders/payment-confirmed.php?id=${orderId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

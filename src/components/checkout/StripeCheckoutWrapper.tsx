@@ -59,7 +59,7 @@ export default function StripeCheckoutWrapper({
       }
 
       // Mettre à jour la commande avec le payment intent ID
-      await fetch(`http://localhost:8000/backend/api/orders/${orderId}/payment-intent.php`, {
+      await fetch(`http://localhost:8000/backend/api/orders/payment-intent.php?id=${orderId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
