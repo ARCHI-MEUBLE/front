@@ -1650,22 +1650,6 @@ export default function ConfiguratorPage() {
                             </div>
                         )}
 
-                        {/* Mode Toggle */}
-                        <div className="mt-4 flex items-center justify-between bg-gray-100 p-3 rounded-lg">
-              <span className="text-sm font-medium text-gray-700">
-                {isExpertMode ? '🔧 Mode Expert' : '✨ Mode EZ (Simplifié)'}
-              </span>
-                            <button
-                                className={`px-4 py-2 rounded-md font-medium transition ${
-                                    isExpertMode
-                                        ? 'bg-orange-500 text-white hover:bg-orange-600'
-                                        : 'bg-green-500 text-white hover:bg-green-600'
-                                }`}
-                                onClick={() => setIsExpertMode(!isExpertMode)}
-                            >
-                                {isExpertMode ? 'Passer en mode EZ' : 'Passer en mode Expert'}
-                            </button>
-                        </div>
                     </div>
 
                     <div className="panel-content">
