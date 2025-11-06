@@ -132,6 +132,13 @@ export default function ConfiguratorPage() {
     const [doors, setDoors] = useState(2); // Nombre de portes
     const [hasDressing, setHasDressing] = useState(false); // Penderie (tringle)
 
+    // Valeurs initiales du template (pour détecter si l'utilisateur a modifié)
+    const [initialSliderValues, setInitialSliderValues] = useState<{
+        shelves: number;
+        drawers: number;
+        doors: number;
+    } | null>(null);
+
     // Système de zones/compartiments pour gestion avancée
     type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf';
     type Zone = {
@@ -421,9 +428,8 @@ export default function ConfiguratorPage() {
         else setSocle('none');
 
         // 4) Portes: P / P2
-        if (/P2/.test(compact)) setDoors(2);
-        else if (/P(?!\d)/.test(compact)) setDoors(1);
-        else setDoors(0);
+        const doorsCount = /P2/.test(compact) ? 2 : (/P(?!\d)/.test(compact) ? 1 : 0);
+        setDoors(doorsCount);
 
         // 5) Structure Hn(...) ou Vn(...): shelves et drawers (T)
         const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
@@ -433,8 +439,17 @@ export default function ConfiguratorPage() {
             const n = parseInt(hStruct[1]);
             const inner = hStruct[2];
             const drawersCount = (inner.match(/T/g) || []).length;
+            const shelvesCount = Math.max(0, n - 1);
+
             setDrawers(drawersCount);
-            setShelves(Math.max(0, n - 1));
+            setShelves(shelvesCount);
+
+            // Stocker les valeurs initiales du template
+            setInitialSliderValues({
+                shelves: shelvesCount,
+                drawers: drawersCount,
+                doors: doorsCount
+            });
 
             // Créer l'arbre de zones pour le mode avancé (horizontal)
             const children = inner.split(',').map((content, idx) => ({
@@ -452,8 +467,17 @@ export default function ConfiguratorPage() {
             const n = parseInt(vStruct[1]);
             const inner = vStruct[2];
             const drawersCount = (inner.match(/T/g) || []).length;
+            const shelvesCount = 0;
+
             setDrawers(drawersCount);
-            setShelves(0); // Pas d'étagères horizontales pour V
+            setShelves(shelvesCount); // Pas d'étagères horizontales pour V
+
+            // Stocker les valeurs initiales du template
+            setInitialSliderValues({
+                shelves: shelvesCount,
+                drawers: drawersCount,
+                doors: doorsCount
+            });
 
             // Créer l'arbre de zones pour le mode avancé (vertical)
             const children = inner.split(',').map((content, idx) => ({
@@ -470,6 +494,13 @@ export default function ConfiguratorPage() {
         } else {
             setShelves(0);
             setDrawers(0);
+
+            // Stocker les valeurs initiales du template
+            setInitialSliderValues({
+                shelves: 0,
+                drawers: 0,
+                doors: doorsCount
+            });
         }
 
         // 6) Penderie/Dressing
@@ -1179,13 +1210,16 @@ export default function ConfiguratorPage() {
             }
         } else {
             // Mode simple : utiliser le prompt original du modèle s'il existe
-            // et que les sliders n'ont pas été modifiés (tous à 0)
-            const slidersAreDefault = shelves === 0 && drawers === 0 && doors === 0;
+            // et que les sliders n'ont pas été modifiés depuis le chargement du template
+            const slidersUnchanged = initialSliderValues &&
+                shelves === initialSliderValues.shelves &&
+                drawers === initialSliderValues.drawers &&
+                doors === initialSliderValues.doors;
 
-            if (templatePrompt && slidersAreDefault) {
+            if (templatePrompt && slidersUnchanged) {
                 // Utiliser le prompt original de la BDD qui contient la structure complète (V3, H4, etc.)
                 fullPrompt = templatePrompt;
-                console.log('📄 Mode Simple - Utilisation du prompt original:', fullPrompt);
+                console.log('📄 Mode Simple - Sliders inchangés, utilisation du prompt original:', fullPrompt);
             } else {
                 // L'utilisateur a modifié les sliders, reconstruire le prompt
                 fullPrompt = buildPromptFromConfig(basePrompt, {
@@ -1196,7 +1230,7 @@ export default function ConfiguratorPage() {
                     basePlanches,
                     hasDressing
                 });
-                console.log('📊 Mode Simple - Prompt généré avec sliders:', fullPrompt);
+                console.log('📊 Mode Simple - Sliders modifiés, prompt généré:', fullPrompt);
             }
         }
 
