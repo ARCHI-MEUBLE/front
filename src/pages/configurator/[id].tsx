@@ -1118,6 +1118,9 @@ export default function ConfiguratorPage() {
                 colors
             );
             console.log('✓ Modèle 3D généré:', result.glb_url);
+            if (result.execution_time) {
+                console.log('⏱️ Temps d\'exécution Python:', result.execution_time);
+            }
 
             // Si l'URL est relative, la convertir en URL absolue vers le backend
             let glbUrlAbsolute = result.glb_url;
