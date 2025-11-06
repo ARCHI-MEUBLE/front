@@ -454,6 +454,16 @@ export const configurationsApi = {
 };
 
 /**
+ * Interface pour les couleurs multi-composants
+ */
+export interface FurnitureColors {
+  structure?: string;  // Corps du meuble (planches verticales/horizontales)
+  drawers?: string;    // Tiroirs
+  doors?: string;      // Portes
+  base?: string;       // Socle/base
+}
+
+/**
  * API Client - Génération 3D
  */
 export const generateApi = {
@@ -461,17 +471,28 @@ export const generateApi = {
    * Générer un modèle 3D à partir d'un prompt
    * @param prompt Le prompt de génération du meuble
    * @param closed Mode fermé (true = sans portes, false = avec portes)
-   * @param color Couleur hex optionnelle (ex: "#D8C7A1")
+   * @param color Couleur hex optionnelle unique (ex: "#D8C7A1") - legacy
+   * @param colors Couleurs multi-composants optionnelles
    */
-  async generate(prompt: string, closed: boolean = false, color?: string): Promise<{
+  async generate(
+    prompt: string,
+    closed: boolean = false,
+    color?: string,
+    colors?: FurnitureColors
+  ): Promise<{
     success: boolean;
     glb_url: string;
     message: string;
   }> {
     const body: any = { prompt, closed };
-    if (color) {
+
+    // Priorité aux multi-couleurs, sinon couleur unique
+    if (colors && Object.keys(colors).length > 0) {
+      body.colors = colors;
+    } else if (color) {
       body.color = color;
     }
+
     return request<{ success: boolean; glb_url: string; message: string }>(
       '/api/generate',
       {

@@ -7,7 +7,7 @@ import Viewer from '@/components/configurator/Viewer';
 import Controls from '@/components/configurator/Controls';
 import Price from '@/components/configurator/Price';
 import AuthModal from '@/components/auth/AuthModal';
-import { apiClient, type FurnitureModel, type SampleType, type SampleColor } from '@/lib/apiClient';
+import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
 
 const MATERIAL_ORDER = [
@@ -107,6 +107,20 @@ export default function ConfiguratorPage() {
     const [materialsLoading, setMaterialsLoading] = useState(false);
     const [price, setPrice] = useState(899);
     const [doorsOpen, setDoorsOpen] = useState(true); // true = avec portes, false = sans portes
+
+    // Multi-couleurs par composant
+    const [useMultiColor, setUseMultiColor] = useState(false);
+    const [componentColors, setComponentColors] = useState<{
+        structure: { colorId: number | null; hex: string | null };
+        drawers: { colorId: number | null; hex: string | null };
+        doors: { colorId: number | null; hex: string | null };
+        base: { colorId: number | null; hex: string | null };
+    }>({
+        structure: { colorId: null, hex: null },
+        drawers: { colorId: null, hex: null },
+        doors: { colorId: null, hex: null },
+        base: { colorId: null, hex: null },
+    });
 
     // Mode EZ/Expert
     const [isExpertMode, setIsExpertMode] = useState(false);
@@ -1048,14 +1062,29 @@ export default function ConfiguratorPage() {
         setGenerating(true);
 
         try {
-            // Récupérer la couleur sélectionnée
-            const selectedColor = selectedColorOption?.hex || null;
-            console.log('🎨 Couleur sélectionnée:', selectedColor);
+            let colors: FurnitureColors | undefined;
+            let singleColor: string | undefined;
+
+            if (useMultiColor) {
+                // Mode multi-couleurs : construire l'objet colors
+                colors = {};
+                if (componentColors.structure.hex) colors.structure = componentColors.structure.hex;
+                if (componentColors.drawers.hex) colors.drawers = componentColors.drawers.hex;
+                if (componentColors.doors.hex) colors.doors = componentColors.doors.hex;
+                if (componentColors.base.hex) colors.base = componentColors.base.hex;
+
+                console.log('🎨 Couleurs multi-composants:', colors);
+            } else {
+                // Mode couleur unique
+                singleColor = selectedColorOption?.hex || undefined;
+                console.log('🎨 Couleur unique:', singleColor);
+            }
 
             const result = await apiClient.generate.generate(
                 prompt,
                 !doorsOpen, // closed = !doorsOpen
-                selectedColor || undefined
+                singleColor,
+                colors
             );
             console.log('✓ Modèle 3D généré:', result.glb_url);
 
@@ -1073,7 +1102,7 @@ export default function ConfiguratorPage() {
         } finally {
             setGenerating(false);
         }
-    }, [doorsOpen, selectedColorOption]);
+    }, [doorsOpen, selectedColorOption, useMultiColor, componentColors]);
     // NOTE: generateModel is declared below (moved) to avoid hook dependency issues
 
     // useEffect pour régénérer quand la configuration change (MODE EZ)
@@ -2201,11 +2230,42 @@ export default function ConfiguratorPage() {
                             </div>
                         </div>
 
+                        {/* Toggle Multi-couleurs */}
+                        <div className="control-group">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <label className="control-label">Mode de coloration</label>
+                                    <p className="text-xs text-gray-500">
+                                        {useMultiColor
+                                            ? 'Couleurs personnalisées par composant'
+                                            : 'Couleur unique pour tout le meuble'}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setUseMultiColor(!useMultiColor)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                                        useMultiColor ? 'bg-amber-500' : 'bg-gray-300'
+                                    }`}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                                            useMultiColor ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Couleurs / Teintes Section */}
                         <div className="control-group">
-                            <label className="control-label">Couleurs</label>
+                            <label className="control-label">
+                                {useMultiColor ? 'Couleurs par composant' : 'Couleurs'}
+                            </label>
                             <p className="text-xs text-gray-500 mb-3">
-                                Choisissez ensuite la finition précise correspondant au matériau sélectionné.
+                                {useMultiColor
+                                    ? 'Sélectionnez une couleur différente pour chaque partie du meuble'
+                                    : 'Choisissez ensuite la finition précise correspondant au matériau sélectionné.'}
                             </p>
 
                             {materialsLoading ? (
@@ -2214,7 +2274,58 @@ export default function ConfiguratorPage() {
                                 <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
                                     Aucune teinte n&apos;est encore disponible pour {selectedMaterialLabel}.
                                 </div>
+                            ) : useMultiColor ? (
+                                /* MODE MULTI-COULEURS : Sélecteurs par composant */
+                                <div className="space-y-6">
+                                    {[
+                                        { key: 'structure' as const, label: 'Structure', icon: '🏗️', desc: 'Corps du meuble' },
+                                        { key: 'drawers' as const, label: 'Tiroirs', icon: '📦', desc: 'Façades de tiroirs' },
+                                        { key: 'doors' as const, label: 'Portes', icon: '🚪', desc: 'Portes battantes' },
+                                        { key: 'base' as const, label: 'Socle', icon: '⬛', desc: 'Base du meuble' },
+                                    ].map(({ key, label, icon, desc }) => (
+                                        <div key={key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                            <div className="mb-3 flex items-center gap-2">
+                                                <span className="text-xl">{icon}</span>
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-ink">{label}</h4>
+                                                    <p className="text-xs text-gray-500">{desc}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {colorsForMaterial.map((option) => {
+                                                    const isActive = componentColors[key].colorId === option.id;
+                                                    return (
+                                                        <button
+                                                            key={option.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setComponentColors(prev => ({
+                                                                    ...prev,
+                                                                    [key]: { colorId: option.id, hex: option.hex }
+                                                                }));
+                                                            }}
+                                                            className={`group flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-left text-xs transition ${
+                                                                isActive ? 'border-amber-500 bg-white text-ink shadow-sm' : 'border-gray-300 bg-white text-ink/70 hover:border-amber-300'
+                                                            }`}
+                                                        >
+                                                            <span
+                                                                className="inline-flex h-6 w-6 flex-shrink-0 overflow-hidden rounded-full border border-gray-300"
+                                                                style={{ backgroundColor: option.image_url ? undefined : (option.hex || DEFAULT_COLOR_HEX) }}
+                                                            >
+                                                                {option.image_url && (
+                                                                    <img src={option.image_url} alt={option.name || ''} className="h-full w-full object-cover" />
+                                                                )}
+                                                            </span>
+                                                            <span className="text-xs font-medium">{option.name}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
+                                /* MODE COULEUR UNIQUE : Sélecteur classique */
                                 <div className="flex flex-col gap-6 md:flex-row md:items-start">
                                     <div className="flex flex-1 flex-wrap gap-2">
                                         {colorsForMaterial.map((option) => {
