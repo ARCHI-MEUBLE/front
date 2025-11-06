@@ -405,14 +405,48 @@ export default function ConfiguratorPage() {
         else if (/P(?!\d)/.test(compact)) setDoors(1);
         else setDoors(0);
 
-        // 5) Structure Hn(...): shelves et drawers (T)
+        // 5) Structure Hn(...) ou Vn(...): shelves et drawers (T)
         const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+        const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+
         if (hStruct) {
             const n = parseInt(hStruct[1]);
             const inner = hStruct[2];
             const drawersCount = (inner.match(/T/g) || []).length;
             setDrawers(drawersCount);
             setShelves(Math.max(0, n - 1));
+
+            // Créer l'arbre de zones pour le mode avancé (horizontal)
+            const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent
+            }));
+
+            setRootZone({
+                id: 'root',
+                type: 'horizontal',
+                children
+            });
+        } else if (vStruct) {
+            const n = parseInt(vStruct[1]);
+            const inner = vStruct[2];
+            const drawersCount = (inner.match(/T/g) || []).length;
+            setDrawers(drawersCount);
+            setShelves(0); // Pas d'étagères horizontales pour V
+
+            // Créer l'arbre de zones pour le mode avancé (vertical)
+            const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent
+            }));
+
+            setRootZone({
+                id: 'root',
+                type: 'vertical',
+                children
+            });
         } else {
             setShelves(0);
             setDrawers(0);
