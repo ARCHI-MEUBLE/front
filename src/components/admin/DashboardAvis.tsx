@@ -37,7 +37,7 @@ export function DashboardAvis() {
 
     setDeleting(id);
     try {
-      const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setAvis((prev) => prev.filter((a) => a.id !== id));
       } else {

@@ -1,4 +1,4 @@
-import { useState, FormEvent, useRef } from 'react';
+import { useState, FormEvent, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -26,9 +26,26 @@ export default function ContactRequestPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    // Récupération des URLs Calendly depuis les variables d'environnement
-    const phoneUrl = process.env.NEXT_PUBLIC_CALENDLY_PHONE_URL || "";
-    const visioUrl = process.env.NEXT_PUBLIC_CALENDLY_VISIO_URL || "";
+    // Récupération des URLs Calendly depuis le backend
+    const [phoneUrl, setPhoneUrl] = useState("");
+    const [visioUrl, setVisioUrl] = useState("");
+
+    useEffect(() => {
+        // Charger la configuration depuis le backend
+        const fetchConfig = async () => {
+            try {
+                const res = await fetch('/api/config');
+                if (res.ok) {
+                    const data = await res.json();
+                    setPhoneUrl(data.calendly?.phoneUrl || "");
+                    setVisioUrl(data.calendly?.visioUrl || "");
+                }
+            } catch (err) {
+                console.error('Erreur lors du chargement de la configuration:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({

@@ -1,29 +1,17 @@
 /**
- * REDIRECTION - Cette route redirige vers le backend PHP
- * Utiliser apiClient.models.update/delete à la place
+ * API Admin - Gestion d'un modèle spécifique
+ * PUT /api/admin/models/:id - Modifier un modèle
+ * DELETE /api/admin/models/:id - Supprimer un modèle
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-
-const ADMIN_COOKIE_NAME = 'user_session';
-const ADMIN_COOKIE_VALUE = 'admin';
-
-function isAuthenticated(req: NextApiRequest): boolean {
-  const cookies = req.headers.cookie?.split(';').reduce<Record<string, string>>((acc, cookie) => {
-    const [key, value] = cookie.trim().split('=');
-    if (key) acc[key] = value || '';
-    return acc;
-  }, {}) || {};
-
-  return cookies[ADMIN_COOKIE_NAME] === ADMIN_COOKIE_VALUE;
-}
+import { hasAdminSession } from '@/lib/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  // Vérifier l'authentification
-  if (!isAuthenticated(req)) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
+  // Vérifier l'authentification admin
+  if (!hasAdminSession(req.headers.cookie)) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const { id } = req.query;
@@ -45,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body = { id: numericId };
     }
 
-    const response = await fetch(`${API_URL}/api/models`, {
+    const response = await fetch(`${API_URL}/backend/api/models.php`, {
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',

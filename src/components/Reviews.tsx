@@ -64,7 +64,11 @@ export function Reviews() {
         if (!isMounted) return;
         if (res.ok) {
           const data = await res.json();
-          setSessionUser({ name: data.user?.name || data.user?.email || "" });
+          // Backend returns 'customer' with first_name and last_name
+          const customerName = data.customer
+            ? `${data.customer.first_name || ''} ${data.customer.last_name || ''}`.trim()
+            : data.customer?.email || "";
+          setSessionUser({ name: customerName || "Utilisateur" });
         } else {
           setSessionUser(null);
         }

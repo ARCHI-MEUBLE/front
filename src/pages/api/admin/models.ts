@@ -1,28 +1,16 @@
 /**
- * REDIRECTION - Cette route redirige vers le backend PHP
- * Utiliser apiClient.models.* à la place
+ * API Admin - Gestion des modèles
+ * Proxie vers le backend PHP avec vérification admin
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-
-const ADMIN_COOKIE_NAME = 'user_session';
-const ADMIN_COOKIE_VALUE = 'admin';
-
-function isAuthenticated(req: NextApiRequest): boolean {
-  const cookies = req.headers.cookie?.split(';').reduce<Record<string, string>>((acc, cookie) => {
-    const [key, value] = cookie.trim().split('=');
-    if (key) acc[key] = value || '';
-    return acc;
-  }, {}) || {};
-
-  return cookies[ADMIN_COOKIE_NAME] === ADMIN_COOKIE_VALUE;
-}
+import { hasAdminSession } from '@/lib/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  // Vérifier l'authentification
-  if (!isAuthenticated(req)) {
-    console.log('Authentication failed - no user_session cookie');
+  // Vérifier l'authentification admin
+  if (!hasAdminSession(req.headers.cookie)) {
+    console.log('Authentication failed - no admin session');
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -35,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Construire l'URL avec les query params si nécessaire
-    let url = `${API_URL}/api/models`;
+    let url = `${API_URL}/backend/api/models.php`;
     if (req.url?.includes('?')) {
       const queryString = req.url.split('?')[1];
       url += `?${queryString}`;
