@@ -1050,50 +1050,56 @@ export default function ConfiguratorPage() {
 
         if (useAdvancedMode) {
             // Mode avancé : utiliser l'arbre de zones
-            const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
-            const match = basePrompt.match(regex);
-            if (!match) {
-                console.warn('Format de prompt invalide:', basePrompt);
-                return;
-            }
-            const meubleType = match[1];
-            const dimensions = match[2];
-
-            // Construire avec planches + socle + portes + structure de zones
-            let prompt = `${meubleType}(${dimensions})`;
-
-            // Planches de base
-            if (basePlanches) {
-                const planches = [];
-                if (basePlanches.b) planches.push('b');
-                if (basePlanches.h) planches.push('h');
-                if (basePlanches.g) planches.push('g');
-                if (basePlanches.d) planches.push('d');
-                if (basePlanches.f) planches.push('F'); // F majuscule pour le fond
-                prompt += planches.length === 5 ? 'EbF' : (planches.join('') || 'E');
-            } else {
-                prompt += 'EbF';
-            }
-
-            // Socle
-            if (socle !== 'none') {
-                prompt += 'S';
-                if (socle === 'wood') prompt += '2';
-            }
-
-            // Portes (avant structure)
-            if (doors > 0) {
-                prompt += doors >= 2 ? 'P2' : 'P';
-            }
-
-            // Structure de zones
             const zonePrompt = buildPromptFromZoneTree(rootZone);
-            if (zonePrompt) {
-                prompt += zonePrompt;
-            }
 
-            fullPrompt = prompt;
-            console.log('🏗️ Mode Avancé - Prompt généré:', fullPrompt);
+            // Si l'arbre de zones est vide (pas encore configuré), utiliser le prompt original
+            if (!zonePrompt || zonePrompt.trim() === '') {
+                fullPrompt = templatePrompt;
+                console.log('🏗️ Mode Avancé - Zones vides, utilisation du prompt original:', fullPrompt);
+            } else {
+                // L'utilisateur a configuré des zones, construire le prompt
+                const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
+                const match = basePrompt.match(regex);
+                if (!match) {
+                    console.warn('Format de prompt invalide:', basePrompt);
+                    return;
+                }
+                const meubleType = match[1];
+                const dimensions = match[2];
+
+                // Construire avec planches + socle + portes + structure de zones
+                let prompt = `${meubleType}(${dimensions})`;
+
+                // Planches de base
+                if (basePlanches) {
+                    const planches = [];
+                    if (basePlanches.b) planches.push('b');
+                    if (basePlanches.h) planches.push('h');
+                    if (basePlanches.g) planches.push('g');
+                    if (basePlanches.d) planches.push('d');
+                    if (basePlanches.f) planches.push('F'); // F majuscule pour le fond
+                    prompt += planches.length === 5 ? 'EbF' : (planches.join('') || 'E');
+                } else {
+                    prompt += 'EbF';
+                }
+
+                // Socle
+                if (socle !== 'none') {
+                    prompt += 'S';
+                    if (socle === 'wood') prompt += '2';
+                }
+
+                // Portes (avant structure)
+                if (doors > 0) {
+                    prompt += doors >= 2 ? 'P2' : 'P';
+                }
+
+                // Structure de zones
+                prompt += zonePrompt;
+
+                fullPrompt = prompt;
+                console.log('🏗️ Mode Avancé - Prompt généré avec zones:', fullPrompt);
+            }
         } else {
             // Mode simple : utiliser le prompt original du modèle s'il existe
             // et que les sliders n'ont pas été modifiés (tous à 0)
