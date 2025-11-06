@@ -257,6 +257,15 @@ export default function MyOrders() {
                       >
                         👁️ Voir les détails
                       </button>
+
+                      {order.payment_status === 'paid' && (
+                        <button
+                          onClick={() => window.open(`http://localhost:8000/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
+                          className="btn-secondary flex items-center gap-2"
+                        >
+                          📄 Télécharger facture
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
