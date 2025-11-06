@@ -63,6 +63,12 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
           })
         });
 
+        // Vider le panier
+        await fetch('http://localhost:8000/backend/api/cart/index.php', {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
         // Rediriger vers la page de confirmation
         setTimeout(() => {
           router.push(`/order-confirmation/${orderId}`);
