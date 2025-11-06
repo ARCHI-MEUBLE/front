@@ -9,6 +9,7 @@ import { DashboardModels } from '@/components/admin/DashboardModels';
 import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardOrders } from '@/components/admin/DashboardOrders';
+import DashboardPayments from '@/components/admin/DashboardPayments';
 import { DashboardAppointments } from '@/components/admin/DashboardAppointments';
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
@@ -247,6 +248,7 @@ export default function AdminDashboardPage() {
             {selectedSection === 'catalogue' && <DashboardCatalogue />}
             {selectedSection === 'configs' && <DashboardConfigs />}
             {selectedSection === 'orders' && <DashboardOrders />}
+            {selectedSection === 'payments' && <DashboardPayments />}
             {selectedSection === 'appointments' && <DashboardAppointments />}
             {selectedSection === 'calendar' && <DashboardCalendar />}
             {selectedSection === 'avis' && <DashboardAvis />}
