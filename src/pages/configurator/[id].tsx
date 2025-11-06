@@ -1095,16 +1095,25 @@ export default function ConfiguratorPage() {
             fullPrompt = prompt;
             console.log('🏗️ Mode Avancé - Prompt généré:', fullPrompt);
         } else {
-            // Mode simple : ancien système avec sliders
-            fullPrompt = buildPromptFromConfig(basePrompt, {
-                shelves,
-                drawers,
-                doors,
-                socle,
-                basePlanches,
-                hasDressing
-            });
-            console.log('📊 Mode Simple - Prompt généré:', fullPrompt);
+            // Mode simple : utiliser le prompt original du modèle s'il existe et qu'aucune modification n'a été faite
+            // Sinon, reconstruire avec buildPromptFromConfig
+            if (templatePrompt && templatePrompt !== basePrompt) {
+                // Si templatePrompt est différent de basePrompt, cela signifie qu'il vient de la BDD
+                // et contient déjà la structure complète (ex: V3, H4, etc.)
+                fullPrompt = templatePrompt;
+                console.log('📄 Mode Simple - Utilisation du prompt original:', fullPrompt);
+            } else {
+                // Sinon, reconstruire avec les sliders
+                fullPrompt = buildPromptFromConfig(basePrompt, {
+                    shelves,
+                    drawers,
+                    doors,
+                    socle,
+                    basePlanches,
+                    hasDressing
+                });
+                console.log('📊 Mode Simple - Prompt généré:', fullPrompt);
+            }
         }
 
         // Calculer le prix (inclut socle, étagères, tiroirs, portes)
