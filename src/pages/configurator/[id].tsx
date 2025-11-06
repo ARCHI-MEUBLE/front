@@ -1465,30 +1465,30 @@ export default function ConfiguratorPage() {
             const result = await response.json();
             setEditingConfigName(configName);
 
-            if (typeof window !== 'undefined' && result.configuration) {
+            // Ajouter automatiquement au panier après sauvegarde
+            if (result.configuration) {
                 try {
-                    const enrichedConfiguration = {
-                        ...result.configuration
-                    };
+                    const addToCartResponse = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            configuration_id: result.configuration.id,
+                            quantity: 1
+                        })
+                    });
 
-                    if (enrichedConfiguration.config_string && !enrichedConfiguration.config_data) {
-                        try {
-                            enrichedConfiguration.config_data = JSON.parse(enrichedConfiguration.config_string);
-                        } catch (parseError) {
-                            console.warn('Impossible de parser la configuration retournée', parseError);
-                        }
+                    if (addToCartResponse.ok) {
+                        // Rediriger vers le panier
+                        router.push('/cart');
+                    } else {
+                        throw new Error('Erreur lors de l\'ajout au panier');
                     }
-
-                    const serialized = JSON.stringify(enrichedConfiguration);
-                    window.localStorage.setItem(`archimeuble:configuration:${result.configuration.id}`, serialized);
-                    window.localStorage.setItem('archimeuble:configuration:last', serialized);
-                } catch (storageError) {
-                    console.warn('Impossible de mettre à jour la configuration stockée', storageError);
+                } catch (cartError) {
+                    console.error('Erreur ajout au panier:', cartError);
+                    alert(`✅ Configuration "${configName}" enregistrée, mais erreur lors de l'ajout au panier`);
                 }
             }
-
-            alert(`✅ Configuration "${configName}" ${isEdit ? 'mise à jour' : 'enregistrée'}`);
-            router.push('/my-configurations');
         } catch (err: any) {
             console.error('Erreur saveConfiguration:', err);
             alert(`❌ Erreur lors de l'enregistrement:\n${err.message}`);
@@ -2570,9 +2570,9 @@ export default function ConfiguratorPage() {
                             <button
                                 className="btn btn-primary"
                                 onClick={saveConfiguration}
-                                title={isEditing ? 'Mettre à jour cette configuration' : 'Enregistrer cette configuration dans Mes configurations'}
+                                title="Ajouter cette configuration au panier"
                             >
-                                {isEditing ? '💾 Mettre à jour la configuration' : '📝 Enregistrer la configuration'}
+                                🛒 Ajouter au panier
                             </button>
 
                             <button

@@ -18,8 +18,7 @@ import {
   Phone,
   Edit2,
   X,
-  Check,
-  SlidersHorizontal
+  Check
 } from 'lucide-react';
 
 type Section = 'orders' | 'profile' | 'help';
@@ -298,20 +297,6 @@ export default function Account() {
                       </div>
                       <ChevronRight className="h-4 w-4" />
                     </button>
-                  </div>
-
-                  {/* Mes configurations */}
-                  <div className="mb-4">
-                    <Link
-                      href="/my-configurations"
-                      className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors rounded-lg text-text-primary hover:bg-bg-light"
-                    >
-                      <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="h-4 w-4" />
-                        <span>Mes configurations</span>
-                      </div>
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
                   </div>
 
                   {/* Mon profil */}
