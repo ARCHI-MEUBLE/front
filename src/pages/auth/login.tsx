@@ -21,7 +21,7 @@ export default function Login() {
 
   // Rediriger si déjà connecté
   if (isAuthenticated) {
-    const redirectUrl = typeof redirect === 'string' ? redirect : '/my-configurations';
+    const redirectUrl = typeof redirect === 'string' ? redirect : '/';
     router.push(redirectUrl);
     return null;
   }
@@ -40,8 +40,8 @@ export default function Login() {
     try {
       await login(formData.email, formData.password);
 
-      // Rediriger vers l'URL demandée ou vers mes configurations
-      const redirectUrl = typeof redirect === 'string' ? redirect : '/my-configurations';
+      // Rediriger vers l'URL demandée ou vers l'accueil
+      const redirectUrl = typeof redirect === 'string' ? redirect : '/';
       router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || 'Email ou mot de passe incorrect');

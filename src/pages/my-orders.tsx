@@ -181,10 +181,10 @@ export default function MyOrders() {
               Passez votre première commande pour la retrouver ici
             </p>
             <Link
-              href="/my-configurations"
+              href="/"
               className="btn-primary"
             >
-              Voir mes configurations
+              Créer un meuble
             </Link>
           </div>
         ) : (

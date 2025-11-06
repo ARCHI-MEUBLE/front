@@ -26,7 +26,7 @@ export default function Register() {
 
   // Rediriger si déjà connecté
   if (isAuthenticated) {
-    router.push('/my-configurations');
+    router.push('/');
     return null;
   }
 
@@ -69,8 +69,8 @@ export default function Register() {
 
       await register(dataToSend);
 
-      // Rediriger vers la page de configurations après inscription
-      router.push('/my-configurations');
+      // Rediriger vers l'accueil après inscription
+      router.push('/');
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');
     } finally {
