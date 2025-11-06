@@ -265,7 +265,7 @@ export function DashboardModels() {
         </p>
       </div>
       <a
-        href="/configurator/select"
+        href="/models"
         target="_blank"
         rel="noopener noreferrer"
         className="px-4 py-2 bg-gray-900 text-white font-medium text-xs uppercase hover:bg-gray-800 transition"

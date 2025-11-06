@@ -67,7 +67,7 @@
 
 /* ===== RIGHT: CONFIG PANEL ===== */
 .config-panel {
-    width: 420px;
+    width: 560px;
     background-color: #FFFFFF;
     border-left: 1px solid #E0D7CC; /* border-light */
     display: flex;
@@ -148,6 +148,7 @@
     border-radius: 3px;
     background: #E0D7CC; /* border-light */
     outline: none;
+    appearance: none;
     -webkit-appearance: none;
 }
 

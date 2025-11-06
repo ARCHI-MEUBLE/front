@@ -243,7 +243,7 @@ export default function OrderConfirmationPage() {
               Voir mes commandes
             </Link>
             <Link
-              href="/configurator/select"
+              href="/models"
               className="flex-1 inline-flex items-center justify-center gap-2 border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <FolderOpen className="h-4 w-4" />

@@ -145,7 +145,7 @@ export default function MyConfigurations() {
     }
 
     if (!templateKey) {
-      router.push('/configurator/select');
+      router.push('/models');
       return;
     }
 
@@ -233,7 +233,7 @@ export default function MyConfigurations() {
             </div>
 
             <Link
-              href="/configurator/select"
+              href="/models"
               className="btn-primary"
             >
               ➕ Nouvelle configuration
@@ -248,7 +248,7 @@ export default function MyConfigurations() {
             <div className="text-6xl mb-3">📦</div>
             <h3 className="text-lg font-medium text-text-primary mb-1">Aucune configuration sauvegardée</h3>
             <p className="text-text-secondary mb-5">Créez votre première configuration pour la retrouver ici</p>
-            <Link href="/configurator/select" className="btn-primary inline-flex items-center gap-2">
+            <Link href="/models" className="btn-primary inline-flex items-center gap-2">
               ➕ Commencer une configuration
             </Link>
           </div>
