@@ -320,6 +320,9 @@ export default function DashboardPayments() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                   Date
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -347,6 +350,17 @@ export default function DashboardPayments() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {formatDate(transaction.created_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {transaction.payment_status === 'paid' && (
+                      <button
+                        onClick={() => window.open(`http://localhost:8000/backend/api/orders/invoice.php?id=${transaction.id}&download=true`, '_blank')}
+                        className="text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                        title="Télécharger la facture"
+                      >
+                        📄 Facture
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
