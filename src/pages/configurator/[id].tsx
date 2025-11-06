@@ -1698,7 +1698,7 @@ export default function ConfiguratorPage() {
                 {/* Left: 3D Viewer */}
                 <div className="viewer-section">
                     <div className="viewer-wrapper">
-                        <Viewer glb={glbUrl || '/models/default.glb'} />
+                        <Viewer glb={glbUrl || undefined} />
                         {generating && (
                             <div className="loading-overlay" id="loading-overlay">
                                 <div className="spinner"></div>
