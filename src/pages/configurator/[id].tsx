@@ -1095,15 +1095,16 @@ export default function ConfiguratorPage() {
             fullPrompt = prompt;
             console.log('🏗️ Mode Avancé - Prompt généré:', fullPrompt);
         } else {
-            // Mode simple : utiliser le prompt original du modèle s'il existe et qu'aucune modification n'a été faite
-            // Sinon, reconstruire avec buildPromptFromConfig
-            if (templatePrompt && templatePrompt !== basePrompt) {
-                // Si templatePrompt est différent de basePrompt, cela signifie qu'il vient de la BDD
-                // et contient déjà la structure complète (ex: V3, H4, etc.)
+            // Mode simple : utiliser le prompt original du modèle s'il existe
+            // et que les sliders n'ont pas été modifiés (tous à 0)
+            const slidersAreDefault = shelves === 0 && drawers === 0 && doors === 0;
+
+            if (templatePrompt && slidersAreDefault) {
+                // Utiliser le prompt original de la BDD qui contient la structure complète (V3, H4, etc.)
                 fullPrompt = templatePrompt;
                 console.log('📄 Mode Simple - Utilisation du prompt original:', fullPrompt);
             } else {
-                // Sinon, reconstruire avec les sliders
+                // L'utilisateur a modifié les sliders, reconstruire le prompt
                 fullPrompt = buildPromptFromConfig(basePrompt, {
                     shelves,
                     drawers,
@@ -1112,7 +1113,7 @@ export default function ConfiguratorPage() {
                     basePlanches,
                     hasDressing
                 });
-                console.log('📊 Mode Simple - Prompt généré:', fullPrompt);
+                console.log('📊 Mode Simple - Prompt généré avec sliders:', fullPrompt);
             }
         }
 
