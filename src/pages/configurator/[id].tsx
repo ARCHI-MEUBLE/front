@@ -1048,7 +1048,15 @@ export default function ConfiguratorPage() {
         setGenerating(true);
 
         try {
-            const result = await apiClient.generate.generate(prompt, !doorsOpen); // closed = !doorsOpen
+            // Récupérer la couleur sélectionnée
+            const selectedColor = selectedColorOption?.hex || null;
+            console.log('🎨 Couleur sélectionnée:', selectedColor);
+
+            const result = await apiClient.generate.generate(
+                prompt,
+                !doorsOpen, // closed = !doorsOpen
+                selectedColor || undefined
+            );
             console.log('✓ Modèle 3D généré:', result.glb_url);
 
             // Si l'URL est relative, la convertir en URL absolue vers le backend
@@ -1065,7 +1073,7 @@ export default function ConfiguratorPage() {
         } finally {
             setGenerating(false);
         }
-    }, [doorsOpen]);
+    }, [doorsOpen, selectedColorOption]);
     // NOTE: generateModel is declared below (moved) to avoid hook dependency issues
 
     // useEffect pour régénérer quand la configuration change (MODE EZ)

@@ -461,17 +461,22 @@ export const generateApi = {
    * Générer un modèle 3D à partir d'un prompt
    * @param prompt Le prompt de génération du meuble
    * @param closed Mode fermé (true = sans portes, false = avec portes)
+   * @param color Couleur hex optionnelle (ex: "#D8C7A1")
    */
-  async generate(prompt: string, closed: boolean = false): Promise<{
+  async generate(prompt: string, closed: boolean = false, color?: string): Promise<{
     success: boolean;
     glb_url: string;
     message: string;
   }> {
+    const body: any = { prompt, closed };
+    if (color) {
+      body.color = color;
+    }
     return request<{ success: boolean; glb_url: string; message: string }>(
       '/api/generate',
       {
         method: 'POST',
-        body: JSON.stringify({ prompt, closed }),
+        body: JSON.stringify(body),
       }
     );
   },
