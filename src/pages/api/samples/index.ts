@@ -30,11 +30,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('🔧 [API] Données du backend:', JSON.stringify(backendData).substring(0, 500));
 
-    // Le backend retourne déjà la bonne structure depuis la mise à jour des tables
-    // Structure: { success: true, materials: { "Matériau": [{ id, name, material, colors: [...] }] } }
-    // Pas besoin de transformation, on retourne directement
+    // Le backend retourne: { success: true, materials: [{ name: "Matériau", types: [...] }] }
+    // On transforme en: { success: true, materials: { "Matériau": [...types...] } }
 
-    return res.status(200).json(backendData);
+    const materials: Record<string, any[]> = {};
+
+    if (backendData.materials && Array.isArray(backendData.materials)) {
+      for (const material of backendData.materials) {
+        materials[material.name] = material.types || [];
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      materials
+    });
   } catch (error) {
     console.error('Error fetching samples:', error);
     return res.status(500).json({

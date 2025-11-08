@@ -24,11 +24,11 @@ yarn-error.log*
 .env.production.local
 .env.*.local
 
-# Base de données locale (SQLite admin)
-*.db
-*.db-journal
-*.db-shm
-*.db-wal
+# Base de données locale (SQLite admin) - si jamais utilisée dans front
+database/*.db
+database/*.db-journal
+database/*.db-shm
+database/*.db-wal
 database/
 
 # Fichiers Python
