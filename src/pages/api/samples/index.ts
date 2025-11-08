@@ -30,20 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('🔧 [API] Données du backend:', JSON.stringify(backendData).substring(0, 500));
 
-    // Le backend retourne: { success: true, materials: [{ name: "Matériau", types: [...] }] }
-    // On transforme en: { success: true, materials: { "Matériau": [...types...] } }
-
-    const materials: Record<string, any[]> = {};
-
-    if (backendData.materials && Array.isArray(backendData.materials)) {
-      for (const material of backendData.materials) {
-        materials[material.name] = material.types || [];
-      }
-    }
+    // Le backend retourne: { success: true, materials: { "Agglomere": [...types...], "MDF + revetement (melamine)": [...types...] } }
+    // C'est déjà le bon format, on le retourne tel quel
 
     return res.status(200).json({
       success: true,
-      materials
+      materials: backendData.materials || {}
     });
   } catch (error) {
     console.error('Error fetching samples:', error);
