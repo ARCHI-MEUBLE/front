@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit } from 'lucide-react';
 
 interface CartItem {
   id: number;
@@ -19,6 +19,7 @@ interface CartItem {
     glb_url: string | null;
     thumbnail_url: string | null;
     price: number;
+    model_id: number | null;
   };
 }
 
@@ -282,13 +283,23 @@ export default function Cart() {
 
                           <div className="flex-grow"></div>
 
-                          <button
-                            onClick={() => removeItem(item.configuration_id)}
-                            className="text-error hover:text-error text-sm font-medium flex items-center gap-2"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Retirer
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <Link
+                              href={`/configurator/${item.configuration.model_id || 1}?mode=edit&configId=${item.configuration_id}`}
+                              className="text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-2"
+                            >
+                              <Edit className="h-4 w-4" />
+                              Modifier
+                            </Link>
+
+                            <button
+                              onClick={() => removeItem(item.configuration_id)}
+                              className="text-error hover:text-error text-sm font-medium flex items-center gap-2"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Retirer
+                            </button>
+                          </div>
                         </div>
 
                         {/* Sous-total */}

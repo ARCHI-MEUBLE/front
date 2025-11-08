@@ -230,7 +230,9 @@ export default function DashboardPayments() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenu par Mois</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {filters.period === '7d' || filters.period === '30d' ? 'Revenu par Jour' : 'Revenu par Mois'}
+          </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={analytics.revenue_by_month}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

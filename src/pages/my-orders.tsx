@@ -62,6 +62,7 @@ export default function MyOrders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'ongoing' | 'completed'>('ongoing');
 
   useEffect(() => {
     if (authLoading) return;
@@ -112,14 +113,27 @@ export default function MyOrders() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
-      month: 'long', 
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
   };
+
+  // Séparer les commandes en cours et terminées
+  // Terminées = payées (paid) OU livrées (delivered)
+  const completedOrders = orders.filter(order =>
+    order.payment_status === 'paid' || order.status === 'delivered'
+  );
+
+  // En cours = toutes les autres (pending, confirmed, etc.) qui ne sont ni payées ni livrées
+  const ongoingOrders = orders.filter(order =>
+    order.payment_status !== 'paid' && order.status !== 'delivered'
+  );
+
+  const displayedOrders = activeTab === 'ongoing' ? ongoingOrders : completedOrders;
 
   if (authLoading || isLoading) {
     return (
@@ -155,14 +169,43 @@ export default function MyOrders() {
             ]}
           />
 
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary">
-                📦 Mes Commandes
-              </h1>
-              <p className="mt-1 text-sm text-text-secondary">
-                {orders.length} commande{orders.length > 1 ? 's' : ''}
-              </p>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-text-primary mb-4">
+              📦 Mes achats
+            </h1>
+
+            {/* Tabs */}
+            <div className="flex gap-4 border-b border-border-light">
+              <button
+                onClick={() => setActiveTab('ongoing')}
+                className={`pb-3 px-1 font-medium transition-colors relative ${
+                  activeTab === 'ongoing'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Mes achats en cours
+                {ongoingOrders.length > 0 && (
+                  <span className="ml-2 text-xs bg-primary text-white rounded-full px-2 py-0.5">
+                    {ongoingOrders.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`pb-3 px-1 font-medium transition-colors relative ${
+                  activeTab === 'completed'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Mes achats terminés
+                {completedOrders.length > 0 && (
+                  <span className="ml-2 text-xs bg-primary text-white rounded-full px-2 py-0.5">
+                    {completedOrders.length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         {error && (
@@ -171,25 +214,29 @@ export default function MyOrders() {
           </div>
         )}
 
-        {orders.length === 0 ? (
+        {displayedOrders.length === 0 ? (
           <div className="card text-center py-12">
             <div className="text-6xl mb-4">📦</div>
             <h3 className="text-xl font-semibold text-text-primary mb-2">
-              Aucune commande
+              {activeTab === 'ongoing' ? 'Aucun achat en cours' : 'Vous n\'avez pas d\'achats terminés.'}
             </h3>
             <p className="text-text-secondary mb-6">
-              Passez votre première commande pour la retrouver ici
+              {activeTab === 'ongoing'
+                ? 'Passez votre première commande pour la retrouver ici'
+                : 'Vos commandes payées et livrées apparaîtront ici'}
             </p>
-            <Link
-              href="/"
-              className="btn-primary"
-            >
-              Créer un meuble
-            </Link>
+            {activeTab === 'ongoing' && (
+              <Link
+                href="/"
+                className="btn-primary"
+              >
+                Créer un meuble
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => {
+            {displayedOrders.map((order) => {
               const statusInfo = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
               const paymentInfo = PAYMENT_STATUS_LABELS[order.payment_status] || PAYMENT_STATUS_LABELS.pending;
               

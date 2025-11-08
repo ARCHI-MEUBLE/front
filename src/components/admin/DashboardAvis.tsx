@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Star } from 'lucide-react';
+import { Trash2, Star, MessageSquare, TrendingUp } from 'lucide-react';
 
 type Review = {
   id: string;
@@ -52,6 +52,27 @@ export function DashboardAvis() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Calculer les statistiques
+  const averageRating = avis.length > 0
+    ? (avis.reduce((sum, review) => sum + review.rating, 0) / avis.length).toFixed(1)
+    : '0.0';
+
+  const ratingDistribution = [5, 4, 3, 2, 1].map(rating => {
+    const count = avis.filter(review => review.rating === rating).length;
+    const percentage = avis.length > 0 ? (count / avis.length) * 100 : 0;
+    return { rating, count, percentage };
+  });
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -62,60 +83,127 @@ export function DashboardAvis() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestion des avis clients</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {avis.length} avis au total
-          </p>
+        <h1 className="text-2xl font-semibold text-gray-900">Gestion des Avis Clients</h1>
+      </div>
+
+      {/* Statistiques KPI */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <MessageSquare className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600">Total Avis</div>
+              <div className="text-2xl font-bold text-gray-900">{avis.length}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-50 rounded-lg">
+              <Star className="h-6 w-6 text-yellow-500 fill-current" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600">Note Moyenne</div>
+              <div className="text-2xl font-bold text-gray-900">{averageRating} / 5</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600">Satisfaction</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {avis.length > 0 ? Math.round((avis.filter(r => r.rating >= 4).length / avis.length) * 100) : 0}%
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {avis.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-          <p className="text-gray-500">Aucun avis client pour le moment.</p>
+      {/* Distribution des notes */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Distribution des Notes</h2>
+        <div className="space-y-2">
+          {ratingDistribution.map(({ rating, count, percentage }) => (
+            <div key={rating} className="flex items-center gap-3">
+              <div className="flex items-center gap-1 w-16">
+                <span className="text-sm font-medium text-gray-700">{rating}</span>
+                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+              </div>
+              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-yellow-500 h-full rounded-full transition-all"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <span className="text-sm text-gray-600 w-12 text-right">{count}</span>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className="space-y-4">
-          {avis.map((review) => (
-            <div
-              key={review.id}
-              className="flex items-start gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md"
-            >
-              <div className="flex-1">
+      </div>
+
+      {/* Liste des avis */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Tous les Avis</h2>
+        </div>
+
+        {avis.length === 0 ? (
+          <div className="p-12 text-center">
+            <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">Aucun avis client pour le moment.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {avis.map((review) => (
+              <div
+                key={review.id}
+                className="p-6 hover:bg-gray-50 transition-colors"
+              >
                 <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-gray-900">{review.authorName}</h3>
-                      <div className="flex items-center gap-1 text-yellow-500">
+                      <div className="flex items-center gap-0.5">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
                             className={`h-4 w-4 ${
-                              i < review.rating ? 'fill-current' : 'stroke-current fill-none'
+                              i < review.rating
+                                ? 'text-yellow-500 fill-current'
+                                : 'text-gray-300 fill-current'
                             }`}
                           />
                         ))}
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">{review.date}</p>
+                    <p className="text-xs text-gray-500 mb-3">{formatDate(review.date)}</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{review.text}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleDelete(review.id)}
                     disabled={deleting === review.id}
-                    className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                    className="ml-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="h-4 w-4" />
                     {deleting === review.id ? 'Suppression...' : 'Supprimer'}
                   </button>
                 </div>
-                <p className="mt-3 text-sm text-gray-700">{review.text}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

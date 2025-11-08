@@ -31,11 +31,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Calling backend URL:', url);
 
+    // Déterminer l'URL du frontend
+    const protocol = req.headers['x-forwarded-proto'] || (req.connection as any).encrypted ? 'https' : 'http';
+    const host = req.headers.host || 'localhost:3000';
+    const frontendUrl = `${protocol}://${host}`;
+
     const response = await fetch(url, {
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Cookie': req.headers.cookie || '',
+        'Origin': frontendUrl,
+        'Referer': frontendUrl,
       },
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
       credentials: 'include',

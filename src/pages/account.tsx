@@ -28,6 +28,7 @@ interface Order {
   order_number: string;
   status: string;
   total: number;
+  payment_status: string;
   created_at: string;
 }
 
@@ -241,8 +242,15 @@ export default function Account() {
     }
   };
 
-  const ordersInProgress = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
-  const ordersCompleted = orders.filter(o => ['delivered', 'cancelled'].includes(o.status));
+  // Terminées = payées (paid) OU livrées (delivered)
+  const ordersCompleted = orders.filter(order =>
+    order.payment_status === 'paid' || order.status === 'delivered'
+  );
+
+  // En cours = toutes les autres (pending, confirmed, etc.) qui ne sont ni payées ni livrées
+  const ordersInProgress = orders.filter(order =>
+    order.payment_status !== 'paid' && order.status !== 'delivered'
+  );
 
   if (authLoading) {
     return (
