@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { Eye, Trash2, CreditCard, Download } from 'lucide-react';
 
 interface OrderItem {
   id: number;
@@ -53,6 +54,99 @@ const PAYMENT_STATUS_LABELS: { [key: string]: { label: string; color: string } }
   paid: { label: 'Payé', color: 'text-success' },
   failed: { label: 'Échec', color: 'text-error' }
 };
+
+// Composant pour afficher les items d'une commande avec design panier
+function OrderItemsDisplay({ orderId }: { orderId: number }) {
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const response = await fetch(`/backend/api/orders/list.php?id=${orderId}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setItems(data.order?.items || []);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des items:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadItems();
+  }, [orderId]);
+
+  if (loading) {
+    return <div className="text-sm text-text-secondary py-4">Chargement des articles...</div>;
+  }
+
+  if (!items || items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3 mb-4">
+      {items.map((item) => {
+        const config = item.configuration;
+        const itemPrice = item.price || item.unit_price || config?.price || 0;
+        const itemName = item.name || config?.name || 'Configuration';
+        const glbUrl = config?.glb_url || null;
+        const configData = typeof config?.config_data === 'string'
+          ? JSON.parse(config.config_data)
+          : config?.config_data;
+
+        return (
+          <div key={item.id} className="flex gap-4 p-4 bg-bg-light rounded-lg">
+            {/* Preview 3D - même taille que le panier */}
+            <div className="flex-shrink-0 w-32 h-32 bg-gradient-to-br from-bg-light to-border-light rounded-lg flex items-center justify-center">
+              {glbUrl ? (
+                <model-viewer
+                  src={glbUrl}
+                  alt={itemName}
+                  auto-rotate
+                  camera-controls
+                  style={{ width: '100%', height: '100%', borderRadius: '0.5rem' }}
+                />
+              ) : (
+                <div className="text-4xl">🪑</div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-grow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-text-primary">
+                    {itemName}
+                  </h4>
+                  {configData?.dimensions && (
+                    <p className="text-xs text-text-secondary mt-1">
+                      {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
+                    </p>
+                  )}
+                  <p className="text-sm text-text-secondary mt-1">
+                    Quantité: {item.quantity}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-text-primary">{itemPrice}€</p>
+                  {item.quantity > 1 && (
+                    <p className="text-xs text-text-secondary mt-1">
+                      Total: {itemPrice * item.quantity}€
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MyOrders() {
   const router = useRouter();
@@ -235,141 +329,126 @@ export default function MyOrders() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {displayedOrders.map((order) => {
               const statusInfo = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
               const paymentInfo = PAYMENT_STATUS_LABELS[order.payment_status] || PAYMENT_STATUS_LABELS.pending;
-              
+
               return (
-                <div
-                  key={order.id}
-                  className="card overflow-hidden"
-                >
-                  <div>
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-text-primary mb-1">
-                          Commande #{order.order_number}
-                        </h3>
-                        <p className="text-sm text-text-tertiary">
-                          Passée le {formatDate(order.created_at)}
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${statusInfo.color}`}>
-                          <span>{statusInfo.icon}</span>
-                          <span>{statusInfo.label}</span>
-                        </span>
-                      </div>
+                <div key={order.id} className="card p-6">
+                  {/* Header avec statut */}
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-light">
+                    <div>
+                      <h3 className="text-lg font-bold text-text-primary">
+                        Commande #{order.order_number}
+                      </h3>
+                      <p className="text-sm text-text-secondary mt-1">
+                        Passée le {formatDate(order.created_at)}
+                      </p>
                     </div>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold ${statusInfo.color}`}>
+                      <span>{statusInfo.icon}</span>
+                      <span>{statusInfo.label}</span>
+                    </span>
+                  </div>
 
-                    {/* Infos */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-text-secondary">💰</span>
-                        <div>
-                          <p className="text-sm text-text-tertiary">Montant total</p>
-                          <p className="font-semibold text-text-primary">{order.total}€</p>
-                        </div>
-                      </div>
+                  {/* Charger les items de cette commande pour affichage */}
+                  <OrderItemsDisplay orderId={order.id} />
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-text-secondary">💳</span>
-                        <div>
-                          <p className="text-sm text-text-tertiary">Paiement</p>
-                          <p className={`font-semibold ${paymentInfo.color}`}>
-                            {paymentInfo.label}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-text-secondary">📍</span>
-                        <div>
-                          <p className="text-sm text-text-tertiary">Livraison</p>
-                          <p className="font-semibold text-text-primary text-sm">
-                            {order.shipping_address.split(',')[0]}...
-                          </p>
-                        </div>
-                      </div>
+                  {/* Infos commande */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-bg-light rounded-lg">
+                    <div>
+                      <p className="text-xs text-text-tertiary mb-1">Montant total</p>
+                      <p className="text-lg font-bold text-text-primary">{order.total}€</p>
                     </div>
+                    <div>
+                      <p className="text-xs text-text-tertiary mb-1">Paiement</p>
+                      <p className={`text-sm font-semibold ${paymentInfo.color}`}>
+                        {paymentInfo.label}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-tertiary mb-1">Livraison</p>
+                      <p className="text-sm font-semibold text-text-primary">
+                        {order.shipping_address.split(',')[0]}...
+                      </p>
+                    </div>
+                  </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => loadOrderDetails(order.id)}
-                        className="btn-primary"
-                      >
-                        👁️ Voir les détails
-                      </button>
+                  {/* Actions */}
+                  <div className="flex gap-3 flex-wrap">
+                    <button
+                      onClick={() => loadOrderDetails(order.id)}
+                      className="text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Voir les détails
+                    </button>
 
-                      {/* Boutons pour commandes non payées */}
-                      {order.payment_status !== 'paid' && (
-                        <>
-                          <button
-                            onClick={async () => {
-                              if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
-                              try {
-                                const response = await fetch(`/backend/api/orders/delete.php`, {
-                                  method: 'POST',
-                                  credentials: 'include',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ order_id: order.id })
-                                });
-                                if (!response.ok) throw new Error('Erreur de suppression');
-                                alert('✅ Commande supprimée avec succès');
-                                loadOrders();
-                              } catch (error) {
-                                alert('❌ Erreur lors de la suppression');
-                              }
-                            }}
-                            className="btn-secondary flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100"
-                          >
-                            🗑️ Supprimer
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              // Rediriger vers la page de paiement pour cette commande
-                              router.push(`/checkout?order_id=${order.id}`);
-                            }}
-                            className="btn-primary flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                          >
-                            💳 Payer maintenant
-                          </button>
-                        </>
-                      )}
-
-                      {/* Bouton facture pour commandes payées */}
-                      {order.payment_status === 'paid' && (
+                    {/* Boutons pour commandes non payées */}
+                    {order.payment_status !== 'paid' && (
+                      <>
                         <button
                           onClick={async () => {
+                            if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
                             try {
-                              const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
-                                credentials: 'include'
+                              const response = await fetch(`/backend/api/orders/delete.php`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ order_id: order.id })
                               });
-                              if (!response.ok) throw new Error('Erreur de téléchargement');
-                              const blob = await response.blob();
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `facture-${order.invoice_number || order.id}.pdf`;
-                              document.body.appendChild(a);
-                              a.click();
-                              window.URL.revokeObjectURL(url);
-                              document.body.removeChild(a);
+                              if (!response.ok) throw new Error('Erreur de suppression');
+                              alert('✅ Commande supprimée avec succès');
+                              loadOrders();
                             } catch (error) {
-                              alert('Erreur lors du téléchargement de la facture');
+                              alert('❌ Erreur lors de la suppression');
                             }
                           }}
-                          className="btn-secondary flex items-center gap-2"
+                          className="text-error hover:text-error text-sm font-medium flex items-center gap-2"
                         >
-                          📄 Télécharger facture
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer
                         </button>
-                      )}
-                    </div>
+
+                        <button
+                          onClick={() => router.push(`/checkout?order_id=${order.id}`)}
+                          className="btn-primary text-sm flex items-center gap-2"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Payer maintenant
+                        </button>
+                      </>
+                    )}
+
+                    {/* Bouton facture pour commandes payées */}
+                    {order.payment_status === 'paid' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
+                              credentials: 'include'
+                            });
+                            if (!response.ok) throw new Error('Erreur de téléchargement');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `facture-${order.invoice_number || order.id}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                          } catch (error) {
+                            alert('Erreur lors du téléchargement de la facture');
+                          }
+                        }}
+                        className="text-success hover:text-success text-sm font-medium flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Télécharger facture
+                      </button>
+                    )}
                   </div>
                 </div>
               );
