@@ -332,129 +332,120 @@ export default function MyOrders() {
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {displayedOrders.map((order) => {
               const statusInfo = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
               const paymentInfo = PAYMENT_STATUS_LABELS[order.payment_status] || PAYMENT_STATUS_LABELS.pending;
 
               return (
-                <div key={order.id} className="card p-6">
-                  {/* Header avec statut */}
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-light">
-                    <div>
-                      <h3 className="text-lg font-bold text-text-primary">
-                        Commande #{order.order_number}
+                <div key={order.id} className="card p-4">
+                  {/* Header compact avec statut */}
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-light">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-sm font-bold text-text-primary">
+                        #{order.order_number}
                       </h3>
-                      <p className="text-sm text-text-secondary mt-1">
-                        Passée le {formatDate(order.created_at)}
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusInfo.color}`}>
+                        <span>{statusInfo.icon}</span>
+                        <span>{statusInfo.label}</span>
+                      </span>
+                      <p className="text-xs text-text-tertiary">
+                        {formatDate(order.created_at).split(' à ')[0]}
                       </p>
                     </div>
-                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold ${statusInfo.color}`}>
-                      <span>{statusInfo.icon}</span>
-                      <span>{statusInfo.label}</span>
-                    </span>
-                  </div>
-
-                  {/* Charger les items de cette commande pour affichage */}
-                  <OrderItemsDisplay orderId={order.id} />
-
-                  {/* Infos commande */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-bg-light rounded-lg">
-                    <div>
-                      <p className="text-xs text-text-tertiary mb-1">Montant total</p>
-                      <p className="text-lg font-bold text-text-primary">{order.total}€</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-text-tertiary mb-1">Paiement</p>
-                      <p className={`text-sm font-semibold ${paymentInfo.color}`}>
-                        {paymentInfo.label}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-text-tertiary mb-1">Livraison</p>
-                      <p className="text-sm font-semibold text-text-primary">
-                        {order.shipping_address.split(',')[0]}...
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex gap-3 flex-wrap">
-                      <button
-                        onClick={() => loadOrderDetails(order.id)}
-                        className="text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Voir les détails
-                      </button>
-
-                      {/* Bouton supprimer pour commandes non payées */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-text-primary">{order.total}€</p>
+                        <p className={`text-xs font-medium ${paymentInfo.color}`}>
+                          {paymentInfo.label}
+                        </p>
+                      </div>
+                      {/* Bouton payer à droite pour commandes non payées */}
                       {order.payment_status !== 'paid' && (
                         <button
-                          onClick={async () => {
-                            if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
-                            try {
-                              const response = await fetch(`/backend/api/orders/delete.php`, {
-                                method: 'POST',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ order_id: order.id })
-                              });
-                              if (!response.ok) throw new Error('Erreur de suppression');
-                              alert('✅ Commande supprimée avec succès');
-                              loadOrders();
-                            } catch (error) {
-                              alert('❌ Erreur lors de la suppression');
-                            }
-                          }}
-                          className="text-error hover:text-error text-sm font-medium flex items-center gap-2"
+                          onClick={() => router.push(`/checkout?order_id=${order.id}`)}
+                          className="btn-primary text-sm flex items-center gap-2"
                         >
-                          <Trash2 className="h-4 w-4" />
-                          Supprimer
-                        </button>
-                      )}
-
-                      {/* Bouton facture pour commandes payées */}
-                      {order.payment_status === 'paid' && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
-                                credentials: 'include'
-                              });
-                              if (!response.ok) throw new Error('Erreur de téléchargement');
-                              const blob = await response.blob();
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `facture-${order.invoice_number || order.id}.pdf`;
-                              document.body.appendChild(a);
-                              a.click();
-                              window.URL.revokeObjectURL(url);
-                              document.body.removeChild(a);
-                            } catch (error) {
-                              alert('Erreur lors du téléchargement de la facture');
-                            }
-                          }}
-                          className="text-success hover:text-success text-sm font-medium flex items-center gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Télécharger facture
+                          <CreditCard className="h-4 w-4" />
+                          Payer
                         </button>
                       )}
                     </div>
+                  </div>
 
-                    {/* Bouton payer à droite pour commandes non payées */}
+                  {/* Items (uniquement si détails demandés, sinon caché) */}
+                  <OrderItemsDisplay orderId={order.id} />
+
+                  {/* Actions compactes en bas */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      onClick={() => loadOrderDetails(order.id)}
+                      className="text-primary hover:text-primary-dark text-xs font-medium flex items-center gap-1"
+                    >
+                      <Eye className="h-3 w-3" />
+                      Détails
+                    </button>
+
+                    {/* Bouton supprimer pour commandes non payées */}
                     {order.payment_status !== 'paid' && (
                       <button
-                        onClick={() => router.push(`/checkout?order_id=${order.id}`)}
-                        className="btn-primary text-sm flex items-center gap-2"
+                        onClick={async () => {
+                          if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
+                          try {
+                            const response = await fetch(`/backend/api/orders/delete.php`, {
+                              method: 'POST',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ order_id: order.id })
+                            });
+                            if (!response.ok) throw new Error('Erreur de suppression');
+                            alert('✅ Commande supprimée avec succès');
+                            loadOrders();
+                          } catch (error) {
+                            alert('❌ Erreur lors de la suppression');
+                          }
+                        }}
+                        className="text-error hover:text-error text-xs font-medium flex items-center gap-1"
                       >
-                        <CreditCard className="h-4 w-4" />
-                        Payer maintenant
+                        <Trash2 className="h-3 w-3" />
+                        Supprimer
                       </button>
                     )}
+
+                    {/* Bouton facture pour commandes payées */}
+                    {order.payment_status === 'paid' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
+                              credentials: 'include'
+                            });
+                            if (!response.ok) throw new Error('Erreur de téléchargement');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `facture-${order.invoice_number || order.id}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                          } catch (error) {
+                            alert('Erreur lors du téléchargement de la facture');
+                          }
+                        }}
+                        className="text-success hover:text-success text-xs font-medium flex items-center gap-1"
+                      >
+                        <Download className="h-3 w-3" />
+                        Facture
+                      </button>
+                    )}
+
+                    <div className="flex-grow"></div>
+
+                    <p className="text-xs text-text-tertiary">
+                      📍 {order.shipping_address.split(',')[0]}...
+                    </p>
                   </div>
                 </div>
               );
