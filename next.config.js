@@ -20,6 +20,14 @@ const nextConfig = {
         hostname: '**'
       }
     ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/backend/api/:path*',
+        destination: '/api/proxy/backend/api/:path*'
+      }
+    ];
   }
 };
 
