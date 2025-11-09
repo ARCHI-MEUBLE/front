@@ -92,14 +92,17 @@ function OrderItemsDisplay({ orderId }: { orderId: number }) {
       {items.map((item) => {
         const config = item.configuration;
         const itemPrice = item.price || item.unit_price || config?.price || 0;
-        const itemName = item.name || config?.name || 'Configuration';
-        const glbUrl = config?.glb_url || null;
-        const configData = typeof config?.config_data === 'string'
-          ? JSON.parse(config.config_data)
-          : config?.config_data;
+        const itemName = item.name || item.prompt || config?.name || config?.prompt || 'Configuration';
+        // glb_url peut être directement dans l'item ou dans la configuration
+        const glbUrl = item.glb_url || config?.glb_url || null;
+        // config_data peut être dans l'item ou dans la configuration
+        const rawConfigData = item.config_data || config?.config_data;
+        const configData = typeof rawConfigData === 'string'
+          ? JSON.parse(rawConfigData)
+          : rawConfigData;
 
         return (
-          <div key={item.id} className="flex gap-4 p-4 bg-bg-light rounded-lg">
+          <div key={item.id} className="flex gap-4 py-2">
             {/* Preview 3D - même taille que le panier */}
             <div className="flex-shrink-0 w-32 h-32 bg-gradient-to-br from-bg-light to-border-light rounded-lg flex items-center justify-center">
               {glbUrl ? (
@@ -376,18 +379,18 @@ export default function MyOrders() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-3 flex-wrap">
-                    <button
-                      onClick={() => loadOrderDetails(order.id)}
-                      className="text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-2"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Voir les détails
-                    </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex gap-3 flex-wrap">
+                      <button
+                        onClick={() => loadOrderDetails(order.id)}
+                        className="text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Voir les détails
+                      </button>
 
-                    {/* Boutons pour commandes non payées */}
-                    {order.payment_status !== 'paid' && (
-                      <>
+                      {/* Bouton supprimer pour commandes non payées */}
+                      {order.payment_status !== 'paid' && (
                         <button
                           onClick={async () => {
                             if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
@@ -410,43 +413,46 @@ export default function MyOrders() {
                           <Trash2 className="h-4 w-4" />
                           Supprimer
                         </button>
+                      )}
 
+                      {/* Bouton facture pour commandes payées */}
+                      {order.payment_status === 'paid' && (
                         <button
-                          onClick={() => router.push(`/checkout?order_id=${order.id}`)}
-                          className="btn-primary text-sm flex items-center gap-2"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
+                                credentials: 'include'
+                              });
+                              if (!response.ok) throw new Error('Erreur de téléchargement');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `facture-${order.invoice_number || order.id}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                            } catch (error) {
+                              alert('Erreur lors du téléchargement de la facture');
+                            }
+                          }}
+                          className="text-success hover:text-success text-sm font-medium flex items-center gap-2"
                         >
-                          <CreditCard className="h-4 w-4" />
-                          Payer maintenant
+                          <Download className="h-4 w-4" />
+                          Télécharger facture
                         </button>
-                      </>
-                    )}
+                      )}
+                    </div>
 
-                    {/* Bouton facture pour commandes payées */}
-                    {order.payment_status === 'paid' && (
+                    {/* Bouton payer à droite pour commandes non payées */}
+                    {order.payment_status !== 'paid' && (
                       <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
-                              credentials: 'include'
-                            });
-                            if (!response.ok) throw new Error('Erreur de téléchargement');
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `facture-${order.invoice_number || order.id}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
-                          } catch (error) {
-                            alert('Erreur lors du téléchargement de la facture');
-                          }
-                        }}
-                        className="text-success hover:text-success text-sm font-medium flex items-center gap-2"
+                        onClick={() => router.push(`/checkout?order_id=${order.id}`)}
+                        className="btn-primary text-sm flex items-center gap-2"
                       >
-                        <Download className="h-4 w-4" />
-                        Télécharger facture
+                        <CreditCard className="h-4 w-4" />
+                        Payer maintenant
                       </button>
                     )}
                   </div>
