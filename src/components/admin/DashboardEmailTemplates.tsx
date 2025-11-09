@@ -64,7 +64,7 @@ export function DashboardEmailTemplates() {
     setError('');
 
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/email-templates.php', {
+      const response = await fetch('/backend/api/admin/email-templates.php', {
         credentials: 'include',
       });
 
@@ -98,7 +98,7 @@ export function DashboardEmailTemplates() {
     setSuccessMessage('');
 
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/email-templates.php', {
+      const response = await fetch('/backend/api/admin/email-templates.php', {
         method: 'PUT',
         credentials: 'include',
         headers: {
@@ -351,7 +351,7 @@ export function DashboardEmailTemplates() {
                         >
                           <div className="aspect-video bg-gray-100 flex items-center justify-center">
                             <img
-                              src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/calendly/assets/${imageName}`}
+                              src={`/backend/api/calendly/assets/${imageName}`}
                               alt={imageName}
                               className="w-full h-full object-cover"
                               onError={(e) => {

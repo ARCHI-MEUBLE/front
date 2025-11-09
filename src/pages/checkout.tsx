@@ -76,7 +76,7 @@ export default function CheckoutStripe() {
 
   const loadCart = async () => {
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/cart/index.php', {
+      const response = await fetch('/backend/api/cart/index.php', {
         credentials: 'include',
       });
 
@@ -133,7 +133,7 @@ export default function CheckoutStripe() {
         : `${formData.billing_address}, ${formData.billing_postal_code} ${formData.billing_city}, ${formData.billing_country}`;
 
       // Créer la commande
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/orders/create.php', {
+      const response = await fetch('/backend/api/orders/create.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

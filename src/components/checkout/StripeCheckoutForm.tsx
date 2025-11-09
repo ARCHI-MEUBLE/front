@@ -53,7 +53,7 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
         }
 
         // Mettre à jour la commande avec le payment intent ID
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/payment-confirmed.php?id=${orderId}`, {
+        await fetch(`/backend/api/orders/payment-confirmed.php?id=${orderId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -64,7 +64,7 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
         });
 
         // Vider le panier
-        await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/cart/index.php', {
+        await fetch('/backend/api/cart/index.php', {
           method: 'DELETE',
           credentials: 'include',
         });

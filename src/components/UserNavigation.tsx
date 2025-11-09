@@ -17,7 +17,7 @@ export function UserNavigation() {
     const loadCartCount = async () => {
       if (!customer) return;
       try {
-        const res = await fetch(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000' + "/backend/api/cart/index.php", {
+        const res = await fetch("/backend/api/cart/index.php", {
           credentials: "include",
         });
         if (res.ok) {

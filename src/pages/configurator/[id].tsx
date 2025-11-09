@@ -549,7 +549,7 @@ export default function ConfiguratorPage() {
 
             if (!configuration) {
                 try {
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/configurations/list.php?id=${editingConfigId}`, {
+                    const response = await fetch(`/backend/api/configurations/list.php?id=${editingConfigId}`, {
                         credentials: 'include'
                     });
 
@@ -1444,7 +1444,7 @@ export default function ConfiguratorPage() {
             };
 
             // Appel à l'API
-            const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/configurations/save.php', {
+            const response = await fetch('/backend/api/configurations/save.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -1468,7 +1468,7 @@ export default function ConfiguratorPage() {
             // Ajouter automatiquement au panier après sauvegarde
             if (result.configuration) {
                 try {
-                    const addToCartResponse = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/cart/index.php', {
+                    const addToCartResponse = await fetch('/backend/api/cart/index.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',

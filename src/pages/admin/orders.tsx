@@ -323,7 +323,7 @@ export default function AdminOrders() {
 
                           {order.payment_status === 'paid' && (
                             <button
-                              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
+                              onClick={() => window.open(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
                               className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
                               title="Télécharger la facture"
                             >

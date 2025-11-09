@@ -137,7 +137,7 @@ export function DashboardAppointments() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/calendly/appointment-actions.php?id=${appointmentId}&action=${action}`,
+        `/backend/api/calendly/appointment-actions.php?id=${appointmentId}&action=${action}`,
         {
           method: 'PUT',
           credentials: 'include',

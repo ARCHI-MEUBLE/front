@@ -88,7 +88,7 @@ export function ProfileModal({
     setError(null);
 
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000' + "/backend/api/account/password.php", {
+      const response = await fetch("/backend/api/account/password.php", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -123,7 +123,7 @@ export function ProfileModal({
     setError(null);
 
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000' + "/backend/api/account/delete.php", {
+      const response = await fetch("/backend/api/account/delete.php", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

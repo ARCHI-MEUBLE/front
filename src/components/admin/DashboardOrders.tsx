@@ -403,7 +403,7 @@ export function DashboardOrders() {
                       {/* Bouton téléchargement DXF */}
                       <div className="mt-2">
                         <a
-                          href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/files/dxf.php?id=${item.configuration_id}`}
+                          href={`/backend/api/files/dxf.php?id=${item.configuration_id}`}
                           download={`configuration_${item.configuration_id}.dxf`}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition"
                         >
