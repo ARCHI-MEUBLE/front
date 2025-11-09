@@ -297,7 +297,7 @@ export default function MyOrders() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => loadOrderDetails(order.id)}
                         className="btn-primary"
@@ -305,6 +305,44 @@ export default function MyOrders() {
                         👁️ Voir les détails
                       </button>
 
+                      {/* Boutons pour commandes non payées */}
+                      {order.payment_status !== 'paid' && (
+                        <>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
+                              try {
+                                const response = await fetch(`/backend/api/orders/delete.php`, {
+                                  method: 'POST',
+                                  credentials: 'include',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ order_id: order.id })
+                                });
+                                if (!response.ok) throw new Error('Erreur de suppression');
+                                alert('✅ Commande supprimée avec succès');
+                                loadOrders();
+                              } catch (error) {
+                                alert('❌ Erreur lors de la suppression');
+                              }
+                            }}
+                            className="btn-secondary flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100"
+                          >
+                            🗑️ Supprimer
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              // Rediriger vers la page de paiement pour cette commande
+                              router.push(`/checkout?order_id=${order.id}`);
+                            }}
+                            className="btn-primary flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                          >
+                            💳 Payer maintenant
+                          </button>
+                        </>
+                      )}
+
+                      {/* Bouton facture pour commandes payées */}
                       {order.payment_status === 'paid' && (
                         <button
                           onClick={async () => {

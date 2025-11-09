@@ -61,7 +61,13 @@ export default function CheckoutStripe() {
       return;
     }
 
-    loadCart();
+    // Si order_id dans l'URL, charger cette commande pour paiement
+    const urlOrderId = router.query.order_id;
+    if (urlOrderId) {
+      loadExistingOrder(Number(urlOrderId));
+    } else {
+      loadCart();
+    }
 
     if (customer) {
       setFormData(prev => ({
@@ -73,6 +79,60 @@ export default function CheckoutStripe() {
       }));
     }
   }, [isAuthenticated, authLoading, customer, router]);
+
+  const loadExistingOrder = async (existingOrderId: number) => {
+    try {
+      const response = await fetch(`/backend/api/orders/list.php?id=${existingOrderId}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement de la commande');
+      }
+
+      const data = await response.json();
+      const order = data.order;
+
+      if (!order) {
+        throw new Error('Commande introuvable');
+      }
+
+      // Vérifier que la commande n'est pas déjà payée
+      if (order.payment_status === 'paid') {
+        router.push('/my-orders');
+        return;
+      }
+
+      // Convertir la commande en format panier pour réutiliser le composant
+      setOrderId(existingOrderId);
+      setCart({
+        items: order.items?.map((item: any) => ({
+          configuration: {
+            id: item.configuration_id,
+            name: item.name || item.configuration?.name || 'Configuration',
+            price: item.price || item.unit_price || 0
+          },
+          quantity: item.quantity
+        })) || [],
+        total: order.total || 0
+      });
+
+      // Pré-remplir les adresses depuis la commande
+      setFormData(prev => ({
+        ...prev,
+        shipping_address: order.shipping_address || '',
+        billing_address: order.billing_address || ''
+      }));
+
+      // Passer directement à l'étape paiement
+      setStep('payment');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors du chargement');
+      router.push('/my-orders');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadCart = async () => {
     try {
