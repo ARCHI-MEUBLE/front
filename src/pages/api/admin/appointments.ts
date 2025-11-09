@@ -18,8 +18,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Cookie': req.headers.cookie || '',
       },
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
-      credentials: 'include',
     });
+
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response from appointments:', text.substring(0, 200));
+      return res.status(500).json({ error: 'Invalid response from backend', details: text.substring(0, 200) });
+    }
 
     const data = await response.json();
 
