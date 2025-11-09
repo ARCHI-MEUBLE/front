@@ -532,7 +532,8 @@ export default function MyOrders() {
                               {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
                             </p>
                           )}
-                          {item.production_status && (
+                          {/* Afficher le statut de production seulement si la commande est payée */}
+                          {selectedOrder.payment_status === 'paid' && item.production_status && item.production_status !== 'pending' && (
                             <p className="text-sm text-text-secondary mt-2">
                               <span className="font-medium">Statut production:</span> {item.production_status}
                             </p>
