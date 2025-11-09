@@ -41,7 +41,7 @@ export default function MyConfigurations() {
 
   const loadConfigurations = async () => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/configurations/list.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/configurations/list.php', {
         credentials: 'include',
       });
 
@@ -79,7 +79,7 @@ export default function MyConfigurations() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/configurations/list.php?id=${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/configurations/list.php?id=${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -98,7 +98,7 @@ export default function MyConfigurations() {
 
   const handleAddToCart = async (configId: number) => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/cart/index.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/cart/index.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

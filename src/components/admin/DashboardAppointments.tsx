@@ -64,7 +64,7 @@ export function DashboardAppointments() {
     setError('');
 
     try {
-      let url = 'http://localhost:8000/backend/api/calendly/appointments.php';
+      let url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/calendly/appointments.php';
       if (filterStatus !== 'all') {
         url += `?status=${filterStatus}`;
       }
@@ -137,7 +137,7 @@ export function DashboardAppointments() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/backend/api/calendly/appointment-actions.php?id=${appointmentId}&action=${action}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/calendly/appointment-actions.php?id=${appointmentId}&action=${action}`,
         {
           method: 'PUT',
           credentials: 'include',

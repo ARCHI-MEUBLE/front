@@ -63,7 +63,7 @@ export default function AdminOrders() {
 
   const loadOrders = async () => {
     try {
-      let url = 'http://localhost:8000/backend/api/admin/orders.php';
+      let url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/orders.php';
       if (filterStatus !== 'all') {
         url += `?status=${filterStatus}`;
       }
@@ -88,7 +88,7 @@ export default function AdminOrders() {
 
   const loadOrderDetails = async (orderId: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/admin/orders.php?id=${orderId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/orders.php?id=${orderId}`, {
         credentials: 'include',
       });
 
@@ -105,7 +105,7 @@ export default function AdminOrders() {
 
   const updateOrderStatus = async (orderId: number, newStatus: string) => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/admin/orders.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/orders.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -323,7 +323,7 @@ export default function AdminOrders() {
 
                           {order.payment_status === 'paid' && (
                             <button
-                              onClick={() => window.open(`http://localhost:8000/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
+                              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
                               className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
                               title="Télécharger la facture"
                             >

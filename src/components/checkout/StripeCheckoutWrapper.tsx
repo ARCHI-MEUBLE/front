@@ -36,7 +36,7 @@ export default function StripeCheckoutWrapper({
       setLoading(true);
       setError('');
 
-      const response = await fetch('http://localhost:8000/backend/api/stripe/create-payment-intent.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/stripe/create-payment-intent.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -59,7 +59,7 @@ export default function StripeCheckoutWrapper({
       }
 
       // Mettre à jour la commande avec le payment intent ID
-      await fetch(`http://localhost:8000/backend/api/orders/payment-intent.php?id=${orderId}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/payment-intent.php?id=${orderId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

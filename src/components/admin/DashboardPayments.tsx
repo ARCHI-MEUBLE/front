@@ -20,7 +20,7 @@ export default function DashboardPayments() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/admin/payment-analytics.php?period=${filters.period}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/payment-analytics.php?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -36,7 +36,7 @@ export default function DashboardPayments() {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/admin/recent-transactions.php?period=${filters.period}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/recent-transactions.php?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -50,7 +50,7 @@ export default function DashboardPayments() {
 
   const handleExportCSV = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/admin/export-payments.php?period=${filters.period}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/export-payments.php?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -356,7 +356,7 @@ export default function DashboardPayments() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {transaction.payment_status === 'paid' && (
                       <button
-                        onClick={() => window.open(`http://localhost:8000/backend/api/orders/invoice.php?id=${transaction.id}&download=true`, '_blank')}
+                        onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/invoice.php?id=${transaction.id}&download=true`, '_blank')}
                         className="text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
                         title="Télécharger la facture"
                       >

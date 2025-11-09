@@ -29,7 +29,7 @@ export function DashboardConfigs() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('http://localhost:8000/backend/api/admin/configurations.php', {
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/configurations.php', {
         credentials: 'include',
       });
       if (!res.ok) {
@@ -330,7 +330,7 @@ export function DashboardConfigs() {
                     </a>
                   )}
                   <a
-                    href={`http://localhost:8000/backend/api/files/dxf.php?id=${selectedConfig.id}`}
+                    href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/files/dxf.php?id=${selectedConfig.id}`}
                     download={`configuration_${selectedConfig.id}.dxf`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                   >

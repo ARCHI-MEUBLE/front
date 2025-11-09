@@ -77,7 +77,7 @@ export default function MyOrders() {
 
   const loadOrders = async () => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/orders/list.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/orders/list.php', {
         credentials: 'include',
       });
 
@@ -96,7 +96,7 @@ export default function MyOrders() {
 
   const loadOrderDetails = async (orderId: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/orders/list.php?id=${orderId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/list.php?id=${orderId}`, {
         credentials: 'include',
       });
 
@@ -307,7 +307,7 @@ export default function MyOrders() {
 
                       {order.payment_status === 'paid' && (
                         <button
-                          onClick={() => window.open(`http://localhost:8000/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
+                          onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
                           className="btn-secondary flex items-center gap-2"
                         >
                           📄 Télécharger facture

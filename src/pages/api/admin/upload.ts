@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const IS_LOCAL = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
 
 type UploadPayload = {
@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Transférer la requête vers le backend PHP avec les cookies
     const cookieHeader = req.headers.cookie || '';
     // Proxy la requête vers l'API PHP du backend
-    const response = await fetch(`${API_URL}/api/upload`, {
+    const response = await fetch(`${API_URL}/backend/api/upload.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -49,7 +49,7 @@ export default function OrderConfirmationPage() {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:8000/backend/api/orders/list.php?id=${orderId}`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/orders/list.php?id=${orderId}`,
           { credentials: "include" }
         );
 

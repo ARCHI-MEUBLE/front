@@ -66,7 +66,7 @@ export function DashboardOrders() {
 
   const loadOrders = async () => {
     try {
-      let url = 'http://localhost:8000/backend/api/admin/orders.php';
+      let url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/orders.php';
       if (filterStatus !== 'all') {
         url += `?status=${filterStatus}`;
       }
@@ -91,7 +91,7 @@ export function DashboardOrders() {
 
   const loadOrderDetails = async (orderId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/admin/orders.php?id=${orderId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/orders.php?id=${orderId}`, {
         credentials: 'include',
       });
 
@@ -108,7 +108,7 @@ export function DashboardOrders() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/admin/orders.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/orders.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -403,7 +403,7 @@ export function DashboardOrders() {
                       {/* Bouton téléchargement DXF */}
                       <div className="mt-2">
                         <a
-                          href={`http://localhost:8000/backend/api/files/dxf.php?id=${item.configuration_id}`}
+                          href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/files/dxf.php?id=${item.configuration_id}`}
                           download={`configuration_${item.configuration_id}.dxf`}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition"
                         >

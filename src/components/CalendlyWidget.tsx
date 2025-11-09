@@ -108,7 +108,7 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
         console.log('📧 Envoi de la demande de confirmation au backend...', eventData);
 
         // Appeler notre API backend pour envoyer les emails de confirmation
-        const response = await fetch('http://localhost:8000/backend/api/calendly/send-confirmation.php', {
+        const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/calendly/send-confirmation.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

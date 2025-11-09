@@ -85,7 +85,7 @@ export function DashboardCalendar() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/calendly/appointments.php', {
+      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/calendly/appointments.php', {
         credentials: 'include',
       });
 
@@ -153,7 +153,7 @@ export function DashboardCalendar() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/backend/api/calendly/appointment-actions.php?id=${event.id}&action=reschedule`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/calendly/appointment-actions.php?id=${event.id}&action=reschedule`,
         {
           method: 'PUT',
           credentials: 'include',

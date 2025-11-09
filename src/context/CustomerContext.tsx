@@ -37,7 +37,7 @@ interface RegisterData {
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
-const API_BASE_URL = 'http://localhost:8000/backend/api';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api';
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
