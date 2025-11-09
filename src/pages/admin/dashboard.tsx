@@ -44,7 +44,7 @@ export default function AdminDashboardPage() {
     // Charger le nombre de notifications non lues (si session admin PHP valide)
     const loadUnread = async () => {
       try {
-        const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/notifications.php?unread=true', {
+        const res = await fetch('/api/admin/notifications?unread=true', {
           credentials: 'include',
         });
         if (!res.ok) return;
@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
     // Polling pour les nouvelles notifications (toutes les 30 secondes)
     const pollNotifications = async () => {
       try {
-        const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/notifications.php?limit=5', {
+        const res = await fetch('/api/admin/notifications?limit=5', {
           credentials: 'include',
         });
         if (!res.ok) return;
@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
     // Initialiser avec la dernière notification
     const initLastNotification = async () => {
       try {
-        const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/notifications.php?limit=1', {
+        const res = await fetch('/api/admin/notifications?limit=1', {
           credentials: 'include',
         });
         if (!res.ok) return;

@@ -66,7 +66,7 @@ export function DashboardOrders() {
 
   const loadOrders = async () => {
     try {
-      let url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/orders.php';
+      let url = '/api/admin/orders';
       if (filterStatus !== 'all') {
         url += `?status=${filterStatus}`;
       }
@@ -91,7 +91,7 @@ export function DashboardOrders() {
 
   const loadOrderDetails = async (orderId: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/orders.php?id=${orderId}`, {
+      const response = await fetch(`/api/admin/orders?id=${orderId}`, {
         credentials: 'include',
       });
 
@@ -108,7 +108,7 @@ export function DashboardOrders() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/orders.php', {
+      const response = await fetch('/api/admin/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

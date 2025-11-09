@@ -20,7 +20,7 @@ export default function DashboardPayments() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/payment-analytics.php?period=${filters.period}`, {
+      const response = await fetch(`/api/admin/payment-analytics?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -36,7 +36,7 @@ export default function DashboardPayments() {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/backend/api/admin/recent-transactions.php?period=${filters.period}`, {
+      const response = await fetch(`/api/admin/recent-transactions?period=${filters.period}`, {
         credentials: 'include'
       });
       if (response.ok) {
