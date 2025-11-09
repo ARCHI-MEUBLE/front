@@ -7,6 +7,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Reconstruct the path
@@ -21,15 +29,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const url = `${API_URL}/${backendPath}${queryString ? '?' + queryString : ''}`;
 
-    const response = await fetch(url, {
+    // Prepare headers
+    const headers: HeadersInit = {
+      'Cookie': req.headers.cookie || '',
+    };
+
+    // Only set Content-Type if there's a body
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    // Prepare fetch options
+    const fetchOptions: RequestInit = {
       method: req.method || 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
-      },
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
-      credentials: 'include',
-    });
+      headers,
+    };
+
+    // Add body for non-GET/HEAD requests
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+      fetchOptions.body = JSON.stringify(req.body);
+    }
+
+    const response = await fetch(url, fetchOptions);
 
     // Handle non-JSON responses
     const contentType = response.headers.get('content-type');
@@ -54,6 +75,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } catch (error) {
     console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Proxy failed', details: (error as Error).message });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Error details:', { message: errorMessage, stack: errorStack });
+    res.status(500).json({
+      error: 'Proxy failed',
+      details: errorMessage,
+      url: API_URL
+    });
   }
 }
