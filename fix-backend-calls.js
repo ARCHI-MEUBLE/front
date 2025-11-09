@@ -35,8 +35,23 @@ const replacements = [
     replacement: "`/api/admin/recent-transactions"
   },
 
-  // Note: Keep calendly, configurations, email-templates, stats as direct calls
-  // because they don't have proxy routes yet
+  // Configurations
+  {
+    pattern: /\(process\.env\.NEXT_PUBLIC_API_URL \|\| 'http:\/\/localhost:8000'\) \+ '\/backend\/api\/admin\/configurations\.php/g,
+    replacement: "'/api/admin/configurations"
+  },
+
+  // Calendly appointments
+  {
+    pattern: /\(process\.env\.NEXT_PUBLIC_API_URL \|\| 'http:\/\/localhost:8000'\) \+ '\/backend\/api\/calendly\/appointments\.php/g,
+    replacement: "'/api/admin/appointments"
+  },
+
+  // Calendly appointments stats
+  {
+    pattern: /\(process\.env\.NEXT_PUBLIC_API_URL \|\| 'http:\/\/localhost:8000'\) \+ '\/backend\/api\/calendly\/appointments-stats\.php/g,
+    replacement: "'/api/admin/appointments-stats"
+  }
 ];
 
 function replaceInFile(filePath) {

@@ -29,7 +29,7 @@ export function DashboardConfigs() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/admin/configurations.php', {
+      const res = await fetch('/api/admin/configurations', {
         credentials: 'include',
       });
       if (!res.ok) {

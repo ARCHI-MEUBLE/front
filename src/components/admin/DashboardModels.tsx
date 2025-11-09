@@ -392,7 +392,7 @@ export function DashboardModels() {
           <article key={model.id} className="border border-gray-200 bg-white p-3">
             {model.image_url && (
               <img
-                src={model.image_url}
+                src={model.image_url.startsWith('http') ? model.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${model.image_url}`}
                 alt={model.name}
                 className="mb-3 w-full max-h-72 object-contain border border-gray-200"
               />

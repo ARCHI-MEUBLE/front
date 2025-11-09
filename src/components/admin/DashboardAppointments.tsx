@@ -64,7 +64,7 @@ export function DashboardAppointments() {
     setError('');
 
     try {
-      let url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/calendly/appointments.php';
+      let url = '/api/admin/appointments';
       if (filterStatus !== 'all') {
         url += `?status=${filterStatus}`;
       }

@@ -66,7 +66,7 @@ export function DashboardStats() {
     setError('');
 
     try {
-      const response = await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/backend/api/calendly/appointments-stats.php', {
+      const response = await fetch('/api/admin/appointments-stats', {
         credentials: 'include',
       });
 
