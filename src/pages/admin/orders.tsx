@@ -323,7 +323,25 @@ export default function AdminOrders() {
 
                           {order.payment_status === 'paid' && (
                             <button
-                              onClick={() => window.open(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, '_blank')}
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
+                                    credentials: 'include'
+                                  });
+                                  if (!response.ok) throw new Error('Erreur');
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `facture-${order.invoice_number || order.id}.pdf`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                  document.body.removeChild(a);
+                                } catch (error) {
+                                  alert('Erreur lors du téléchargement');
+                                }
+                              }}
                               className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
                               title="Télécharger la facture"
                             >

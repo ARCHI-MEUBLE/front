@@ -356,7 +356,25 @@ export default function DashboardPayments() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {transaction.payment_status === 'paid' && (
                       <button
-                        onClick={() => window.open(`/backend/api/orders/invoice.php?id=${transaction.id}&download=true`, '_blank')}
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/backend/api/orders/invoice.php?id=${transaction.id}&download=true`, {
+                              credentials: 'include'
+                            });
+                            if (!response.ok) throw new Error('Erreur');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `facture-${transaction.invoice_number || transaction.id}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                          } catch (error) {
+                            alert('Erreur lors du téléchargement');
+                          }
+                        }}
                         className="text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
                         title="Télécharger la facture"
                       >
