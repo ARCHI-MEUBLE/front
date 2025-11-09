@@ -509,34 +509,41 @@ export default function MyOrders() {
                   Articles commandés
                 </h3>
                 <div className="space-y-3">
-                  {selectedOrder.items?.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-start gap-4 p-4 bg-bg-light rounded-lg"
-                    >
-                      <div className="flex-grow">
-                        <h4 className="font-semibold text-text-primary">
-                          {item.name || item.configuration.name}
-                        </h4>
-                        <p className="text-sm text-text-secondary mt-1">
-                          Quantité: {item.quantity} × {item.price || item.configuration.price}€
-                        </p>
-                        {item.configuration.config_data && item.configuration.config_data.dimensions && (
-                          <p className="text-xs text-text-tertiary mt-1">
-                            {item.configuration.config_data.dimensions.width} × {item.configuration.config_data.dimensions.depth} × {item.configuration.config_data.dimensions.height} mm
+                  {selectedOrder.items?.map((item) => {
+                    const itemName = item.name || item.prompt || item.configuration?.name || item.configuration?.prompt || 'Configuration';
+                    const itemPrice = item.price || item.unit_price || item.configuration?.price || 0;
+                    const rawConfigData = item.config_data || item.configuration?.config_data;
+                    const configData = typeof rawConfigData === 'string' ? JSON.parse(rawConfigData) : rawConfigData;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-start gap-4 p-4 bg-bg-light rounded-lg"
+                      >
+                        <div className="flex-grow">
+                          <h4 className="font-semibold text-text-primary">
+                            {itemName}
+                          </h4>
+                          <p className="text-sm text-text-secondary mt-1">
+                            Quantité: {item.quantity} × {itemPrice}€
                           </p>
-                        )}
-                        {item.production_status && (
-                          <p className="text-sm text-text-secondary mt-2">
-                            <span className="font-medium">Statut production:</span> {item.production_status}
-                          </p>
-                        )}
+                          {configData?.dimensions && (
+                            <p className="text-xs text-text-tertiary mt-1">
+                              {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
+                            </p>
+                          )}
+                          {item.production_status && (
+                            <p className="text-sm text-text-secondary mt-2">
+                              <span className="font-medium">Statut production:</span> {item.production_status}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-text-primary">{itemPrice * item.quantity}€</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-text-primary">{(item.price || item.configuration.price) * item.quantity}€</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
