@@ -8,7 +8,31 @@
   "git": {
     "deploymentEnabled": {
       "main": true,
-      "dev": false
+      "dev": false,
+      "server_test": true
     }
-  }
+  },
+  "env": {
+    "NEXT_PUBLIC_API_URL": {
+      "production": "https://archimeuble-back-prod.up.railway.app",
+      "preview": "https://archimeuble-back-test.up.railway.app"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ]
 }
