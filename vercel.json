@@ -15,7 +15,7 @@
   "env": {
     "NEXT_PUBLIC_API_URL": {
       "production": "https://archimeuble-back-prod.up.railway.app",
-      "preview": "https://archimeuble-back-test.up.railway.app"
+      "preview": "https://back-production-526e.up.railway.app"
     }
   },
   "headers": [
