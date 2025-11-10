@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const IS_LOCAL = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
@@ -16,10 +15,8 @@ type UploadPayload = {
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg']);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Vérifier l'authentification admin
-  if (!hasAdminSession(req.headers.cookie)) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Note: L'authentification admin est vérifiée par le backend PHP (upload.php)
+  // On ne vérifie pas ici car le backend a besoin du cookie PHPSESSID
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
