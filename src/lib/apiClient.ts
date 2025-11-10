@@ -334,7 +334,7 @@ export async function uploadImage(file: File): Promise<string> {
   const base64 = btoa(binary);
   const fileType = file.type || 'image/jpeg';
 
-  const res = await request<{ success: boolean; imagePath: string }>('/api/upload', {
+  const res = await apiRequest<{ success: boolean; imagePath: string }>('/api/admin/upload', {
     method: 'POST',
     body: JSON.stringify({ fileName: file.name, fileType, data: base64 }),
   });
