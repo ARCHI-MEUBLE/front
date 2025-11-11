@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDate } from '@/lib/dateUtils';
 
 interface CalendlyAppointment {
   id: number;
@@ -114,17 +115,6 @@ export function DashboardAppointments() {
     const now = new Date();
     const start = new Date(startTime);
     return start > now;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const handleAction = async (appointmentId: number, action: 'cancel' | 'complete') => {

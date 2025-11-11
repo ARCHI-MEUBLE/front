@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Eye, User, Calendar, Euro } from 'lucide-react';
+import { Eye, User, Calendar, Euro, RefreshCw, MoreVertical, Ruler } from 'lucide-react';
+import { formatDate } from '@/lib/dateUtils';
 
 interface AdminConfiguration {
   id: number;
@@ -10,6 +11,7 @@ interface AdminConfiguration {
   created_at: string;
   prompt?: string | null;
   glb_url?: string | null;
+  dxf_url?: string | null;
   thumbnail_url?: string | null;
   config_data?: string | null; // JSON string
 }
@@ -56,16 +58,6 @@ export function DashboardConfigs() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const viewDetails = (config: AdminConfiguration) => {
     setSelectedConfig(config);
   };
@@ -76,101 +68,94 @@ export function DashboardConfigs() {
 
   if (loading) {
     return (
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Configurations clients</h2>
-        <div className="mt-6 flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-sm">Chargement...</p>
         </div>
-      </section>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Configurations clients</h2>
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          ⚠️ {error}
+      <div className="space-y-4">
+        <div className="p-3 border border-red-300 bg-red-50 text-red-700 text-sm">
+          {error}
         </div>
         <button
           onClick={loadConfigurations}
-          className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+          className="px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800 transition"
         >
           Réessayer
         </button>
-      </section>
+      </div>
     );
   }
 
   return (
     <>
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Configurations clients</h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500">
               {total} configuration{total > 1 ? 's' : ''} enregistrée{total > 1 ? 's' : ''}
             </p>
           </div>
-          <button
-            onClick={loadConfigurations}
-            className="px-4 py-2 text-sm text-amber-600 hover:text-amber-700 transition"
-          >
-            🔄 Actualiser
-          </button>
         </div>
 
+        {/* Table */}
         {configs.length === 0 ? (
-          <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">
-            Aucune configuration enregistrée pour le moment
+          <div className="text-center py-12 border border-gray-200 bg-white">
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Aucune configuration</h3>
+            <p className="text-sm text-gray-600">
+              Aucune configuration enregistrée pour le moment
+            </p>
           </div>
         ) : (
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200">
+          <div className="border border-gray-200 bg-white">
+            <table className="w-full">
+              <thead className="border-b border-gray-200">
+                <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Modèle</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prix</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-200">
                 {configs.map((config) => {
-                  const parsedConfig = parseConfigString(config.config_data);
                   return (
-                    <tr key={config.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3 text-sm font-mono text-gray-600">#{config.id}</td>
+                    <tr key={config.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-700 truncate max-w-[220px]">{config.customer_email || '—'}</span>
+                        <div className="font-medium text-sm text-gray-900">#{config.id}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-gray-900">{config.customer_email || '—'}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm text-gray-600">
+                          {config.model_name ? config.model_name : (config.model_id ? `M${config.model_id}` : '—')}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {config.model_name ? config.model_name : (config.model_id ? `M${config.model_id}` : '—')}
-                      </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 text-sm font-semibold text-gray-900">
-                          <Euro className="h-4 w-4 text-amber-600" />
+                        <div className="font-medium text-sm text-gray-900">
                           {Math.round(config.price)}€
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(config.created_at)}
-                        </div>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {formatDate(config.created_at)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => viewDetails(config)}
-                          className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition"
+                          className="text-xs font-medium text-gray-900 hover:underline"
                         >
-                          <Eye className="h-3 w-3" />
-                          Détails
+                          Détails →
                         </button>
                       </td>
                     </tr>
@@ -180,162 +165,98 @@ export function DashboardConfigs() {
             </table>
           </div>
         )}
-      </section>
+      </div>
 
       {/* Modal de détails */}
       {selectedConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeDetails}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Configuration #{selectedConfig.id}
-              </h3>
-              <button
-                onClick={closeDetails}
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-              >
-                ×
-              </button>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={closeDetails}
+        >
+          <div
+            className="bg-white border border-gray-300 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Configuration #{selectedConfig.id}
+                </h2>
+                <button
+                  onClick={closeDetails}
+                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
-            <div className="p-6 space-y-4">
-              {/* Informations client */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">👤 Client</h4>
-                <p className="text-sm text-gray-600">{selectedConfig.customer_email || '—'}</p>
-              </div>
-
-              {/* Informations générales */}
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">📋 Informations</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Modèle:</span>
-                    <span className="ml-2 font-medium text-gray-900">{selectedConfig.model_name ? selectedConfig.model_name : (selectedConfig.model_id ? `M${selectedConfig.model_id}` : '—')}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Prix:</span>
-                    <span className="ml-2 font-semibold text-amber-600">{Math.round(selectedConfig.price)}€</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-500">Date de création:</span>
-                    <span className="ml-2 text-gray-700">{formatDate(selectedConfig.created_at)}</span>
+            <div className="p-4 space-y-4">
+                {/* Informations client */}
+                <div className="border border-gray-200 p-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    Informations Client
+                  </h3>
+                  <div className="space-y-1 text-xs">
+                    <p><span className="font-medium">Email:</span> {selectedConfig.customer_email || 'N/A'}</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Configuration détaillée */}
-              {(() => {
-                const parsedConfig = parseConfigString(selectedConfig.config_data);
-                if (!parsedConfig) {
-                  return (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Configuration non disponible</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">🎨 Détails de configuration</h4>
-                    
-                    <div className="space-y-2 text-sm">
-                      {parsedConfig.modules && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Modules:</span>
-                          <span className="text-gray-900 font-medium">{parsedConfig.modules}</span>
-                        </div>
-                      )}
-                      {parsedConfig.height && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Hauteur:</span>
-                          <span className="text-gray-900">{parsedConfig.height} cm</span>
-                        </div>
-                      )}
-                      {parsedConfig.depth && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Profondeur:</span>
-                          <span className="text-gray-900">{parsedConfig.depth} cm</span>
-                        </div>
-                      )}
-                      {parsedConfig.color && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Couleur:</span>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-6 h-6 rounded border border-gray-300"
-                              style={{ backgroundColor: parsedConfig.color }}
-                            />
-                            <span className="text-gray-900">{parsedConfig.color}</span>
-                          </div>
-                        </div>
-                      )}
-                      {parsedConfig.finish && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Finition:</span>
-                          <span className="text-gray-900 capitalize">{parsedConfig.finish}</span>
-                        </div>
-                      )}
-                      {parsedConfig.socle !== undefined && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Socle:</span>
-                          <span className="text-gray-900">{parsedConfig.socle ? 'Oui' : 'Non'}</span>
-                        </div>
-                      )}
-                      {parsedConfig.doors !== undefined && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Portes:</span>
-                          <span className="text-gray-900">{parsedConfig.doors}</span>
-                        </div>
-                      )}
-                      {parsedConfig.drawers !== undefined && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Tiroirs:</span>
-                          <span className="text-gray-900">{parsedConfig.drawers}</span>
-                        </div>
-                      )}
-                      {parsedConfig.shelves !== undefined && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-gray-500 min-w-[100px]">Étagères:</span>
-                          <span className="text-gray-900">{parsedConfig.shelves}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Prompt IA si disponible */}
-                    {parsedConfig.prompt && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h5 className="text-xs font-semibold text-gray-600 mb-2">💬 Prompt de génération</h5>
-                        <p className="text-xs text-gray-600 bg-white rounded p-3 border border-gray-200">
-                          {parsedConfig.prompt}
-                        </p>
-                      </div>
-                    )}
+                {/* Informations générales */}
+                <div className="border border-gray-200 p-3">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    Détails de la Configuration
+                  </h3>
+                  <div className="space-y-1 text-xs">
+                    <p><span className="font-medium">Modèle:</span> {selectedConfig.model_name ? selectedConfig.model_name : (selectedConfig.model_id ? `M${selectedConfig.model_id}` : '—')}</p>
+                    <p><span className="font-medium">Prix:</span> {Math.round(selectedConfig.price)}€</p>
+                    <p><span className="font-medium">Date:</span> {formatDate(selectedConfig.created_at)}</p>
                   </div>
-                );
-              })()}
+                </div>
+
+              {/* Prompt de production */}
+              {selectedConfig.prompt && (
+                <div className="bg-gray-50 border border-gray-300 p-2">
+                  <p className="text-xs font-semibold text-gray-900 mb-1">PROMPT DE PRODUCTION:</p>
+                  <code className="text-xs font-mono text-gray-900 break-all">
+                    {selectedConfig.prompt}
+                  </code>
+                </div>
+              )}
 
               {/* Fichiers téléchargeables */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">🎯 Fichiers pour la menuiserie</h4>
-                <div className="flex flex-wrap gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                  Fichiers pour la Menuiserie
+                </h3>
+                <div className="space-y-2">
                   {selectedConfig.glb_url && (
                     <a
                       href={selectedConfig.glb_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition"
                     >
-                      📦 Télécharger le fichier GLB
+                      <Ruler className="w-3.5 h-3.5" />
+                      Télécharger GLB (3D)
                     </a>
                   )}
-                  <a
-                    href={`/backend/api/files/dxf.php?id=${selectedConfig.id}`}
-                    download={`configuration_${selectedConfig.id}.dxf`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
-                  >
-                    📐 Télécharger le fichier DXF
-                  </a>
+                  {selectedConfig.dxf_url ? (
+                    <a
+                      href={selectedConfig.dxf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium ml-2 hover:bg-blue-700 transition"
+                    >
+                      <Ruler className="w-3.5 h-3.5" />
+                      Télécharger DXF pour la menuiserie
+                    </a>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium ml-2 cursor-not-allowed">
+                      DXF non disponible
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

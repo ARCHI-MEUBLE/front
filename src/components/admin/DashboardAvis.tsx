@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Trash2, Star, MessageSquare, TrendingUp } from 'lucide-react';
+import { formatDate } from '@/lib/dateUtils';
 
 type Review = {
   id: string;
@@ -50,16 +51,6 @@ export function DashboardAvis() {
     } finally {
       setDeleting(null);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   // Calculer les statistiques

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { formatDate } from '@/lib/dateUtils';
 
 interface Notification {
   id: number;
@@ -119,7 +120,7 @@ export default function NotificationsModal({
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatRelativeTime = (dateString: string) => {
     // SQLite CURRENT_TIMESTAMP retourne une date UTC au format 'YYYY-MM-DD HH:MM:SS'
     // On ajoute 'Z' pour indiquer explicitement qu'elle est en UTC
     const utcDateString = dateString.includes('Z') ? dateString : dateString.replace(' ', 'T') + 'Z';
@@ -215,7 +216,7 @@ export default function NotificationsModal({
                       </div>
                       <p className={`text-sm mb-2 ${notification.is_read ? 'text-gray-500' : 'text-gray-700'}`}>{notification.message}</p>
                       <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>{formatDate(notification.created_at)}</span>
+                        <span>{formatRelativeTime(notification.created_at)}</span>
                         {notification.related_order_id && <span className="text-blue-600">→ Voir la commande</span>}
                       </div>
                     </div>

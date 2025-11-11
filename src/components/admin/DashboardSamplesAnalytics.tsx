@@ -86,11 +86,6 @@ export function DashboardSamplesAnalytics() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Analytics Échantillons</h1>
-      </div>
-
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -167,16 +162,30 @@ export function DashboardSamplesAnalytics() {
 
       {/* Timeline des commandes - Line Chart */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Évolution des Commandes (30 derniers jours)</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Évolution des Commandes (30 derniers jours)</h2>
         {timelineData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={timelineData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="date" tick={{ fill: '#6b7280' }} />
-              <YAxis tick={{ fill: '#6b7280' }} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="commandes" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6' }} />
+              <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '12px'
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Line
+                type="monotone"
+                dataKey="commandes"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ fill: '#3b82f6', r: 4 }}
+                name="Commandes"
+              />
             </LineChart>
           </ResponsiveContainer>
         ) : (

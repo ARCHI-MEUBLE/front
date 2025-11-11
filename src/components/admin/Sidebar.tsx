@@ -1,7 +1,7 @@
 import { useMemo, type ComponentType } from 'react';
 import { Boxes, FolderKanban, Layers3, LogOut, ShieldHalf, ShoppingCart, X, MessageSquare, Calendar, CalendarDays, Palette, DollarSign, BarChart3 } from 'lucide-react';
 
-export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'orders' | 'payments' | 'appointments' | 'calendar' | 'avis' | 'samples' | 'samples-analytics' | 'password';
+export type DashboardSection = 'models' | 'catalogue' | 'configs' | 'orders' | 'payments' | 'appointments' | 'calendar' | 'avis' | 'password';
 
 interface SidebarProps {
   selectedSection: DashboardSection;
@@ -21,8 +21,6 @@ const navItems: { id: DashboardSection; label: string; icon: ComponentType<{ cla
   { id: 'appointments', label: 'Rendez-vous Calendly', icon: Calendar },
   { id: 'calendar', label: 'Calendrier Visuel', icon: CalendarDays },
   { id: 'avis', label: 'Avis clients', icon: MessageSquare },
-  { id: 'samples', label: 'Échantillons de façades', icon: Palette },
-  { id: 'samples-analytics', label: 'Analytics Échantillons', icon: BarChart3 },
   { id: 'password', label: 'Changer le mot de passe', icon: ShieldHalf },
 ];
 
@@ -76,7 +74,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="mt-8 flex-1 space-y-2">{sectionButtons}</nav>
+      <nav className="mt-8 flex-1 space-y-3">{sectionButtons}</nav>
 
       <button
         type="button"

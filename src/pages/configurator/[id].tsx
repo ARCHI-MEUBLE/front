@@ -84,6 +84,7 @@ export default function ConfiguratorPage() {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [glbUrl, setGlbUrl] = useState<string | null>(null);
+    const [dxfUrl, setDxfUrl] = useState<string | null>(null);
     const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
     const [editingConfigName, setEditingConfigName] = useState<string>('');
     const [initialConfigApplied, setInitialConfigApplied] = useState(true);
@@ -918,6 +919,7 @@ export default function ConfiguratorPage() {
         socle: string;
         basePlanches?: { b: boolean; h: boolean; g: boolean; d: boolean; f: boolean };
         hasDressing?: boolean;
+        preserveOriginalStructure?: boolean;
     }): string => {
         console.log('🔍 buildPromptFromConfig INPUT:', { basePrompt, config });
 
@@ -933,6 +935,59 @@ export default function ConfiguratorPage() {
         const meubleType = match[1];
         const dimensions = match[2];
         const resteDuPrompt = match[3] || '';
+
+        // Si preserveOriginalStructure est true, on garde la structure complexe du template
+        if (config.preserveOriginalStructure && resteDuPrompt) {
+            // On doit extraire et remplacer les planches tout en gardant la structure (H/V)
+            // Format: EFbS2V3(,T,) -> extraire "EFbS2" (planches+socle), garder "V3(,T,)" (structure)
+
+            // Regex pour extraire: planches+socle puis structure
+            const structureRegex = /^([EbhgdFPS2]+)?([HV]\d+\([^)]*\).*)$/;
+            const structureMatch = resteDuPrompt.match(structureRegex);
+
+            if (structureMatch) {
+                // On a une structure complexe (H ou V)
+                const structurePart = structureMatch[2]; // Ex: V3(,T,)
+
+                // Construire les nouvelles planches
+                let newPlanches = '';
+                if (config.basePlanches) {
+                    const planches = [];
+                    if (config.basePlanches.b) planches.push('b');
+                    if (config.basePlanches.h) planches.push('h');
+                    if (config.basePlanches.g) planches.push('g');
+                    if (config.basePlanches.d) planches.push('d');
+                    if (config.basePlanches.f) planches.push('F');
+
+                    if (planches.length === 5) {
+                        newPlanches = 'EbF';
+                    } else if (planches.length > 0) {
+                        newPlanches = planches.join('');
+                    } else {
+                        newPlanches = 'E';
+                    }
+                } else {
+                    newPlanches = 'EbF';
+                }
+
+                // Ajouter le socle
+                if (config.socle !== 'none') {
+                    newPlanches += 'S';
+                    if (config.socle === 'wood') {
+                        newPlanches += '2';
+                    }
+                }
+
+                const result = `${meubleType}(${dimensions})${newPlanches}${structurePart}`;
+                console.log('🔍 buildPromptFromConfig OUTPUT (structure préservée, planches mises à jour):', result);
+                return result;
+            } else {
+                // Pas de structure H/V détectée, garder tel quel
+                const result = `${meubleType}(${dimensions})${resteDuPrompt}`;
+                console.log('🔍 buildPromptFromConfig OUTPUT (structure préservée):', result);
+                return result;
+            }
+        }
 
         // Construire le nouveau prompt avec la syntaxe Python attendue
         // Format de base: M1(dimensions) + planches de base
@@ -1118,6 +1173,11 @@ export default function ConfiguratorPage() {
                 colors
             );
             console.log('✓ Modèle 3D généré:', result.glb_url);
+            if (result.dxf_url) {
+                console.log('✓ Fichier DXF généré:', result.dxf_url);
+            } else {
+                console.log('⚠️ Fichier DXF non généré');
+            }
             if (result.execution_time) {
                 console.log('⏱️ Temps d\'exécution Python:', result.execution_time);
             }
@@ -1130,6 +1190,9 @@ export default function ConfiguratorPage() {
             }
 
             setGlbUrl(glbUrlAbsolute);
+
+            // Stocker le dxf_url (déjà relatif, pas besoin de conversion)
+            setDxfUrl(result.dxf_url || null);
         } catch (error) {
             console.error('❌ Erreur lors de la génération:', error);
             alert('Erreur lors de la génération du meuble 3D');
@@ -1212,29 +1275,25 @@ export default function ConfiguratorPage() {
                 console.log('🏗️ Mode Avancé - Prompt généré avec zones:', fullPrompt);
             }
         } else {
-            // Mode simple : utiliser le prompt original du modèle s'il existe
-            // et que les sliders n'ont pas été modifiés depuis le chargement du template
-            const slidersUnchanged = initialSliderValues &&
+            // Mode simple : vérifier si les sliders de structure ont changé
+            const structureSlidersUnchanged = initialSliderValues &&
                 shelves === initialSliderValues.shelves &&
                 drawers === initialSliderValues.drawers &&
                 doors === initialSliderValues.doors;
 
-            if (templatePrompt && slidersUnchanged) {
-                // Utiliser le prompt original de la BDD qui contient la structure complète (V3, H4, etc.)
-                fullPrompt = templatePrompt;
-                console.log('📄 Mode Simple - Sliders inchangés, utilisation du prompt original:', fullPrompt);
-            } else {
-                // L'utilisateur a modifié les sliders, reconstruire le prompt
-                fullPrompt = buildPromptFromConfig(basePrompt, {
-                    shelves,
-                    drawers,
-                    doors,
-                    socle,
-                    basePlanches,
-                    hasDressing
-                });
-                console.log('📊 Mode Simple - Sliders modifiés, prompt généré:', fullPrompt);
-            }
+            // Si la structure n'a pas changé, préserver la structure originale du template
+            const shouldPreserveStructure = templatePrompt && structureSlidersUnchanged;
+
+            fullPrompt = buildPromptFromConfig(basePrompt, {
+                shelves,
+                drawers,
+                doors,
+                socle,
+                basePlanches,
+                hasDressing,
+                preserveOriginalStructure: shouldPreserveStructure
+            });
+            console.log('📊 Mode Simple - Prompt généré:', fullPrompt, shouldPreserveStructure ? '(structure préservée)' : '(structure générée)');
         }
 
         // Calculer le prix (inclut socle, étagères, tiroirs, portes)
@@ -1439,6 +1498,7 @@ export default function ConfiguratorPage() {
                 prompt: fullPrompt,
                 config_data: configData,
                 glb_url: glbUrl,
+                dxf_url: dxfUrl,
                 price: price,
                 thumbnail_url: glbUrl
             };

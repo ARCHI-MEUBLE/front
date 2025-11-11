@@ -1,21 +1,32 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, Calendar } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { Download, Calendar, TrendingUp, Package, X } from 'lucide-react';
 import type { PaymentAnalytics, PaymentTransaction, PaymentFilters } from '@/types/PaymentAnalytics';
+import { DashboardSamplesAnalytics } from './DashboardSamplesAnalytics';
+import { formatDate } from '@/lib/dateUtils';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+interface SamplesSummary {
+  total_ordered: number;
+  samples_in_cart: number;
+  recent_trend: { date: string; count: number }[];
+}
 
 export default function DashboardPayments() {
   const [analytics, setAnalytics] = useState<PaymentAnalytics | null>(null);
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [samplesSummary, setSamplesSummary] = useState<SamplesSummary | null>(null);
   const [filters, setFilters] = useState<PaymentFilters>({ period: '30d' });
   const [loading, setLoading] = useState(true);
+  const [showSamplesModal, setShowSamplesModal] = useState(false);
 
   useEffect(() => {
     fetchAnalytics();
     fetchTransactions();
+    fetchSamplesSummary();
   }, [filters]);
 
   const fetchAnalytics = async () => {
@@ -48,6 +59,32 @@ export default function DashboardPayments() {
     }
   };
 
+  const fetchSamplesSummary = async () => {
+    try {
+      const response = await fetch('/api/admin/samples/analytics', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.analytics) {
+          // Préparer un résumé compact des 7 derniers jours
+          const recentTrend = data.analytics.recent_orders.slice(-7).map((item: any) => ({
+            date: new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+            count: item.order_count
+          }));
+
+          setSamplesSummary({
+            total_ordered: data.analytics.total_ordered,
+            samples_in_cart: data.analytics.samples_in_cart,
+            recent_trend: recentTrend
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement du résumé échantillons:', error);
+    }
+  };
+
   const handleExportCSV = async () => {
     try {
       const response = await fetch(`/backend/api/admin/export-payments.php?period=${filters.period}`, {
@@ -71,16 +108,6 @@ export default function DashboardPayments() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const getStatusColor = (status: string) => {
@@ -225,6 +252,36 @@ export default function DashboardPayments() {
           </div>
         </div>
       </div>
+
+      {/* Samples Summary Card - Compact */}
+      {samplesSummary && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            {/* Left: Stats */}
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <Package className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600 uppercase">Échantillons Gratuits</div>
+                <div className="text-2xl font-bold text-gray-900">{samplesSummary.total_ordered}</div>
+                <div className="text-xs text-gray-500">
+                  {samplesSummary.samples_in_cart} en attente
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Link to full analytics */}
+            <button
+              onClick={() => setShowSamplesModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+            >
+              Voir Analytics Complètes
+              <TrendingUp className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -393,6 +450,36 @@ export default function DashboardPayments() {
           </div>
         )}
       </div>
+
+      {/* Samples Analytics Modal */}
+      {showSamplesModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowSamplesModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
+              <h2 className="text-xl font-semibold text-gray-900">Analytics Échantillons</h2>
+              <button
+                onClick={() => setShowSamplesModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Fermer"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              <DashboardSamplesAnalytics />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

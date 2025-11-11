@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { formatDate } from '@/lib/dateUtils';
+import { Clock, CheckCircle, Hammer, Truck, Package, XCircle, Ruler, Download } from 'lucide-react';
 
 interface OrderItem {
   configuration_id: number;
@@ -44,13 +46,13 @@ interface Stats {
   delivered: number;
 }
 
-const STATUS_LABELS: { [key: string]: { label: string; icon: string } } = {
-  pending: { label: 'En attente', icon: '⏳' },
-  confirmed: { label: 'Confirmée', icon: '✅' },
-  in_production: { label: 'En production', icon: '🔨' },
-  shipped: { label: 'Expédiée', icon: '🚚' },
-  delivered: { label: 'Livrée', icon: '📦' },
-  cancelled: { label: 'Annulée', icon: '❌' }
+const STATUS_CONFIG: { [key: string]: { label: string; Icon: React.ComponentType<{ className?: string }> } } = {
+  pending: { label: 'En attente', Icon: Clock },
+  confirmed: { label: 'Confirmée', Icon: CheckCircle },
+  in_production: { label: 'En production', Icon: Hammer },
+  shipped: { label: 'Expédiée', Icon: Truck },
+  delivered: { label: 'Livrée', Icon: Package },
+  cancelled: { label: 'Annulée', Icon: XCircle }
 };
 
 export function DashboardOrders() {
@@ -135,17 +137,6 @@ export function DashboardOrders() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getCustomerName = (order: Order): string => {
     return order.customer?.name || order.customer_name || 'N/A';
   };
@@ -217,17 +208,18 @@ export function DashboardOrders() {
         >
           Toutes
         </button>
-        {Object.entries(STATUS_LABELS).map(([status, info]) => (
+        {Object.entries(STATUS_CONFIG).map(([status, { label, Icon }]) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
-            className={`px-3 py-1.5 text-xs font-medium border whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-medium border whitespace-nowrap flex items-center gap-1.5 ${
               filterStatus === status
                 ? 'bg-gray-900 text-white border-gray-900'
                 : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
             }`}
           >
-            {info.icon} {info.label}
+            <Icon className="w-3.5 h-3.5" />
+            {label}
           </button>
         ))}
       </div>
@@ -247,7 +239,7 @@ export function DashboardOrders() {
           <p className="text-sm text-gray-600">
             {filterStatus === 'all'
               ? 'Aucune commande pour le moment'
-              : `Aucune commande avec le statut "${STATUS_LABELS[filterStatus]?.label}"`
+              : `Aucune commande avec le statut "${STATUS_CONFIG[filterStatus]?.label}"`
             }
           </p>
         </div>
@@ -266,7 +258,8 @@ export function DashboardOrders() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {orders.map((order) => {
-                const statusInfo = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
+                const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                const StatusIcon = statusConfig.Icon;
 
                 return (
                   <tr key={order.id} className="hover:bg-gray-50">
@@ -287,9 +280,9 @@ export function DashboardOrders() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-900 text-xs font-medium">
-                        <span>{statusInfo.icon}</span>
-                        <span>{statusInfo.label}</span>
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-900 text-xs font-medium">
+                        <StatusIcon className="w-3.5 h-3.5" />
+                        <span>{statusConfig.label}</span>
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
@@ -355,18 +348,19 @@ export function DashboardOrders() {
                   Changer le statut
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {Object.entries(STATUS_LABELS).slice(0, 5).map(([status, info]) => (
+                  {Object.entries(STATUS_CONFIG).slice(0, 5).map(([status, { label, Icon }]) => (
                     <button
                       key={status}
                       onClick={() => updateOrderStatus(selectedOrder.id, status)}
                       disabled={selectedOrder.status === status}
-                      className={`p-2 border text-xs font-medium ${
+                      className={`p-2 border text-xs font-medium flex items-center justify-center gap-1.5 ${
                         selectedOrder.status === status
                           ? 'bg-gray-900 text-white border-gray-900'
                           : 'border-gray-300 hover:border-gray-900 text-gray-700'
                       }`}
                     >
-                      {info.icon} {info.label}
+                      <Icon className="w-3.5 h-3.5" />
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -409,7 +403,8 @@ export function DashboardOrders() {
                           download={`configuration_${item.configuration_id}.dxf`}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition"
                         >
-                          📐 Télécharger DXF pour la menuiserie
+                          <Ruler className="w-3.5 h-3.5" />
+                          Télécharger DXF pour la menuiserie
                         </a>
                       </div>
                     </div>

@@ -13,7 +13,6 @@ import DashboardPayments from '@/components/admin/DashboardPayments';
 import { DashboardAppointments } from '@/components/admin/DashboardAppointments';
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
-import { DashboardSamples } from '@/components/admin/DashboardSamples';
 import { DashboardSamplesAnalytics } from '@/components/admin/DashboardSamplesAnalytics';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
@@ -42,6 +41,13 @@ export default function AdminDashboardPage() {
   const lastNotificationIdRef = useRef<number>(0);
 
   useEffect(() => {
+    // Écouter les événements de navigation depuis d'autres composants
+    const handleNavigate = (event: CustomEvent) => {
+      setSelectedSection(event.detail as DashboardSection);
+    };
+
+    window.addEventListener('navigate-dashboard', handleNavigate as EventListener);
+
     // Charger le nombre de notifications non lues (si session admin PHP valide)
     const loadUnread = async () => {
       try {
@@ -120,7 +126,10 @@ export default function AdminDashboardPage() {
     // Démarrer le polling
     const intervalId = setInterval(pollNotifications, 30000); // 30 secondes
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('navigate-dashboard', handleNavigate as EventListener);
+    };
   }, []);
 
   const handleSelect = (section: DashboardSection) => {
@@ -245,8 +254,6 @@ export default function AdminDashboardPage() {
             {selectedSection === 'appointments' && <DashboardAppointments />}
             {selectedSection === 'calendar' && <DashboardCalendar />}
             {selectedSection === 'avis' && <DashboardAvis />}
-            {selectedSection === 'samples' && <DashboardSamples />}
-            {selectedSection === 'samples-analytics' && <DashboardSamplesAnalytics />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>
