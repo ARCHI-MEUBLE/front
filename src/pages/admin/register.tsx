@@ -50,6 +50,7 @@ export default function AdminRegisterPage() {
         body: JSON.stringify({
           email: form.email,
           password: form.password,
+          confirmPassword: form.confirmPassword,
         }),
       });
 
