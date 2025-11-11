@@ -26,7 +26,7 @@ export default function DashboardPayments() {
   useEffect(() => {
     fetchAnalytics();
     fetchTransactions();
-    // fetchSamplesSummary(); // Supprimé car Analytics Échantillons est maintenant dans un modal séparé
+    fetchSamplesSummary();
   }, [filters]);
 
   const fetchAnalytics = async () => {
