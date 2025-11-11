@@ -25,7 +25,7 @@ function createAdminCookie(): string {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const response = await fetch(`${API_URL}/api/admin-auth/register`, {
+    const response = await fetch(`${API_URL}/backend/api/admin/register.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
