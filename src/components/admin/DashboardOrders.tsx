@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
 interface OrderItem {
   configuration_id: number;
@@ -89,6 +90,7 @@ export function DashboardOrders() {
     }
   };
 
+
   const loadOrderDetails = async (orderId: string) => {
     try {
       const response = await fetch(`/api/admin/orders?id=${orderId}`, {
@@ -102,7 +104,7 @@ export function DashboardOrders() {
       const data = await response.json();
       setSelectedOrder(data.order);
     } catch (err: any) {
-      alert(`❌ ${err.message}`);
+      toast.error(err.message || 'Erreur lors du chargement des détails');
     }
   };
 
@@ -122,14 +124,14 @@ export function DashboardOrders() {
         throw new Error('Erreur lors de la mise à jour');
       }
 
-      alert('✅ Statut mis à jour');
+      toast.success('Statut mis à jour');
       await loadOrders();
 
       if (selectedOrder && selectedOrder.id === orderId) {
         await loadOrderDetails(orderId);
       }
     } catch (err: any) {
-      alert(`❌ ${err.message}`);
+      toast.error(err.message || 'Erreur lors de la mise à jour');
     }
   };
 

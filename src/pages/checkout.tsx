@@ -21,9 +21,26 @@ interface CartItem {
   quantity: number;
 }
 
+interface SampleCartItem {
+  id: number;
+  sample_color_id: number;
+  quantity: number;
+  color_name: string;
+  hex: string | null;
+  image_url: string | null;
+  type_name: string;
+  material: string;
+  type_description: string | null;
+}
+
 interface CartData {
   items: CartItem[];
   total: number;
+}
+
+interface SamplesCartData {
+  items: SampleCartItem[];
+  count: number;
 }
 
 type CheckoutStep = 'shipping' | 'payment';
@@ -34,6 +51,7 @@ export default function CheckoutStripe() {
 
   const [step, setStep] = useState<CheckoutStep>('shipping');
   const [cart, setCart] = useState<CartData | null>(null);
+  const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,22 +154,38 @@ export default function CheckoutStripe() {
 
   const loadCart = async () => {
     try {
-      const response = await fetch('/backend/api/cart/index.php', {
+      // Charger les configurations
+      const configResponse = await fetch('/backend/api/cart/index.php', {
         credentials: 'include',
       });
 
-      if (!response.ok) {
+      if (!configResponse.ok) {
         throw new Error('Erreur lors du chargement du panier');
       }
 
-      const data = await response.json();
+      const configData = await configResponse.json();
 
-      if (!data.items || data.items.length === 0) {
+      // Charger les échantillons
+      const samplesResponse = await fetch('/api/cart/samples', {
+        credentials: 'include',
+      });
+
+      let samplesData = null;
+      if (samplesResponse.ok) {
+        samplesData = await samplesResponse.json();
+        setSamplesCart(samplesData);
+      }
+
+      // Vérifier que le panier n'est pas vide (configs OU échantillons)
+      const hasConfigs = configData.items && configData.items.length > 0;
+      const hasSamples = samplesData && samplesData.items && samplesData.items.length > 0;
+
+      if (!hasConfigs && !hasSamples) {
         router.push('/cart');
         return;
       }
 
-      setCart(data);
+      setCart(configData);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
     } finally {
@@ -212,7 +246,24 @@ export default function CheckoutStripe() {
 
       const result = await response.json();
       setOrderId(result.order.id);
-      setStep('payment');
+
+      // Si le total est 0€ (seulement échantillons), valider directement
+      if (cart && cart.total === 0) {
+        // Marquer comme payé et rediriger
+        await fetch('/backend/api/orders/validate.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            order_id: result.order.id,
+            payment_method: 'free_samples'
+          })
+        });
+
+        router.push(`/order-confirmation?order_id=${result.order.id}`);
+      } else {
+        setStep('payment');
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la commande');
     } finally {
@@ -449,7 +500,12 @@ export default function CheckoutStripe() {
                     disabled={isSubmitting}
                     className="w-full bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isSubmitting ? 'Création de la commande...' : 'Continuer vers le paiement'}
+                    {isSubmitting
+                      ? 'Création de la commande...'
+                      : cart && cart.total === 0
+                      ? 'Valider la commande d\'échantillons'
+                      : 'Continuer vers le paiement'
+                    }
                   </button>
                 </form>
               ) : (
@@ -526,25 +582,64 @@ export default function CheckoutStripe() {
                 </h2>
 
                 <div className="space-y-4">
-                  {cart.items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {item.configuration.name || `Configuration #${item.configuration.id}`}
+                  {/* Configurations */}
+                  {cart.items && cart.items.length > 0 && (
+                    <>
+                      <div className="text-sm font-semibold text-gray-700 uppercase">Meubles</div>
+                      {cart.items.map((item, index) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {item.configuration.name || `Configuration #${item.configuration.id}`}
+                            </div>
+                            <div className="text-gray-500">Quantité: {item.quantity}</div>
+                          </div>
+                          <div className="font-semibold text-gray-900">
+                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.configuration.price * item.quantity)}
+                          </div>
                         </div>
-                        <div className="text-gray-500">Quantité: {item.quantity}</div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Échantillons */}
+                  {samplesCart && samplesCart.items && samplesCart.items.length > 0 && (
+                    <>
+                      <div className="text-sm font-semibold text-gray-700 uppercase mt-4">
+                        Échantillons gratuits ({samplesCart.count})
                       </div>
-                      <div className="font-semibold text-gray-900">
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.configuration.price * item.quantity)}
-                      </div>
-                    </div>
-                  ))}
+                      {samplesCart.items.map((sample) => (
+                        <div key={sample.id} className="flex justify-between text-sm items-center">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-6 w-6 rounded border border-gray-300 flex-shrink-0"
+                              style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
+                            >
+                              {sample.image_url && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={sample.image_url}
+                                  alt={sample.color_name}
+                                  className="h-full w-full object-cover rounded"
+                                />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{sample.color_name}</div>
+                              <div className="text-gray-500 text-xs">{sample.material}</div>
+                            </div>
+                          </div>
+                          <div className="font-semibold text-green-600">Gratuit</div>
+                        </div>
+                      ))}
+                    </>
+                  )}
 
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold text-gray-900">Total</span>
                       <span className="text-2xl font-bold text-amber-600">
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cart.total)}
+                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cart?.total || 0)}
                       </span>
                     </div>
                   </div>

@@ -28,6 +28,18 @@ interface OrderItem {
   production_status?: string;
 }
 
+interface OrderSampleItem {
+  id: number;
+  sample_color_id: number;
+  sample_name: string;
+  sample_type_name: string;
+  material: string;
+  image_url: string | null;
+  hex: string | null;
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: number;
   order_number: string;
@@ -38,6 +50,8 @@ interface Order {
   payment_status: string;
   created_at: string;
   items?: OrderItem[];
+  samples?: OrderSampleItem[];
+  samples_count?: number;
 }
 
 const STATUS_LABELS: { [key: string]: { label: string; color: string; icon: string } } = {
@@ -504,49 +518,93 @@ export default function MyOrders() {
               </div>
 
               {/* Articles */}
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary mb-3">
-                  Articles commandés
-                </h3>
-                <div className="space-y-3">
-                  {selectedOrder.items?.map((item) => {
-                    const itemName = item.name || item.prompt || item.configuration?.name || item.configuration?.prompt || 'Configuration';
-                    const itemPrice = item.price || item.unit_price || item.configuration?.price || 0;
-                    const rawConfigData = item.config_data || item.configuration?.config_data;
-                    const configData = typeof rawConfigData === 'string' ? JSON.parse(rawConfigData) : rawConfigData;
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-text-primary mb-3">
+                    Meubles configurés
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedOrder.items.map((item) => {
+                      const itemName = item.name || item.prompt || item.configuration?.name || item.configuration?.prompt || 'Configuration';
+                      const itemPrice = item.price || item.unit_price || item.configuration?.price || 0;
+                      const rawConfigData = item.config_data || item.configuration?.config_data;
+                      const configData = typeof rawConfigData === 'string' ? JSON.parse(rawConfigData) : rawConfigData;
 
-                    return (
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-start gap-4 p-4 bg-bg-light rounded-lg"
+                        >
+                          <div className="flex-grow">
+                            <h4 className="font-semibold text-text-primary">
+                              {itemName}
+                            </h4>
+                            <p className="text-sm text-text-secondary mt-1">
+                              Quantité: {item.quantity} × {itemPrice}€
+                            </p>
+                            {configData?.dimensions && (
+                              <p className="text-xs text-text-tertiary mt-1">
+                                {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
+                              </p>
+                            )}
+                            {/* Afficher le statut de production seulement si la commande est payée */}
+                            {selectedOrder.payment_status === 'paid' && item.production_status && item.production_status !== 'pending' && (
+                              <p className="text-sm text-text-secondary mt-2">
+                                <span className="font-medium">Statut production:</span> {item.production_status}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-text-primary">{itemPrice * item.quantity}€</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Échantillons */}
+              {selectedOrder.samples && selectedOrder.samples.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-text-primary mb-3">
+                    Échantillons gratuits ({selectedOrder.samples.length})
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {selectedOrder.samples.map((sample) => (
                       <div
-                        key={item.id}
-                        className="flex items-start gap-4 p-4 bg-bg-light rounded-lg"
+                        key={sample.id}
+                        className="flex items-center gap-3 p-4 bg-bg-light rounded-lg"
                       >
+                        <div
+                          className="h-12 w-12 rounded-lg border border-border-light flex-shrink-0"
+                          style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
+                        >
+                          {sample.image_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={sample.image_url}
+                              alt={sample.sample_name}
+                              className="h-full w-full object-cover rounded-lg"
+                            />
+                          )}
+                        </div>
                         <div className="flex-grow">
-                          <h4 className="font-semibold text-text-primary">
-                            {itemName}
+                          <h4 className="font-semibold text-text-primary text-sm">
+                            {sample.sample_name}
                           </h4>
-                          <p className="text-sm text-text-secondary mt-1">
-                            Quantité: {item.quantity} × {itemPrice}€
+                          <p className="text-xs text-text-secondary mt-1">
+                            {sample.material}
                           </p>
-                          {configData?.dimensions && (
-                            <p className="text-xs text-text-tertiary mt-1">
-                              {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
-                            </p>
-                          )}
-                          {/* Afficher le statut de production seulement si la commande est payée */}
-                          {selectedOrder.payment_status === 'paid' && item.production_status && item.production_status !== 'pending' && (
-                            <p className="text-sm text-text-secondary mt-2">
-                              <span className="font-medium">Statut production:</span> {item.production_status}
-                            </p>
-                          )}
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-text-primary">{itemPrice * item.quantity}€</p>
+                          <p className="font-semibold text-green-600 text-sm">Gratuit</p>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Adresse de livraison */}
               <div>

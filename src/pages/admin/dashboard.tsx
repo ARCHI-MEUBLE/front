@@ -14,6 +14,7 @@ import { DashboardAppointments } from '@/components/admin/DashboardAppointments'
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardSamples } from '@/components/admin/DashboardSamples';
+import { DashboardSamplesAnalytics } from '@/components/admin/DashboardSamplesAnalytics';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { hasAdminSession } from '@/lib/adminAuth';
 import NotificationsModal from '@/components/admin/NotificationsModal';
@@ -245,6 +246,7 @@ export default function AdminDashboardPage() {
             {selectedSection === 'calendar' && <DashboardCalendar />}
             {selectedSection === 'avis' && <DashboardAvis />}
             {selectedSection === 'samples' && <DashboardSamples />}
+            {selectedSection === 'samples-analytics' && <DashboardSamplesAnalytics />}
             {selectedSection === 'password' && <DashboardPassword />}
           </div>
         </main>

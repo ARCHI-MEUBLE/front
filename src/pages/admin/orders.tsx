@@ -13,6 +13,18 @@ interface OrderItem {
   production_status: string;
 }
 
+interface OrderSampleItem {
+  id: number;
+  sample_color_id: number;
+  sample_name: string;
+  sample_type_name: string;
+  material: string;
+  image_url: string | null;
+  hex: string | null;
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: number;
   order_number: string;
@@ -25,6 +37,8 @@ interface Order {
   payment_status: string;
   created_at: string;
   items?: OrderItem[];
+  samples?: OrderSampleItem[];
+  samples_count?: number;
 }
 
 interface Stats {
@@ -420,51 +434,97 @@ export default function AdminOrders() {
               </div>
 
               {/* Articles avec PROMPT */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  📋 Articles à produire
-                </h3>
-                <div className="space-y-4">
-                  {selectedOrder.items?.map((item) => (
-                    <div 
-                      key={item.id}
-                      className="border-2 border-gray-200 rounded-lg p-4 bg-gradient-to-br from-white to-gray-50"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-lg">
-                            {item.configuration_name}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Quantité: {item.quantity} × {item.unit_price}€ = <span className="font-bold">{item.total_price}€</span>
-                          </p>
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    📋 Meubles à produire
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedOrder.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="border-2 border-gray-200 rounded-lg p-4 bg-gradient-to-br from-white to-gray-50"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-lg">
+                              {item.configuration_name}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              Quantité: {item.quantity} × {item.unit_price}€ = <span className="font-bold">{item.total_price}€</span>
+                            </p>
+                          </div>
+                          <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold">
+                            {item.production_status}
+                          </span>
                         </div>
-                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold">
-                          {item.production_status}
-                        </span>
-                      </div>
 
-                      {/* PROMPT - Info cruciale pour la production */}
-                      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 mb-3">
-                        <p className="text-xs font-semibold text-yellow-900 mb-1">🔧 PROMPT DE PRODUCTION:</p>
-                        <code className="text-sm font-mono text-yellow-900 break-all">
-                          {item.prompt}
-                        </code>
-                      </div>
-
-                      {/* Config Data */}
-                      {item.config_data && (
-                        <div className="bg-gray-100 rounded-lg p-3">
-                          <p className="text-xs font-semibold text-gray-700 mb-2">📐 Configuration détaillée:</p>
-                          <pre className="text-xs text-gray-600 overflow-x-auto">
-                            {JSON.stringify(item.config_data, null, 2)}
-                          </pre>
+                        {/* PROMPT - Info cruciale pour la production */}
+                        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3 mb-3">
+                          <p className="text-xs font-semibold text-yellow-900 mb-1">🔧 PROMPT DE PRODUCTION:</p>
+                          <code className="text-sm font-mono text-yellow-900 break-all">
+                            {item.prompt}
+                          </code>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {/* Config Data */}
+                        {item.config_data && (
+                          <div className="bg-gray-100 rounded-lg p-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-2">📐 Configuration détaillée:</p>
+                            <pre className="text-xs text-gray-600 overflow-x-auto">
+                              {JSON.stringify(item.config_data, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Échantillons à préparer */}
+              {selectedOrder.samples && selectedOrder.samples.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    🎨 Échantillons à préparer ({selectedOrder.samples.length})
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedOrder.samples.map((sample) => (
+                      <div
+                        key={sample.id}
+                        className="border-2 border-green-200 rounded-lg p-4 bg-gradient-to-br from-green-50 to-white"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="h-12 w-12 rounded-lg border-2 border-gray-300 flex-shrink-0"
+                            style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
+                          >
+                            {sample.image_url && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={sample.image_url}
+                                alt={sample.sample_name}
+                                className="h-full w-full object-cover rounded-lg"
+                              />
+                            )}
+                          </div>
+                          <div className="flex-grow">
+                            <h4 className="font-bold text-gray-900 text-sm">
+                              {sample.sample_name}
+                            </h4>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {sample.material}
+                            </p>
+                            <p className="text-xs text-green-700 font-semibold mt-1">
+                              Gratuit
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Livraison */}
               <div>

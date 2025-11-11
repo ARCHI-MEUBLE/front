@@ -6,6 +6,12 @@ import { apiClient, type SampleType } from "@/lib/apiClient";
 import { SampleCard } from "@/components/samples/SampleCard";
 import { useRouter } from "next/router";
 import { useCustomer } from "@/context/CustomerContext";
+import dynamic from "next/dynamic";
+
+const Toaster = dynamic(
+  () => import("react-hot-toast").then((mod) => mod.Toaster),
+  { ssr: false }
+);
 
 type MaterialsMap = Record<string, SampleType[]>;
 
@@ -21,6 +27,8 @@ export default function SamplesPage() {
   const [materials, setMaterials] = useState<MaterialsMap>({});
   const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
+  const [samplesInCart, setSamplesInCart] = useState(0);
+  const [samplesInCartIds, setSamplesInCartIds] = useState<Set<number>>(new Set());
   // On simplifie la vue publique: pas de sous-catégorie "type" visible.
   // On affiche toutes les couleurs d'un matériau, tous types confondus.
 
@@ -45,10 +53,32 @@ export default function SamplesPage() {
         console.error('❌ Erreur chargement échantillons:', err);
       })
       .finally(() => mounted && setLoading(false));
+
+    // Charger le panier d'échantillons si connecté
+    if (isAuthenticated) {
+      loadSamplesCart();
+    }
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
+
+  const loadSamplesCart = async () => {
+    try {
+      const response = await fetch('/api/cart/samples', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSamplesInCart(data.count || 0);
+        const ids = new Set(data.items?.map((item: any) => item.sample_color_id) || []);
+        setSamplesInCartIds(ids);
+      }
+    } catch (error) {
+      console.error('Erreur chargement panier échantillons:', error);
+    }
+  };
 
   const typesForSelected = useMemo<SampleType[]>(() => {
     if (!selectedMaterial) return [];
@@ -91,9 +121,15 @@ export default function SamplesPage() {
         body: JSON.stringify({ sample_color_id: colorId, quantity: 1 }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Erreur lors de l\'ajout au panier');
+        throw new Error(data.error || 'Erreur lors de l\'ajout au panier');
       }
+
+      // Succès - mettre à jour le compteur
+      setSamplesInCart(data.samples_count || samplesInCart + 1);
+      setSamplesInCartIds(prev => new Set(prev).add(colorId));
 
       // Succès - l'animation "Ajouté" est gérée par le SampleCard
     } catch (error) {
@@ -113,7 +149,14 @@ export default function SamplesPage() {
         <section className="w-full bg-gradient-to-b from-white/80 to-alabaster py-16">
           <div className="mx-auto max-w-6xl px-6 text-center">
             <h1 className="heading-serif text-5xl text-ink">Échantillons de façades</h1>
-            <p className="mt-3 text-sm uppercase tracking-[0.18em] text-ink/60">3 échantillons offerts</p>
+            <p className="mt-3 text-sm uppercase tracking-[0.18em] text-ink/60">
+              3 échantillons offerts
+              {isAuthenticated && samplesInCart > 0 && (
+                <span className="ml-2 inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">
+                  {samplesInCart}/3 dans votre panier
+                </span>
+              )}
+            </p>
           </div>
         </section>
 
@@ -157,6 +200,8 @@ export default function SamplesPage() {
                     color={c}
                     material={selectedMaterial || ''}
                     onAddToCart={handleAddToCart}
+                    isInCart={samplesInCartIds.has(c.id)}
+                    isLimitReached={samplesInCart >= 3 && !samplesInCartIds.has(c.id)}
                   />
                 ))}
               </div>
@@ -165,6 +210,7 @@ export default function SamplesPage() {
         </section>
       </main>
       <Footer />
+      <Toaster />
     </div>
   );
 }

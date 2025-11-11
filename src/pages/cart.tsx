@@ -6,6 +6,13 @@ import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Trash2, Edit } from 'lucide-react';
+import toast from 'react-hot-toast';
+import dynamic from 'next/dynamic';
+
+const Toaster = dynamic(
+  () => import('react-hot-toast').then((mod) => mod.Toaster),
+  { ssr: false }
+);
 
 interface CartItem {
   id: number;
@@ -120,7 +127,7 @@ export default function Cart() {
       // Recharger le panier
       await loadCart();
     } catch (err: any) {
-      alert(`❌ ${err.message}`);
+      toast.error(err.message || 'Erreur lors de la mise à jour');
     } finally {
       setUpdatingItems(prev => {
         const newSet = new Set(prev);
@@ -145,9 +152,9 @@ export default function Cart() {
 
       // Recharger le panier
       await loadCart();
-      alert('✅ Article retiré du panier');
+      toast.success('Article retiré du panier');
     } catch (err: any) {
-      alert(`❌ ${err.message}`);
+      toast.error(err.message || 'Erreur lors de la suppression');
     }
   };
 
@@ -166,9 +173,9 @@ export default function Cart() {
 
       // Recharger le panier
       await loadCart();
-      alert('✅ Panier vidé');
+      toast.success('Panier vidé');
     } catch (err: any) {
-      alert(`❌ ${err.message}`);
+      toast.error(err.message || 'Erreur lors du vidage du panier');
     }
   };
 
@@ -299,7 +306,7 @@ export default function Cart() {
                                   });
                                   await loadCart();
                                 } catch (err) {
-                                  alert('Erreur lors de la suppression');
+                                  toast.error('Erreur lors de la suppression');
                                 }
                               }
                             }}
@@ -493,6 +500,7 @@ export default function Cart() {
         )}
       </div>
     </div>
+    <Toaster />
   </>
   );
 }
