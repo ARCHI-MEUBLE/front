@@ -3,6 +3,9 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useEffect, useMemo, useState } from "react";
 import { apiClient, type SampleType } from "@/lib/apiClient";
+import { SampleCard } from "@/components/samples/SampleCard";
+import { useRouter } from "next/router";
+import { useCustomer } from "@/context/CustomerContext";
 
 type MaterialsMap = Record<string, SampleType[]>;
 
@@ -13,6 +16,8 @@ const MATERIAL_ORDER = [
 ];
 
 export default function SamplesPage() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useCustomer();
   const [materials, setMaterials] = useState<MaterialsMap>({});
   const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
@@ -71,6 +76,32 @@ export default function SamplesPage() {
     return colors;
   }, [typesForSelected]);
 
+  const handleAddToCart = async (colorId: number) => {
+    // Vérifier si l'utilisateur est connecté
+    if (!isAuthenticated) {
+      router.push('/auth/login?redirect=/samples');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/cart/samples', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ sample_color_id: colorId, quantity: 1 }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'ajout au panier');
+      }
+
+      // Succès - l'animation "Ajouté" est gérée par le SampleCard
+    } catch (error) {
+      console.error('Erreur ajout panier:', error);
+      throw error;
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-alabaster text-ink">
       <Head>
@@ -119,22 +150,14 @@ export default function SamplesPage() {
             ) : colorsForMaterial.length === 0 ? (
               <div className="card text-center">Aucune couleur disponible pour ce matériau.</div>
             ) : (
-              <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {colorsForMaterial.map((c) => (
-                  <div key={c.id} className="flex flex-col items-center">
-                    <div
-                      className="h-28 w-28 overflow-hidden rounded-2xl border border-border-light bg-white"
-                      style={{ backgroundColor: c.image_url ? undefined : (c.hex || '#EEE') }}
-                    >
-                      {c.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" />
-                      ) : null}
-                    </div>
-                    <div className="mt-3 text-xs font-semibold tracking-wide text-ink uppercase text-center">
-                      {c.name}
-                    </div>
-                  </div>
+                  <SampleCard
+                    key={c.id}
+                    color={c}
+                    material={selectedMaterial || ''}
+                    onAddToCart={handleAddToCart}
+                  />
                 ))}
               </div>
             )}

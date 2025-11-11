@@ -23,10 +23,27 @@ interface CartItem {
   };
 }
 
+interface SampleCartItem {
+  id: number;
+  sample_color_id: number;
+  quantity: number;
+  color_name: string;
+  hex: string | null;
+  image_url: string | null;
+  type_name: string;
+  material: string;
+  type_description: string | null;
+}
+
 interface CartData {
   items: CartItem[];
   total: number;
   item_count: number;
+}
+
+interface SamplesCartData {
+  items: SampleCartItem[];
+  count: number;
 }
 
 export default function Cart() {
@@ -34,6 +51,7 @@ export default function Cart() {
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
 
   const [cart, setCart] = useState<CartData | null>(null);
+  const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
@@ -51,16 +69,27 @@ export default function Cart() {
 
   const loadCart = async () => {
     try {
-      const response = await fetch('/backend/api/cart/index.php', {
+      // Charger les configurations
+      const configResponse = await fetch('/backend/api/cart/index.php', {
         credentials: 'include',
       });
 
-      if (!response.ok) {
+      if (!configResponse.ok) {
         throw new Error('Erreur lors du chargement du panier');
       }
 
-      const data = await response.json();
-      setCart(data);
+      const configData = await configResponse.json();
+      setCart(configData);
+
+      // Charger les échantillons
+      const samplesResponse = await fetch('/api/cart/samples', {
+        credentials: 'include',
+      });
+
+      if (samplesResponse.ok) {
+        const samplesData = await samplesResponse.json();
+        setSamplesCart(samplesData);
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
     } finally {
@@ -160,7 +189,8 @@ export default function Cart() {
     );
   }
 
-  const isEmpty = !cart || cart.items.length === 0;
+  const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0);
+  const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0);
 
   return (
     <>
@@ -186,7 +216,12 @@ export default function Cart() {
               </h1>
               {!isEmpty && (
                 <p className="mt-1 text-sm text-text-secondary">
-                  {cart.item_count} article{cart.item_count > 1 ? 's' : ''} dans votre panier
+                  {totalItems} article{totalItems > 1 ? 's' : ''} dans votre panier
+                  {samplesCart && samplesCart.count > 0 && (
+                    <span className="ml-2 text-green-600 font-medium">
+                      ({samplesCart.count} échantillon{samplesCart.count > 1 ? 's' : ''} gratuit{samplesCart.count > 1 ? 's' : ''})
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -216,8 +251,77 @@ export default function Cart() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Liste des articles */}
-            <div className="lg:col-span-2 space-y-4">
-              {cart.items.map((item) => {
+            <div className="lg:col-span-2 space-y-6">
+              {/* Échantillons */}
+              {samplesCart && samplesCart.items.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                    <span>🎨</span>
+                    <span>Échantillons gratuits ({samplesCart.count})</span>
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {samplesCart.items.map((sample) => (
+                      <div key={sample.id} className="card p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="h-20 w-20 rounded-xl border border-border-light flex-shrink-0"
+                            style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
+                          >
+                            {sample.image_url && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={sample.image_url}
+                                alt={sample.color_name}
+                                className="h-full w-full object-cover rounded-xl"
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm text-text-primary truncate">
+                              {sample.color_name}
+                            </h3>
+                            <p className="text-xs text-text-secondary mt-1">
+                              {sample.material}
+                            </p>
+                            <p className="text-xs font-medium text-green-600 mt-2">
+                              Gratuit
+                            </p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (confirm('Retirer cet échantillon ?')) {
+                                try {
+                                  await fetch('/api/cart/samples', {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ item_id: sample.id }),
+                                  });
+                                  await loadCart();
+                                } catch (err) {
+                                  alert('Erreur lors de la suppression');
+                                }
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-700 p-2"
+                            title="Retirer"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Configurations */}
+              {cart && cart.items.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-text-primary">
+                    Meubles configurés ({cart.item_count})
+                  </h2>
+                  {cart.items.map((item) => {
                 const isUpdating = updatingItems.has(item.configuration_id);
 
                 return (
@@ -324,6 +428,8 @@ export default function Cart() {
               >
                 Vider le panier
               </button>
+                </div>
+              )}
             </div>
 
             {/* Récapitulatif */}
