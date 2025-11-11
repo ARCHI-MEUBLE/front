@@ -39,9 +39,6 @@ export function DashboardConfigs() {
         throw new Error('Impossible de charger les configurations');
       }
       const data = await res.json();
-      console.log('DashboardConfigs - API response:', data);
-      console.log('DashboardConfigs - configurations array:', data.configurations);
-      console.log('DashboardConfigs - configurations length:', data.configurations?.length);
       setConfigs(data.configurations || []);
       setTotal(data.total || (data.configurations?.length ?? 0));
     } catch (err: any) {
