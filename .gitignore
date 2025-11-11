@@ -80,3 +80,6 @@ next-env.d.ts
 *.pid
 # Images uploadées en local (dev uniquement)
 public/uploads/
+# Modèles 3D générés
+public/models/*.glb
+public/models/*.dxf
