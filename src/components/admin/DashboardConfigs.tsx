@@ -244,9 +244,8 @@ export function DashboardConfigs() {
                   )}
                   {selectedConfig.dxf_url ? (
                     <a
-                      href={selectedConfig.dxf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`/api/files/dxf?id=${selectedConfig.id}`}
+                      download={`configuration_${selectedConfig.id}.dxf`}
                       className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium ml-2 hover:bg-blue-700 transition"
                     >
                       <Ruler className="w-3.5 h-3.5" />
