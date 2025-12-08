@@ -172,7 +172,7 @@ function ShowroomCard({ showroom }: { showroom: Showroom }) {
   const mailHref = showroom.email ? `mailto:${showroom.email}` : undefined;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-border-light bg-white shadow-md transition hover:shadow-xl">
+    <article className="overflow-hidden rounded-sm border border-border-light bg-white shadow-md transition hover:shadow-xl">
       {showroom.imageUrl && (
         <div className="h-40 w-full overflow-hidden">
           <img src={showroom.imageUrl} alt={showroom.name} className="h-full w-full object-cover" />

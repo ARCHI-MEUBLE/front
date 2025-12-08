@@ -117,13 +117,13 @@ export default function ContactRequestPage() {
             </Head>
             <Header />
             <main className="flex-1">
-                <div className="min-h-screen bg-alabaster">
+                <div className="min-h-screen bg-surface">
                     {/* Hero Section */}
                     <section className="w-full bg-gradient-to-b from-white/80 to-alabaster py-20">
                         <div className="mx-auto max-w-5xl px-6">
                             <p className="text-sm font-medium uppercase tracking-wider text-ink/60">Nous contacter</p>
-                            <h1 className="heading-serif mt-4 text-5xl text-ink">Contactez ArchiMeuble</h1>
-                            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink/70">
+                            <h1 className="font-serif mt-4 text-5xl text-ink">Contactez ArchiMeuble</h1>
+                            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-stone">
                                 Envoyez-nous un message ou prenez rendez-vous pour une consultation gratuite.
                             </p>
 
@@ -160,7 +160,7 @@ export default function ContactRequestPage() {
                         <section className="mx-auto max-w-3xl px-6 py-20">
                             {success ? (
                                 <div className="rounded-[40px] border border-green-200 bg-green-50/70 p-12 text-center shadow-sm">
-                                    <p className="heading-serif text-2xl text-green-800">Merci pour votre demande !</p>
+                                    <p className="font-serif text-2xl text-green-800">Merci pour votre demande !</p>
                                     <p className="mt-3 text-sm leading-relaxed text-green-700">
                                         Nous avons bien reçu votre message. Nos équipes vous recontacteront très bientôt.
                                     </p>
@@ -186,7 +186,7 @@ export default function ContactRequestPage() {
                                             value={formData.name}
                                             onChange={handleChange}
                                             placeholder="Votre nom"
-                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-ink/40 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
+                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-muted focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
                                             required
                                         />
                                     </div>
@@ -203,7 +203,7 @@ export default function ContactRequestPage() {
                                             value={formData.email}
                                             onChange={handleChange}
                                             placeholder="votre.email@exemple.com"
-                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-ink/40 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
+                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-muted focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
                                             required
                                         />
                                     </div>
@@ -220,7 +220,7 @@ export default function ContactRequestPage() {
                                             value={formData.phone}
                                             onChange={handleChange}
                                             placeholder="06 01 02 03 04"
-                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-ink/40 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
+                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-muted focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
                                             required
                                         />
                                     </div>
@@ -237,7 +237,7 @@ export default function ContactRequestPage() {
                                             value={formData.company}
                                             onChange={handleChange}
                                             placeholder="Nom de votre entreprise ou projet (optionnel)"
-                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-ink/40 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
+                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-muted focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition"
                                         />
                                     </div>
 
@@ -273,7 +273,7 @@ export default function ContactRequestPage() {
                                             onChange={handleChange}
                                             placeholder="Décrivez votre projet, vos besoins, vos idées..."
                                             rows={6}
-                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-ink/40 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition resize-none"
+                                            className="w-full rounded-[12px] border border-[#e0d7cc] bg-white px-4 py-3 text-ink placeholder:text-muted focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink/20 transition resize-none"
                                             required
                                         />
                                     </div>
@@ -291,7 +291,7 @@ export default function ContactRequestPage() {
 
                                     {/* Back to home */}
                                     <div className="pt-4 text-center">
-                                        <Link href="/" className="text-sm text-ink/70 hover:text-ink transition">
+                                        <Link href="/" className="text-sm text-stone hover:text-ink transition">
                                             ← Retour à l'accueil
                                         </Link>
                                     </div>
@@ -305,11 +305,11 @@ export default function ContactRequestPage() {
                         <section className="mx-auto max-w-6xl px-6 py-20">
                             <div className="grid gap-12 lg:grid-cols-[1fr_1.5fr] lg:items-start">
                                 {/* COLONNE GAUCHE : Informations */}
-                                <div className="rounded-[32px] border border-[#e0d7cc] bg-white/80 p-10 shadow-xl">
-                                    <h2 className="heading-serif text-3xl leading-tight text-ink">
+                                <div className="rounded-sm border border-[#e0d7cc] bg-white/80 p-10 shadow-xl">
+                                    <h2 className="font-serif text-3xl leading-tight text-ink">
                                         Réservez votre consultation gratuite
                                     </h2>
-                                    <p className="mt-6 text-base leading-relaxed text-ink/70">
+                                    <p className="mt-6 text-base leading-relaxed text-stone">
                                         Discutons ensemble de votre projet de meuble sur mesure. Nous prenons le temps de comprendre vos
                                         besoins pour vous proposer une solution parfaitement adaptée.
                                     </p>
@@ -341,7 +341,7 @@ export default function ContactRequestPage() {
 
                                     {/* Sélecteur de type de rendez-vous */}
                                     <div className="mt-10">
-                                        <p className="mb-6 text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
+                                        <p className="mb-6 text-xs font-semibold uppercase tracking-[0.3em] text-muted">
                                             Type de consultation
                                         </p>
                                         <div className="space-y-3">
@@ -357,7 +357,7 @@ export default function ContactRequestPage() {
                                                 <Phone className="h-6 w-6 text-ink" />
                                                 <div>
                                                     <p className="font-semibold text-ink">Appel téléphonique</p>
-                                                    <p className="text-sm text-ink/70">30 minutes · Simple et rapide</p>
+                                                    <p className="text-sm text-stone">30 minutes · Simple et rapide</p>
                                                 </div>
                                             </button>
                                             <button
@@ -372,7 +372,7 @@ export default function ContactRequestPage() {
                                                 <Video className="h-6 w-6 text-ink" />
                                                 <div>
                                                     <p className="font-semibold text-ink">Visioconférence</p>
-                                                    <p className="text-sm text-ink/70">45 minutes · Analyse détaillée</p>
+                                                    <p className="text-sm text-stone">45 minutes · Analyse détaillée</p>
                                                 </div>
                                             </button>
                                         </div>
@@ -384,7 +384,7 @@ export default function ContactRequestPage() {
                                     {(phoneUrl || visioUrl) ? (
                                          <CalendlyWidget url={appointmentType === "phone" ? phoneUrl : visioUrl} />
                                     ) : (
-                                        <div className="rounded-[32px] border border-[#e0d7cc] bg-white/80 p-10 text-center text-ink/70">
+                                        <div className="rounded-sm border border-[#e0d7cc] bg-white/80 p-10 text-center text-stone">
                                             <p>Configuration Calendly manquante. Veuillez configurer les variables d'environnement.</p>
                                         </div>
                                     )}

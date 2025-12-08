@@ -233,16 +233,16 @@ export function CategoriesSection() {
   const isPointerPassthrough = !isTouchDevice && lastActivationSource === "pointer";
 
   return (
-    <section id="creations" className="bg-alabaster py-24">
+    <section id="creations" className="bg-surface py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="max-w-3xl text-center md:mx-auto">
-          <span className="text-xs font-medium uppercase tracking-[0.4em] text-ink/40">
+          <span className="text-xs font-medium uppercase tracking-[0.4em] text-muted">
             Nos créations de meubles sur mesure
           </span>
-          <h2 className="heading-serif mt-4 text-4xl leading-tight text-ink md:text-[44px]">
+          <h2 className="font-serif mt-4 text-4xl leading-tight text-ink md:text-[44px]">
             Des pièces pensées pour chaque pièce
           </h2>
-          <p className="mt-6 text-base leading-relaxed text-ink/70">
+          <p className="mt-6 text-base leading-relaxed text-stone">
             Rangements optimisés, bibliothèques aériennes ou bureaux élégants : explorez nos réalisations emblématiques et imaginez la vôtre.
           </p>
         </div>

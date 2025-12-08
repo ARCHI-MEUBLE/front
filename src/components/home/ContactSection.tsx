@@ -42,12 +42,12 @@ export function ContactSection() {
             <div className="mx-auto max-w-7xl px-6">
                 <div className="mx-auto max-w-2xl">
                     <div
-                        className={`rounded-[32px] border border-white/10 bg-white/5 p-10 shadow-xl backdrop-blur transition-transform duration-500 ${
+                        className={`rounded-sm border border-white/10 bg-white/5 p-10 shadow-xl backdrop-blur transition-transform duration-500 ${
                             isHighlighted ? "scale-[1.02]" : "scale-100"
                         }`}
                     >
                         <span className="text-xs font-medium uppercase tracking-[0.4em] text-white/60">Une question ?</span>
-                        <h2 className="heading-serif mt-5 text-4xl leading-tight text-white md:text-[44px]">
+                        <h2 className="font-serif mt-5 text-4xl leading-tight text-white md:text-[44px]">
                             Votre menuisier sur mesure à Lille
                         </h2>
                         <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/70">

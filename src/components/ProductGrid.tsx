@@ -38,7 +38,7 @@ export function ProductGrid() {
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
-              className="flex animate-pulse flex-col space-y-4 rounded-[32px] border border-[#e7ded3] bg-white/70 p-6"
+              className="flex animate-pulse flex-col space-y-4 rounded-sm border border-border bg-white/70 p-6"
             >
               <div className="aspect-square w-full rounded-[28px] bg-[#ede3d7]" />
               <div className="space-y-3">
@@ -55,11 +55,11 @@ export function ProductGrid() {
     if (error) {
       return (
         <div className="flex flex-col items-center space-y-4 py-16 text-center">
-          <p className="text-base font-medium text-ink/70">{error}</p>
+          <p className="text-base font-medium text-stone">{error}</p>
           <button
             type="button"
             onClick={loadModels}
-            className="rounded-full border border-[#d7c9b9] px-5 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-ink/70 transition hover:border-ink hover:text-ink"
+            className="rounded-full border border-[#d7c9b9] px-5 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-stone transition hover:border-ink hover:text-ink"
           >
             Réessayer
           </button>
@@ -68,7 +68,7 @@ export function ProductGrid() {
     }
     if (models.length === 0) {
       return (
-        <p className="py-16 text-center text-base text-ink/50">
+        <p className="py-16 text-center text-base text-muted">
           Aucun modèle disponible pour le moment.
         </p>
       );
@@ -87,12 +87,12 @@ export function ProductGrid() {
     <section id="templates" className="mx-auto max-w-6xl px-6 py-16">
       <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="heading-serif text-3xl text-ink">Nos modèles les plus demandés</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/70">
+          <h2 className="font-serif text-3xl text-ink">Nos modèles les plus demandés</h2>
+          <p className="mt-3 text-sm leading-relaxed text-stone">
             Inspirez-vous des créations de nos artisans pour imaginer votre prochain meuble sur mesure.
           </p>
         </div>
-        <span className="text-sm uppercase tracking-[0.3em] text-ink/40">
+        <span className="text-sm uppercase tracking-[0.3em] text-muted">
           {isLoading ? "Chargement…" : `${models.length} modèles`}
         </span>
       </div>

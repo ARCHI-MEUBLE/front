@@ -2310,7 +2310,7 @@ export default function ConfiguratorPage() {
                                             className={`flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition ${
                                                 isActive
                                                     ? 'border-amber-500 bg-white text-ink shadow-sm'
-                                                    : 'border-[#E3E3E3] bg-[#F7F7F7] text-ink/70 hover:border-amber-300'
+                                                    : 'border-[#E3E3E3] bg-[#F7F7F7] text-stone hover:border-amber-300'
                                             }`}
                                         >
                       <span
@@ -2402,7 +2402,7 @@ export default function ConfiguratorPage() {
                                                                 }));
                                                             }}
                                                             className={`group flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-left text-xs transition ${
-                                                                isActive ? 'border-amber-500 bg-white text-ink shadow-sm' : 'border-gray-300 bg-white text-ink/70 hover:border-amber-300'
+                                                                isActive ? 'border-amber-500 bg-white text-ink shadow-sm' : 'border-gray-300 bg-white text-stone hover:border-amber-300'
                                                             }`}
                                                         >
                                                             <span
@@ -2462,7 +2462,7 @@ export default function ConfiguratorPage() {
                                     </div>
 
                                     {selectedColorOption && (
-                                        <div className="w-full max-w-xs rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                        <div className="w-full max-w-xs rounded-sm border border-gray-200 bg-white p-4 shadow-sm">
                                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Sélectionné</p>
                                             <h4 className="mt-1 text-sm font-semibold text-ink">
                                                 {selectedColorOption.name || colorLabel}

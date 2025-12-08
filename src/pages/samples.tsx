@@ -139,7 +139,7 @@ export default function SamplesPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-alabaster text-ink">
+    <div className="flex min-h-screen flex-col bg-surface text-ink">
       <Head>
         <title>Échantillons — ArchiMeuble</title>
       </Head>
@@ -148,7 +148,7 @@ export default function SamplesPage() {
         {/* Hero Section */}
         <section className="w-full bg-gradient-to-b from-white/80 to-alabaster py-16">
           <div className="mx-auto max-w-6xl px-6 text-center">
-            <h1 className="heading-serif text-5xl text-ink">Échantillons de façades</h1>
+            <h1 className="font-serif text-5xl text-ink">Échantillons de façades</h1>
             <p className="mt-3 text-sm uppercase tracking-[0.18em] text-ink/60">
               3 échantillons offerts
               {isAuthenticated && samplesInCart > 0 && (

@@ -86,11 +86,11 @@ export function CategoryCard({ category, isTouchDevice, onActivate, onDeactivate
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="col-span-1 flex min-h-[220px] w-full flex-col justify-between rounded-[32px] bg-white/95 px-8 py-10 text-left shadow-sm transition-all duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+      className="col-span-1 flex min-h-[220px] w-full flex-col justify-between rounded-sm bg-white/95 px-8 py-10 text-left shadow-sm transition-all duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
       aria-label={`Voir la catégorie ${category.title}`}
     >
-      <p className="heading-serif text-2xl leading-tight text-ink">{category.title}</p>
-      <span className="mt-8 inline-flex items-center text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
+      <p className="font-serif text-2xl leading-tight text-ink">{category.title}</p>
+      <span className="mt-8 inline-flex items-center text-xs font-semibold uppercase tracking-[0.3em] text-muted">
         Découvrir
       </span>
     </div>
@@ -200,7 +200,7 @@ export function FloatingCategoryPanel({
         >
           <span className="text-lg">×</span>
         </button>
-        <div className="relative h-64 w-full overflow-hidden bg-alabaster lg:h-[520px] lg:w-1/2">
+        <div className="relative h-64 w-full overflow-hidden bg-surface lg:h-[520px] lg:w-1/2">
           <Image
             src={category.image}
             alt={category.imageAlt}
@@ -212,15 +212,15 @@ export function FloatingCategoryPanel({
         </div>
         <div className="flex flex-1 flex-col justify-between gap-10 p-10 lg:p-14">
           <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-ink/40">{category.title}</p>
-            <h3 className="heading-serif text-4xl leading-tight text-ink">{category.title}</h3>
-            <div className="space-y-4 text-lg leading-relaxed text-ink/70">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-muted">{category.title}</p>
+            <h3 className="font-serif text-4xl leading-tight text-ink">{category.title}</h3>
+            <div className="space-y-4 text-lg leading-relaxed text-stone">
               {category.descriptions.map((paragraph, index) => (
                 <p key={index}>{paragraph}</p>
               ))}
             </div>
           </div>
-          <Link href={ctaHref} className="inline-flex w-fit items-center justify-center button-elevated" onClick={handleCtaClick}>
+          <Link href={ctaHref} className="inline-flex w-fit items-center justify-center btn-primary" onClick={handleCtaClick}>
             Démarrer mon projet
           </Link>
         </div>

@@ -120,7 +120,7 @@ export function Reviews() {
       <div className="section-container-sm">
         {/* Hero Section */}
         <div className="mb-10 text-center">
-          <h1 className="heading-serif mb-3 text-4xl font-semibold text-ink">
+          <h1 className="font-serif mb-3 text-4xl font-semibold text-ink">
             Avis de nos clients
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-secondary">
@@ -212,7 +212,7 @@ export function Reviews() {
 
 function ReviewItem({ review }: { review: Review }) {
   return (
-    <article className="group overflow-hidden rounded-2xl border border-border-light bg-white shadow-sm transition-all duration-300 hover:shadow-md">
+    <article className="group overflow-hidden rounded-sm border border-border-light bg-white shadow-sm transition-all duration-300 hover:shadow-md">
       <div className="p-6">
         {/* Header avec avatar et info */}
         <div className="flex items-start gap-4">
@@ -244,7 +244,7 @@ function ReviewItem({ review }: { review: Review }) {
         </div>
 
         {/* Texte de l'avis */}
-        <div className="mt-4 rounded-2xl bg-bg-light p-4">
+        <div className="mt-4 rounded-sm bg-bg-light p-4">
           <p className="leading-relaxed text-text-primary">{review.text}</p>
         </div>
 

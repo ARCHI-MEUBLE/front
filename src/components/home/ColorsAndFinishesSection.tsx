@@ -127,10 +127,10 @@ export function ColorsAndFinishesSection({ colors }: ColorsAndFinishesSectionPro
   };
 
   return (
-    <section id="couleurs" className="bg-[#efe2d5] py-24">
+    <section id="couleurs" className="bg-cream py-24">
       <div className="mx-auto flex max-w-7xl flex-col gap-16 px-6 lg:flex-row">
         <div className="flex flex-1 flex-col">
-          <div className="relative overflow-hidden rounded-[42px] bg-white/70 shadow-sm backdrop-blur">
+          <div className="relative overflow-hidden rounded-sm bg-white/70 shadow-sm backdrop-blur">
             <div className="relative h-[420px] w-full lg:h-[520px]">
               {colors.map((color) => {
                 const isVisible = color.slug === visibleSlug;
@@ -175,9 +175,9 @@ export function ColorsAndFinishesSection({ colors }: ColorsAndFinishesSectionPro
               })}
             </div>
           </div>
-          <div className="mt-8 rounded-3xl bg-white/80 px-8 py-6 shadow-sm backdrop-blur">
+          <div className="mt-8 rounded-sm bg-white/80 px-8 py-6 shadow-sm backdrop-blur">
             <p className="text-xs font-medium uppercase tracking-[0.4em] text-ink/35">Teinte sélectionnée</p>
-            <p className="heading-serif mt-3 text-3xl text-ink" aria-live="polite">
+            <p className="font-serif mt-3 text-3xl text-ink" aria-live="polite">
               {activeColor.fancyName}
             </p>
           </div>
@@ -185,11 +185,11 @@ export function ColorsAndFinishesSection({ colors }: ColorsAndFinishesSectionPro
 
         <div className="flex w-full max-w-xl flex-col justify-between gap-12 lg:py-6">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.4em] text-ink/40">Couleurs et finitions</p>
-            <h2 className="heading-serif mt-4 text-4xl leading-tight text-ink">
+            <p className="text-xs font-medium uppercase tracking-[0.4em] text-muted">Couleurs et finitions</p>
+            <h2 className="font-serif mt-4 text-4xl leading-tight text-ink">
               Des couleurs pour tous les projets
             </h2>
-            <p className="mt-6 text-base leading-relaxed text-ink/70">
+            <p className="mt-6 text-base leading-relaxed text-stone">
               Nous travaillons avec toutes les teintes que vous pouvez imaginer : des bois naturels aux nuances
               contemporaines. Nos meubles étant réalisés sur mesure, vous pouvez choisir absolument n’importe
               quelle teinte ou finition, sans aucune limite.
@@ -206,7 +206,7 @@ export function ColorsAndFinishesSection({ colors }: ColorsAndFinishesSectionPro
                   type="button"
                   onClick={() => handleSelectColor(color.slug)}
                   style={{ backgroundColor: color.swatch }}
-                  className={`group relative flex h-12 w-12 items-center justify-center rounded-xl transition duration-200 ${
+                  className={`group relative flex h-12 w-12 items-center justify-center rounded-full transition duration-200 ${
                     isSelected ? "ring-2 ring-ink" : "ring-1 ring-[#d7c9b9] hover:ring-ink/40"
                   }`}
                   aria-label={`Afficher la finition ${color.fancyName}`}
@@ -219,10 +219,10 @@ export function ColorsAndFinishesSection({ colors }: ColorsAndFinishesSectionPro
           </div>
 
           <div className="flex flex-col gap-4 pt-4 sm:flex-row">
-            <Link href="/models" className="button-elevated">
+            <Link href="/models" className="btn-primary">
               Découvrir nos collections
             </Link>
-            <Link href="/samples" className="button-outline">
+            <Link href="/samples" className="btn-secondary">
               Commander un échantillon
             </Link>
           </div>

@@ -20,7 +20,7 @@ type HomePageProps = {
 
 export default function HomePage({ colors }: HomePageProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-alabaster text-ink">
+    <div className="flex min-h-screen flex-col bg-surface text-ink">
       <Head>
         <title>Archimeuble</title>
         <meta

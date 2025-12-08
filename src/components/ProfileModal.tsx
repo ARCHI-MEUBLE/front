@@ -155,21 +155,21 @@ export function ProfileModal({
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="absolute right-4 top-4 rounded-full p-2 text-ink/50 transition hover:bg-[#ede3d7]"
+          className="absolute right-4 top-4 rounded-full p-2 text-muted transition hover:bg-[#ede3d7]"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="mb-6">
-          <h2 className="heading-serif text-3xl text-ink">Mon compte</h2>
+          <h2 className="font-serif text-3xl text-ink">Mon compte</h2>
           <p className="mt-2 text-sm leading-relaxed text-ink/60">
             Gérez vos informations et vos meubles enregistrés.
           </p>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[28px] border border-[#e7ded3] bg-alabaster/70 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">Email</p>
+          <div className="rounded-[28px] border border-border bg-surface/70 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted">Email</p>
             <p className="mt-2 text-base font-semibold text-ink">{session.email}</p>
           </div>
 
@@ -185,7 +185,7 @@ export function ProfileModal({
             {showPasswordForm && (
               <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50" htmlFor="currentPassword">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted" htmlFor="currentPassword">
                     Mot de passe actuel
                   </label>
                   <input
@@ -195,11 +195,11 @@ export function ProfileModal({
                     required
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+                    className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50" htmlFor="newPassword">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted" htmlFor="newPassword">
                     Nouveau mot de passe
                   </label>
                   <input
@@ -210,7 +210,7 @@ export function ProfileModal({
                     minLength={6}
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+                    className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
                   />
                 </div>
                 <button
@@ -243,7 +243,7 @@ export function ProfileModal({
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50" htmlFor="deletePassword">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted" htmlFor="deletePassword">
                     Confirmer avec votre mot de passe
                   </label>
                   <input
@@ -253,7 +253,7 @@ export function ProfileModal({
                     required
                     value={deletePassword}
                     onChange={(event) => setDeletePassword(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/10"
+                    className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/10"
                   />
                 </div>
                 <button
@@ -269,7 +269,7 @@ export function ProfileModal({
           </div>
 
           <div>
-            <h3 className="heading-serif text-xl text-ink">Mes meubles</h3>
+            <h3 className="font-serif text-xl text-ink">Mes meubles</h3>
             {!meubles || meubles.length === 0 ? (
               <p className="mt-2 text-sm text-ink/60">
                 Vous n&apos;avez pas encore enregistré de meuble.
@@ -279,7 +279,7 @@ export function ProfileModal({
                 {meubles.map((meuble) => (
                   <li
                     key={`${meuble.userId}-${meuble.name}`}
-                    className="flex items-center space-x-3 rounded-2xl border border-[#e7ded3] bg-white/80 p-3 shadow-sm"
+                    className="flex items-center space-x-3 rounded-sm border border-border bg-white/80 p-3 shadow-sm"
                   >
                     <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-gray-100">
                       <Image
@@ -301,7 +301,7 @@ export function ProfileModal({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-8 w-full rounded-full border border-[#e0d7cc] bg-white px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-ink/70 transition hover:border-ink hover:text-ink"
+          className="mt-8 w-full rounded-full border border-[#e0d7cc] bg-white px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-stone transition hover:border-ink hover:text-ink"
         >
           Se déconnecter
         </button>

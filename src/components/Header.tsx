@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, ShoppingCart } from "lucide-react";
+import { Bell, ShoppingCart, Menu, X } from "lucide-react";
 import { AccountButton } from "@/components/AccountButton";
 import { useCustomer } from "@/context/CustomerContext";
 
 const navLinks = [
-  { href: "/", label: "Accueil" },
-  { href: "/models", label: "Nos modèles" },
-  { href: "/samples", label: "Échantillons" },
+  
+  { href: "/models", label: "Modeles" },
+  { href: "/samples", label: "Echantillons" },
   { href: "/avis", label: "Avis" },
   { href: "/showrooms", label: "Showrooms" },
   { href: "/contact-request", label: "Contact" }
@@ -35,7 +35,17 @@ export function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const notificationRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => { setMobileMenuOpen(false); }, [router.pathname]);
 
   // Charger le nombre d'articles dans le panier de meubles
   useEffect(() => {
@@ -111,6 +121,7 @@ export function Header() {
 
   const handleNavClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
+      setMobileMenuOpen(false);
       if (!href.includes("#")) {
         return;
       }
@@ -176,24 +187,24 @@ export function Header() {
   }, [isNotificationsOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#f0e2d0] bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-16">
+    <header className={`sticky top-0 z-50 transition-all duration-200 ${isScrolled ? "bg-white border-b border-border" : "bg-transparent border-b border-transparent"}`}>
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 h-16 md:h-20">
+        <div>
           <Link
             href="/"
-            className="heading-serif text-[28px] font-semibold tracking-tight text-ink"
+            className="font-serif text-xl md:text-2xl font-medium tracking-tight text-ink"
             aria-label="ArchiMeuble"
           >
             ArchiMeuble
           </Link>
-          <nav className="hidden items-center gap-10 text-sm font-medium uppercase tracking-[0.2em] text-ink/70 md:flex">
+          <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 scroll={false}
                 onClick={(event) => handleNavClick(event, link.href)}
-                className="transition hover:text-ink"
+                className={`text-[13px] font-medium uppercase tracking-[0.15em] transition-colors ${router.pathname === link.href ? "text-ink" : "text-stone hover:text-ink"}`}
               >
                 {link.label}
               </Link>
@@ -210,7 +221,7 @@ export function Header() {
                 aria-haspopup="dialog"
                 aria-expanded={isNotificationsOpen}
                 onClick={() => setNotificationsOpen((prev) => !prev)}
-                className="relative rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-[#e9dfd4]"
+                className="relative p-2 text-stone transition-colors hover:text-ink"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -220,13 +231,13 @@ export function Header() {
                 )}
               </button>
               {isNotificationsOpen ? (
-                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl border border-[#dfd3c5] bg-white shadow-xl">
-                  <div className="sticky top-0 bg-white p-4 border-b border-[#dfd3c5] flex items-center justify-between">
-                    <p className="heading-serif text-lg text-ink">Notifications</p>
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-sm border border-border bg-white shadow-xl">
+                  <div className="sticky top-0 bg-white p-4 border-b border-border flex items-center justify-between">
+                    <p className="font-serif text-lg text-ink">Notifications</p>
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="text-xs text-ink/70 hover:text-ink underline"
+                        className="text-xs text-stone hover:text-ink underline"
                       >
                         Tout marquer comme lu
                       </button>
@@ -234,7 +245,7 @@ export function Header() {
                   </div>
                   <div className="p-2">
                     {notifications.length === 0 ? (
-                      <p className="p-4 text-sm text-ink/70 text-center">
+                      <p className="p-4 text-sm text-stone text-center">
                         Aucune nouvelle notification.
                       </p>
                     ) : (
@@ -244,7 +255,7 @@ export function Header() {
                           className={`p-3 mb-2 rounded-lg cursor-pointer transition ${
                             notif.is_read
                               ? "bg-white hover:bg-[#f9f7f5]"
-                              : "bg-[#f0e2d0] hover:bg-[#e9dfd4]"
+                              : "bg-surface hover:bg-cream"
                           }`}
                           onClick={() => {
                             if (!notif.is_read) markAsRead(notif.id);
@@ -255,8 +266,8 @@ export function Header() {
                           }}
                         >
                           <p className="text-sm font-semibold text-ink">{notif.title}</p>
-                          <p className="text-xs text-ink/70 mt-1">{notif.message}</p>
-                          <p className="text-xs text-ink/50 mt-2">
+                          <p className="text-xs text-stone mt-1">{notif.message}</p>
+                          <p className="text-xs text-muted mt-2">
                             {new Date(notif.created_at).toLocaleDateString("fr-FR", {
                               day: "numeric",
                               month: "short",
@@ -275,7 +286,7 @@ export function Header() {
           <Link
             href="/cart"
             aria-label="Voir le panier"
-            className="relative rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-[#e9dfd4]"
+            className="relative p-2 text-stone transition-colors hover:text-ink"
           >
             <ShoppingCart className="h-5 w-5" />
             {cartCount > 0 ? (
@@ -286,7 +297,7 @@ export function Header() {
           </Link>
           <Link
             href="/configurator"
-            className={["hidden", "button-elevated", "sm:inline-flex"].join(" ")}
+            className="hidden md:inline-flex text-[13px] font-medium text-ink underline underline-offset-4 decoration-stone/50 hover:decoration-ink transition-colors ml-2"
           >
             Configurer un meuble
           </Link>

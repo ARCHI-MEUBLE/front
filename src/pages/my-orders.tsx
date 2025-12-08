@@ -475,7 +475,7 @@ export default function MyOrders() {
           onClick={() => setSelectedOrder(null)}
         >
           <div
-            className="bg-bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-bg-white rounded-sm shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-border-light sticky top-0 bg-bg-white">

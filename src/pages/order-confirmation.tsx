@@ -68,7 +68,7 @@ export default function OrderConfirmation() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-alabaster">
+      <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
           <p className="mt-4 text-text-secondary">Chargement...</p>
@@ -79,7 +79,7 @@ export default function OrderConfirmation() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-alabaster">
+      <div className="min-h-screen bg-surface">
         <Header />
         <div className="max-w-2xl mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
@@ -96,7 +96,7 @@ export default function OrderConfirmation() {
   const isSamplesOnly = order.total === 0 && order.samples && order.samples.length > 0;
 
   return (
-    <div className="min-h-screen bg-alabaster">
+    <div className="min-h-screen bg-surface">
       <Head>
         <title>Commande confirmée - ArchiMeuble</title>
       </Head>
@@ -108,7 +108,7 @@ export default function OrderConfirmation() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
-          <h1 className="heading-serif text-4xl text-ink mb-4">
+          <h1 className="font-serif text-4xl text-ink mb-4">
             {isSamplesOnly ? 'Échantillons commandés !' : 'Commande confirmée !'}
           </h1>
           <p className="text-lg text-text-secondary mb-2">

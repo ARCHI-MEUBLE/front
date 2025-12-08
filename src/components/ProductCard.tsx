@@ -28,7 +28,7 @@ export function ProductCard({ model }: ProductCardProps) {
   const formattedDate = formatCreatedAt(model.created_at);
 
   return (
-    <article className="flex h-full flex-col rounded-[32px] border border-[#e7ded3] bg-white/80 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+    <article className="flex h-full flex-col rounded-sm border border-border bg-white/80 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
       <div className="aspect-square w-full overflow-hidden rounded-[28px] bg-[#ece3d8]">
         <img
           src={model.image_path || "/placeholder.jpg"}
@@ -38,10 +38,10 @@ export function ProductCard({ model }: ProductCardProps) {
         />
       </div>
       <div className="mt-5 flex flex-1 flex-col">
-        <h3 className="heading-serif text-xl text-ink">{model.name}</h3>
-        <p className="mt-3 text-sm text-ink/70 line-clamp-2">{model.description}</p>
-        <p className="mt-4 text-xs uppercase tracking-[0.3em] text-ink/40">Créé le {formattedDate}</p>
-        <Link href={`/configurator/${model.id}`} className="mt-6 w-full button-elevated text-center">
+        <h3 className="font-serif text-xl text-ink">{model.name}</h3>
+        <p className="mt-3 text-sm text-stone line-clamp-2">{model.description}</p>
+        <p className="mt-4 text-xs uppercase tracking-[0.3em] text-muted">Créé le {formattedDate}</p>
+        <Link href={`/configurator/${model.id}`} className="mt-6 w-full btn-primary text-center">
           Configurer ce meuble
         </Link>
       </div>
