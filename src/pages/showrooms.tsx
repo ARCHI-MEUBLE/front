@@ -1,275 +1,467 @@
 import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRight, MapPin, Ruler, Calendar } from "lucide-react";
 
-type OpeningHours = {
-  day: string; // Lundi, Mardi, ...
-  open: string; // "09:00"
-  close: string; // "18:00"
-  closed?: boolean; // fermé
-};
-
-type Showroom = {
+type Realisation = {
   id: string;
-  name: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  country: string;
-  lat?: number;
-  lng?: number;
-  phone?: string;
-  email?: string;
-  services?: string[]; // ex: "Sur-mesure", "Pose", "Conseil déco"
-  openingHours?: OpeningHours[];
-  imageUrl?: string;
-  bookingUrl?: string; // lien prise de RDV si externe
+  title: string;
+  category: string;
+  location: string;
+  year: string;
+  dimensions?: string;
+  description: string;
+  images: string[];
+  featured?: boolean;
 };
 
-const DEFAULT_SHOWROOMS: Showroom[] = [
+const CATEGORIES = [
+  { id: "all", label: "Toutes" },
+  { id: "dressing", label: "Dressings" },
+  { id: "bibliotheque", label: "Bibliothèques" },
+  { id: "meuble-tv", label: "Meubles TV" },
+  { id: "bureau", label: "Bureaux" },
+  { id: "rangement", label: "Rangements" },
+];
+
+const REALISATIONS: Realisation[] = [
   {
-    id: "paris-11",
-    name: "Showroom Paris 11",
-    address: "12 Rue Oberkampf",
-    postalCode: "75011",
-    city: "Paris",
-    country: "France",
-    lat: 48.8639,
-    lng: 2.3700,
-    phone: "+33 1 23 45 67 89",
-    email: "paris11@archimeuble.fr",
-    services: ["Sur-mesure", "Pose", "Conseil déco"],
-    openingHours: [
-      { day: "Lun.", open: "10:00", close: "19:00" },
-      { day: "Mar.", open: "10:00", close: "19:00" },
-      { day: "Mer.", open: "10:00", close: "19:00" },
-      { day: "Jeu.", open: "10:00", close: "19:00" },
-      { day: "Ven.", open: "10:00", close: "19:00" },
-      { day: "Sam.", open: "10:00", close: "18:00" },
-      { day: "Dim.", open: "", close: "", closed: true },
-    ],
-    imageUrl: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=60",
+    id: "dressing-lille-centre",
+    title: "Dressing sur mesure",
+    category: "dressing",
+    location: "Lille Centre",
+    year: "2024",
+    dimensions: "3.2m x 2.8m",
+    description: "Dressing en chêne naturel avec éclairage LED intégré et tiroirs à fermeture douce.",
+    images: ["/images/accueil image/dressing.jpg"],
+    featured: true,
   },
   {
-    id: "lyon-centre",
-    name: "Showroom Lyon Centre",
-    address: "5 Place Bellecour",
-    postalCode: "69002",
-    city: "Lyon",
-    country: "France",
-    lat: 45.7578,
-    lng: 4.8320,
-    phone: "+33 4 12 34 56 78",
-    email: "lyon@archimeuble.fr",
-    services: ["Sur-mesure", "Conseil déco"],
-    openingHours: [
-      { day: "Lun.", open: "10:00", close: "19:00" },
-      { day: "Mar.", open: "10:00", close: "19:00" },
-      { day: "Mer.", open: "10:00", close: "19:00" },
-      { day: "Jeu.", open: "10:00", close: "19:00" },
-      { day: "Ven.", open: "10:00", close: "19:00" },
-      { day: "Sam.", open: "10:00", close: "18:00" },
-      { day: "Dim.", open: "", close: "", closed: true },
-    ],
-    imageUrl: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?auto=format&fit=crop&w=1200&q=60",
+    id: "bibliotheque-roubaix",
+    title: "Bibliothèque murale",
+    category: "bibliotheque",
+    location: "Roubaix",
+    year: "2024",
+    dimensions: "4.5m x 3m",
+    description: "Bibliothèque du sol au plafond en MDF laqué blanc avec échelle coulissante.",
+    images: ["/images/accueil image/biblio.jpg"],
+    featured: true,
+  },
+  {
+    id: "meuble-tv-tourcoing",
+    title: "Meuble TV suspendu",
+    category: "meuble-tv",
+    location: "Tourcoing",
+    year: "2024",
+    dimensions: "2.4m x 0.45m",
+    description: "Meuble TV flottant avec panneau arrière en tasseaux et rangements cachés.",
+    images: ["/images/accueil image/meubletv.jpg"],
+  },
+  {
+    id: "bureau-marcq",
+    title: "Bureau d'angle",
+    category: "bureau",
+    location: "Marcq-en-Baroeul",
+    year: "2023",
+    dimensions: "2.2m x 1.8m",
+    description: "Bureau d'angle avec caissons intégrés et plan de travail en chêne massif.",
+    images: ["/images/accueil image/bureau.jpg"],
+  },
+  {
+    id: "rangement-lambersart",
+    title: "Placard sous escalier",
+    category: "rangement",
+    location: "Lambersart",
+    year: "2023",
+    dimensions: "Sur mesure",
+    description: "Optimisation de l'espace sous escalier avec portes coulissantes et étagères modulables.",
+    images: ["/images/accueil image/meublesousescalier.jpg"],
+  },
+  {
+    id: "buffet-wasquehal",
+    title: "Buffet contemporain",
+    category: "rangement",
+    location: "Wasquehal",
+    year: "2023",
+    dimensions: "2.4m x 0.9m",
+    description: "Buffet sur mesure avec façades en placage chêne et poignées intégrées.",
+    images: ["/images/accueil image/buffet.jpg"],
+    featured: true,
+  },
+  {
+    id: "tete-lit-villeneuve",
+    title: "Tête de lit avec rangements",
+    category: "rangement",
+    location: "Villeneuve d'Ascq",
+    year: "2024",
+    dimensions: "3m x 1.2m",
+    description: "Tête de lit panoramique avec niches éclairées et tables de chevet intégrées.",
+    images: ["/images/accueil image/tetedelit.jpg"],
   },
 ];
 
-export default function ShowroomsPage() {
-  const [query, setQuery] = useState("");
-  const [showrooms, setShowrooms] = useState<Showroom[]>(DEFAULT_SHOWROOMS);
-  const [loading, setLoading] = useState(true);
+export default function RealisationsPage() {
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/showrooms', { cache: 'no-store' });
-        if (!mounted) return;
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) setShowrooms(data as Showroom[]);
-        }
-      } catch (e) {
-        // fallback silencieux sur DEFAULT_SHOWROOMS
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    load();
-    return () => { mounted = false; };
-  }, []);
+  const filteredRealisations = selectedCategory === "all"
+    ? REALISATIONS
+    : REALISATIONS.filter(r => r.category === selectedCategory);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return showrooms;
-    return showrooms.filter((s) =>
-      [s.name, s.city, s.address, s.postalCode].some((v) => v.toLowerCase().includes(q))
-    );
-  }, [query, showrooms]);
-
-  const jsonLd = buildLocalBusinessJsonLd(showrooms);
+  const featuredRealisations = REALISATIONS.filter(r => r.featured);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg-light text-text-primary">
+    <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
       <Head>
-        <title>Showrooms — ArchiMeuble</title>
-        <meta name="description" content="Trouver un showroom ArchiMeuble près de chez vous" />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <title>Nos Réalisations — ArchiMeuble</title>
+        <meta name="description" content="Découvrez nos réalisations de meubles sur mesure : dressings, bibliothèques, meubles TV. Fabrication artisanale Made in France dans la métropole lilloise." />
       </Head>
       <Header />
-      <main className="flex flex-1 flex-col items-center justify-start px-4 py-10">
-        {/* Hero */}
-        <section className="w-full max-w-6xl">
-          <h1 className="mb-3 text-4xl font-bold text-text-primary">Trouvez votre showroom</h1>
-          <p className="mb-6 max-w-2xl text-text-secondary">
-            Venez découvrir nos matériaux, toucher les finitions et rencontrer nos concepteurs dans l'un de nos showrooms.
-          </p>
-          <div className="mb-8 flex max-w-xl items-center gap-3 rounded-xl border border-border-light bg-white p-2 shadow-sm">
-            <svg className="ml-2 h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.387a1 1 0 01-1.414 1.414l-4.387-4.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z" clipRule="evenodd"/></svg>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher une ville, une adresse..."
-              className="w-full rounded-lg p-3 outline-none text-text-primary placeholder-text-tertiary"
-            />
+
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden bg-[#1A1917] py-24 lg:py-32">
+          {/* Background texture */}
+          <div className="absolute inset-0 opacity-[0.015]">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            }} />
+          </div>
+
+          <div className="relative mx-auto max-w-7xl px-6">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              <div>
+                {/* Made in France Badge */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-8 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm"
+                >
+                  <div className="flex gap-0.5">
+                    <div className="h-4 w-1.5 rounded-sm bg-[#0055A4]" />
+                    <div className="h-4 w-1.5 rounded-sm bg-white" />
+                    <div className="h-4 w-1.5 rounded-sm bg-[#EF4135]" />
+                  </div>
+                  <span className="text-xs font-medium uppercase tracking-[0.2em] text-white/80">
+                    Made in France
+                  </span>
+                </motion.div>
+
+                <motion.span
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="text-xs font-medium uppercase tracking-[0.3em] text-[#8B7355]"
+                >
+                  Portfolio
+                </motion.span>
+
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="mt-4 font-serif text-4xl leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl"
+                >
+                  Nos réalisations
+                  <br />
+                  <span className="text-[#8B7355]">sur mesure</span>
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="mt-6 max-w-md text-lg leading-relaxed text-white/70"
+                >
+                  Chaque projet est unique. Découvrez comment nous transformons
+                  vos espaces avec des créations artisanales pensées pour durer.
+                </motion.p>
+
+                {/* Stats */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-10 grid grid-cols-3 gap-8"
+                >
+                  {[
+                    { value: "150+", label: "Projets livrés" },
+                    { value: "100%", label: "Sur mesure" },
+                    { value: "10 ans", label: "Garantie" },
+                  ].map((stat) => (
+                    <div key={stat.label}>
+                      <div className="font-serif text-3xl text-white">{stat.value}</div>
+                      <div className="mt-1 text-sm text-white/50">{stat.label}</div>
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
+
+              {/* Featured images grid */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="relative hidden lg:block"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-[#2A2825]">
+                      <div className="h-full w-full bg-gradient-to-br from-[#8B7355]/20 to-transparent" />
+                    </div>
+                    <div className="aspect-square overflow-hidden rounded-2xl bg-[#2A2825]">
+                      <div className="h-full w-full bg-gradient-to-br from-[#8B7355]/10 to-transparent" />
+                    </div>
+                  </div>
+                  <div className="space-y-4 pt-8">
+                    <div className="aspect-square overflow-hidden rounded-2xl bg-[#2A2825]">
+                      <div className="h-full w-full bg-gradient-to-br from-[#8B7355]/15 to-transparent" />
+                    </div>
+                    <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-[#2A2825]">
+                      <div className="h-full w-full bg-gradient-to-br from-[#8B7355]/20 to-transparent" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating badge */}
+                <div className="absolute -left-6 bottom-24 rounded-2xl border border-white/10 bg-[#1A1917]/90 p-4 backdrop-blur-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8B7355]">
+                      <MapPin className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-white">Métropole Lilloise</div>
+                      <div className="text-xs text-white/50">Hauts-de-France</div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           </div>
         </section>
 
-        {/* Liste */}
-        <section className="grid w-full max-w-6xl grid-cols-1 gap-6 md:grid-cols-2">
-          {loading && (
-            <div className="col-span-full rounded-xl border border-border-light bg-white p-10 text-center text-text-secondary">
-              Chargement des showrooms...
+        {/* Savoir-faire Section */}
+        <section className="border-b border-[#E8E4DE] bg-white py-16">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              <div>
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
+                  Notre savoir-faire
+                </span>
+                <h2 className="mt-4 font-serif text-3xl text-[#1A1917] lg:text-4xl">
+                  L'artisanat français
+                  <br />au service de vos projets
+                </h2>
+                <p className="mt-6 leading-relaxed text-[#6B6560]">
+                  Basés dans la métropole lilloise, nous concevons et fabriquons
+                  chaque meuble dans notre atelier. Du premier croquis à la pose finale,
+                  nous maîtrisons chaque étape pour vous garantir un résultat parfait.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                {[
+                  { icon: "01", title: "Conception", desc: "Plans 3D sur mesure" },
+                  { icon: "02", title: "Fabrication", desc: "Atelier français" },
+                  { icon: "03", title: "Finitions", desc: "Qualité artisanale" },
+                  { icon: "04", title: "Installation", desc: "Pose soignée" },
+                ].map((step) => (
+                  <div key={step.icon} className="rounded-2xl border border-[#E8E4DE] bg-[#FAFAF9] p-6">
+                    <div className="font-serif text-2xl text-[#8B7355]">{step.icon}</div>
+                    <h3 className="mt-3 font-medium text-[#1A1917]">{step.title}</h3>
+                    <p className="mt-1 text-sm text-[#6B6560]">{step.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-          {filtered.map((s) => (
-            <ShowroomCard key={s.id} showroom={s} />
-          ))}
-          {filtered.length === 0 && (
-            <div className="col-span-full rounded-xl border border-border-light bg-white p-10 text-center text-text-secondary">
-              Aucun showroom ne correspond à votre recherche.
+          </div>
+        </section>
+
+        {/* Category Filter */}
+        <section className="py-16">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="flex flex-col items-center">
+              <h2 className="font-serif text-3xl text-[#1A1917]">Explorez nos projets</h2>
+              <p className="mt-3 text-[#6B6560]">Filtrez par type de réalisation</p>
+
+              {/* Filter buttons */}
+              <div className="mt-10 flex flex-wrap justify-center gap-3">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 ${
+                      selectedCategory === cat.id
+                        ? 'bg-[#1A1917] text-white'
+                        : 'bg-white text-[#1A1917] hover:bg-[#F5F3F0] border border-[#E8E4DE]'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* Projects Grid */}
+            <motion.div
+              layout
+              className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              <AnimatePresence mode="popLayout">
+                {filteredRealisations.map((realisation, i) => (
+                  <motion.article
+                    key={realisation.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    onMouseEnter={() => setHoveredId(realisation.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className="group relative overflow-hidden rounded-2xl bg-white"
+                  >
+                    {/* Image */}
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#E8E4DE]">
+                      <motion.img
+                        src={realisation.images[0]}
+                        alt={realisation.title}
+                        className="h-full w-full object-cover"
+                        animate={{
+                          scale: hoveredId === realisation.id ? 1.05 : 1
+                        }}
+                        transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+                      />
+
+                      {/* Overlay on hover */}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-t from-[#1A1917]/80 via-[#1A1917]/20 to-transparent"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: hoveredId === realisation.id ? 1 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      />
+
+                      {/* Featured badge */}
+                      {realisation.featured && (
+                        <div className="absolute left-4 top-4 rounded-full bg-[#8B7355] px-3 py-1 text-xs font-medium text-white">
+                          Coup de coeur
+                        </div>
+                      )}
+
+                      {/* View button on hover */}
+                      <motion.div
+                        className="absolute inset-x-4 bottom-4 flex items-center justify-center"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{
+                          opacity: hoveredId === realisation.id ? 1 : 0,
+                          y: hoveredId === realisation.id ? 0 : 10
+                        }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Link
+                          href={`/contact-request?projet=${encodeURIComponent(realisation.title)}`}
+                          className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-[#1A1917] transition-transform active:scale-95"
+                        >
+                          Projet similaire
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </motion.div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="font-medium text-[#1A1917]">{realisation.title}</h3>
+                          <p className="mt-1 text-sm text-[#6B6560]">{realisation.description}</p>
+                        </div>
+                      </div>
+
+                      {/* Meta */}
+                      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[#6B6560]">
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {realisation.location}
+                        </span>
+                        {realisation.dimensions && (
+                          <span className="flex items-center gap-1.5">
+                            <Ruler className="h-3.5 w-3.5" />
+                            {realisation.dimensions}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {realisation.year}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+
+            {filteredRealisations.length === 0 && (
+              <div className="mt-12 text-center text-[#6B6560]">
+                Aucune réalisation dans cette catégorie pour le moment.
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="bg-white py-20">
+          <div className="mx-auto max-w-7xl px-6 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="font-serif text-3xl text-[#1A1917] lg:text-4xl">
+                Votre projet sur mesure
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-[#6B6560]">
+                Chaque espace est unique. Discutons de votre projet et créons
+                ensemble le meuble parfait pour votre intérieur.
+              </p>
+
+              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <Link
+                  href="/contact-request"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#1A1917] px-8 py-4 font-medium text-white transition-transform hover:scale-105 active:scale-100"
+                >
+                  Demander un devis gratuit
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/samples"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#1A1917]/20 px-8 py-4 font-medium text-[#1A1917] transition-colors hover:bg-[#F5F3F0]"
+                >
+                  Commander des échantillons
+                </Link>
+              </div>
+
+              {/* Trust badges */}
+              <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-[#6B6560]">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-0.5">
+                    <div className="h-3 w-1 rounded-sm bg-[#0055A4]" />
+                    <div className="h-3 w-1 rounded-sm bg-[#E8E4DE]" />
+                    <div className="h-3 w-1 rounded-sm bg-[#EF4135]" />
+                  </div>
+                  Fabriqué en France
+                </div>
+                <div>Garantie 10 ans</div>
+                <div>Devis gratuit</div>
+              </div>
+            </motion.div>
+          </div>
         </section>
       </main>
+
       <Footer />
     </div>
   );
-}
-
-function ShowroomCard({ showroom }: { showroom: Showroom }) {
-  const mapSrc = showroom.lat && showroom.lng
-    ? `https://www.google.com/maps?q=${showroom.lat},${showroom.lng}&z=15&output=embed`
-    : `https://www.google.com/maps?q=${encodeURIComponent(`${showroom.address} ${showroom.postalCode} ${showroom.city}`)}&z=14&output=embed`;
-
-  const itineraryHref = showroom.lat && showroom.lng
-    ? `https://www.google.com/maps/dir/?api=1&destination=${showroom.lat},${showroom.lng}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${showroom.address} ${showroom.postalCode} ${showroom.city}`)}`;
-
-  const telHref = showroom.phone ? `tel:${showroom.phone.replace(/\s+/g, '')}` : undefined;
-  const mailHref = showroom.email ? `mailto:${showroom.email}` : undefined;
-
-  return (
-    <article className="overflow-hidden rounded-sm border border-border-light bg-white shadow-md transition hover:shadow-xl">
-      {showroom.imageUrl && (
-        <div className="h-40 w-full overflow-hidden">
-          <img src={showroom.imageUrl} alt={showroom.name} className="h-full w-full object-cover" />
-        </div>
-      )}
-      <div className="p-6">
-        <h3 className="text-xl font-semibold text-text-primary">{showroom.name}</h3>
-        <p className="mt-1 text-text-secondary">
-          {showroom.address}, {showroom.postalCode} {showroom.city}
-        </p>
-        {showroom.services && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {showroom.services.map((svc) => (
-              <span key={svc} className="badge-secondary">
-                {svc}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Horaires */}
-        {showroom.openingHours && (
-          <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-text-secondary">
-            {showroom.openingHours.map((h) => (
-              <div key={h.day} className="flex items-center justify-between border-b border-dashed border-border-light py-1">
-                <span className="text-text-tertiary">{h.day}</span>
-                <span className="font-medium text-text-primary">{h.closed ? 'Fermé' : `${h.open} - ${h.close}`}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="mt-6 flex flex-wrap gap-3">
-          <a href={itineraryHref} target="_blank" rel="noreferrer" className="btn-primary py-2 px-4 text-sm">
-            Itinéraire
-          </a>
-          {telHref && (
-            <a href={telHref} className="btn-secondary py-2 px-4 text-sm">
-              Appeler
-            </a>
-          )}
-          {mailHref && (
-            <a href={mailHref} className="btn-secondary py-2 px-4 text-sm">
-              Écrire
-            </a>
-          )}
-          <a href={showroom.bookingUrl || `/contact?showroom=${encodeURIComponent(showroom.name)}`} className="btn-primary py-2 px-4 text-sm">
-            Prendre RDV
-          </a>
-        </div>
-      </div>
-      {/* Carte */}
-      <div className="h-56 w-full">
-        <iframe src={mapSrc} className="h-full w-full" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-      </div>
-    </article>
-  );
-}
-
-function buildLocalBusinessJsonLd(showrooms: Showroom[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: 'Showrooms ArchiMeuble',
-    hasPart: showrooms.map((s) => ({
-      '@type': 'Store',
-      name: s.name,
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: s.address,
-        postalCode: s.postalCode,
-        addressLocality: s.city,
-        addressCountry: s.country,
-      },
-      telephone: s.phone,
-      url: `https://archimeuble.fr/showrooms#${s.id}`,
-      geo: s.lat && s.lng ? { '@type': 'GeoCoordinates', latitude: s.lat, longitude: s.lng } : undefined,
-      openingHoursSpecification: s.openingHours?.filter(h=>!h.closed).map((h) => ({
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: mapDayToSchema(h.day),
-        opens: h.open,
-        closes: h.close,
-      })),
-    })),
-  };
-}
-
-function mapDayToSchema(day: string) {
-  const map: Record<string, string> = {
-    'Lun.': 'Monday',
-    'Mar.': 'Tuesday',
-    'Mer.': 'Wednesday',
-    'Jeu.': 'Thursday',
-    'Ven.': 'Friday',
-    'Sam.': 'Saturday',
-    'Dim.': 'Sunday',
-  };
-  return map[day] || 'Monday';
 }

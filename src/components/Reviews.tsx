@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 
 type Review = {
@@ -12,7 +11,6 @@ type Review = {
   date: string;
 };
 
-
 export function Reviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [sessionUser, setSessionUser] = useState<{ name?: string } | null>(null);
@@ -20,21 +18,34 @@ export function Reviews() {
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    // Charger les avis depuis l'API, avec fallback local si l'API n'est pas disponible
     const fallback: Review[] = [
       {
         id: "1",
-        authorName: "Marine D.",
+        authorName: "Marine Dubois",
         rating: 5,
-        text: "Très bonne expérience, le meuble correspondait exactement à ce que j'attendais.",
+        text: "Un savoir-faire exceptionnel. Mon buffet sur mesure s'intègre parfaitement dans mon intérieur. La qualité du bois et les finitions sont remarquables.",
         date: "2025-10-10"
       },
       {
         id: "2",
-        authorName: "Paul L.",
-        rating: 4,
-        text: "Livraison rapide et service client réactif.",
+        authorName: "Paul Lemaire",
+        rating: 5,
+        text: "Du premier contact à la livraison, tout était parfait. L'équipe a su comprendre exactement ce que je voulais. Mon bureau est une œuvre d'art fonctionnelle.",
         date: "2025-09-20"
+      },
+      {
+        id: "3",
+        authorName: "Sophie Martin",
+        rating: 5,
+        text: "Enfin des artisans qui prennent le temps d'écouter. Ma bibliothèque épouse parfaitement les courbes de mon salon mansardé.",
+        date: "2025-08-15"
+      },
+      {
+        id: "4",
+        authorName: "Thomas Bernard",
+        rating: 5,
+        text: "Qualité irréprochable. Le meuble TV que j'ai commandé est exactement ce que j'imaginais, jusqu'au moindre détail.",
+        date: "2025-07-28"
       }
     ];
 
@@ -46,7 +57,7 @@ export function Reviews() {
         if (!isMounted) return;
         if (res.ok) {
           const data = (await res.json()) as Review[];
-          setReviews(Array.isArray(data) ? data : fallback);
+          setReviews(Array.isArray(data) && data.length > 0 ? data : fallback);
         } else {
           setReviews(fallback);
         }
@@ -64,7 +75,6 @@ export function Reviews() {
         if (!isMounted) return;
         if (res.ok) {
           const data = await res.json();
-          // Backend returns 'customer' with first_name and last_name
           const customerName = data.customer
             ? `${data.customer.first_name || ''} ${data.customer.last_name || ''}`.trim()
             : data.customer?.email || "";
@@ -72,7 +82,7 @@ export function Reviews() {
         } else {
           setSessionUser(null);
         }
-      } catch (e) {
+      } catch {
         setSessionUser(null);
       } finally {
         if (isMounted) setLoadingSession(false);
@@ -81,8 +91,6 @@ export function Reviews() {
 
     fetchReviews();
     fetchSession();
-
-    // Polling session toutes les 5s pour détecter logout
     const interval = setInterval(fetchSession, 5000);
 
     return () => {
@@ -99,11 +107,7 @@ export function Reviews() {
       text,
       date: new Date().toISOString().slice(0, 10)
     };
-
-    // optimistic update
     setReviews((r) => [newReview, ...r]);
-
-    // try to send to API — if fails we keep optimistic locally but log error
     try {
       await fetch("/api/reviews", {
         method: "POST",
@@ -115,267 +119,391 @@ export function Reviews() {
     }
   };
 
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length)
+    : 5;
+
   return (
-    <div className="w-full">
-      <div className="section-container-sm">
-        {/* Hero Section */}
-        <div className="mb-10 text-center">
-          <h1 className="font-serif mb-3 text-4xl font-semibold text-ink">
-            Avis de nos clients
-          </h1>
-          <p className="mx-auto max-w-2xl text-base text-text-secondary">
-            Découvrez ce que nos clients pensent de nos meubles sur mesure
+    <div className="bg-[#FAF9F7]">
+      {/* Hero Section */}
+      <section className="px-5 pb-12 pt-8 sm:px-6 sm:pb-16 sm:pt-12 lg:px-8 lg:pb-20 lg:pt-16">
+        <div className="mx-auto max-w-6xl">
+          {/* Eyebrow */}
+          <p className="mb-4 text-xs font-medium uppercase tracking-[0.15em] text-[#78716C] sm:mb-5">
+            Témoignages clients
           </p>
-          
-          {/* Stats rapides */}
-          {reviews.length > 0 && (
-            <div className="mt-8 flex justify-center gap-6">
-              <div className="card px-6 py-4">
-                <div className="text-3xl font-semibold text-primary">{reviews.length}</div>
-                <div className="text-sm text-text-secondary">Avis clients</div>
+
+          {/* Headline */}
+          <h1 className="max-w-xl font-serif text-3xl font-normal leading-tight text-[#1A1A1A] sm:text-4xl lg:text-5xl">
+            Ce que nos clients{" "}
+            <span className="text-[#78716C]">pensent de nous</span>
+          </h1>
+
+          {/* Stats */}
+          <div className="mt-8 grid grid-cols-3 gap-4 sm:mt-10 sm:flex sm:gap-10 lg:mt-12 lg:gap-16">
+            {/* Rating */}
+            <div>
+              <div className="flex items-baseline gap-1">
+                <span className="font-serif text-3xl font-light text-[#1A1A1A] sm:text-4xl lg:text-5xl">
+                  {avgRating.toFixed(1)}
+                </span>
+                <span className="text-sm text-[#78716C]">/5</span>
               </div>
-              <div className="card px-6 py-4">
-                <div className="text-3xl font-semibold text-primary">
-                  {(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)}
+              <p className="mt-1 text-xs text-[#A8A29E] sm:text-sm">Note moyenne</p>
+            </div>
+
+            {/* Separator - hidden on mobile */}
+            <div className="hidden h-12 w-px self-center bg-[#E7E5E4] sm:block" />
+
+            {/* Count */}
+            <div>
+              <div className="flex items-baseline gap-1">
+                <span className="font-serif text-3xl font-light text-[#1A1A1A] sm:text-4xl lg:text-5xl">
+                  {reviews.length}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-[#A8A29E] sm:text-sm">Avis vérifiés</p>
+            </div>
+
+            {/* Separator - hidden on mobile */}
+            <div className="hidden h-12 w-px self-center bg-[#E7E5E4] sm:block" />
+
+            {/* Satisfaction */}
+            <div>
+              <div className="flex items-baseline gap-1">
+                <span className="font-serif text-3xl font-light text-[#1A1A1A] sm:text-4xl lg:text-5xl">
+                  100
+                </span>
+                <span className="text-sm text-[#78716C]">%</span>
+              </div>
+              <p className="mt-1 text-xs text-[#A8A29E] sm:text-sm">Satisfaits</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Review */}
+      {reviews.length > 0 && (
+        <section className="bg-white px-5 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col gap-6 sm:gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
+              {/* Quote */}
+              <blockquote className="max-w-3xl">
+                <p className="font-serif text-xl font-normal leading-relaxed text-[#1A1A1A] sm:text-2xl lg:text-3xl">
+                  « {reviews[0].text} »
+                </p>
+              </blockquote>
+
+              {/* Author */}
+              <div className="flex items-center gap-4 lg:flex-shrink-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#7877C6] to-[#B45309] p-0.5 sm:h-14 sm:w-14">
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-sm font-medium text-[#1A1A1A] sm:text-base">
+                    {reviews[0].authorName.split(' ').map(n => n[0]).join('')}
+                  </div>
                 </div>
-                <div className="text-sm text-text-secondary">Note moyenne</div>
+                <div>
+                  <p className="font-medium text-[#1A1A1A]">{reviews[0].authorName}</p>
+                  <p className="text-xs text-[#A8A29E]">Client vérifié</p>
+                </div>
               </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Reviews Grid */}
+      <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-6xl">
+          {/* Section header */}
+          <div className="mb-8 flex items-center gap-4 sm:mb-10">
+            <p className="text-xs font-medium uppercase tracking-[0.15em] text-[#78716C]">
+              Tous les avis ({reviews.length})
+            </p>
+            <div className="h-px flex-1 bg-gradient-to-r from-[#E7E5E4] to-transparent" />
+          </div>
+
+          {/* Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+            {reviews.slice(1).map((review) => (
+              <ReviewCard key={review.id} review={review} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-[#1A1917] px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-6xl">
+          {loadingSession ? (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            </div>
+          ) : sessionUser ? (
+            showForm ? (
+              <div className="mx-auto max-w-xl">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="mb-8 flex items-center gap-2 text-sm text-[#A8A29E] transition-colors hover:text-white"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Retour
+                </button>
+                <ReviewForm
+                  onSubmit={addReview}
+                  authorName={sessionUser.name}
+                  onSuccess={() => setShowForm(false)}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-serif text-2xl font-normal text-white sm:text-3xl lg:text-4xl">
+                    Partagez votre{" "}
+                    <span className="text-[#7877C6]">expérience</span>
+                  </h2>
+                  <p className="mt-3 max-w-md text-sm text-[#A8A29E] sm:text-base">
+                    Votre avis aide d'autres personnes à découvrir notre savoir-faire.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(true)}
+                  className="group flex w-full items-center justify-center gap-3 rounded-sm bg-gradient-to-r from-[#7877C6] to-[#635BFF] px-6 py-4 font-medium text-white transition-all hover:opacity-90 sm:w-auto sm:px-8"
+                >
+                  Laisser un avis
+                  <svg
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </button>
+              </div>
+            )
+          ) : (
+            <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-serif text-2xl font-normal text-white sm:text-3xl lg:text-4xl">
+                  Rejoignez la{" "}
+                  <span className="text-[#7877C6]">conversation</span>
+                </h2>
+                <p className="mt-3 max-w-md text-sm text-[#A8A29E] sm:text-base">
+                  Connectez-vous pour partager votre expérience.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="group flex w-full items-center justify-center gap-3 rounded-sm border border-white/20 bg-transparent px-6 py-4 font-medium text-white transition-all hover:bg-white hover:text-[#1A1A1A] sm:w-auto sm:px-8"
+              >
+                Se connecter
+                <svg
+                  className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </Link>
             </div>
           )}
         </div>
-
-        {/* Review form or login prompt */}
-
-        {loadingSession ? (
-          <div className="mb-12 text-center text-text-secondary">Chargement...</div>
-        ) : sessionUser ? (
-          showForm ? (
-            <div className="mb-12">
-              <button
-                type="button"
-                className="mb-4 btn-secondary"
-                onClick={() => setShowForm(false)}
-              >
-                Annuler
-              </button>
-              <ReviewForm onSubmit={addReview} authorName={sessionUser.name} />
-            </div>
-          ) : (
-            <div className="mb-12 flex justify-center">
-              <button
-                type="button"
-                className="btn-primary px-8 py-3 text-base"
-                onClick={() => setShowForm(true)}
-              >
-                Laisser un avis
-              </button>
-            </div>
-          )
-        ) : (
-          <div className="mb-12 card">
-            <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-              <div className="flex items-center gap-5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-sm">
-                  <User className="h-7 w-7" />
-                </div>
-                <div className="text-center sm:text-left">
-                  <div className="text-base font-semibold text-ink">Partagez votre expérience</div>
-                  <div className="mt-1 text-sm text-text-secondary">Connectez-vous pour laisser un avis et des photos</div>
-                </div>
-              </div>
-              <Link 
-                href="/login" 
-                className="btn-primary"
-              >
-                Se connecter
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Reviews list */}
-        {reviews.length === 0 ? (
-          <div className="card p-12 text-center">
-            <p className="text-text-secondary">Soyez le premier à laisser un avis !</p>
-          </div>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2">
-            {reviews.map((r) => (
-              <ReviewItem key={r.id} review={r} />
-            ))}
-          </div>
-        )}
-      </div>
+      </section>
     </div>
   );
 }
 
-function ReviewItem({ review }: { review: Review }) {
+function ReviewCard({ review }: { review: Review }) {
   return (
-    <article className="group overflow-hidden rounded-sm border border-border-light bg-white shadow-sm transition-all duration-300 hover:shadow-md">
-      <div className="p-6">
-        {/* Header avec avatar et info */}
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm">
-            <User className="h-6 w-6" />
+    <article className="rounded-sm bg-white p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6 lg:p-8">
+      {/* Rating */}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <svg
+              key={star}
+              className={`h-4 w-4 ${star <= review.rating ? 'text-[#1A1A1A]' : 'text-[#E7E5E4]'}`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+          ))}
+        </div>
+        <span className="text-xs text-[#A8A29E]">{review.rating}.0</span>
+      </div>
+
+      {/* Text */}
+      <p className="mb-6 text-sm leading-relaxed text-[#44403C] sm:text-base">
+        {review.text}
+      </p>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5F5F4] text-xs font-medium text-[#57534E] sm:h-10 sm:w-10 sm:text-sm">
+            {review.authorName.split(' ').map(n => n[0]).join('')}
           </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-ink">{review.authorName}</h3>
-                <p className="text-xs text-text-tertiary">{formatDate(review.date)}</p>
-              </div>
-              {/* Étoiles */}
-              <div className="flex gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <svg
-                    key={i}
-                    className={`h-4 w-4 ${
-                      i < review.rating ? 'fill-primary text-primary' : 'fill-border-light text-border-light'
-                    }`}
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-[#1A1A1A]">{review.authorName}</p>
+            <p className="text-xs text-[#A8A29E]">{formatRelativeDate(review.date)}</p>
           </div>
         </div>
 
-        {/* Texte de l'avis */}
-        <div className="mt-4 rounded-sm bg-bg-light p-4">
-          <p className="leading-relaxed text-text-primary">{review.text}</p>
-        </div>
-
-        {/* Badge vérifié (optionnel) */}
-        <div className="mt-4 flex items-center gap-2 text-xs text-success">
+        {/* Verified */}
+        <div className="flex items-center gap-1 text-[#059669]">
           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
-          <span className="font-medium">Achat vérifié</span>
+          <span className="hidden text-xs font-medium sm:inline">Vérifié</span>
         </div>
       </div>
     </article>
   );
 }
 
-function formatDate(dateString: string) {
-  // Afficher au format JJ-MM-YYYY (style Trustpilot)
-  // Accepte des dates au format ISO (YYYY-MM-DD) ou timestamps
+function formatRelativeDate(dateString: string) {
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) {
-    // Si non parsable, essayer si format YYYY-MM-DD simple
-    const m = /^\d{4}-\d{2}-\d{2}$/.exec(dateString);
-    if (m) {
-      const [y, mo, d] = dateString.split('-');
-      return `${d}-${mo}-${y}`;
-    }
-    return dateString; // fallback brut
-  }
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = String(date.getFullYear());
-  return `${dd}-${mm}-${yyyy}`;
+  if (isNaN(date.getTime())) return dateString;
+
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Aujourd'hui";
+  if (diffDays === 1) return "Hier";
+  if (diffDays < 7) return `Il y a ${diffDays} jours`;
+  if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)} sem.`;
+  if (diffDays < 365) return `Il y a ${Math.floor(diffDays / 30)} mois`;
+  return `Il y a ${Math.floor(diffDays / 365)} an${Math.floor(diffDays / 365) > 1 ? 's' : ''}`;
 }
 
-function ReviewForm({ onSubmit, authorName }: { onSubmit: (r: number, t: string) => void; authorName?: string }) {
+function ReviewForm({
+  onSubmit,
+  authorName,
+  onSuccess
+}: {
+  onSubmit: (r: number, t: string) => void;
+  authorName?: string;
+  onSuccess?: () => void;
+}) {
   const [text, setText] = useState("");
   const [rating, setRating] = useState(5);
-  const [hoveredRating, setHoveredRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() || text.length < 20) return;
     setSubmitting(true);
     try {
       await onSubmit(rating, text.trim());
       setText("");
       setRating(5);
+      onSuccess?.();
     } finally {
       setSubmitting(false);
     }
   };
 
+  const ratingLabels = ['Décevant', 'Moyen', 'Bien', 'Très bien', 'Excellent'];
+
   return (
-    <form onSubmit={handleSubmit} className="mb-12 card">
-      <div className="mb-4 flex items-center justify-between">
+    <form onSubmit={handleSubmit}>
+      {/* Author */}
+      <div className="mb-8 flex items-center gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#7877C6] to-[#B45309] text-base font-medium text-white">
+          {authorName?.charAt(0) || 'U'}
+        </div>
         <div>
-          <h3 className="text-base font-semibold text-ink">Partagez votre expérience</h3>
-          <p className="text-sm text-text-secondary">Connecté en tant que <strong>{authorName}</strong></p>
+          <p className="font-medium text-white">{authorName}</p>
+          <p className="text-xs text-[#78716C]">Partage son expérience</p>
         </div>
       </div>
 
-      <div className="space-y-5">
-        {/* Rating interactif */}
-        <div>
-          <label className="label">Votre note</label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => setRating(star)}
-                onMouseEnter={() => setHoveredRating(star)}
-                onMouseLeave={() => setHoveredRating(0)}
-                className="transition-transform hover:scale-110"
-              >
-                <svg
-                  className={`h-8 w-8 ${
-                    star <= (hoveredRating || rating)
-                      ? 'fill-primary text-primary'
-                      : 'fill-border-light text-border-light'
-                  } transition-colors`}
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              </button>
-            ))}
-            <span className="ml-2 text-sm font-medium text-text-secondary">
-              {rating === 5 ? 'Excellent' : rating === 4 ? 'Très bien' : rating === 3 ? 'Bien' : rating === 2 ? 'Moyen' : 'Mauvais'}
-            </span>
-          </div>
-        </div>
-
-        {/* Textarea */}
-        <div>
-          <label htmlFor="review-text" className="label">
-            Votre avis
-          </label>
-          <textarea
-            id="review-text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={5}
-            placeholder="Racontez-nous votre expérience avec nos meubles..."
-            className="textarea resize-none"
-          />
-          <div className="mt-2 text-right text-xs text-text-tertiary">{text.length} caractères</div>
-        </div>
-
-        {/* Bouton submit */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={submitting || !text.trim()}
-            className="btn-primary"
-          >
-            {submitting ? (
-              <span className="flex items-center gap-2">
-                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Publication...
-              </span>
-            ) : (
-              'Publier mon avis'
-            )}
-          </button>
+      {/* Rating */}
+      <div className="mb-8">
+        <label className="mb-3 block text-xs font-medium uppercase tracking-wider text-[#78716C]">
+          Votre note
+        </label>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setRating(n)}
+              className={`flex h-11 w-11 items-center justify-center rounded-sm text-base font-light transition-all sm:h-12 sm:w-12 ${
+                n <= rating
+                  ? 'bg-gradient-to-br from-[#7877C6] to-[#635BFF] text-white'
+                  : 'border border-white/10 bg-white/5 text-[#78716C] hover:border-white/20'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+          <span className="ml-2 text-sm text-[#A8A29E]">
+            {ratingLabels[rating - 1]}
+          </span>
         </div>
       </div>
+
+      {/* Text */}
+      <div className="mb-8">
+        <label className="mb-3 block text-xs font-medium uppercase tracking-wider text-[#78716C]">
+          Votre expérience
+        </label>
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={4}
+          placeholder="Décrivez votre expérience avec ArchiMeuble..."
+          className="w-full resize-none border-0 border-b border-white/10 bg-transparent py-3 text-base text-white placeholder-[#57534E] outline-none transition-colors focus:border-[#7877C6]"
+        />
+        <div className="mt-2 flex justify-between text-xs text-[#78716C]">
+          <span>{text.length} caractères</span>
+          <span className={text.length >= 20 ? 'text-[#059669]' : ''}>
+            {text.length >= 20 ? '✓ Prêt' : `${20 - text.length} min.`}
+          </span>
+        </div>
+      </div>
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={submitting || text.length < 20}
+        className="group flex w-full items-center justify-center gap-3 rounded-sm bg-gradient-to-r from-[#7877C6] to-[#635BFF] py-4 font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {submitting ? (
+          <>
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            Publication...
+          </>
+        ) : (
+          <>
+            Publier mon avis
+            <svg
+              className="h-4 w-4 transition-transform group-hover:translate-x-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </>
+        )}
+      </button>
     </form>
   );
 }

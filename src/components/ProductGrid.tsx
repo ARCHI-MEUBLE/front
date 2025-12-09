@@ -1,23 +1,46 @@
+"use client";
+
 import { useCallback, useEffect, useState } from "react";
 import { apiClient, FurnitureModel } from "@/lib/apiClient";
 import { ProductCard, ProductModel } from "@/components/ProductCard";
+
+const categories = [
+  { id: "all", label: "Tous" },
+  { id: "dressing", label: "Dressing" },
+  { id: "bibliotheque", label: "Bibliotheque" },
+  { id: "buffet", label: "Buffet" },
+  { id: "bureau", label: "Bureau" },
+  { id: "meuble-tv", label: "Meuble TV" },
+  { id: "sous-escalier", label: "Sous-escalier" },
+  { id: "tete-de-lit", label: "Tete de lit" },
+];
 
 export function ProductGrid() {
   const [models, setModels] = useState<ProductModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState("all");
+
   const loadModels = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const data = await apiClient.models.getAll();
-      // Adapter FurnitureModel vers ProductModel
       const productModels: ProductModel[] = data.map((model: FurnitureModel) => ({
         id: model.id,
         name: model.name,
-        description: model.description || '',
-        image_path: model.image_url || '',
-        created_at: model.created_at
+        description: model.description || "",
+        image_path: model.image_url || "",
+        created_at: model.created_at,
+        base_price: 890,
+        category: model.name.toLowerCase().includes("dressing") ? "dressing" 
+          : model.name.toLowerCase().includes("biblio") ? "bibliotheque"
+          : model.name.toLowerCase().includes("buffet") ? "buffet"
+          : model.name.toLowerCase().includes("bureau") ? "bureau"
+          : model.name.toLowerCase().includes("tv") ? "meuble-tv"
+          : model.name.toLowerCase().includes("escalier") ? "sous-escalier"
+          : model.name.toLowerCase().includes("lit") ? "tete-de-lit"
+          : "all"
       }));
       setModels(productModels);
     } catch (err) {
@@ -31,73 +54,71 @@ export function ProductGrid() {
     void loadModels();
   }, [loadModels]);
 
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div
-              key={index}
-              className="flex animate-pulse flex-col space-y-4 rounded-sm border border-border bg-white/70 p-6"
-            >
-              <div className="aspect-square w-full rounded-[28px] bg-[#ede3d7]" />
-              <div className="space-y-3">
-                <div className="h-4 w-2/3 rounded-full bg-[#e7ded3]" />
-                <div className="h-3 w-5/6 rounded-full bg-[#e7ded3]" />
-                <div className="h-8 w-1/2 rounded-full bg-[#e7ded3]" />
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex flex-col items-center space-y-4 py-16 text-center">
-          <p className="text-base font-medium text-stone">{error}</p>
-          <button
-            type="button"
-            onClick={loadModels}
-            className="rounded-full border border-[#d7c9b9] px-5 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-stone transition hover:border-ink hover:text-ink"
-          >
-            Réessayer
-          </button>
-        </div>
-      );
-    }
-    if (models.length === 0) {
-      return (
-        <p className="py-16 text-center text-base text-muted">
-          Aucun modèle disponible pour le moment.
-        </p>
-      );
-    }
-
-    return (
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {models.map((model) => (
-          <ProductCard key={model.id} model={model} />
-        ))}
-      </div>
-    );
-  };
+  const filteredModels = activeCategory === "all" 
+    ? models 
+    : models.filter(m => m.category === activeCategory);
 
   return (
-    <section id="templates" className="mx-auto max-w-6xl px-6 py-16">
-      <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="font-serif text-3xl text-ink">Nos modèles les plus demandés</h2>
-          <p className="mt-3 text-sm leading-relaxed text-stone">
-            Inspirez-vous des créations de nos artisans pour imaginer votre prochain meuble sur mesure.
-          </p>
+    <>
+      {/* Filters - Sticky */}
+      <div className="sticky top-[73px] z-40 border-b border-[#E8E6E3] bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={
+                  "whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition-all " +
+                  (activeCategory === cat.id
+                    ? "bg-[#1A1917] text-white"
+                    : "border border-[#E8E6E3] text-[#1A1917] hover:border-[#1A1917]")
+                }
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <span className="text-sm uppercase tracking-[0.3em] text-muted">
-          {isLoading ? "Chargement…" : `${models.length} modèles`}
-        </span>
       </div>
-      {renderContent()}
-    </section>
+
+      {/* Grid */}
+      <section className="mx-auto max-w-7xl px-6 py-12">
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[4/3] bg-[#F5F5F4]" />
+                <div className="mt-4 space-y-2">
+                  <div className="h-5 w-1/2 bg-[#F5F5F4]" />
+                  <div className="h-4 w-3/4 bg-[#F5F5F4]" />
+                  <div className="h-4 w-1/4 bg-[#F5F5F4]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="py-16 text-center">
+            <p className="text-[#706F6C]">{error}</p>
+            <button
+              onClick={loadModels}
+              className="mt-4 rounded-full border border-[#1A1917] px-6 py-2 text-sm font-medium text-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+            >
+              Reessayer
+            </button>
+          </div>
+        ) : filteredModels.length === 0 ? (
+          <p className="py-16 text-center text-[#706F6C]">
+            Aucun modele dans cette categorie.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredModels.map((model) => (
+              <ProductCard key={model.id} model={model} />
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
-

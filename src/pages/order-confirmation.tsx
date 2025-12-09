@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { CheckCircle, Package, MapPin, CreditCard } from 'lucide-react';
+import { Footer } from "@/components/Footer";
+import { CheckCircle, Package, MapPin, CreditCard, ArrowRight } from 'lucide-react';
 
 interface OrderItem {
   configuration_id: number;
@@ -68,10 +68,10 @@ export default function OrderConfirmation() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-          <p className="mt-4 text-text-secondary">Chargement...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+          <p className="mt-4 text-sm text-[#6B6560]">Chargement...</p>
         </div>
       </div>
     );
@@ -79,15 +79,21 @@ export default function OrderConfirmation() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-surface">
+      <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
-          <p className="text-text-secondary mb-8">{error || 'Commande non trouvée'}</p>
-          <Link href="/" className="text-primary hover:underline">
-            Retour à l'accueil
-          </Link>
-        </div>
+        <main className="flex flex-1 items-center justify-center px-5">
+          <div className="text-center">
+            <h1 className="font-serif text-2xl text-[#1A1917]">Erreur</h1>
+            <p className="mt-3 text-[#6B6560]">{error || 'Commande non trouvée'}</p>
+            <Link
+              href="/"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[#8B7355] hover:underline"
+            >
+              Retour à l'accueil
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </main>
         <Footer />
       </div>
     );
@@ -96,197 +102,199 @@ export default function OrderConfirmation() {
   const isSamplesOnly = order.total === 0 && order.samples && order.samples.length > 0;
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
       <Head>
         <title>Commande confirmée - ArchiMeuble</title>
       </Head>
       <Header />
 
-      <main className="max-w-4xl mx-auto px-4 py-16">
-        {/* Success Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
-            <CheckCircle className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className="font-serif text-4xl text-ink mb-4">
-            {isSamplesOnly ? 'Échantillons commandés !' : 'Commande confirmée !'}
-          </h1>
-          <p className="text-lg text-text-secondary mb-2">
-            Commande <span className="font-semibold text-ink">#{order.order_number}</span>
-          </p>
-          {isSamplesOnly ? (
-            <p className="text-text-secondary">
-              Vos échantillons gratuits vont être préparés et expédiés dans les plus brefs délais.
-            </p>
-          ) : (
-            <p className="text-text-secondary">
-              Merci pour votre commande ! Vous allez recevoir un email de confirmation.
-            </p>
-          )}
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
-          {/* Informations de livraison */}
-          <div className="bg-white p-6 rounded-lg border border-border-light">
-            <div className="flex items-center gap-3 mb-4">
-              <MapPin className="w-5 h-5 text-amber-600" />
-              <h2 className="text-lg font-semibold text-ink">Adresse de livraison</h2>
+      <main className="flex-1 px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-3xl">
+          {/* Success Header */}
+          <div className="mb-12 text-center sm:mb-16">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-[#059669]/10 sm:h-20 sm:w-20">
+              <CheckCircle className="h-8 w-8 text-[#059669] sm:h-10 sm:w-10" />
             </div>
-            <p className="text-text-secondary whitespace-pre-line">
-              {order.shipping_address}
+            <h1 className="font-serif text-2xl text-[#1A1917] sm:text-3xl lg:text-4xl">
+              {isSamplesOnly ? 'Échantillons commandés !' : 'Commande confirmée !'}
+            </h1>
+            <p className="mt-3 text-[#6B6560]">
+              Commande <span className="font-medium text-[#1A1917]">#{order.order_number}</span>
+            </p>
+            <p className="mt-2 text-sm text-[#6B6560]">
+              {isSamplesOnly
+                ? 'Vos échantillons gratuits vont être préparés et expédiés.'
+                : 'Merci pour votre commande ! Vous recevrez un email de confirmation.'}
             </p>
           </div>
 
-          {/* Informations de paiement */}
-          <div className="bg-white p-6 rounded-lg border border-border-light">
-            <div className="flex items-center gap-3 mb-4">
-              <CreditCard className="w-5 h-5 text-amber-600" />
-              <h2 className="text-lg font-semibold text-ink">Paiement</h2>
-            </div>
-            <div className="space-y-2 text-text-secondary">
-              <p>
-                Méthode: <span className="font-medium text-ink">
-                  {order.payment_method === 'free_samples' ? 'Gratuit (échantillons)' : 'Carte bancaire'}
-                </span>
-              </p>
-              <p>
-                Statut: <span className={`font-medium ${
-                  order.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'
-                }`}>
-                  {order.payment_status === 'paid' ? 'Payé' : 'En attente'}
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Articles commandés */}
-        {order.items && order.items.length > 0 && (
-          <div className="bg-white p-6 rounded-lg border border-border-light mb-8">
-            <div className="flex items-center gap-3 mb-6">
-              <Package className="w-5 h-5 text-amber-600" />
-              <h2 className="text-lg font-semibold text-ink">Articles commandés</h2>
-            </div>
-            <div className="space-y-4">
-              {order.items.map((item, index) => (
-                <div key={index} className="flex justify-between items-start pb-4 border-b border-border-light last:border-0">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-ink">{item.name}</h3>
-                    <p className="text-sm text-text-secondary">Quantité: {item.quantity}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-ink">{item.price * item.quantity}€</p>
-                    <p className="text-sm text-text-secondary">{item.price}€ × {item.quantity}</p>
-                  </div>
+          {/* Info Cards */}
+          <div className="mb-8 grid gap-4 sm:grid-cols-2">
+            {/* Shipping Address */}
+            <div className="bg-white p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center bg-[#F5F3F0]">
+                  <MapPin className="h-5 w-5 text-[#1A1917]" strokeWidth={1.5} />
                 </div>
-              ))}
+                <h2 className="font-medium text-[#1A1917]">Livraison</h2>
+              </div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-[#6B6560]">
+                {order.shipping_address}
+              </p>
+            </div>
+
+            {/* Payment Info */}
+            <div className="bg-white p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center bg-[#F5F3F0]">
+                  <CreditCard className="h-5 w-5 text-[#1A1917]" strokeWidth={1.5} />
+                </div>
+                <h2 className="font-medium text-[#1A1917]">Paiement</h2>
+              </div>
+              <div className="space-y-2 text-sm text-[#6B6560]">
+                <p>
+                  Méthode:{' '}
+                  <span className="font-medium text-[#1A1917]">
+                    {order.payment_method === 'free_samples' ? 'Gratuit' : 'Carte bancaire'}
+                  </span>
+                </p>
+                <p>
+                  Statut:{' '}
+                  <span className={`font-medium ${order.payment_status === 'paid' ? 'text-[#059669]' : 'text-[#8B7355]'}`}>
+                    {order.payment_status === 'paid' ? 'Payé' : 'En attente'}
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Échantillons commandés */}
-        {order.samples && order.samples.length > 0 && (
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-lg border-2 border-green-200 mb-8">
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-2xl">🎨</span>
-              <h2 className="text-lg font-semibold text-ink">Échantillons gratuits</h2>
+          {/* Order Items */}
+          {order.items && order.items.length > 0 && (
+            <div className="mb-8 bg-white p-5 sm:p-6">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center bg-[#F5F3F0]">
+                  <Package className="h-5 w-5 text-[#1A1917]" strokeWidth={1.5} />
+                </div>
+                <h2 className="font-medium text-[#1A1917]">Articles</h2>
+              </div>
+              <div className="divide-y divide-[#E8E4DE]">
+                {order.items.map((item, index) => (
+                  <div key={index} className="flex items-start justify-between py-4 first:pt-0 last:pb-0">
+                    <div>
+                      <h3 className="font-medium text-[#1A1917]">{item.name}</h3>
+                      <p className="mt-1 text-sm text-[#6B6560]">Quantité: {item.quantity}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-[#1A1917]">{item.price * item.quantity}€</p>
+                      <p className="text-sm text-[#6B6560]">{item.price}€ × {item.quantity}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {order.samples.map((sample) => (
-                <div key={sample.id} className="bg-white p-4 rounded-lg border border-green-200">
-                  <div className="flex items-center gap-3">
+          )}
+
+          {/* Samples */}
+          {order.samples && order.samples.length > 0 && (
+            <div className="mb-8 border-2 border-[#059669]/20 bg-[#059669]/5 p-5 sm:p-6">
+              <div className="mb-6 flex items-center gap-3">
+                <span className="text-xl">🎨</span>
+                <h2 className="font-medium text-[#1A1917]">Échantillons gratuits</h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {order.samples.map((sample) => (
+                  <div key={sample.id} className="flex items-center gap-3 bg-white p-3">
                     <div
-                      className="w-12 h-12 rounded-lg border-2 border-green-300 flex-shrink-0"
+                      className="h-10 w-10 flex-shrink-0 border border-[#059669]/30"
                       style={{ backgroundColor: sample.hex || '#EEE' }}
                     >
                       {sample.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={sample.image_url}
                           alt={sample.sample_name}
-                          className="w-full h-full object-cover rounded-lg"
+                          className="h-full w-full object-cover"
                         />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-ink text-sm truncate">{sample.sample_name}</h4>
-                      <p className="text-xs text-text-secondary">{sample.material}</p>
-                      <p className="text-xs text-green-700 font-semibold">Gratuit</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[#1A1917]">{sample.sample_name}</p>
+                      <p className="text-xs text-[#6B6560]">{sample.material}</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Total */}
-        <div className="bg-white p-6 rounded-lg border border-border-light mb-8">
-          <div className="flex justify-between items-center text-xl font-bold">
-            <span className="text-ink">Total</span>
-            <span className="text-ink">
-              {isSamplesOnly ? 'Gratuit' : `${order.total}€`}
-            </span>
-          </div>
-          {isSamplesOnly && (
-            <p className="text-sm text-green-600 mt-2 text-right">
-              Échantillons offerts - Aucun frais de port
-            </p>
           )}
-        </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            href="/my-orders"
-            className="inline-flex items-center justify-center px-6 py-3 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors"
-          >
-            Voir mes commandes
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center px-6 py-3 bg-white text-ink border border-border-light rounded-lg font-semibold hover:bg-bg-light transition-colors"
-          >
-            Retour à l'accueil
-          </Link>
-        </div>
-
-        {/* Informations supplémentaires */}
-        <div className="mt-12 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-ink mb-3">Prochaines étapes</h3>
-          <ul className="space-y-2 text-sm text-text-secondary">
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 mt-0.5">✓</span>
-              <span>Vous recevrez un email de confirmation à l'adresse enregistrée</span>
-            </li>
-            {isSamplesOnly ? (
-              <>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">✓</span>
-                  <span>Vos échantillons seront préparés sous 24-48h</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">✓</span>
-                  <span>Livraison gratuite à l'adresse indiquée sous 3-5 jours ouvrés</span>
-                </li>
-              </>
-            ) : (
-              <>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">✓</span>
-                  <span>Votre commande sera préparée et mise en production</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-0.5">✓</span>
-                  <span>Vous serez notifié à chaque étape (production, expédition, livraison)</span>
-                </li>
-              </>
+          {/* Total */}
+          <div className="mb-8 border-t-2 border-[#1A1917] bg-white p-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-medium text-[#1A1917]">Total</span>
+              <span className="font-serif text-2xl text-[#1A1917]">
+                {isSamplesOnly ? 'Gratuit' : `${order.total}€`}
+              </span>
+            </div>
+            {isSamplesOnly && (
+              <p className="mt-2 text-right text-sm text-[#059669]">
+                Échantillons offerts - Livraison gratuite
+              </p>
             )}
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 mt-0.5">✓</span>
-              <span>Suivez votre commande dans votre espace "Mes commandes"</span>
-            </li>
-          </ul>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/my-orders"
+              className="flex items-center justify-center gap-2 bg-[#1A1917] px-6 py-4 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+            >
+              Voir mes commandes
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-2 border border-[#E8E4DE] bg-white px-6 py-4 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#F5F3F0]"
+            >
+              Retour à l'accueil
+            </Link>
+          </div>
+
+          {/* Next Steps */}
+          <div className="mt-12 bg-white p-5 sm:p-6">
+            <h3 className="mb-4 font-medium text-[#1A1917]">Prochaines étapes</h3>
+            <ul className="space-y-3 text-sm text-[#6B6560]">
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 text-[#059669]">✓</span>
+                <span>Email de confirmation envoyé à votre adresse</span>
+              </li>
+              {isSamplesOnly ? (
+                <>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-[#059669]">✓</span>
+                    <span>Préparation sous 24-48h</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-[#059669]">✓</span>
+                    <span>Livraison gratuite sous 3-5 jours ouvrés</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-[#059669]">✓</span>
+                    <span>Mise en production de votre commande</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-[#059669]">✓</span>
+                    <span>Notifications à chaque étape</span>
+                  </li>
+                </>
+              )}
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 text-[#059669]">✓</span>
+                <span>Suivi disponible dans "Mes commandes"</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </main>
 

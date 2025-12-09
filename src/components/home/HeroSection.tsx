@@ -1,43 +1,258 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 export function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const elements = sectionRef.current?.querySelectorAll("[data-animate]");
+    elements?.forEach((el, i) => {
+      (el as HTMLElement).style.animationDelay = `${i * 80}ms`;
+      el.classList.add("animate-in");
+    });
+  }, []);
+
   return (
-    <section className="bg-cream min-h-[90vh] flex items-center">
-      <div className="mx-auto max-w-7xl px-6 py-16 md:py-24 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Text content - 60% */}
-          <div className="lg:col-span-7 order-2 lg:order-1">
-            <h1 className="font-serif text-hero text-ink">
-              Votre interieur,
+    <section
+      ref={sectionRef}
+      className="relative overflow-hidden bg-[#FAFAF9]"
+    >
+      {/* Subtle grid pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(#1A1917 1px, transparent 1px),
+                           linear-gradient(90deg, #1A1917 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+        }}
+      />
+
+      <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+        {/* Mobile Layout */}
+        <div className="flex flex-col py-12 lg:hidden">
+          {/* Content */}
+          <div>
+            {/* Eyebrow */}
+            <div data-animate className="flex items-center gap-3 opacity-0">
+              <div className="h-px w-8 bg-[#8B7355]" />
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
+                Menuisier à Lille
+              </span>
+            </div>
+
+            {/* Titre */}
+            <h1
+              data-animate
+              className="mt-5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.02em] text-[#1A1917] opacity-0 sm:text-4xl"
+            >
+              Meubles sur mesure,
               <br />
-              sur mesure.
+              <span className="text-[#8B7355]">faits pour durer</span>
             </h1>
-            <p className="mt-6 text-lg md:text-xl text-stone max-w-xl leading-relaxed">
-              Des dressings aux bibliotheques, ArchiMeuble concoit des pieces uniques parfaitement adaptees a votre espace.
+
+            {/* Paragraphe */}
+            <p
+              data-animate
+              className="mt-4 text-base leading-relaxed text-[#706F6C] opacity-0"
+            >
+              Chaque pièce est dessinée pour votre espace,
+              fabriquée dans notre atelier lillois.
             </p>
-            <div className="mt-10">
-              <Link href="/models" className="btn-primary">
-                Decouvrir les modeles
+
+            {/* CTAs */}
+            <div
+              data-animate
+              className="mt-6 flex flex-col gap-3 opacity-0 sm:flex-row"
+            >
+              <Link
+                href="/showrooms"
+                className="inline-flex h-12 items-center justify-center bg-[#1A1917] px-6 text-sm font-medium text-white"
+              >
+                Voir les réalisations
+              </Link>
+              <Link
+                href="tel:+33601062867"
+                className="inline-flex h-12 items-center justify-center border border-[#1A1917] px-6 text-sm font-medium text-[#1A1917]"
+              >
+                Appeler l'atelier
               </Link>
             </div>
           </div>
 
-          {/* Image - 40% but visually larger */}
-          <div className="lg:col-span-5 order-1 lg:order-2 relative">
-            <div className="relative aspect-[4/5] lg:aspect-[3/4] overflow-hidden lg:-mr-12 xl:-mr-24">
+          {/* Image - Mobile */}
+          <div data-animate className="mt-8 opacity-0">
+            <div className="relative aspect-[4/3] overflow-hidden">
               <Image
-                src="/images/meuble-moderne.jpg"
-                alt="Realisation sur mesure ArchiMeuble"
+                src="/images/accueil image/dressing.jpg"
+                alt="Dressing sur mesure ArchiMeuble"
                 fill
-                className="object-cover"
                 priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+                sizes="100vw"
               />
+              {/* Overlay card */}
+              <div className="absolute bottom-3 left-3 right-3 bg-white/95 p-3 backdrop-blur-sm">
+                <p className="text-xs uppercase tracking-wider text-[#706F6C]">
+                  Réalisation récente
+                </p>
+                <p className="mt-1 font-serif text-base text-[#1A1917]">
+                  Dressing sur mesure — Lille, 2024
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust indicators - Mobile */}
+          <div
+            data-animate
+            className="mt-8 flex justify-between border-t border-[#E8E6E3] pt-6 opacity-0"
+          >
+            <div className="text-center">
+              <span className="block font-mono text-lg text-[#1A1917]">30j</span>
+              <span className="text-xs text-[#706F6C]">fabrication</span>
+            </div>
+            <div className="text-center">
+              <span className="block font-mono text-lg text-[#1A1917]">100%</span>
+              <span className="text-xs text-[#706F6C]">français</span>
+            </div>
+            <div className="text-center">
+              <span className="block font-mono text-lg text-[#1A1917]">10 ans</span>
+              <span className="text-xs text-[#706F6C]">garantie</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Layout */}
+        <div className="hidden min-h-[100svh] items-center lg:grid lg:grid-cols-12 lg:gap-12">
+          {/* LEFT - Content */}
+          <div className="lg:col-span-6 lg:pr-8">
+            {/* Eyebrow */}
+            <div data-animate className="flex items-center gap-4 opacity-0">
+              <div className="h-px w-12 bg-[#8B7355]" />
+              <span className="text-xs font-medium uppercase tracking-[0.25em] text-[#8B7355]">
+                Menuisier à Lille
+              </span>
+            </div>
+
+            {/* Titre */}
+            <h1
+              data-animate
+              className="mt-8 font-serif text-6xl font-normal leading-[0.95] tracking-[-0.02em] text-[#1A1917] opacity-0 xl:text-7xl"
+            >
+              Meubles sur mesure,
+              <br />
+              <span className="text-[#8B7355]">faits pour durer</span>
+            </h1>
+
+            {/* Paragraphe */}
+            <p
+              data-animate
+              className="mt-8 max-w-md text-lg leading-relaxed text-[#706F6C] opacity-0"
+            >
+              Chaque pièce est dessinée pour votre espace,
+              fabriquée dans notre atelier lillois, livrée chez vous.
+            </p>
+
+            {/* CTAs */}
+            <div
+              data-animate
+              className="mt-12 flex flex-wrap items-center gap-4 opacity-0"
+            >
+              <Link
+                href="/showrooms"
+                className="group relative inline-flex h-14 items-center justify-center overflow-hidden bg-[#1A1917] px-8 text-sm font-medium tracking-wide text-white transition-all duration-300 hover:bg-[#2D2B28]"
+              >
+                <span className="relative z-10">Voir les réalisations</span>
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+              </Link>
+              <Link
+                href="tel:+33601062867"
+                className="inline-flex h-14 items-center justify-center border border-[#1A1917] px-8 text-sm font-medium tracking-wide text-[#1A1917] transition-all duration-300 hover:bg-[#1A1917] hover:text-white"
+              >
+                Appeler l'atelier
+              </Link>
+            </div>
+
+            {/* Trust indicators */}
+            <div
+              data-animate
+              className="mt-16 flex items-center gap-8 text-sm text-[#706F6C] opacity-0"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-[#8B7355]">30j</span>
+                <span>fabrication</span>
+              </div>
+              <div className="h-4 w-px bg-[#E8E6E3]" />
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-[#8B7355]">100%</span>
+                <span>Made in France</span>
+              </div>
+              <div className="h-4 w-px bg-[#E8E6E3]" />
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-[#8B7355]">10 ans</span>
+                <span>garantie</span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT - Image */}
+          <div className="relative lg:col-span-6">
+            <div
+              data-animate
+              className="relative opacity-0 lg:absolute lg:-right-8 lg:top-1/2 lg:h-[80vh] lg:max-h-[800px] lg:w-[calc(100%+32px)] lg:-translate-y-1/2"
+            >
+              <Image
+                src="/images/accueil image/dressing.jpg"
+                alt="Dressing sur mesure ArchiMeuble"
+                fill
+                priority
+                className="object-cover"
+                sizes="50vw"
+              />
+              {/* Overlay card */}
+              <div className="absolute bottom-6 left-6 border border-white/20 bg-white/95 p-6 backdrop-blur-sm">
+                <p className="text-xs uppercase tracking-[0.15em] text-[#706F6C]">
+                  Réalisation récente
+                </p>
+                <p className="mt-1 font-serif text-lg text-[#1A1917]">
+                  Dressing sur mesure
+                </p>
+                <p className="mt-1 text-sm text-[#706F6C]">
+                  Lille, 2024
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Scroll indicator - desktop only */}
+      <div className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 lg:block">
+        <div className="flex flex-col items-center gap-2 text-[#706F6C]">
+          <span className="text-xs uppercase tracking-[0.2em]">Défiler</span>
+          <div className="h-12 w-px bg-gradient-to-b from-[#706F6C] to-transparent" />
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(24px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-in {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
     </section>
   );
 }

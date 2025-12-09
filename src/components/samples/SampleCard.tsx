@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingCart, Check } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import type { SampleColor } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -10,23 +10,29 @@ interface SampleCardProps {
   onAddToCart: (colorId: number) => Promise<void>;
   isInCart?: boolean;
   isLimitReached?: boolean;
+  index?: number;
 }
 
-export function SampleCard({ color, material, onAddToCart, isInCart = false, isLimitReached = false }: SampleCardProps) {
+export function SampleCard({
+  color,
+  material,
+  onAddToCart,
+  isInCart = false,
+  isLimitReached = false,
+  index = 0
+}: SampleCardProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [justAdded, setJustAdded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleAddToCart = async () => {
-    if (isAdding || justAdded || isInCart || isLimitReached) return;
+    if (isAdding || isInCart || isLimitReached) return;
 
     setIsAdding(true);
     try {
       await onAddToCart(color.id);
-      setJustAdded(true);
-      setTimeout(() => setJustAdded(false), 2000);
+      toast.success(`${color.name} ajouté à votre sélection`);
     } catch (error: any) {
-      console.error('Erreur ajout panier:', error);
-      toast.error(error.message || 'Erreur lors de l\'ajout au panier');
+      toast.error(error.message || 'Erreur lors de l\'ajout');
     } finally {
       setIsAdding(false);
     }
@@ -36,105 +42,132 @@ export function SampleCard({ color, material, onAddToCart, isInCart = false, isL
 
   return (
     <motion.div
-      className="group flex flex-col items-center"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      whileHover={{ scale: 1.03 }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative"
     >
-      {/* Image de l'échantillon */}
-      <div className="relative" role="img" aria-label={`Échantillon ${color.name} en ${material}`}>
-        <motion.div
-          className="h-32 w-32 overflow-hidden rounded-3xl border-2 border-border-light bg-white shadow-sm"
-          whileHover={{ scale: 1.05, rotate: 2 }}
-          transition={{ duration: 0.2 }}
-          style={{ backgroundColor: color.image_url ? undefined : (color.hex || '#EEE') }}
-        >
+      <div className={`relative overflow-hidden rounded-2xl bg-white transition-all duration-500 ${
+        isHovered ? 'shadow-2xl shadow-black/10' : 'shadow-md shadow-black/5'
+      }`}>
+        {/* Image Container */}
+        <div className="relative aspect-square overflow-hidden">
           {color.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <motion.img
               src={color.image_url}
-              alt={`Échantillon de couleur ${color.name}`}
+              alt={color.name}
               className="h-full w-full object-cover"
+              animate={{ scale: isHovered ? 1.05 : 1 }}
+              transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
             />
-          ) : null}
-        </motion.div>
+          ) : (
+            <div
+              className="h-full w-full"
+              style={{ backgroundColor: color.hex || '#E8E4DE' }}
+            />
+          )}
 
-        {/* Badge "Ajouté" */}
-        {justAdded && (
+          {/* Gradient overlay on hover */}
           <motion.div
-            className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-2 shadow-lg"
-            initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.2, 1] }}
-            transition={{ duration: 0.4 }}
+            className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isHovered ? 1 : 0 }}
+            transition={{ duration: 0.3 }}
+          />
+
+          {/* Status badge */}
+          {isInCart && (
+            <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-[#1A1917] px-3 py-1.5 text-xs font-medium text-white">
+              <Check className="h-3 w-3" />
+              Sélectionné
+            </div>
+          )}
+
+          {/* Add button - appears on hover */}
+          <motion.div
+            className="absolute inset-x-4 bottom-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 10 }}
+            transition={{ duration: 0.2 }}
           >
-            <Check className="h-4 w-4" />
+            <button
+              onClick={handleAddToCart}
+              disabled={isDisabled}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+                isInCart
+                  ? 'cursor-default bg-white/90 text-[#1A1917]'
+                  : isLimitReached
+                  ? 'cursor-not-allowed bg-white/50 text-white/70'
+                  : 'bg-white text-[#1A1917] hover:bg-white/90 active:scale-[0.98]'
+              }`}
+            >
+              {isAdding ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+              ) : isInCart ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Dans votre sélection
+                </>
+              ) : isLimitReached ? (
+                'Limite atteinte'
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Ajouter
+                </>
+              )}
+            </button>
           </motion.div>
-        )}
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="font-medium text-[#1A1917]">{color.name}</h3>
+              <p className="mt-0.5 text-sm text-[#6B6560]">{material}</p>
+            </div>
+
+            {/* Color swatch */}
+            {color.hex && (
+              <div
+                className="h-6 w-6 shrink-0 rounded-full border border-black/10"
+                style={{ backgroundColor: color.hex }}
+              />
+            )}
+          </div>
+
+          {/* Free badge */}
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-xs font-medium text-[#8B7355]">
+              Échantillon gratuit
+            </span>
+
+            {/* Mobile add button */}
+            <button
+              onClick={handleAddToCart}
+              disabled={isDisabled}
+              className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-all sm:hidden ${
+                isInCart
+                  ? 'bg-[#1A1917] text-white'
+                  : isLimitReached
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-[#F5F3F0] text-[#1A1917] active:bg-[#E8E4DE]'
+              }`}
+            >
+              {isAdding ? (
+                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+              ) : isInCart ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <Plus className="h-3 w-3" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
-
-      {/* Nom de la couleur */}
-      <div className="mt-4 text-center">
-        <h3 className="text-sm font-bold tracking-wide text-ink uppercase">
-          {color.name}
-        </h3>
-        <p className="text-xs text-ink/60 mt-1">{material}</p>
-      </div>
-
-      {/* Bouton Commander */}
-      <motion.button
-        type="button"
-        onClick={handleAddToCart}
-        disabled={isDisabled || justAdded}
-        whileHover={{ scale: isDisabled ? 1 : 1.05 }}
-        whileTap={{ scale: isDisabled ? 1 : 0.95 }}
-        className={`
-          mt-4 flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold
-          transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2
-          ${justAdded || isInCart
-            ? 'bg-green-500 text-white cursor-default focus:ring-green-500'
-            : isLimitReached
-            ? 'bg-gray-400 text-white cursor-not-allowed focus:ring-gray-400'
-            : 'bg-ink text-white hover:bg-ink/90 hover:shadow-md active:scale-95 focus:ring-ink'
-          }
-          disabled:opacity-70 disabled:cursor-not-allowed
-        `}
-        title={isLimitReached ? 'Limite de 3 échantillons atteinte' : isInCart ? 'Déjà dans votre panier' : ''}
-        aria-label={
-          justAdded || isInCart
-            ? `Échantillon ${color.name} déjà ajouté au panier`
-            : isLimitReached
-            ? 'Limite de 3 échantillons gratuits atteinte'
-            : `Commander un échantillon gratuit ${color.name}`
-        }
-        aria-disabled={isDisabled || justAdded}
-      >
-        {justAdded || isInCart ? (
-          <>
-            <Check className="h-4 w-4" />
-            <span>{isInCart ? 'Dans le panier' : 'Ajouté !'}</span>
-          </>
-        ) : isLimitReached ? (
-          <span>Limite atteinte</span>
-        ) : (
-          <>
-            <ShoppingCart className="h-4 w-4" />
-            <span>{isAdding ? 'Ajout...' : 'Commander'}</span>
-          </>
-        )}
-      </motion.button>
-
-      {/* Badge "Gratuit" */}
-      <motion.div
-        className="mt-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        <span className="inline-block bg-green-50 text-green-700 text-xs font-semibold px-3 py-1 rounded-full border border-green-200">
-          Gratuit
-        </span>
-      </motion.div>
     </motion.div>
   );
 }
