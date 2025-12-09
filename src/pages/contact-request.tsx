@@ -242,9 +242,11 @@ export default function ContactRequestPage() {
                                                     <MapPin className="h-5 w-5 text-[#1A1917]" strokeWidth={1.5} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-[#1A1917]">Localisation</p>
+                                                    <p className="font-medium text-[#1A1917]">Atelier</p>
                                                     <p className="mt-1 text-[#6B6560]">
-                                                        Métropole Lilloise, Hauts-de-France
+                                                        30 Rue Henri Regnault
+                                                        <br />
+                                                        59000 Lille, France
                                                     </p>
                                                 </div>
                                             </div>

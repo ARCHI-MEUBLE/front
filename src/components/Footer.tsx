@@ -195,13 +195,17 @@ export function Footer() {
                 Atelier
               </h3>
               <address className="mt-6 text-sm not-italic leading-relaxed text-white/80">
-                Métropole lilloise
+                30 Rue Henri Regnault
                 <br />
-                Hauts-de-France
+                59000 Lille, France
                 <br />
                 <br />
                 <Link href="tel:+33601062867" className="text-white hover:text-[#8B7355]">
                   06 01 06 28 67
+                </Link>
+                <br />
+                <Link href="mailto:pro.archimeuble@gmail.com" className="text-white/80 hover:text-[#8B7355]">
+                  pro.archimeuble@gmail.com
                 </Link>
               </address>
             </div>

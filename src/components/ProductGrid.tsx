@@ -7,12 +7,12 @@ import { ProductCard, ProductModel } from "@/components/ProductCard";
 const categories = [
   { id: "all", label: "Tous" },
   { id: "dressing", label: "Dressing" },
-  { id: "bibliotheque", label: "Bibliotheque" },
+  { id: "bibliotheque", label: "Bibliothèque" },
   { id: "buffet", label: "Buffet" },
   { id: "bureau", label: "Bureau" },
   { id: "meuble-tv", label: "Meuble TV" },
   { id: "sous-escalier", label: "Sous-escalier" },
-  { id: "tete-de-lit", label: "Tete de lit" },
+  { id: "tete-de-lit", label: "Tête de lit" },
 ];
 
 export function ProductGrid() {
@@ -33,7 +33,7 @@ export function ProductGrid() {
         image_path: model.image_url || "",
         created_at: model.created_at,
         base_price: 890,
-        category: model.name.toLowerCase().includes("dressing") ? "dressing" 
+        category: model.name.toLowerCase().includes("dressing") ? "dressing"
           : model.name.toLowerCase().includes("biblio") ? "bibliotheque"
           : model.name.toLowerCase().includes("buffet") ? "buffet"
           : model.name.toLowerCase().includes("bureau") ? "bureau"
@@ -54,26 +54,25 @@ export function ProductGrid() {
     void loadModels();
   }, [loadModels]);
 
-  const filteredModels = activeCategory === "all" 
-    ? models 
+  const filteredModels = activeCategory === "all"
+    ? models
     : models.filter(m => m.category === activeCategory);
 
   return (
     <>
       {/* Filters - Sticky */}
       <div className="sticky top-[73px] z-40 border-b border-[#E8E6E3] bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide">
+        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+          <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide sm:gap-3">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={
-                  "whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition-all " +
-                  (activeCategory === cat.id
+                className={`whitespace-nowrap px-4 py-2 text-sm font-medium transition-all sm:px-5 ${
+                  activeCategory === cat.id
                     ? "bg-[#1A1917] text-white"
-                    : "border border-[#E8E6E3] text-[#1A1917] hover:border-[#1A1917]")
-                }
+                    : "border border-[#E8E6E3] text-[#1A1917] hover:border-[#1A1917]"
+                }`}
               >
                 {cat.label}
               </button>
@@ -83,16 +82,16 @@ export function ProductGrid() {
       </div>
 
       {/* Grid */}
-      <section className="mx-auto max-w-7xl px-6 py-12">
+      <section className="mx-auto max-w-7xl px-5 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-[4/3] bg-[#F5F5F4]" />
+                <div className="aspect-[4/3] bg-[#E8E6E3]" />
                 <div className="mt-4 space-y-2">
-                  <div className="h-5 w-1/2 bg-[#F5F5F4]" />
-                  <div className="h-4 w-3/4 bg-[#F5F5F4]" />
-                  <div className="h-4 w-1/4 bg-[#F5F5F4]" />
+                  <div className="h-5 w-1/2 bg-[#E8E6E3]" />
+                  <div className="h-4 w-3/4 bg-[#E8E6E3]" />
+                  <div className="h-4 w-1/4 bg-[#E8E6E3]" />
                 </div>
               </div>
             ))}
@@ -102,17 +101,19 @@ export function ProductGrid() {
             <p className="text-[#706F6C]">{error}</p>
             <button
               onClick={loadModels}
-              className="mt-4 rounded-full border border-[#1A1917] px-6 py-2 text-sm font-medium text-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+              className="mt-6 inline-flex h-12 items-center justify-center border border-[#1A1917] px-8 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#1A1917] hover:text-white"
             >
-              Reessayer
+              Réessayer
             </button>
           </div>
         ) : filteredModels.length === 0 ? (
-          <p className="py-16 text-center text-[#706F6C]">
-            Aucun modele dans cette categorie.
-          </p>
+          <div className="py-16 text-center">
+            <p className="text-[#706F6C]">
+              Aucun modèle dans cette catégorie.
+            </p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
             {filteredModels.map((model) => (
               <ProductCard key={model.id} model={model} />
             ))}

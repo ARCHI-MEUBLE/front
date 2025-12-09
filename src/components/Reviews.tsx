@@ -232,11 +232,11 @@ export function Reviews() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-[#1A1917] px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+      <section className="border-t border-[#E7E5E4] bg-white px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-6xl">
           {loadingSession ? (
             <div className="flex justify-center py-8">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1A1917]/20 border-t-[#1A1917]" />
             </div>
           ) : sessionUser ? (
             showForm ? (
@@ -244,14 +244,14 @@ export function Reviews() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="mb-8 flex items-center gap-2 text-sm text-[#A8A29E] transition-colors hover:text-white"
+                  className="mb-8 flex items-center gap-2 text-sm text-[#78716C] transition-colors hover:text-[#1A1917]"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
                   Retour
                 </button>
-                <ReviewForm
+                <ReviewFormLight
                   onSubmit={addReview}
                   authorName={sessionUser.name}
                   onSuccess={() => setShowForm(false)}
@@ -260,18 +260,18 @@ export function Reviews() {
             ) : (
               <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-serif text-2xl font-normal text-white sm:text-3xl lg:text-4xl">
+                  <h2 className="font-serif text-2xl font-normal text-[#1A1917] sm:text-3xl lg:text-4xl">
                     Partagez votre{" "}
-                    <span className="text-[#7877C6]">expérience</span>
+                    <span className="text-[#8B7355]">expérience</span>
                   </h2>
-                  <p className="mt-3 max-w-md text-sm text-[#A8A29E] sm:text-base">
+                  <p className="mt-3 max-w-md text-sm text-[#78716C] sm:text-base">
                     Votre avis aide d'autres personnes à découvrir notre savoir-faire.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowForm(true)}
-                  className="group flex w-full items-center justify-center gap-3 rounded-sm bg-gradient-to-r from-[#7877C6] to-[#635BFF] px-6 py-4 font-medium text-white transition-all hover:opacity-90 sm:w-auto sm:px-8"
+                  className="group flex w-full items-center justify-center gap-3 bg-[#1A1917] px-6 py-4 font-medium text-white transition-all hover:bg-[#2D2B28] sm:w-auto sm:px-8"
                 >
                   Laisser un avis
                   <svg
@@ -289,17 +289,17 @@ export function Reviews() {
           ) : (
             <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="font-serif text-2xl font-normal text-white sm:text-3xl lg:text-4xl">
+                <h2 className="font-serif text-2xl font-normal text-[#1A1917] sm:text-3xl lg:text-4xl">
                   Rejoignez la{" "}
-                  <span className="text-[#7877C6]">conversation</span>
+                  <span className="text-[#8B7355]">conversation</span>
                 </h2>
-                <p className="mt-3 max-w-md text-sm text-[#A8A29E] sm:text-base">
+                <p className="mt-3 max-w-md text-sm text-[#78716C] sm:text-base">
                   Connectez-vous pour partager votre expérience.
                 </p>
               </div>
               <Link
                 href="/login"
-                className="group flex w-full items-center justify-center gap-3 rounded-sm border border-white/20 bg-transparent px-6 py-4 font-medium text-white transition-all hover:bg-white hover:text-[#1A1A1A] sm:w-auto sm:px-8"
+                className="group flex w-full items-center justify-center gap-3 border border-[#1A1917] bg-transparent px-6 py-4 font-medium text-[#1A1917] transition-all hover:bg-[#1A1917] hover:text-white sm:w-auto sm:px-8"
               >
                 Se connecter
                 <svg
@@ -384,7 +384,7 @@ function formatRelativeDate(dateString: string) {
   return `Il y a ${Math.floor(diffDays / 365)} an${Math.floor(diffDays / 365) > 1 ? 's' : ''}`;
 }
 
-function ReviewForm({
+function ReviewFormLight({
   onSubmit,
   authorName,
   onSuccess
@@ -422,11 +422,11 @@ function ReviewForm({
     <form onSubmit={handleSubmit}>
       {/* Author */}
       <div className="mb-8 flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#7877C6] to-[#B45309] text-base font-medium text-white">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1A1917] text-base font-medium text-white">
           {authorName?.charAt(0) || 'U'}
         </div>
         <div>
-          <p className="font-medium text-white">{authorName}</p>
+          <p className="font-medium text-[#1A1917]">{authorName}</p>
           <p className="text-xs text-[#78716C]">Partage son expérience</p>
         </div>
       </div>
@@ -442,16 +442,16 @@ function ReviewForm({
               key={n}
               type="button"
               onClick={() => setRating(n)}
-              className={`flex h-11 w-11 items-center justify-center rounded-sm text-base font-light transition-all sm:h-12 sm:w-12 ${
+              className={`flex h-11 w-11 items-center justify-center text-base font-light transition-all sm:h-12 sm:w-12 ${
                 n <= rating
-                  ? 'bg-gradient-to-br from-[#7877C6] to-[#635BFF] text-white'
-                  : 'border border-white/10 bg-white/5 text-[#78716C] hover:border-white/20'
+                  ? 'bg-[#1A1917] text-white'
+                  : 'border border-[#E7E5E4] bg-white text-[#78716C] hover:border-[#1A1917]'
               }`}
             >
               {n}
             </button>
           ))}
-          <span className="ml-2 text-sm text-[#A8A29E]">
+          <span className="ml-2 text-sm text-[#78716C]">
             {ratingLabels[rating - 1]}
           </span>
         </div>
@@ -468,7 +468,7 @@ function ReviewForm({
           onChange={(e) => setText(e.target.value)}
           rows={4}
           placeholder="Décrivez votre expérience avec ArchiMeuble..."
-          className="w-full resize-none border-0 border-b border-white/10 bg-transparent py-3 text-base text-white placeholder-[#57534E] outline-none transition-colors focus:border-[#7877C6]"
+          className="w-full resize-none border border-[#E7E5E4] bg-white p-4 text-base text-[#1A1917] placeholder-[#A8A29E] outline-none transition-colors focus:border-[#1A1917]"
         />
         <div className="mt-2 flex justify-between text-xs text-[#78716C]">
           <span>{text.length} caractères</span>
@@ -482,7 +482,7 @@ function ReviewForm({
       <button
         type="submit"
         disabled={submitting || text.length < 20}
-        className="group flex w-full items-center justify-center gap-3 rounded-sm bg-gradient-to-r from-[#7877C6] to-[#635BFF] py-4 font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+        className="group flex w-full items-center justify-center gap-3 bg-[#1A1917] py-4 font-medium text-white transition-colors hover:bg-[#2D2B28] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {submitting ? (
           <>
