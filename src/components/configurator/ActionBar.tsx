@@ -1,100 +1,69 @@
-import { Eye, EyeOff, RotateCcw, Download, Share2 } from 'lucide-react';
-
 interface ActionBarProps {
-  doorsOpen: boolean;
-  onToggleDoors: () => void;
-  onReset?: () => void;
-  onExport?: () => void;
-  onShare?: () => void;
-  generating?: boolean;
+  selectedZoneId: string | null;
+  disabled?: boolean;
+  onSplitHorizontal: () => void;
+  onSplitVertical: () => void;
+  onAddDrawer: () => void;
+  onAddDoor: () => void;
+  onAddDressing: () => void;
 }
 
+const ACTIONS = [
+  { id: 'horizontal', icon: '↕️', label: 'Étagères', action: 'onSplitHorizontal' },
+  { id: 'vertical', icon: '↔️', label: 'Colonnes', action: 'onSplitVertical' },
+  { id: 'drawer', icon: '🗄️', label: 'Tiroir', action: 'onAddDrawer' },
+  { id: 'door', icon: '🚪', label: 'Porte', action: 'onAddDoor' },
+  { id: 'dressing', icon: '👔', label: 'Penderie', action: 'onAddDressing' },
+] as const;
+
 export default function ActionBar({
-  doorsOpen,
-  onToggleDoors,
-  onReset,
-  onExport,
-  onShare,
-  generating = false,
+  selectedZoneId,
+  disabled = false,
+  onSplitHorizontal,
+  onSplitVertical,
+  onAddDrawer,
+  onAddDoor,
+  onAddDressing,
 }: ActionBarProps) {
+  const actions: Record<string, () => void> = {
+    onSplitHorizontal,
+    onSplitVertical,
+    onAddDrawer,
+    onAddDoor,
+    onAddDressing,
+  };
+
   return (
-    <div className="flex items-center justify-between border-t border-[#E8E6E3] bg-white px-4 py-3">
-      <div className="flex items-center gap-2">
-        {/* Toggle portes ouvertes/fermées */}
-        <button
-          type="button"
-          onClick={onToggleDoors}
-          className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium transition-colors ${
-            doorsOpen
-              ? 'border-[#1A1917] bg-[#1A1917] text-white'
-              : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-          }`}
-          style={{ borderRadius: '2px' }}
-          title={doorsOpen ? 'Afficher fermé' : 'Afficher ouvert'}
-        >
-          {doorsOpen ? (
-            <>
-              <Eye className="h-4 w-4" />
-              <span>Ouvert</span>
-            </>
-          ) : (
-            <>
-              <EyeOff className="h-4 w-4" />
-              <span>Fermé</span>
-            </>
-          )}
-        </button>
+    <div className="action-bar w-full border-t border-[#E8E6E3] bg-[#FAFAF9] px-4 py-3">
+      {/* Indication zone sélectionnée */}
+      {selectedZoneId && selectedZoneId !== 'root' && (
+        <p className="mb-2 text-center text-xs text-[#706F6C]">
+          Zone : <span className="font-mono text-[#1A1917]">{selectedZoneId}</span>
+        </p>
+      )}
+
+      {/* Grille de boutons */}
+      <div className="flex flex-wrap justify-center gap-2">
+        {ACTIONS.map(({ id, icon, label, action }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={actions[action]}
+            disabled={disabled || !selectedZoneId}
+            className="flex min-w-[100px] items-center justify-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2.5 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-[120px] sm:px-4 sm:py-3"
+            style={{ borderRadius: '2px' }}
+          >
+            <span className="text-base sm:text-lg">{icon}</span>
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Réinitialiser */}
-        {onReset && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-white text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
-            style={{ borderRadius: '2px' }}
-            title="Réinitialiser la configuration"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </button>
-        )}
-
-        {/* Exporter */}
-        {onExport && (
-          <button
-            type="button"
-            onClick={onExport}
-            className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-white text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
-            style={{ borderRadius: '2px' }}
-            title="Télécharger le fichier 3D"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-        )}
-
-        {/* Partager */}
-        {onShare && (
-          <button
-            type="button"
-            onClick={onShare}
-            className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-white text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
-            style={{ borderRadius: '2px' }}
-            title="Partager cette configuration"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Indicateur de génération */}
-      {generating && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-          <div className="flex items-center gap-2 text-sm text-[#706F6C]">
-            <div className="h-4 w-4 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-            <span>Génération...</span>
-          </div>
-        </div>
+      {/* Message si aucune zone */}
+      {!selectedZoneId && (
+        <p className="mt-2 text-center text-xs text-[#A8A7A5]">
+          Sélectionnez une zone dans le plan
+        </p>
       )}
     </div>
   );

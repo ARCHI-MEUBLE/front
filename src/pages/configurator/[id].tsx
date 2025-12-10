@@ -7,7 +7,7 @@ import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
 import ZoneEditor, { Zone, ZoneContent } from '@/components/configurator/ZoneEditor';
 import SocleSelector from '@/components/configurator/SocleSelector';
-import MaterialSelector from '@/components/configurator/MaterialSelector';
+import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
@@ -80,6 +80,15 @@ export default function ConfiguratorPage() {
   const [price, setPrice] = useState(899);
   const [doorsOpen, setDoorsOpen] = useState(true);
 
+  // Mode multi-couleurs
+  const [useMultiColor, setUseMultiColor] = useState(false);
+  const [componentColors, setComponentColors] = useState<ComponentColors>({
+    structure: { colorId: null, hex: null },
+    drawers: { colorId: null, hex: null },
+    doors: { colorId: null, hex: null },
+    base: { colorId: null, hex: null },
+  });
+
   // Zones (mode par défaut)
   const [rootZone, setRootZone] = useState<Zone>({
     id: 'root',
@@ -87,6 +96,58 @@ export default function ConfiguratorPage() {
     content: 'empty',
   });
   const [selectedZoneId, setSelectedZoneId] = useState<string>('root');
+  const [doors, setDoors] = useState(0);
+
+  // Fonctions de manipulation des zones
+  const findZone = useCallback((zone: Zone, targetId: string): Zone | null => {
+    if (zone.id === targetId) return zone;
+    if (zone.children) {
+      for (const child of zone.children) {
+        const found = findZone(child, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, []);
+
+  const selectedZone = useMemo(() => findZone(rootZone, selectedZoneId), [rootZone, selectedZoneId, findZone]);
+
+  const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId) {
+        return {
+          ...z,
+          type: direction,
+          content: undefined,
+          splitRatio: 50,
+          children: Array.from({ length: count }, (_, i) => ({
+            id: `${zoneId}-${i}`,
+            type: 'leaf' as const,
+            content: 'empty' as ZoneContent,
+          })),
+        };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+    setSelectedZoneId(`${zoneId}-0`);
+  }, [rootZone]);
+
+  const setZoneContent = useCallback((zoneId: string, content: ZoneContent) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, content };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
 
   // UI
   const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
@@ -288,8 +349,23 @@ export default function ConfiguratorPage() {
   const generateModel = useCallback(async (prompt: string) => {
     setGenerating(true);
     try {
-      const singleColor = selectedColorOption?.hex || undefined;
-      const result = await apiClient.generate.generate(prompt, !doorsOpen, singleColor, undefined);
+      let singleColor: string | undefined;
+      let furnitureColors: FurnitureColors | undefined;
+
+      if (useMultiColor) {
+        // Mode multi-couleurs : passer les couleurs par composant
+        furnitureColors = {
+          structure: componentColors.structure.hex || DEFAULT_COLOR_HEX,
+          drawers: componentColors.drawers.hex || DEFAULT_COLOR_HEX,
+          doors: componentColors.doors.hex || DEFAULT_COLOR_HEX,
+          base: componentColors.base.hex || DEFAULT_COLOR_HEX,
+        };
+      } else {
+        // Mode couleur unique
+        singleColor = selectedColorOption?.hex || undefined;
+      }
+
+      const result = await apiClient.generate.generate(prompt, !doorsOpen, singleColor, furnitureColors);
 
       let glbUrlAbsolute = result.glb_url;
       if (glbUrlAbsolute.startsWith('/')) {
@@ -303,7 +379,7 @@ export default function ConfiguratorPage() {
     } finally {
       setGenerating(false);
     }
-  }, [doorsOpen, selectedColorOption]);
+  }, [doorsOpen, selectedColorOption, useMultiColor, componentColors]);
 
   // Effet de régénération
   useEffect(() => {
@@ -340,7 +416,7 @@ export default function ConfiguratorPage() {
     // Générer
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, finish, rootZone, doorsOpen, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel]);
+  }, [templatePrompt, width, height, depth, socle, finish, rootZone, doorsOpen, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors]);
 
   // Handlers
   const handleMaterialChange = (key: string) => {
@@ -355,6 +431,13 @@ export default function ConfiguratorPage() {
     setColor(option.hex || DEFAULT_COLOR_HEX);
     setColorLabel(option.name || selectedMaterialLabel);
     setSelectedColorImage(option.image_url || null);
+  };
+
+  const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string) => {
+    setComponentColors((prev) => ({
+      ...prev,
+      [component]: { colorId, hex },
+    }));
   };
 
   // Sauvegarde
@@ -477,30 +560,30 @@ export default function ConfiguratorPage() {
       <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
         {/* Header compact */}
         <header className="border-b border-[#E8E6E3] bg-white">
-          <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-6">
-            <div className="flex items-center gap-4">
+          <div className="mx-auto flex h-14 items-center justify-between px-4 lg:h-16 lg:max-w-screen-2xl lg:px-6">
+            <div className="flex items-center gap-3 lg:gap-4">
               <Link
                 href="/models"
-                className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                className="flex h-9 w-9 items-center justify-center border border-[#E8E6E3] text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] lg:h-10 lg:w-10"
                 style={{ borderRadius: '2px' }}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="font-serif text-lg text-[#1A1917]">{model.name}</h1>
-                <p className="text-xs text-[#706F6C]">Configurateur sur mesure</p>
+                <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
+                <p className="hidden text-xs text-[#706F6C] sm:block">Configurateur sur mesure</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               {isAuthenticated && customer && (
-                <span className="text-xs text-[#706F6C]">
+                <span className="hidden text-xs text-[#706F6C] md:block">
                   {customer.first_name} {customer.last_name}
                 </span>
               )}
               <Link
                 href="/"
-                className="font-serif text-lg text-[#1A1917]"
+                className="font-serif text-base text-[#1A1917] lg:text-lg"
               >
                 ArchiMeuble
               </Link>
@@ -508,56 +591,79 @@ export default function ConfiguratorPage() {
           </div>
         </header>
 
-        {/* Main content */}
-        <div className="flex flex-1">
-          {/* Viewer */}
-          <div className="relative flex-1 bg-[#FAFAF9]">
-            <div className="absolute inset-0">
-              <Viewer glb={glbUrl || undefined} />
-              {generating && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/80">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-                    <p className="text-sm text-[#706F6C]">Génération du meuble 3D...</p>
+        {/* Main content - Desktop: side by side, Mobile: stacked */}
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          {/* Viewer - Mobile: fixed height, Desktop: flex-1 */}
+          <div className="viewer-section relative flex flex-col bg-[#FAFAF9] lg:flex-1">
+            {/* Viewer wrapper - prend l'espace disponible */}
+            <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
+              <div className="absolute inset-0">
+                <Viewer glb={glbUrl || undefined} />
+                {generating && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/80">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+                      <p className="text-sm text-[#706F6C]">Génération du meuble 3D...</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Action bar overlay */}
-            <div className="absolute bottom-0 left-0 right-0">
+            {/* Action bar - sous le viewer */}
+            <div className="hidden flex-shrink-0 lg:block">
               <ActionBar
-                doorsOpen={doorsOpen}
-                onToggleDoors={() => setDoorsOpen(!doorsOpen)}
-                generating={generating}
+                selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneId : null}
+                disabled={generating}
+                onSplitHorizontal={() => {
+                  if (selectedZone?.type === 'leaf') {
+                    splitZone(selectedZoneId, 'horizontal', 2);
+                  }
+                }}
+                onSplitVertical={() => {
+                  if (selectedZone?.type === 'leaf') {
+                    splitZone(selectedZoneId, 'vertical', 2);
+                  }
+                }}
+                onAddDrawer={() => {
+                  if (selectedZone?.type === 'leaf') {
+                    setZoneContent(selectedZoneId, 'drawer');
+                  }
+                }}
+                onAddDoor={() => setDoors(doors + 1)}
+                onAddDressing={() => {
+                  if (selectedZone?.type === 'leaf') {
+                    setZoneContent(selectedZoneId, 'dressing');
+                  }
+                }}
               />
             </div>
           </div>
 
-          {/* Panel de configuration */}
-          <div className="flex w-[420px] flex-col border-l border-[#E8E6E3] bg-white">
-            {/* Tabs */}
-            <div className="flex border-b border-[#E8E6E3]">
+          {/* Panel de configuration - Mobile: scrollable avec hauteur fixe, Desktop: fixed width */}
+          <div className="flex min-h-0 flex-1 flex-col border-t border-[#E8E6E3] bg-white lg:w-[420px] lg:flex-none lg:border-l lg:border-t-0">
+            {/* Tabs - Toujours visibles avec labels */}
+            <div className="flex flex-shrink-0 border-b border-[#E8E6E3]">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-1 items-center justify-center gap-2 border-b-2 py-4 text-sm font-medium transition-colors ${
+                  className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-medium transition-colors sm:gap-2 sm:py-4 sm:text-sm ${
                     activeTab === tab.id
                       ? 'border-[#1A1917] text-[#1A1917]'
                       : 'border-transparent text-[#706F6C] hover:text-[#1A1917]'
                   }`}
                 >
                   <tab.icon className="h-4 w-4" />
-                  {tab.label}
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            {/* Content - Scrollable */}
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
               {activeTab === 'dimensions' && (
-                <div className="space-y-8">
+                <div className="space-y-6 pb-24 sm:space-y-8 lg:pb-0">
                   <DimensionsPanel
                     width={width}
                     depth={depth}
@@ -574,36 +680,82 @@ export default function ConfiguratorPage() {
               )}
 
               {activeTab === 'interior' && (
-                <ZoneEditor
-                  rootZone={rootZone}
-                  selectedZoneId={selectedZoneId}
-                  onRootZoneChange={setRootZone}
-                  onSelectedZoneIdChange={setSelectedZoneId}
-                  width={width}
-                  height={height}
-                />
+                <div className="pb-24 lg:pb-0">
+                  <ZoneEditor
+                    rootZone={rootZone}
+                    selectedZoneId={selectedZoneId}
+                    onRootZoneChange={setRootZone}
+                    onSelectedZoneIdChange={setSelectedZoneId}
+                    width={width}
+                    height={height}
+                  />
+                </div>
               )}
 
               {activeTab === 'materials' && (
-                <MaterialSelector
-                  materialsMap={materialsMap}
-                  selectedMaterialKey={selectedMaterialKey}
-                  selectedColorId={selectedColorId}
-                  onMaterialChange={handleMaterialChange}
-                  onColorChange={handleColorChange}
-                  loading={materialsLoading}
-                />
+                <div className="pb-24 lg:pb-0">
+                  <MaterialSelector
+                    materialsMap={materialsMap}
+                    selectedMaterialKey={selectedMaterialKey}
+                    selectedColorId={selectedColorId}
+                    onMaterialChange={handleMaterialChange}
+                    onColorChange={handleColorChange}
+                    loading={materialsLoading}
+                    useMultiColor={useMultiColor}
+                    onUseMultiColorChange={setUseMultiColor}
+                    componentColors={componentColors}
+                    onComponentColorChange={handleComponentColorChange}
+                  />
+                </div>
               )}
             </div>
 
-            {/* Footer avec prix */}
-            <div className="border-t border-[#E8E6E3] bg-white p-6">
+            {/* Footer avec prix - Desktop: dans le panel */}
+            <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white p-6 lg:block">
               <PriceDisplay
                 price={price}
                 onAddToCart={saveConfiguration}
                 isAuthenticated={isAuthenticated}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Mobile bottom bar - Fixed with price and CTA */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E8E6E3] bg-white px-4 py-3 lg:hidden">
+          <div className="flex items-center justify-between gap-3">
+            {/* Prix compact */}
+            <div className="flex-shrink-0">
+              <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
+              <div className="font-serif text-xl text-[#1A1917]">
+                {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'EUR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(price)}
+              </div>
+            </div>
+            {/* Toggle portes */}
+            <button
+              type="button"
+              onClick={() => setDoorsOpen(!doorsOpen)}
+              className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
+              style={{ borderRadius: '2px' }}
+            >
+              <span>{doorsOpen ? '🚪' : '📦'}</span>
+              <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
+            </button>
+            {/* CTA */}
+            <button
+              type="button"
+              onClick={saveConfiguration}
+              className="flex h-11 flex-1 max-w-[160px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+              style={{ borderRadius: '2px' }}
+            >
+              <Box className="h-4 w-4" />
+              <span>Ajouter</span>
+            </button>
           </div>
         </div>
       </div>

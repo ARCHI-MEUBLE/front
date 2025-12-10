@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
 import ZoneControls from './ZoneControls';
 import { Zone, ZoneContent } from './types';
@@ -12,6 +12,16 @@ interface ZoneEditorProps {
   onSelectedZoneIdChange: (id: string) => void;
   width: number;
   height: number;
+  // Expose les actions pour une utilisation externe (ActionBar)
+  onSplitZone?: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
+  onSetZoneContent?: (zoneId: string, content: ZoneContent) => void;
+  onResetZone?: (zoneId: string) => void;
+  exposeActions?: (actions: {
+    splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
+    setZoneContent: (zoneId: string, content: ZoneContent) => void;
+    resetZone: (zoneId: string) => void;
+    selectedZoneInfo: { zone: Zone; parent: Zone | null } | null;
+  }) => void;
 }
 
 export default function ZoneEditor({
@@ -21,6 +31,7 @@ export default function ZoneEditor({
   onSelectedZoneIdChange,
   width,
   height,
+  exposeActions,
 }: ZoneEditorProps) {
   // Trouver une zone avec son parent
   const findZoneWithParent = useCallback(

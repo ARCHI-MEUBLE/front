@@ -31,13 +31,13 @@ export default function ZoneControls({
     parentZone.children?.length === 2;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Zone sélectionnée */}
-      <div className="border-b border-[#E8E6E3] pb-4">
+      <div className="border-b border-[#E8E6E3] pb-3 sm:pb-4">
         <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
           Zone sélectionnée
         </span>
-        <h4 className="mt-1 font-serif text-lg text-[#1A1917]">
+        <h4 className="mt-1 font-serif text-base text-[#1A1917] sm:text-lg">
           {isLeaf ? meta.label : (selectedZone.type === 'horizontal' ? 'Division horizontale' : 'Division verticale')}
         </h4>
         {isLeaf && (
@@ -65,24 +65,24 @@ export default function ZoneControls({
                   key={content}
                   type="button"
                   onClick={() => onSetContent(selectedZone.id, content)}
-                  className={`flex items-center justify-between border px-4 py-3 text-left transition-colors ${
+                  className={`flex items-center justify-between border px-3 py-2.5 text-left transition-colors sm:px-4 sm:py-3 ${
                     isActive
                       ? 'border-[#1A1917] bg-[#1A1917] text-white'
                       : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
                   }`}
                   style={{ borderRadius: '2px' }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center border font-mono text-sm" style={{
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <span className="flex h-7 w-7 items-center justify-center border font-mono text-xs sm:h-8 sm:w-8 sm:text-sm" style={{
                       borderRadius: '2px',
                       borderColor: isActive ? 'rgba(255,255,255,0.3)' : '#E8E6E3',
                       backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : '#FAFAF9',
                     }}>
                       {contentMeta.icon}
                     </span>
-                    <span className="font-medium">{contentMeta.label}</span>
+                    <span className="text-sm font-medium sm:text-base">{contentMeta.label}</span>
                   </div>
-                  <span className={`text-xs ${isActive ? 'text-white/70' : 'text-[#706F6C]'}`}>
+                  <span className={`hidden text-xs sm:block ${isActive ? 'text-white/70' : 'text-[#706F6C]'}`}>
                     {contentMeta.description}
                   </span>
                 </button>
@@ -102,13 +102,13 @@ export default function ZoneControls({
           {/* Division horizontale (rangées) */}
           <div className="space-y-2">
             <p className="text-xs text-[#706F6C]">Rangées horizontales</p>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               {[2, 3, 4, 5].map((count) => (
                 <button
                   key={`h-${count}`}
                   type="button"
                   onClick={() => onSplitZone(selectedZone.id, 'horizontal', count)}
-                  className="flex h-12 flex-1 items-center justify-center border border-[#E8E6E3] bg-white font-mono text-sm text-[#1A1917] transition-colors hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+                  className="flex h-10 flex-1 items-center justify-center border border-[#E8E6E3] bg-white font-mono text-sm text-[#1A1917] transition-colors hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white sm:h-12"
                   style={{ borderRadius: '2px' }}
                 >
                   {count}
@@ -120,13 +120,13 @@ export default function ZoneControls({
           {/* Division verticale (colonnes) */}
           <div className="space-y-2">
             <p className="text-xs text-[#706F6C]">Colonnes verticales</p>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               {[2, 3, 4].map((count) => (
                 <button
                   key={`v-${count}`}
                   type="button"
                   onClick={() => onSplitZone(selectedZone.id, 'vertical', count)}
-                  className="flex h-12 flex-1 items-center justify-center border border-[#E8E6E3] bg-white font-mono text-sm text-[#1A1917] transition-colors hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+                  className="flex h-10 flex-1 items-center justify-center border border-[#E8E6E3] bg-white font-mono text-sm text-[#1A1917] transition-colors hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white sm:h-12"
                   style={{ borderRadius: '2px' }}
                 >
                   {count}
