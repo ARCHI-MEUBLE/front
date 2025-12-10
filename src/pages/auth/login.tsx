@@ -63,7 +63,7 @@ export default function Login() {
         <title>Connexion | ArchiMeuble</title>
       </Head>
       <div className="min-h-screen bg-bg-light flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+        <div className="bg-white rounded-sm shadow-xl w-full max-w-md p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-text-primary mb-2">
               Connexion

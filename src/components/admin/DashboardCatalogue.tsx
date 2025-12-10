@@ -1,6 +1,6 @@
 export function DashboardCatalogue() {
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
+    <section className="rounded-sm bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">Catalogue &amp; pièces</h2>
       <p className="mt-2 text-sm text-gray-500">
         Cette section permettra bientôt de gérer l&apos;organisation des collections et des pièces.

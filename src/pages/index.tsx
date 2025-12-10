@@ -8,7 +8,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { CategoriesSection } from "@/components/home/CategoriesSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
-import { ContactSection } from "@/components/home/ContactSection";
+
 import {
   ColorsAndFinishesSection,
   type ColorOption
@@ -20,12 +20,12 @@ type HomePageProps = {
 
 export default function HomePage({ colors }: HomePageProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-alabaster text-ink">
+    <div className="flex min-h-screen flex-col bg-white">
       <Head>
-        <title>Archimeuble</title>
+        <title>Archimeuble | Menuisier sur mesure a Lille</title>
         <meta
           name="description"
-          content="Archimeuble, menuisiers à Lille, conçoit et fabrique des meubles sur mesure durables : dressing, bibliothèque, buffet, bureau ou meuble TV pour votre intérieur."
+          content="Archimeuble, menuisiers a Lille, concoit et fabrique des meubles sur mesure durables : dressing, bibliotheque, buffet, bureau ou meuble TV pour votre interieur."
         />
       </Head>
       <Header />
@@ -35,7 +35,7 @@ export default function HomePage({ colors }: HomePageProps) {
         <WhyChooseUs />
         <CategoriesSection />
         <TestimonialsSection />
-        <ContactSection />
+        
       </main>
       <Footer />
     </div>
@@ -43,29 +43,29 @@ export default function HomePage({ colors }: HomePageProps) {
 }
 
 const fancyNameByKey: Record<string, string> = {
-  naturel: "Chêne naturel",
+  naturel: "Chene naturel",
   blanc_clair: "Blanc opalin",
-  bleu: "Bleu minéral",
+  bleu: "Bleu mineral",
   bleu_clair: "Brume azur",
   bleu_nuit: "Bleu nuit velours",
-  brun2: "Noisette caramélisée",
-  brun_fonce: "Noyer fumé",
+  brun2: "Noisette caramelisee",
+  brun_fonce: "Noyer fume",
   grise: "Gris galet",
   jaune: "Ambre solaire",
   kaki: "Kaki organique",
   noire: "Noir profond",
   orange: "Terracotta solaire",
-  peche: "Blush pêche",
-  pourpre: "Pourpre impérial",
+  peche: "Blush peche",
+  pourpre: "Pourpre imperial",
   rouge: "Rouge grenat",
   turquoise: "Turquoise lagon",
-  vert2: "Saule poudré",
-  vert_fonce: "Vert forêt profonde",
+  vert2: "Saule poudre",
+  vert_fonce: "Vert foret profonde",
   verte: "Vert sauge",
   violet: "Violet brumeux",
   violet_fonce: "Prune velours",
   argile: "Argile naturelle",
-  miel: "Chêne miel"
+  miel: "Chene miel"
 };
 
 const swatchByKey: Record<string, string> = {
@@ -118,7 +118,7 @@ function buildFancyName(key: string) {
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
 
-  return `${base} élégant`.trim();
+  return base + " elegant";
 }
 
 function buildSwatch(key: string) {
@@ -136,7 +136,7 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
 
       return {
         slug: key,
-        image: `/images/photos_meuble_couleur/${file}`,
+        image: "/images/photos_meuble_couleur/" + file,
         fancyName: buildFancyName(key),
         swatch: buildSwatch(key)
       };

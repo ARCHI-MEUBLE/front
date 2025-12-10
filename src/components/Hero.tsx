@@ -22,7 +22,7 @@ export function Hero() {
             <div className="max-w-3xl px-6 md:px-12 lg:px-24">
               <p className="text-sm font-medium uppercase tracking-wider text-white/80">Collection 2025</p>
 
-              <h1 className="heading-serif mt-4 text-3xl font-bold leading-tight drop-shadow-md md:text-5xl lg:text-6xl text-white">
+              <h1 className="font-serif mt-4 text-3xl font-bold leading-tight drop-shadow-md md:text-5xl lg:text-6xl text-white">
                 Configurez votre meuble idéal en quelques clics
               </h1>
               <div className="mt-6 flex gap-4">

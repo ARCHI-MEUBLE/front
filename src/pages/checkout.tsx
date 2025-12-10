@@ -1,10 +1,11 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
-import { Breadcrumb } from '@/components/Breadcrumb';
+import { MapPin, CreditCard, Package, Truck, Shield, Check, ChevronLeft } from 'lucide-react';
 
 // Import dynamique pour éviter les problèmes SSR avec Stripe
 const StripeCheckoutWrapper = dynamic(
@@ -271,6 +272,7 @@ export default function CheckoutStripe() {
     }
   };
 
+  // Loading state
   if (authLoading || isLoading) {
     return (
       <>
@@ -278,10 +280,12 @@ export default function CheckoutStripe() {
           <title>Paiement - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-bg-light flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-text-secondary">Chargement...</p>
+        <div className="min-h-screen bg-[#FAFAF9]">
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin border-2 border-[#E8E6E3] border-t-[#1A1917]" />
+              <p className="mt-6 text-sm text-[#706F6C]">Chargement...</p>
+            </div>
           </div>
         </div>
       </>
@@ -297,60 +301,72 @@ export default function CheckoutStripe() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-bg-light">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Breadcrumb
-            items={[
-              { label: 'Accueil', href: '/' },
-              { label: 'Panier', href: '/cart' },
-              { label: 'Paiement' }
-            ]}
-          />
-
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-text-primary mb-4">
+      <div className="min-h-screen bg-[#FAFAF9]">
+        {/* Header */}
+        <div className="border-b border-[#E8E6E3] bg-white">
+          <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+            <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
               Finaliser la commande
             </h1>
 
             {/* Steps indicator */}
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 ${step === 'shipping' ? 'text-amber-600 font-semibold' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'shipping' ? 'bg-amber-600 text-white' : 'bg-gray-200'}`}>
-                  1
+            <div className="mt-8 flex items-center gap-4">
+              <div className={`flex items-center gap-3 ${step === 'shipping' ? 'text-[#1A1917]' : 'text-[#706F6C]'}`}>
+                <div className={`flex h-10 w-10 items-center justify-center border-2 text-sm font-medium transition-colors ${
+                  step === 'shipping'
+                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                    : step === 'payment'
+                      ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                      : 'border-[#E8E6E3] text-[#706F6C]'
+                }`}>
+                  {step === 'payment' ? <Check className="h-5 w-5" /> : '1'}
                 </div>
-                <span>Livraison</span>
+                <span className="hidden text-sm font-medium sm:block">Livraison</span>
               </div>
-              <div className="flex-1 h-0.5 bg-gray-200" />
-              <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-amber-600 font-semibold' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment' ? 'bg-amber-600 text-white' : 'bg-gray-200'}`}>
+
+              <div className="h-px flex-1 bg-[#E8E6E3]" />
+
+              <div className={`flex items-center gap-3 ${step === 'payment' ? 'text-[#1A1917]' : 'text-[#706F6C]'}`}>
+                <div className={`flex h-10 w-10 items-center justify-center border-2 text-sm font-medium transition-colors ${
+                  step === 'payment'
+                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                    : 'border-[#E8E6E3] text-[#706F6C]'
+                }`}>
                   2
                 </div>
-                <span>Paiement</span>
+                <span className="hidden text-sm font-medium sm:block">Paiement</span>
               </div>
             </div>
           </div>
+        </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+        {error && (
+          <div className="mx-auto max-w-7xl px-5 pt-6 sm:px-6 lg:px-8">
+            <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
               {error}
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+          <div className="lg:grid lg:grid-cols-12 lg:gap-12">
             {/* Main Content */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-7 xl:col-span-8">
               {step === 'shipping' ? (
-                <form onSubmit={handleShippingSubmit} className="space-y-6">
+                <form onSubmit={handleShippingSubmit} className="space-y-8">
                   {/* Shipping Address */}
-                  <div className="bg-white p-6 rounded-lg border border-gray-200">
-                    <h2 className="text-xl font-bold text-text-primary mb-4">
-                      Adresse de livraison
-                    </h2>
+                  <div className="border border-[#E8E6E3] bg-white">
+                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
+                      <MapPin className="h-5 w-5 text-[#8B7355]" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                        Adresse de livraison
+                      </h2>
+                    </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-5 p-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Adresse *
+                        <label className="mb-2 block text-sm text-[#706F6C]">
+                          Adresse <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -358,15 +374,15 @@ export default function CheckoutStripe() {
                           required
                           value={formData.shipping_address}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                          className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
                           placeholder="123 Rue Example"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-5 sm:grid-cols-2">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Code postal *
+                          <label className="mb-2 block text-sm text-[#706F6C]">
+                            Code postal <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -374,14 +390,14 @@ export default function CheckoutStripe() {
                             required
                             value={formData.shipping_postal_code}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            placeholder="75001"
+                            className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                            placeholder="59000"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Ville *
+                          <label className="mb-2 block text-sm text-[#706F6C]">
+                            Ville <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -389,15 +405,15 @@ export default function CheckoutStripe() {
                             required
                             value={formData.shipping_city}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            placeholder="Paris"
+                            className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                            placeholder="Lille"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Pays *
+                        <label className="mb-2 block text-sm text-[#706F6C]">
+                          Pays <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -405,7 +421,7 @@ export default function CheckoutStripe() {
                           required
                           value={formData.shipping_country}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                          className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
                           placeholder="France"
                         />
                       </div>
@@ -413,92 +429,106 @@ export default function CheckoutStripe() {
                   </div>
 
                   {/* Billing Address */}
-                  <div className="bg-white p-6 rounded-lg border border-gray-200">
-                    <h2 className="text-xl font-bold text-text-primary mb-4">
-                      Adresse de facturation
-                    </h2>
-
-                    <div className="mb-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name="billing_same"
-                          checked={formData.billing_same}
-                          onChange={handleChange}
-                          className="w-5 h-5 accent-amber-600"
-                        />
-                        <span className="text-text-primary">Identique à l'adresse de livraison</span>
-                      </label>
+                  <div className="border border-[#E8E6E3] bg-white">
+                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
+                      <CreditCard className="h-5 w-5 text-[#8B7355]" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                        Adresse de facturation
+                      </h2>
                     </div>
 
-                    {!formData.billing_same && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Adresse *
-                          </label>
+                    <div className="p-6">
+                      <label className="group flex cursor-pointer items-center gap-3">
+                        <div className="relative flex h-5 w-5 items-center justify-center">
                           <input
-                            type="text"
-                            name="billing_address"
-                            required
-                            value={formData.billing_address}
+                            type="checkbox"
+                            name="billing_same"
+                            checked={formData.billing_same}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            className="peer sr-only"
                           />
+                          <div className="h-5 w-5 border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917] peer-checked:bg-[#1A1917]" />
+                          <Check className="absolute h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
                         </div>
+                        <span className="text-sm text-[#1A1917]">Identique à l'adresse de livraison</span>
+                      </label>
 
-                        <div className="grid grid-cols-2 gap-4">
+                      {!formData.billing_same && (
+                        <div className="mt-6 space-y-5">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Code postal *
+                            <label className="mb-2 block text-sm text-[#706F6C]">
+                              Adresse <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
-                              name="billing_postal_code"
+                              name="billing_address"
                               required
-                              value={formData.billing_postal_code}
+                              value={formData.billing_address}
                               onChange={handleChange}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                              className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Ville *
-                            </label>
-                            <input
-                              type="text"
-                              name="billing_city"
-                              required
-                              value={formData.billing_city}
-                              onChange={handleChange}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            />
+                          <div className="grid gap-5 sm:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-sm text-[#706F6C]">
+                                Code postal <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="billing_postal_code"
+                                required
+                                value={formData.billing_postal_code}
+                                onChange={handleChange}
+                                className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-2 block text-sm text-[#706F6C]">
+                                Ville <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="billing_city"
+                                required
+                                value={formData.billing_city}
+                                onChange={handleChange}
+                                className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {/* Notes */}
-                  <div className="bg-white p-6 rounded-lg border border-gray-200">
-                    <h2 className="text-xl font-bold text-text-primary mb-4">
-                      Notes (optionnel)
-                    </h2>
-                    <textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleChange}
-                      rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      placeholder="Instructions spéciales pour la livraison..."
-                    />
+                  <div className="border border-[#E8E6E3] bg-white">
+                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
+                      <Package className="h-5 w-5 text-[#8B7355]" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                        Notes de livraison
+                      </h2>
+                      <span className="text-xs text-[#706F6C]">(optionnel)</span>
+                    </div>
+
+                    <div className="p-6">
+                      <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleChange}
+                        rows={4}
+                        className="w-full resize-none border border-[#E8E6E3] bg-white p-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                        placeholder="Instructions spéciales pour la livraison..."
+                      />
+                    </div>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex h-14 w-full items-center justify-center bg-[#1A1917] text-sm font-medium tracking-wide text-white transition-colors hover:bg-[#2D2B28] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isSubmitting
                       ? 'Création de la commande...'
@@ -509,110 +539,137 @@ export default function CheckoutStripe() {
                   </button>
                 </form>
               ) : (
-                <div className="space-y-6">
-                  {/* Payment Method Selection */}
-                  <div className="bg-white p-6 rounded-lg border border-gray-200">
-                    <h2 className="text-xl font-bold text-text-primary mb-4">
-                      Options de paiement
-                    </h2>
+                <div className="space-y-8">
+                  {/* Payment Options */}
+                  <div className="border border-[#E8E6E3] bg-white">
+                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
+                      <CreditCard className="h-5 w-5 text-[#8B7355]" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                        Options de paiement
+                      </h2>
+                    </div>
 
-                    <div className="space-y-3">
-                      <label className="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-amber-500 transition-colors">
-                        <input
-                          type="radio"
-                          name="installments"
-                          value="1"
-                          checked={installments === 1}
-                          onChange={() => setInstallments(1)}
-                          className="mt-1 w-5 h-5 accent-amber-600"
-                        />
+                    <div className="space-y-3 p-6">
+                      <label className={`group flex cursor-pointer items-start gap-4 border p-5 transition-colors ${
+                        installments === 1 ? 'border-[#1A1917]' : 'border-[#E8E6E3] hover:border-[#1A1917]/30'
+                      }`}>
+                        <div className="relative mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                          <input
+                            type="radio"
+                            name="installments"
+                            value="1"
+                            checked={installments === 1}
+                            onChange={() => setInstallments(1)}
+                            className="peer sr-only"
+                          />
+                          <div className="h-5 w-5 rounded-full border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917]" />
+                          <div className="absolute h-2.5 w-2.5 rounded-full bg-[#1A1917] opacity-0 transition-opacity peer-checked:opacity-100" />
+                        </div>
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-900">Paiement en 1 fois</div>
-                          <div className="text-sm text-gray-600">
-                            Payez {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cart.total)} maintenant
+                          <div className="font-medium text-[#1A1917]">Paiement en 1 fois</div>
+                          <div className="mt-1 text-sm text-[#706F6C]">
+                            Payez {cart.total.toLocaleString('fr-FR')} € maintenant
                           </div>
                         </div>
                       </label>
 
-                      <label className="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-amber-500 transition-colors">
-                        <input
-                          type="radio"
-                          name="installments"
-                          value="3"
-                          checked={installments === 3}
-                          onChange={() => setInstallments(3)}
-                          className="mt-1 w-5 h-5 accent-amber-600"
-                        />
+                      <label className={`group flex cursor-pointer items-start gap-4 border p-5 transition-colors ${
+                        installments === 3 ? 'border-[#1A1917]' : 'border-[#E8E6E3] hover:border-[#1A1917]/30'
+                      }`}>
+                        <div className="relative mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                          <input
+                            type="radio"
+                            name="installments"
+                            value="3"
+                            checked={installments === 3}
+                            onChange={() => setInstallments(3)}
+                            className="peer sr-only"
+                          />
+                          <div className="h-5 w-5 rounded-full border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917]" />
+                          <div className="absolute h-2.5 w-2.5 rounded-full bg-[#1A1917] opacity-0 transition-opacity peer-checked:opacity-100" />
+                        </div>
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-900">Paiement en 3 fois</div>
-                          <div className="text-sm text-gray-600">
-                            3 × {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cart.total / 3)} par mois
+                          <div className="font-medium text-[#1A1917]">Paiement en 3 fois</div>
+                          <div className="mt-1 text-sm text-[#706F6C]">
+                            3 × {(cart.total / 3).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € par mois
                           </div>
                         </div>
+                        <span className="text-xs font-medium uppercase tracking-wider text-[#8B7355]">Sans frais</span>
                       </label>
                     </div>
                   </div>
 
                   {/* Stripe Checkout */}
                   {orderId && (
-                    <StripeCheckoutWrapper
-                      orderId={orderId}
-                      amount={cart.total}
-                      installments={installments}
-                      onSuccess={() => console.log('Payment success!')}
-                      onError={(error) => setError(error)}
-                    />
+                    <div className="border border-[#E8E6E3] bg-white p-6">
+                      <StripeCheckoutWrapper
+                        orderId={orderId}
+                        amount={cart.total}
+                        installments={installments}
+                        onSuccess={() => console.log('Payment success!')}
+                        onError={(error) => setError(error)}
+                      />
+                    </div>
                   )}
 
                   <button
                     onClick={() => setStep('shipping')}
-                    className="text-gray-600 hover:text-gray-900 underline"
+                    className="inline-flex items-center gap-2 text-sm text-[#706F6C] transition-colors hover:text-[#1A1917]"
                   >
-                    ← Retour aux informations de livraison
+                    <ChevronLeft className="h-4 w-4" />
+                    Retour aux informations de livraison
                   </button>
                 </div>
               )}
             </div>
 
             {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <div className="bg-white p-6 rounded-lg border border-gray-200 sticky top-8">
-                <h2 className="text-xl font-bold text-text-primary mb-4">
-                  Récapitulatif
-                </h2>
+            <div className="mt-10 lg:col-span-5 lg:mt-0 xl:col-span-4">
+              <div className="sticky top-6 border border-[#E8E6E3] bg-white">
+                {/* Header */}
+                <div className="border-b border-[#E8E6E3] p-6">
+                  <h2 className="font-serif text-xl text-[#1A1917]">
+                    Récapitulatif
+                  </h2>
+                </div>
 
-                <div className="space-y-4">
+                {/* Items */}
+                <div className="p-6">
                   {/* Configurations */}
                   {cart.items && cart.items.length > 0 && (
-                    <>
-                      <div className="text-sm font-semibold text-gray-700 uppercase">Meubles</div>
+                    <div className="space-y-4">
+                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                        Meubles sur mesure
+                      </p>
                       {cart.items.map((item, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <div>
-                            <div className="font-medium text-gray-900">
+                        <div key={index} className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-[#1A1917]">
                               {item.configuration.name || `Configuration #${item.configuration.id}`}
-                            </div>
-                            <div className="text-gray-500">Quantité: {item.quantity}</div>
+                            </p>
+                            <p className="mt-1 text-xs text-[#706F6C]">
+                              Quantité : {item.quantity}
+                            </p>
                           </div>
-                          <div className="font-semibold text-gray-900">
-                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.configuration.price * item.quantity)}
-                          </div>
+                          <p className="flex-shrink-0 font-mono text-sm text-[#1A1917]">
+                            {(item.configuration.price * item.quantity).toLocaleString('fr-FR')} €
+                          </p>
                         </div>
                       ))}
-                    </>
+                    </div>
                   )}
 
-                  {/* Échantillons */}
+                  {/* Samples */}
                   {samplesCart && samplesCart.items && samplesCart.items.length > 0 && (
-                    <>
-                      <div className="text-sm font-semibold text-gray-700 uppercase mt-4">
-                        Échantillons gratuits ({samplesCart.count})
-                      </div>
+                    <div className={`space-y-4 ${cart.items && cart.items.length > 0 ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
+                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                        Échantillons ({samplesCart.count})
+                      </p>
                       {samplesCart.items.map((sample) => (
-                        <div key={sample.id} className="flex justify-between text-sm items-center">
-                          <div className="flex items-center gap-2">
+                        <div key={sample.id} className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
                             <div
-                              className="h-6 w-6 rounded border border-gray-300 flex-shrink-0"
+                              className="h-8 w-8 flex-shrink-0 border border-[#E8E6E3]"
                               style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
                             >
                               {sample.image_url && (
@@ -620,31 +677,67 @@ export default function CheckoutStripe() {
                                 <img
                                   src={sample.image_url}
                                   alt={sample.color_name}
-                                  className="h-full w-full object-cover rounded"
+                                  className="h-full w-full object-cover"
                                 />
                               )}
                             </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{sample.color_name}</div>
-                              <div className="text-gray-500 text-xs">{sample.material}</div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm text-[#1A1917]">{sample.color_name}</p>
+                              <p className="text-xs text-[#706F6C]">{sample.material}</p>
                             </div>
                           </div>
-                          <div className="font-semibold text-green-600">Gratuit</div>
+                          <span className="flex-shrink-0 text-xs font-medium text-[#8B7355]">Offert</span>
                         </div>
                       ))}
-                    </>
+                    </div>
                   )}
 
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-gray-900">Total</span>
-                      <span className="text-2xl font-bold text-amber-600">
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cart?.total || 0)}
-                      </span>
+                  {/* Total */}
+                  <div className="mt-6 border-t border-[#E8E6E3] pt-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[#706F6C]">Sous-total</span>
+                      <span className="font-mono text-[#1A1917]">{cart.total.toLocaleString('fr-FR')} €</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm text-[#706F6C]">Livraison</span>
+                      <span className="text-sm font-medium text-[#8B7355]">Offerte</span>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between border-t border-[#E8E6E3] pt-4">
+                      <span className="text-[#1A1917]">Total</span>
+                      <span className="font-mono text-2xl text-[#1A1917]">{cart.total.toLocaleString('fr-FR')} €</span>
+                    </div>
+                    <p className="mt-1 text-right text-xs text-[#706F6C]">TVA incluse</p>
+                  </div>
+                </div>
+
+                {/* Trust Indicators */}
+                <div className="border-t border-[#E8E6E3] p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                      <div>
+                        <p className="text-sm font-medium text-[#1A1917]">Paiement sécurisé</p>
+                        <p className="text-xs text-[#706F6C]">Vos données sont protégées</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                      <div>
+                        <p className="text-sm font-medium text-[#1A1917]">Livraison gratuite</p>
+                        <p className="text-xs text-[#706F6C]">Partout en France</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Back to cart */}
+              <Link
+                href="/cart"
+                className="mt-4 block text-center text-sm text-[#706F6C] underline underline-offset-4 transition-colors hover:text-[#1A1917]"
+              >
+                Retour au panier
+              </Link>
             </div>
           </div>
         </div>

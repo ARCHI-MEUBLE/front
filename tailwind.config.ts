@@ -5,46 +5,49 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Brand colors
-        accent: "#B49272",
-        ink: "#2F2A26",
-        alabaster: "#F6F1EB",
+        // Fond
+        cream: '#FAF9F7',
+        white: '#FFFFFF',
 
-        // Semantic color mappings
-        primary: "#B49272",
-        "primary-hover": "#A07A5A",
-        "primary-active": "#8D6147",
-        secondary: "#2F2A26",
-        "secondary-hover": "#1F1A16",
-        "secondary-active": "#0F0A06",
+        // Texte
+        ink: '#1A1A1A',
+        stone: '#57534E',
+        muted: '#A8A29E',
 
-        // Background colors
-        "bg-light": "#F6F1EB",
-        "bg-white": "#FFFFFF",
+        // Accent (ambre fonce - chaleureux, bois)
+        accent: '#B45309',
+        'accent-hover': '#92400E',
 
-        // Border colors
-        "border-light": "#E0D7CC",
-        "border-neutral": "#D7C9B9",
-
-        // Text colors
-        "text-primary": "#2F2A26",
-        "text-secondary": "#6B6360",
-        "text-tertiary": "#9D9490",
+        // Fonctionnel
+        border: '#E7E5E4',
+        surface: '#F5F5F4',
 
         // Status colors
-        success: "#16A34A",
-        "success-light": "#DCFCE7",
-        error: "#DC2626",
-        "error-light": "#FEE2E2",
-        warning: "#F59E0B",
-        "warning-light": "#FEF3C7",
-        info: "#3B82F6",
-        "info-light": "#DBEAFE"
+        success: '#166534',
+        'success-light': '#DCFCE7',
+        error: '#DC2626',
+        'error-light': '#FEE2E2',
+        warning: '#D97706',
+        'warning-light': '#FEF3C7',
       },
       fontFamily: {
-        sans: ["'Source Sans 3'", "system-ui", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
-        serif: ["'Playfair Display'", "Georgia", "serif"]
-      }
+        serif: ["'Playfair Display'", "'Libre Baskerville'", "Georgia", "serif"],
+        sans: ["'DM Sans'", "'IBM Plex Sans'", "-apple-system", "sans-serif"],
+        mono: ["'JetBrains Mono'", "'SF Mono'", "monospace"],
+      },
+      fontSize: {
+        'hero': ['clamp(2.5rem, 5vw, 5rem)', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
+        'display': ['clamp(2rem, 4vw, 3.5rem)', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
+      },
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
+      },
+      borderRadius: {
+        'subtle': '2px',
+        'sm': '4px',
+        'md': '8px',
+      },
     }
   },
   plugins: []

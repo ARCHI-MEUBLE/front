@@ -39,14 +39,14 @@ export function UserNavigation() {
         {/* Logo */}
         <Link
           href="/"
-          className="heading-serif text-[28px] font-semibold tracking-tight text-ink"
+          className="font-serif text-[28px] font-semibold tracking-tight text-ink"
           aria-label="ArchiMeuble"
         >
           ArchiMeuble
         </Link>
 
         {/* Navigation principale */}
-        <nav className="hidden items-center gap-10 text-sm font-medium uppercase tracking-[0.2em] text-ink/70 md:flex">
+        <nav className="hidden items-center gap-10 text-sm font-medium uppercase tracking-[0.2em] text-stone md:flex">
           <Link
             href="/"
             className={`transition ${
@@ -86,7 +86,7 @@ export function UserNavigation() {
             <Link
               href="/cart"
               aria-label="Voir le panier"
-              className="relative rounded-full border border-transparent p-2 text-ink/70 transition hover:bg-alabaster"
+              className="relative rounded-full border border-transparent p-2 text-stone transition hover:bg-surface"
             >
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (

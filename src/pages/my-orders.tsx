@@ -4,8 +4,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
-import { Breadcrumb } from '@/components/Breadcrumb';
-import { Eye, Trash2, CreditCard, Download } from 'lucide-react';
+import { Eye, Trash2, CreditCard, Download, Package, MapPin, X, ChevronRight, Clock, CheckCircle, Truck, ShoppingBag } from 'lucide-react';
 
 interface OrderItem {
   id: number;
@@ -22,7 +21,6 @@ interface OrderItem {
     config_data?: any;
     created_at: string;
   };
-  // Champs ajoutés par formatForFrontend du backend
   price?: number;
   name?: string;
   production_status?: string;
@@ -44,7 +42,7 @@ interface Order {
   id: number;
   order_number: string;
   status: string;
-  total: number; // Le backend renvoie 'total', pas 'total_amount'
+  total: number;
   shipping_address: string;
   payment_method: string;
   payment_status: string;
@@ -54,121 +52,25 @@ interface Order {
   samples_count?: number;
 }
 
-const STATUS_LABELS: { [key: string]: { label: string; color: string; icon: string } } = {
-  pending: { label: 'En attente', color: 'bg-warning-light text-warning', icon: '⏳' },
-  confirmed: { label: 'Confirmée', color: 'bg-info-light text-info', icon: '✅' },
-  in_production: { label: 'En production', color: 'bg-warning-light text-warning', icon: '🔨' },
-  shipped: { label: 'Expédiée', color: 'bg-info-light text-info', icon: '🚚' },
-  delivered: { label: 'Livrée', color: 'bg-success-light text-success', icon: '📦' },
-  cancelled: { label: 'Annulée', color: 'bg-error-light text-error', icon: '❌' }
+const STATUS_CONFIG: { [key: string]: { label: string; icon: React.ReactNode; step: number } } = {
+  pending: { label: 'En attente', icon: <Clock className="h-4 w-4" />, step: 0 },
+  confirmed: { label: 'Confirmée', icon: <CheckCircle className="h-4 w-4" />, step: 1 },
+  in_production: { label: 'En production', icon: <Package className="h-4 w-4" />, step: 2 },
+  shipped: { label: 'Expédiée', icon: <Truck className="h-4 w-4" />, step: 3 },
+  delivered: { label: 'Livrée', icon: <CheckCircle className="h-4 w-4" />, step: 4 },
+  cancelled: { label: 'Annulée', icon: <X className="h-4 w-4" />, step: -1 }
 };
 
-const PAYMENT_STATUS_LABELS: { [key: string]: { label: string; color: string } } = {
-  pending: { label: 'En attente', color: 'text-warning' },
-  paid: { label: 'Payé', color: 'text-success' },
-  failed: { label: 'Échec', color: 'text-error' }
+const PAYMENT_CONFIG: { [key: string]: { label: string; color: string } } = {
+  pending: { label: 'En attente', color: 'text-[#8B7355]' },
+  paid: { label: 'Payé', color: 'text-green-600' },
+  failed: { label: 'Échec', color: 'text-red-600' }
 };
-
-// Composant pour afficher les items d'une commande avec design panier
-function OrderItemsDisplay({ orderId }: { orderId: number }) {
-  const [items, setItems] = useState<OrderItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadItems = async () => {
-      try {
-        const response = await fetch(`/backend/api/orders/list.php?id=${orderId}`, {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setItems(data.order?.items || []);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des items:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadItems();
-  }, [orderId]);
-
-  if (loading) {
-    return <div className="text-sm text-text-secondary py-4">Chargement des articles...</div>;
-  }
-
-  if (!items || items.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-3 mb-4">
-      {items.map((item) => {
-        const config = item.configuration;
-        const itemPrice = item.price || item.unit_price || config?.price || 0;
-        const itemName = item.name || item.prompt || config?.name || config?.prompt || 'Configuration';
-        // glb_url peut être directement dans l'item ou dans la configuration
-        const glbUrl = item.glb_url || config?.glb_url || null;
-        // config_data peut être dans l'item ou dans la configuration
-        const rawConfigData = item.config_data || config?.config_data;
-        const configData = typeof rawConfigData === 'string'
-          ? JSON.parse(rawConfigData)
-          : rawConfigData;
-
-        return (
-          <div key={item.id} className="flex gap-4 py-2">
-            {/* Preview 3D - même taille que le panier */}
-            <div className="flex-shrink-0 w-32 h-32 bg-gradient-to-br from-bg-light to-border-light rounded-lg flex items-center justify-center">
-              {glbUrl ? (
-                <model-viewer
-                  src={glbUrl}
-                  alt={itemName}
-                  auto-rotate
-                  camera-controls
-                  style={{ width: '100%', height: '100%', borderRadius: '0.5rem' }}
-                />
-              ) : (
-                <div className="text-4xl">🪑</div>
-              )}
-            </div>
-
-            {/* Info */}
-            <div className="flex-grow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="font-semibold text-text-primary">
-                    {itemName}
-                  </h4>
-                  {configData?.dimensions && (
-                    <p className="text-xs text-text-secondary mt-1">
-                      {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
-                    </p>
-                  )}
-                  <p className="text-sm text-text-secondary mt-1">
-                    Quantité: {item.quantity}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-text-primary">{itemPrice}€</p>
-                  {item.quantity > 1 && (
-                    <p className="text-xs text-text-secondary mt-1">
-                      Total: {itemPrice * item.quantity}€
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function MyOrders() {
   const router = useRouter();
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
-  
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -177,7 +79,7 @@ export default function MyOrders() {
 
   useEffect(() => {
     if (authLoading) return;
-    
+
     if (!isAuthenticated) {
       router.push('/auth/login?redirect=/my-orders');
       return;
@@ -218,7 +120,7 @@ export default function MyOrders() {
       const data = await response.json();
       setSelectedOrder(data.order);
     } catch (err: any) {
-      alert(`❌ ${err.message}`);
+      alert(`Erreur: ${err.message}`);
     }
   };
 
@@ -227,25 +129,21 @@ export default function MyOrders() {
     return date.toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   };
 
-  // Séparer les commandes en cours et terminées
-  // Terminées = payées (paid) OU livrées (delivered)
   const completedOrders = orders.filter(order =>
     order.payment_status === 'paid' || order.status === 'delivered'
   );
 
-  // En cours = toutes les autres (pending, confirmed, etc.) qui ne sont ni payées ni livrées
   const ongoingOrders = orders.filter(order =>
     order.payment_status !== 'paid' && order.status !== 'delivered'
   );
 
   const displayedOrders = activeTab === 'ongoing' ? ongoingOrders : completedOrders;
 
+  // Loading state
   if (authLoading || isLoading) {
     return (
       <>
@@ -253,10 +151,12 @@ export default function MyOrders() {
           <title>Mes Commandes - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-bg-light flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-text-secondary">Chargement...</p>
+        <div className="min-h-screen bg-[#FAFAF9]">
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin border-2 border-[#E8E6E3] border-t-[#1A1917]" />
+              <p className="mt-6 text-sm text-[#706F6C]">Chargement...</p>
+            </div>
           </div>
         </div>
       </>
@@ -270,363 +170,441 @@ export default function MyOrders() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-bg-light">
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Breadcrumb
-            items={[
-              { label: 'Accueil', href: '/' },
-              { label: 'Mes Commandes' }
-            ]}
-          />
-
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-text-primary mb-4">
-              📦 Mes achats
+      <div className="min-h-screen bg-[#FAFAF9]">
+        {/* Header */}
+        <div className="border-b border-[#E8E6E3] bg-white">
+          <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+            <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+              Mes commandes
             </h1>
+            <p className="mt-3 text-[#706F6C]">
+              Suivez vos commandes et téléchargez vos factures
+            </p>
 
             {/* Tabs */}
-            <div className="flex gap-4 border-b border-border-light">
+            <div className="mt-8 flex gap-8 border-b border-[#E8E6E3]">
               <button
                 onClick={() => setActiveTab('ongoing')}
-                className={`pb-3 px-1 font-medium transition-colors relative ${
+                className={`relative pb-4 text-sm font-medium transition-colors ${
                   activeTab === 'ongoing'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'text-[#1A1917]'
+                    : 'text-[#706F6C] hover:text-[#1A1917]'
                 }`}
               >
-                Mes achats en cours
+                En cours
                 {ongoingOrders.length > 0 && (
-                  <span className="ml-2 text-xs bg-primary text-white rounded-full px-2 py-0.5">
+                  <span className="ml-2 bg-[#1A1917] px-2 py-0.5 text-xs text-white">
                     {ongoingOrders.length}
                   </span>
+                )}
+                {activeTab === 'ongoing' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1A1917]" />
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`pb-3 px-1 font-medium transition-colors relative ${
+                className={`relative pb-4 text-sm font-medium transition-colors ${
                   activeTab === 'completed'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'text-[#1A1917]'
+                    : 'text-[#706F6C] hover:text-[#1A1917]'
                 }`}
               >
-                Mes achats terminés
+                Terminées
                 {completedOrders.length > 0 && (
-                  <span className="ml-2 text-xs bg-primary text-white rounded-full px-2 py-0.5">
+                  <span className="ml-2 bg-[#E8E6E3] px-2 py-0.5 text-xs text-[#1A1917]">
                     {completedOrders.length}
                   </span>
+                )}
+                {activeTab === 'completed' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1A1917]" />
                 )}
               </button>
             </div>
           </div>
+        </div>
+
         {error && (
-          <div className="alert alert-error mb-6">
-            {error}
+          <div className="mx-auto max-w-7xl px-5 pt-6 sm:px-6 lg:px-8">
+            <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              {error}
+            </div>
           </div>
         )}
 
-        {displayedOrders.length === 0 ? (
-          <div className="card text-center py-12">
-            <div className="text-6xl mb-4">📦</div>
-            <h3 className="text-xl font-semibold text-text-primary mb-2">
-              {activeTab === 'ongoing' ? 'Aucun achat en cours' : 'Vous n\'avez pas d\'achats terminés.'}
-            </h3>
-            <p className="text-text-secondary mb-6">
-              {activeTab === 'ongoing'
-                ? 'Passez votre première commande pour la retrouver ici'
-                : 'Vos commandes payées et livrées apparaîtront ici'}
-            </p>
-            {activeTab === 'ongoing' && (
-              <Link
-                href="/"
-                className="btn-primary"
-              >
-                Créer un meuble
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {displayedOrders.map((order) => {
-              const statusInfo = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
-              const paymentInfo = PAYMENT_STATUS_LABELS[order.payment_status] || PAYMENT_STATUS_LABELS.pending;
+        <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+          {displayedOrders.length === 0 ? (
+            /* Empty State */
+            <div className="mx-auto max-w-md py-12 text-center sm:py-16 lg:py-24">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center border border-[#E8E6E3] bg-white">
+                <Package className="h-8 w-8 text-[#706F6C]" />
+              </div>
+              <h2 className="mt-8 font-serif text-2xl text-[#1A1917]">
+                {activeTab === 'ongoing' ? 'Aucune commande en cours' : 'Aucune commande terminée'}
+              </h2>
+              <p className="mt-3 text-[#706F6C]">
+                {activeTab === 'ongoing'
+                  ? 'Créez votre premier meuble sur mesure'
+                  : 'Vos commandes payées et livrées apparaîtront ici'}
+              </p>
+              {activeTab === 'ongoing' && (
+                <Link
+                  href="/models"
+                  className="mt-8 inline-flex h-12 items-center justify-center bg-[#1A1917] px-8 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                >
+                  Découvrir nos modèles
+                </Link>
+              )}
+            </div>
+          ) : (
+            /* Orders List */
+            <div className="space-y-4">
+              {displayedOrders.map((order) => {
+                const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                const paymentInfo = PAYMENT_CONFIG[order.payment_status] || PAYMENT_CONFIG.pending;
 
-              return (
-                <div key={order.id} className="card p-4">
-                  {/* Header compact avec statut */}
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-light">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-sm font-bold text-text-primary">
-                        #{order.order_number}
-                      </h3>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusInfo.color}`}>
-                        <span>{statusInfo.icon}</span>
-                        <span>{statusInfo.label}</span>
-                      </span>
-                      <p className="text-xs text-text-tertiary">
-                        {formatDate(order.created_at).split(' à ')[0]}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-text-primary">{order.total}€</p>
-                        <p className={`text-xs font-medium ${paymentInfo.color}`}>
-                          {paymentInfo.label}
-                        </p>
+                return (
+                  <div key={order.id} className="border border-[#E8E6E3] bg-white">
+                    {/* Order Header */}
+                    <div className="flex flex-col gap-4 border-b border-[#E8E6E3] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                        <span className="font-mono text-sm text-[#1A1917]">
+                          #{order.order_number}
+                        </span>
+                        <span className="h-4 w-px bg-[#E8E6E3]" />
+                        <span className="text-sm text-[#706F6C]">
+                          {formatDate(order.created_at)}
+                        </span>
+                        <span className="h-4 w-px bg-[#E8E6E3]" />
+                        <span className={`flex items-center gap-1.5 text-sm font-medium ${
+                          order.status === 'cancelled' ? 'text-red-600' : 'text-[#1A1917]'
+                        }`}>
+                          {statusInfo.icon}
+                          {statusInfo.label}
+                        </span>
                       </div>
-                      {/* Bouton payer à droite pour commandes non payées */}
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-mono text-lg text-[#1A1917]">
+                            {order.total.toLocaleString('fr-FR')} €
+                          </p>
+                          <p className={`text-xs font-medium ${paymentInfo.color}`}>
+                            {paymentInfo.label}
+                          </p>
+                        </div>
+                        {order.payment_status !== 'paid' && (
+                          <button
+                            onClick={() => router.push(`/checkout?order_id=${order.id}`)}
+                            className="flex h-10 items-center justify-center bg-[#1A1917] px-5 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                          >
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Payer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Order Summary */}
+                    <div className="p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3 text-sm text-[#706F6C]">
+                          <MapPin className="h-4 w-4 flex-shrink-0" />
+                          <span className="line-clamp-1">{order.shipping_address}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order Actions */}
+                    <div className="flex flex-wrap items-center gap-4 border-t border-[#E8E6E3] px-5 py-4 sm:px-6">
+                      <button
+                        onClick={() => loadOrderDetails(order.id)}
+                        className="inline-flex items-center gap-2 text-sm text-[#706F6C] transition-colors hover:text-[#1A1917]"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Voir les détails
+                      </button>
+
                       {order.payment_status !== 'paid' && (
                         <button
-                          onClick={() => router.push(`/checkout?order_id=${order.id}`)}
-                          className="btn-primary text-sm flex items-center gap-2"
+                          onClick={async () => {
+                            if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
+                            try {
+                              const response = await fetch(`/backend/api/orders/delete.php`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ order_id: order.id })
+                              });
+                              if (!response.ok) throw new Error('Erreur de suppression');
+                              loadOrders();
+                            } catch (error) {
+                              alert('Erreur lors de la suppression');
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 text-sm text-[#706F6C] transition-colors hover:text-red-600"
                         >
-                          <CreditCard className="h-4 w-4" />
-                          Payer
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer
+                        </button>
+                      )}
+
+                      {order.payment_status === 'paid' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
+                                credentials: 'include'
+                              });
+                              if (!response.ok) throw new Error('Erreur de téléchargement');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `facture-${order.order_number}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                            } catch (error) {
+                              alert('Erreur lors du téléchargement de la facture');
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 text-sm text-[#8B7355] transition-colors hover:text-[#1A1917]"
+                        >
+                          <Download className="h-4 w-4" />
+                          Télécharger la facture
                         </button>
                       )}
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-                  {/* Items (uniquement si détails demandés, sinon caché) */}
-                  <OrderItemsDisplay orderId={order.id} />
-
-                  {/* Actions compactes en bas */}
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                      onClick={() => loadOrderDetails(order.id)}
-                      className="text-primary hover:text-primary-dark text-xs font-medium flex items-center gap-1"
-                    >
-                      <Eye className="h-3 w-3" />
-                      Détails
-                    </button>
-
-                    {/* Bouton supprimer pour commandes non payées */}
-                    {order.payment_status !== 'paid' && (
-                      <button
-                        onClick={async () => {
-                          if (!confirm('Voulez-vous vraiment supprimer cette commande ?')) return;
-                          try {
-                            const response = await fetch(`/backend/api/orders/delete.php`, {
-                              method: 'POST',
-                              credentials: 'include',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ order_id: order.id })
-                            });
-                            if (!response.ok) throw new Error('Erreur de suppression');
-                            alert('✅ Commande supprimée avec succès');
-                            loadOrders();
-                          } catch (error) {
-                            alert('❌ Erreur lors de la suppression');
-                          }
-                        }}
-                        className="text-error hover:text-error text-xs font-medium flex items-center gap-1"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Supprimer
-                      </button>
-                    )}
-
-                    {/* Bouton facture pour commandes payées */}
-                    {order.payment_status === 'paid' && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`/backend/api/orders/invoice.php?id=${order.id}&download=true`, {
-                              credentials: 'include'
-                            });
-                            if (!response.ok) throw new Error('Erreur de téléchargement');
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `facture-${order.invoice_number || order.id}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
-                          } catch (error) {
-                            alert('Erreur lors du téléchargement de la facture');
-                          }
-                        }}
-                        className="text-success hover:text-success text-xs font-medium flex items-center gap-1"
-                      >
-                        <Download className="h-3 w-3" />
-                        Facture
-                      </button>
-                    )}
-
-                    <div className="flex-grow"></div>
-
-                    <p className="text-xs text-text-tertiary">
-                      📍 {order.shipping_address.split(',')[0]}...
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Modal détails de commande */}
-      {selectedOrder && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedOrder(null)}
-        >
+        {/* Order Details Modal */}
+        {selectedOrder && (
           <div
-            className="bg-bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setSelectedOrder(null)}
           >
-            <div className="p-6 border-b border-border-light sticky top-0 bg-bg-white">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-text-primary">
-                  Commande #{selectedOrder.order_number}
-                </h2>
+            <div
+              className="max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-[#E8E6E3] bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="sticky top-0 flex items-center justify-between border-b border-[#E8E6E3] bg-white p-6">
+                <div>
+                  <h2 className="font-serif text-2xl text-[#1A1917]">
+                    Commande #{selectedOrder.order_number}
+                  </h2>
+                  <p className="mt-1 text-sm text-[#706F6C]">
+                    {formatDate(selectedOrder.created_at)}
+                  </p>
+                </div>
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="text-text-tertiary hover:text-text-secondary text-2xl"
+                  className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:text-[#1A1917]"
                 >
-                  ×
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </div>
 
-            <div className="p-6 space-y-6">
-              {/* Status */}
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary mb-3">
-                  Statut de la commande
-                </h3>
-                <div className="flex items-center gap-2">
-                  {Object.keys(STATUS_LABELS).slice(0, 5).map((status, index) => {
-                    const statusInfo = STATUS_LABELS[status];
-                    const isActive = Object.keys(STATUS_LABELS).indexOf(selectedOrder.status) >= index;
-
-                    return (
-                      <div key={status} className="flex items-center gap-2">
-                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${isActive ? statusInfo.color : 'bg-border-light text-text-tertiary'}`}>
-                          {statusInfo.icon}
-                        </div>
-                        {index < 4 && (
-                          <div className={`h-1 w-8 ${isActive ? 'bg-primary' : 'bg-border-light'}`}></div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Articles */}
-              {selectedOrder.items && selectedOrder.items.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text-primary mb-3">
-                    Meubles configurés
+              <div className="p-6">
+                {/* Status Progress */}
+                <div className="mb-8">
+                  <h3 className="mb-4 text-sm font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                    Statut de la commande
                   </h3>
-                  <div className="space-y-3">
-                    {selectedOrder.items.map((item) => {
-                      const itemName = item.name || item.prompt || item.configuration?.name || item.configuration?.prompt || 'Configuration';
-                      const itemPrice = item.price || item.unit_price || item.configuration?.price || 0;
-                      const rawConfigData = item.config_data || item.configuration?.config_data;
-                      const configData = typeof rawConfigData === 'string' ? JSON.parse(rawConfigData) : rawConfigData;
+                  <div className="flex items-center justify-between">
+                    {['pending', 'confirmed', 'in_production', 'shipped', 'delivered'].map((status, index) => {
+                      const config = STATUS_CONFIG[status];
+                      const currentStep = STATUS_CONFIG[selectedOrder.status]?.step || 0;
+                      const isActive = currentStep >= index;
+                      const isCurrent = selectedOrder.status === status;
 
                       return (
-                        <div
-                          key={item.id}
-                          className="flex items-start gap-4 p-4 bg-bg-light rounded-lg"
-                        >
-                          <div className="flex-grow">
-                            <h4 className="font-semibold text-text-primary">
-                              {itemName}
-                            </h4>
-                            <p className="text-sm text-text-secondary mt-1">
-                              Quantité: {item.quantity} × {itemPrice}€
-                            </p>
-                            {configData?.dimensions && (
-                              <p className="text-xs text-text-tertiary mt-1">
-                                {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
-                              </p>
-                            )}
-                            {/* Afficher le statut de production seulement si la commande est payée */}
-                            {selectedOrder.payment_status === 'paid' && item.production_status && item.production_status !== 'pending' && (
-                              <p className="text-sm text-text-secondary mt-2">
-                                <span className="font-medium">Statut production:</span> {item.production_status}
-                              </p>
-                            )}
+                        <div key={status} className="flex flex-1 items-center">
+                          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center border-2 transition-colors ${
+                            isActive
+                              ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                              : 'border-[#E8E6E3] text-[#706F6C]'
+                          } ${isCurrent ? 'ring-2 ring-[#1A1917] ring-offset-2' : ''}`}>
+                            {config.icon}
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-text-primary">{itemPrice * item.quantity}€</p>
-                          </div>
+                          {index < 4 && (
+                            <div className={`h-0.5 flex-1 ${isActive ? 'bg-[#1A1917]' : 'bg-[#E8E6E3]'}`} />
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
-
-              {/* Échantillons */}
-              {selectedOrder.samples && selectedOrder.samples.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text-primary mb-3">
-                    Échantillons gratuits ({selectedOrder.samples.length})
-                  </h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {selectedOrder.samples.map((sample) => (
-                      <div
-                        key={sample.id}
-                        className="flex items-center gap-3 p-4 bg-bg-light rounded-lg"
-                      >
-                        <div
-                          className="h-12 w-12 rounded-lg border border-border-light flex-shrink-0"
-                          style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
-                        >
-                          {sample.image_url && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={sample.image_url}
-                              alt={sample.sample_name}
-                              className="h-full w-full object-cover rounded-lg"
-                            />
-                          )}
-                        </div>
-                        <div className="flex-grow">
-                          <h4 className="font-semibold text-text-primary text-sm">
-                            {sample.sample_name}
-                          </h4>
-                          <p className="text-xs text-text-secondary mt-1">
-                            {sample.material}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-green-600 text-sm">Gratuit</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="mt-2 flex justify-between text-xs text-[#706F6C]">
+                    <span>En attente</span>
+                    <span>Confirmée</span>
+                    <span>Production</span>
+                    <span>Expédiée</span>
+                    <span>Livrée</span>
                   </div>
                 </div>
-              )}
 
-              {/* Adresse de livraison */}
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary mb-3">
-                  Adresse de livraison
-                </h3>
-                <div className="p-4 bg-bg-light rounded-lg">
-                  <p className="text-text-primary">{selectedOrder.shipping_address}</p>
+                {/* Items */}
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
+                  <div className="mb-8">
+                    <h3 className="mb-4 text-sm font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                      Meubles sur mesure
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedOrder.items.map((item) => {
+                        const itemName = item.name || item.prompt || item.configuration?.name || 'Configuration';
+                        const itemPrice = item.price || item.configuration?.price || 0;
+                        const rawConfigData = item.config_data || item.configuration?.config_data;
+                        const configData = typeof rawConfigData === 'string' ? JSON.parse(rawConfigData) : rawConfigData;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-start justify-between gap-4 border border-[#E8E6E3] p-4"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center border border-[#E8E6E3] bg-[#F5F5F4]">
+                                <ShoppingBag className="h-6 w-6 text-[#C4C2BF]" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-[#1A1917]">{itemName}</h4>
+                                {configData?.dimensions && (
+                                  <p className="mt-1 text-xs text-[#706F6C]">
+                                    {configData.dimensions.width} × {configData.dimensions.depth} × {configData.dimensions.height} mm
+                                  </p>
+                                )}
+                                <p className="mt-1 text-sm text-[#706F6C]">
+                                  Quantité : {item.quantity}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="font-mono text-[#1A1917]">
+                              {(itemPrice * item.quantity).toLocaleString('fr-FR')} €
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Samples */}
+                {selectedOrder.samples && selectedOrder.samples.length > 0 && (
+                  <div className="mb-8">
+                    <h3 className="mb-4 text-sm font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                      Échantillons ({selectedOrder.samples.length})
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {selectedOrder.samples.map((sample) => (
+                        <div
+                          key={sample.id}
+                          className="flex items-center gap-3 border border-[#E8E6E3] p-3"
+                        >
+                          <div
+                            className="h-10 w-10 flex-shrink-0 border border-[#E8E6E3]"
+                            style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
+                          >
+                            {sample.image_url && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={sample.image_url}
+                                alt={sample.sample_name}
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-[#1A1917]">
+                              {sample.sample_name}
+                            </p>
+                            <p className="text-xs text-[#706F6C]">{sample.material}</p>
+                          </div>
+                          <span className="text-xs font-medium text-[#8B7355]">Offert</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Shipping Address */}
+                <div className="mb-8">
+                  <h3 className="mb-4 text-sm font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                    Adresse de livraison
+                  </h3>
+                  <div className="flex items-start gap-3 border border-[#E8E6E3] p-4">
+                    <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                    <p className="text-[#1A1917]">{selectedOrder.shipping_address}</p>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="border-t border-[#E8E6E3] pt-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#1A1917]">Total</span>
+                    <span className="font-mono text-2xl text-[#1A1917]">
+                      {selectedOrder.total.toLocaleString('fr-FR')} €
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Total */}
-              <div className="border-t border-border-light pt-4">
-                <div className="flex justify-between items-center text-xl font-bold text-text-primary">
-                  <span>Total</span>
-                  <span>{selectedOrder.total}€</span>
+              {/* Modal Footer */}
+              <div className="border-t border-[#E8E6E3] p-6">
+                <div className="flex flex-wrap gap-4">
+                  {selectedOrder.payment_status !== 'paid' && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(null);
+                        router.push(`/checkout?order_id=${selectedOrder.id}`);
+                      }}
+                      className="flex h-12 items-center justify-center bg-[#1A1917] px-6 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Payer maintenant
+                    </button>
+                  )}
+                  {selectedOrder.payment_status === 'paid' && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`/backend/api/orders/invoice.php?id=${selectedOrder.id}&download=true`, {
+                            credentials: 'include'
+                          });
+                          if (!response.ok) throw new Error('Erreur');
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `facture-${selectedOrder.order_number}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        } catch (error) {
+                          alert('Erreur lors du téléchargement');
+                        }
+                      }}
+                      className="flex h-12 items-center justify-center border border-[#1A1917] px-6 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#1A1917] hover:text-white"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Télécharger la facture
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedOrder(null)}
+                    className="flex h-12 items-center justify-center px-6 text-sm text-[#706F6C] transition-colors hover:text-[#1A1917]"
+                  >
+                    Fermer
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </>
   );

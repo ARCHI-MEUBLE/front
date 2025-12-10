@@ -380,7 +380,7 @@ export default function AdminOrders() {
           onClick={() => setSelectedOrder(null)}
         >
           <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-sm shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b sticky top-0 bg-white z-10">

@@ -75,7 +75,7 @@ export default function AdminSamplesPage() {
       </header>
       <div className="section-container">
         <div className="mb-8">
-          <h1 className="heading-serif text-3xl text-ink">Gestion des échantillons</h1>
+          <h1 className="font-serif text-3xl text-ink">Gestion des échantillons</h1>
           <p className="mt-2 text-text-secondary text-sm">Ajoutez/retirez des types et leurs couleurs. Ces éléments apparaissent sur la page publique Échantillons.</p>
         </div>
 
@@ -272,7 +272,7 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
             <button
               type="button"
               onClick={() => setMode('image')}
-              className={`flex-1 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-center transition-colors ${mode==='image' ? 'bg-ink text-white' : 'text-ink/70 hover:bg-ink/5'}`}
+              className={`flex-1 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-center transition-colors ${mode==='image' ? 'bg-ink text-white' : 'text-stone hover:bg-ink/5'}`}
               aria-pressed={mode==='image'}
               title="Ajouter via image"
             >
@@ -281,7 +281,7 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
             <button
               type="button"
               onClick={() => setMode('hex')}
-              className={`flex-1 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-center transition-colors ${mode==='hex' ? 'bg-ink text-white' : 'text-ink/70 hover:bg-ink/5'}`}
+              className={`flex-1 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-center transition-colors ${mode==='hex' ? 'bg-ink text-white' : 'text-stone hover:bg-ink/5'}`}
               aria-pressed={mode==='hex'}
               title="Ajouter via code hexadécimal"
             >

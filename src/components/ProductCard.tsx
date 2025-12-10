@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
-import Link from 'next/link';
+import Link from "next/link";
+import Image from "next/image";
 
 export type ProductModel = {
   id: number;
@@ -7,44 +7,41 @@ export type ProductModel = {
   description: string;
   image_path: string | null;
   created_at: string;
+  base_price?: number;
+  category?: string;
 };
 
 type ProductCardProps = {
-   model: ProductModel;
+  model: ProductModel;
 };
-function formatCreatedAt(date: string) {
-  try {
-    return new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric"
-    }).format(new Date(date));
-  } catch (error) {
-    return date;
-  }
-}
 
 export function ProductCard({ model }: ProductCardProps) {
-  const formattedDate = formatCreatedAt(model.created_at);
+  const price = model.base_price || 890;
 
   return (
-    <article className="flex h-full flex-col rounded-[32px] border border-[#e7ded3] bg-white/80 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-      <div className="aspect-square w-full overflow-hidden rounded-[28px] bg-[#ece3d8]">
-        <img
+    <Link href={"/configurator/" + model.id} className="group block">
+      {/* Image */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F5F5]">
+        <Image
           src={model.image_path || "/placeholder.jpg"}
           alt={model.name}
-          className="h-full w-full object-cover"
-          loading="lazy"
+          fill
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
       </div>
-      <div className="mt-5 flex flex-1 flex-col">
-        <h3 className="heading-serif text-xl text-ink">{model.name}</h3>
-        <p className="mt-3 text-sm text-ink/70 line-clamp-2">{model.description}</p>
-        <p className="mt-4 text-xs uppercase tracking-[0.3em] text-ink/40">Créé le {formattedDate}</p>
-        <Link href={`/configurator/${model.id}`} className="mt-6 w-full button-elevated text-center">
-          Configurer ce meuble
-        </Link>
+
+      {/* Content - minimal */}
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between gap-4">
+          <h3 className="text-[15px] text-[#1A1917]">
+            {model.name}
+          </h3>
+          <span className="text-[13px] text-[#999]">
+            {price} €
+          </span>
+        </div>
       </div>
-    </article>
+    </Link>
   );
 }
