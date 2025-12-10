@@ -6,7 +6,8 @@ export type Zone = {
   content?: ZoneContent;
   children?: Zone[];
   height?: number;
-  splitRatio?: number;
+  splitRatio?: number; // Pour 2 enfants (0-100 pour le premier)
+  splitRatios?: number[]; // Pour 3+ enfants (pourcentages)
 };
 
 export interface ZoneContentMeta {

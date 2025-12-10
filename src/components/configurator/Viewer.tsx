@@ -21,10 +21,12 @@ export default function Viewer({ glb }: Props) {
             alt="Meuble 3D"
             auto-rotate
             camera-controls
+            touch-action="pan-y"
+            interaction-prompt="auto"
             ar
             ar-modes="webxr scene-viewer quick-look"
             exposure="1"
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '100%', height: '100%', touchAction: 'manipulation' }}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]">
