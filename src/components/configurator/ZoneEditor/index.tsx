@@ -190,14 +190,8 @@ export default function ZoneEditor({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-[#E8E6E3] pb-4">
-        <h3 className="font-serif text-lg text-[#1A1917]">Aménagement intérieur</h3>
-        <p className="mt-1 text-xs text-[#706F6C]">
-          Divisez le meuble en compartiments et placez tiroirs, étagères ou penderie
-        </p>
-      </div>
-
+    <div className="space-y-3">
+      {/* Canvas avec titre intégré */}
       <ZoneCanvas
         zone={rootZone}
         selectedZoneId={selectedZoneId}
@@ -207,16 +201,19 @@ export default function ZoneEditor({
         height={height}
       />
 
-      <ZoneControls
-        selectedZone={selectedZone}
-        parentZone={parentZone}
-        onSplitZone={splitZone}
-        onSetContent={setZoneContent}
-        onResetZone={resetZone}
-        onSetSplitRatio={setSplitRatio}
-        onSetSplitRatios={setSplitRatios}
-        onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
-      />
+      {/* Contrôles dans une card */}
+      <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
+        <ZoneControls
+          selectedZone={selectedZone}
+          parentZone={parentZone}
+          onSplitZone={splitZone}
+          onSetContent={setZoneContent}
+          onResetZone={resetZone}
+          onSetSplitRatio={setSplitRatio}
+          onSetSplitRatios={setSplitRatios}
+          onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
+        />
+      </div>
     </div>
   );
 }

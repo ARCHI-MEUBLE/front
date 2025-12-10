@@ -13,7 +13,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Layers } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box } from 'lucide-react';
 
 const MATERIAL_ORDER = ['Aggloméré', 'MDF + revêtement (mélaminé)', 'Plaqué bois'];
 
@@ -44,7 +44,7 @@ function materialLabelFromKey(key: string): string {
   return MATERIAL_LABEL_BY_KEY[key] || key;
 }
 
-type ConfigTab = 'dimensions' | 'interior' | 'materials';
+type ConfigTab = 'dimensions' | 'materials';
 
 export default function ConfiguratorPage() {
   const router = useRouter();
@@ -556,7 +556,6 @@ export default function ConfiguratorPage() {
 
   const TABS: { id: ConfigTab; label: string; icon: typeof Settings }[] = [
     { id: 'dimensions', label: 'Dimensions', icon: Settings },
-    { id: 'interior', label: 'Aménagement', icon: Layers },
     { id: 'materials', label: 'Finitions', icon: Palette },
   ];
 
@@ -566,9 +565,9 @@ export default function ConfiguratorPage() {
         <title>Configurateur - {model.name} | ArchiMeuble</title>
       </Head>
 
-      <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
+      <div className="flex h-screen flex-col overflow-hidden bg-[#FAFAF9]">
         {/* Header compact */}
-        <header className="border-b border-[#E8E6E3] bg-white">
+        <header className="flex-shrink-0 border-b border-[#E8E6E3] bg-white">
           <div className="mx-auto flex h-14 items-center justify-between px-4 lg:h-16 lg:max-w-screen-2xl lg:px-6">
             <div className="flex items-center gap-3 lg:gap-4">
               <Link
@@ -601,7 +600,7 @@ export default function ConfiguratorPage() {
         </header>
 
         {/* Main content - Desktop: side by side, Mobile: stacked */}
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
           {/* Viewer - Mobile: fixed height, Desktop: flex-1 */}
           <div className="viewer-section relative flex flex-col bg-[#FAFAF9] lg:flex-1">
             {/* Viewer wrapper - prend l'espace disponible */}
@@ -649,8 +648,8 @@ export default function ConfiguratorPage() {
             </div>
           </div>
 
-          {/* Panel de configuration - Mobile: scrollable avec hauteur fixe, Desktop: fixed width */}
-          <div className="flex min-h-0 flex-1 flex-col border-t border-[#E8E6E3] bg-white lg:w-[420px] lg:flex-none lg:border-l lg:border-t-0">
+          {/* Panel de configuration - Mobile: scrollable, Desktop: fixed width 620px pour contenir le grand canvas */}
+          <div className="flex min-h-0 flex-1 flex-col border-t border-[#E8E6E3] bg-white lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
             {/* Tabs - Toujours visibles avec labels */}
             <div className="flex flex-shrink-0 border-b border-[#E8E6E3]">
               {TABS.map((tab) => (
@@ -670,9 +669,17 @@ export default function ConfiguratorPage() {
             </div>
 
             {/* Content - Scrollable */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
               {activeTab === 'dimensions' && (
-                <div className="space-y-6 pb-24 sm:space-y-8 lg:pb-0">
+                <div className="space-y-4 pb-24 lg:pb-0">
+                  <ZoneEditor
+                    rootZone={rootZone}
+                    selectedZoneId={selectedZoneId}
+                    onRootZoneChange={setRootZone}
+                    onSelectedZoneIdChange={setSelectedZoneId}
+                    width={width}
+                    height={height}
+                  />
                   <DimensionsPanel
                     width={width}
                     depth={depth}
@@ -684,19 +691,6 @@ export default function ConfiguratorPage() {
                   <SocleSelector
                     value={socle}
                     onChange={setSocle}
-                  />
-                </div>
-              )}
-
-              {activeTab === 'interior' && (
-                <div className="pb-24 lg:pb-0">
-                  <ZoneEditor
-                    rootZone={rootZone}
-                    selectedZoneId={selectedZoneId}
-                    onRootZoneChange={setRootZone}
-                    onSelectedZoneIdChange={setSelectedZoneId}
-                    width={width}
-                    height={height}
                   />
                 </div>
               )}
@@ -720,7 +714,7 @@ export default function ConfiguratorPage() {
             </div>
 
             {/* Footer avec prix - Desktop: dans le panel */}
-            <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white p-6 lg:block">
+            <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
               <PriceDisplay
                 price={price}
                 onAddToCart={saveConfiguration}

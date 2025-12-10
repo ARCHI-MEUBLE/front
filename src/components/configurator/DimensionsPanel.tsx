@@ -48,10 +48,10 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
   const percentage = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-[#1A1917]">{label}</label>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <input
             type="text"
             inputMode="numeric"
@@ -59,14 +59,14 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
-            className="w-20 border border-[#E8E6E3] bg-white px-3 py-2 text-right font-mono text-sm text-[#1A1917] outline-none transition-colors hover:border-[#1A1917] focus:border-[#1A1917]"
+            className="w-20 border-2 border-[#E8E6E3] bg-white px-2 py-2 text-right font-mono text-sm text-[#1A1917] outline-none transition-colors hover:border-[#1A1917] focus:border-[#1A1917]"
             style={{ borderRadius: '2px' }}
           />
           <span className="text-sm text-[#706F6C]">{unit}</span>
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative py-1">
         <input
           type="range"
           min={min}
@@ -77,50 +77,46 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           className="dimension-slider w-full"
         />
         <div
-          className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 bg-[#1A1917]"
-          style={{ width: `${percentage}%`, borderRadius: '1px' }}
+          className="pointer-events-none absolute top-1/2 left-0 h-1.5 -translate-y-1/2 bg-[#1A1917]"
+          style={{ width: `${percentage}%`, borderRadius: '2px' }}
         />
       </div>
-
-      {hint && (
-        <p className="text-xs text-[#706F6C]">{hint}</p>
-      )}
 
       <style jsx>{`
         .dimension-slider {
           -webkit-appearance: none;
           appearance: none;
-          height: 4px;
+          height: 6px;
           background: #E8E6E3;
-          border-radius: 1px;
+          border-radius: 2px;
           cursor: pointer;
         }
         .dimension-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 16px;
-          height: 16px;
+          width: 20px;
+          height: 20px;
           background: #1A1917;
           border: 2px solid #FFFFFF;
-          border-radius: 2px;
+          border-radius: 3px;
           cursor: pointer;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
           transition: transform 150ms ease;
         }
         .dimension-slider::-webkit-slider-thumb:hover {
           transform: scale(1.1);
         }
         .dimension-slider::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
+          width: 20px;
+          height: 20px;
           background: #1A1917;
           border: 2px solid #FFFFFF;
-          border-radius: 2px;
+          border-radius: 3px;
           cursor: pointer;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
         .dimension-slider::-moz-range-track {
-          height: 4px;
+          height: 6px;
           background: transparent;
         }
       `}</style>
@@ -146,16 +142,10 @@ export default function DimensionsPanel({
   onHeightChange,
 }: DimensionsPanelProps) {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-4">
-        <div>
-          <h3 className="font-serif text-lg text-[#1A1917]">Dimensions</h3>
-          <p className="mt-1 text-xs text-[#706F6C]">Ajustez les dimensions de votre meuble</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-[#706F6C]">
-          <span className="font-mono">{width} × {depth} × {height}</span>
-          <span>mm</span>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-3">
+        <h3 className="font-serif text-base text-[#1A1917]">Dimensions</h3>
+        <span className="font-mono text-xs text-[#706F6C]">{width} × {depth} × {height} mm</span>
       </div>
 
       <DimensionInput
@@ -166,7 +156,6 @@ export default function DimensionsPanel({
         max={3000}
         step={10}
         unit="mm"
-        hint="300 à 3000 mm"
       />
 
       <DimensionInput
@@ -177,7 +166,6 @@ export default function DimensionsPanel({
         max={800}
         step={10}
         unit="mm"
-        hint="200 à 800 mm"
       />
 
       <DimensionInput
@@ -188,7 +176,6 @@ export default function DimensionsPanel({
         max={2500}
         step={10}
         unit="mm"
-        hint="300 à 2500 mm"
       />
     </div>
   );
