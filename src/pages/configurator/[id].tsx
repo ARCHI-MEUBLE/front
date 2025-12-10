@@ -306,13 +306,22 @@ export default function ConfiguratorPage() {
 
     const childPrompts = zone.children?.map((c) => buildPromptFromZoneTree(c)) || [];
     const prefix = zone.type === 'horizontal' ? 'H' : 'V';
+    const childCount = zone.children?.length ?? 0;
 
-    if (zone.splitRatio !== undefined && zone.children?.length === 2) {
+    // Pour 2 enfants avec splitRatio
+    if (zone.splitRatio !== undefined && childCount === 2) {
       const r1 = Math.round(zone.splitRatio);
       const r2 = 100 - r1;
       return `${prefix}[${r1},${r2}](${childPrompts.join(',')})`;
     }
-    return `${prefix}${childPrompts.length}(${childPrompts.join(',')})`;
+
+    // Pour 3+ enfants avec splitRatios
+    if (zone.splitRatios && zone.splitRatios.length === childCount && childCount > 2) {
+      const ratiosStr = zone.splitRatios.map(r => Math.round(r)).join(',');
+      return `${prefix}[${ratiosStr}](${childPrompts.join(',')})`;
+    }
+
+    return `${prefix}${childCount}(${childPrompts.join(',')})`;
   }, []);
 
   // Calcul du prix

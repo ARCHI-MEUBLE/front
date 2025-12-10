@@ -1,3 +1,6 @@
+import { Rows3, Columns3, Archive, DoorOpen, Shirt } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
 interface ActionBarProps {
   selectedZoneId: string | null;
   disabled?: boolean;
@@ -8,13 +11,13 @@ interface ActionBarProps {
   onAddDressing: () => void;
 }
 
-const ACTIONS = [
-  { id: 'horizontal', icon: '↕️', label: 'Étagères', action: 'onSplitHorizontal' },
-  { id: 'vertical', icon: '↔️', label: 'Colonnes', action: 'onSplitVertical' },
-  { id: 'drawer', icon: '🗄️', label: 'Tiroir', action: 'onAddDrawer' },
-  { id: 'door', icon: '🚪', label: 'Porte', action: 'onAddDoor' },
-  { id: 'dressing', icon: '👔', label: 'Penderie', action: 'onAddDressing' },
-] as const;
+const ACTIONS: { id: string; icon: LucideIcon; label: string; action: string }[] = [
+  { id: 'horizontal', icon: Rows3, label: 'Étagères', action: 'onSplitHorizontal' },
+  { id: 'vertical', icon: Columns3, label: 'Colonnes', action: 'onSplitVertical' },
+  { id: 'drawer', icon: Archive, label: 'Tiroir', action: 'onAddDrawer' },
+  { id: 'door', icon: DoorOpen, label: 'Porte', action: 'onAddDoor' },
+  { id: 'dressing', icon: Shirt, label: 'Penderie', action: 'onAddDressing' },
+];
 
 export default function ActionBar({
   selectedZoneId,
@@ -44,7 +47,7 @@ export default function ActionBar({
 
       {/* Grille de boutons */}
       <div className="flex flex-wrap justify-center gap-2">
-        {ACTIONS.map(({ id, icon, label, action }) => (
+        {ACTIONS.map(({ id, icon: Icon, label, action }) => (
           <button
             key={id}
             type="button"
@@ -53,7 +56,7 @@ export default function ActionBar({
             className="flex min-w-[100px] items-center justify-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2.5 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-[120px] sm:px-4 sm:py-3"
             style={{ borderRadius: '2px' }}
           >
-            <span className="text-base sm:text-lg">{icon}</span>
+            <Icon className="h-4 w-4" />
             <span>{label}</span>
           </button>
         ))}

@@ -69,11 +69,15 @@ export default function ZoneEditor({
     (zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
       const updateZone = (z: Zone): Zone => {
         if (z.id === zoneId) {
+          // Pour 2 enfants: utiliser splitRatio
+          // Pour 3+ enfants: utiliser splitRatios
+          const equalRatio = 100 / count;
           return {
             ...z,
             type: direction,
             content: undefined,
-            splitRatio: 50,
+            splitRatio: count === 2 ? 50 : undefined,
+            splitRatios: count > 2 ? Array(count).fill(equalRatio).map(r => Math.round(r)) : undefined,
             children: Array.from({ length: count }, (_, i) => ({
               id: `${zoneId}-${i}`,
               type: 'leaf' as const,
@@ -122,6 +126,7 @@ export default function ZoneEditor({
             content: 'empty',
             children: undefined,
             splitRatio: undefined,
+            splitRatios: undefined,
           };
         }
         if (z.children) {
@@ -154,20 +159,35 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange]
   );
 
-  // Calculer la hauteur dynamique du canvas
-  const getZoneStats = (zone: Zone): { depth: number; leaves: number } => {
-    if (!zone.children || zone.children.length === 0) {
-      return { depth: 1, leaves: 1 };
-    }
-    const childStats = zone.children.map((child) => getZoneStats(child));
-    const depth = 1 + Math.max(...childStats.map((stat) => stat.depth));
-    const leaves = childStats.reduce((total, stat) => total + stat.leaves, 0);
-    return { depth, leaves };
-  };
+  // Modifier les ratios multiples (pour 3+ enfants)
+  const setSplitRatios = useCallback(
+    (zoneId: string, ratios: number[]) => {
+      const updateZone = (z: Zone): Zone => {
+        if (z.id === zoneId && (z.type === 'horizontal' || z.type === 'vertical')) {
+          return { ...z, splitRatios: ratios };
+        }
+        if (z.children) {
+          return { ...z, children: z.children.map(updateZone) };
+        }
+        return z;
+      };
 
-  const { depth, leaves } = getZoneStats(rootZone);
-  const baseHeight = 160;
-  const dynamicHeight = Math.min(500, baseHeight + Math.max(0, depth - 1) * 80 + Math.max(0, leaves - 1) * 10);
+      onRootZoneChange(updateZone(rootZone));
+    },
+    [rootZone, onRootZoneChange]
+  );
+
+  // Gérer le changement de ratio depuis le canvas (drag)
+  const handleRatioChange = useCallback(
+    (zoneId: string, ratios: number[]) => {
+      if (ratios.length === 2) {
+        setSplitRatio(zoneId, ratios[0]);
+      } else if (ratios.length > 2) {
+        setSplitRatios(zoneId, ratios);
+      }
+    },
+    [setSplitRatio, setSplitRatios]
+  );
 
   return (
     <div className="space-y-6">
@@ -182,7 +202,9 @@ export default function ZoneEditor({
         zone={rootZone}
         selectedZoneId={selectedZoneId}
         onSelect={onSelectedZoneIdChange}
-        height={dynamicHeight}
+        onRatioChange={handleRatioChange}
+        width={width}
+        height={height}
       />
 
       <ZoneControls
@@ -192,6 +214,7 @@ export default function ZoneEditor({
         onSetContent={setZoneContent}
         onResetZone={resetZone}
         onSetSplitRatio={setSplitRatio}
+        onSetSplitRatios={setSplitRatios}
         onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
       />
     </div>

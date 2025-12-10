@@ -7,6 +7,7 @@ interface ZoneControlsProps {
   onSetContent: (zoneId: string, content: ZoneContent) => void;
   onResetZone: (zoneId: string) => void;
   onSetSplitRatio: (zoneId: string, ratio: number) => void;
+  onSetSplitRatios?: (zoneId: string, ratios: number[]) => void;
   onSelectParent?: () => void;
 }
 
@@ -17,18 +18,54 @@ export default function ZoneControls({
   onSetContent,
   onResetZone,
   onSetSplitRatio,
+  onSetSplitRatios,
   onSelectParent,
 }: ZoneControlsProps) {
   const isLeaf = selectedZone.type === 'leaf';
   const meta = ZONE_CONTENT_META[selectedZone.content ?? 'empty'];
 
-  // Vérifier si on peut ajuster le ratio
+  // Vérifier si on peut ajuster le ratio (2 enfants)
   const canAdjustRatio = selectedZone.type !== 'leaf' &&
     selectedZone.children?.length === 2;
 
+  // Vérifier si on peut ajuster les ratios multiples (3+ enfants)
+  const canAdjustMultipleRatios = selectedZone.type !== 'leaf' &&
+    (selectedZone.children?.length ?? 0) > 2;
+
   const parentCanAdjust = parentZone &&
     parentZone.type !== 'leaf' &&
-    parentZone.children?.length === 2;
+    (parentZone.children?.length ?? 0) >= 2;
+
+  // Obtenir les ratios actuels pour affichage
+  const getCurrentRatios = (): number[] => {
+    const children = selectedZone.children ?? [];
+    if (children.length === 2 && selectedZone.splitRatio !== undefined) {
+      return [selectedZone.splitRatio, 100 - selectedZone.splitRatio];
+    }
+    if (children.length > 2 && selectedZone.splitRatios?.length === children.length) {
+      return selectedZone.splitRatios;
+    }
+    return children.map(() => Math.round(100 / children.length));
+  };
+
+  // Mettre à jour un ratio individuel (pour 3+ enfants)
+  const handleRatioSliderChange = (index: number, newValue: number) => {
+    if (!onSetSplitRatios) return;
+    const currentRatios = getCurrentRatios();
+    const oldValue = currentRatios[index];
+    const delta = newValue - oldValue;
+
+    // Trouver un autre ratio à ajuster (celui d'après ou d'avant)
+    const adjustIndex = index < currentRatios.length - 1 ? index + 1 : index - 1;
+    const newRatios = [...currentRatios];
+    newRatios[index] = newValue;
+    newRatios[adjustIndex] = Math.max(10, currentRatios[adjustIndex] - delta);
+
+    // Normaliser pour que la somme fasse 100
+    const sum = newRatios.reduce((a, b) => a + b, 0);
+    const normalized = newRatios.map(r => Math.round((r / sum) * 100));
+    onSetSplitRatios(selectedZone.id, normalized);
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -137,7 +174,7 @@ export default function ZoneControls({
         </div>
       )}
 
-      {/* Ajustement ratio (pour les divisions) */}
+      {/* Ajustement ratio (pour les divisions à 2 enfants) */}
       {canAdjustRatio && (
         <div className="space-y-3">
           <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
@@ -158,6 +195,39 @@ export default function ZoneControls({
               <span>{Math.round(100 - (selectedZone.splitRatio ?? 50))}%</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Ajustement ratios multiples (pour les divisions à 3+ enfants) */}
+      {canAdjustMultipleRatios && (
+        <div className="space-y-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
+            Proportions ({selectedZone.children?.length} compartiments)
+          </span>
+          <div className="space-y-3">
+            {getCurrentRatios().map((ratio, index) => (
+              <div key={index} className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#706F6C]">
+                    {selectedZone.type === 'horizontal' ? 'Rangée' : 'Colonne'} {index + 1}
+                  </span>
+                  <span className="font-mono text-xs text-[#1A1917]">{ratio}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={80}
+                  step={5}
+                  value={ratio}
+                  onChange={(e) => handleRatioSliderChange(index, Number(e.target.value))}
+                  className="w-full accent-[#1A1917]"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-[#A8A7A5]">
+            Glissez les curseurs ou les séparateurs sur le plan
+          </p>
         </div>
       )}
 
