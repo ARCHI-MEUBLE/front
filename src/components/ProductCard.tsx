@@ -17,33 +17,30 @@ type ProductCardProps = {
 
 export function ProductCard({ model }: ProductCardProps) {
   const price = model.base_price || 890;
-  
+
   return (
     <Link href={"/configurator/" + model.id} className="group block">
       {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F5F4]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F5F5]">
         <Image
           src={model.image_path || "/placeholder.jpg"}
           alt={model.name}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
       </div>
-      
-      {/* Content */}
-      <div className="mt-4">
-        <h3 className="font-serif text-xl text-[#1A1917] group-hover:underline">
-          {model.name}
-        </h3>
-        {model.description && (
-          <p className="mt-1 text-sm text-[#706F6C] line-clamp-1">
-            {model.description}
-          </p>
-        )}
-        <p className="mt-2 font-mono text-sm text-[#1A1917]">
-          A partir de {price} €
-        </p>
+
+      {/* Content - minimal */}
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between gap-4">
+          <h3 className="text-[15px] text-[#1A1917]">
+            {model.name}
+          </h3>
+          <span className="text-[13px] text-[#999]">
+            {price} €
+          </span>
+        </div>
       </div>
     </Link>
   );

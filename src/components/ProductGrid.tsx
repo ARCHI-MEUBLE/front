@@ -5,7 +5,7 @@ import { apiClient, FurnitureModel } from "@/lib/apiClient";
 import { ProductCard, ProductModel } from "@/components/ProductCard";
 
 const categories = [
-  { id: "all", label: "Tous" },
+  { id: "all", label: "Tout" },
   { id: "dressing", label: "Dressing" },
   { id: "bibliotheque", label: "Bibliothèque" },
   { id: "buffet", label: "Buffet" },
@@ -60,21 +60,24 @@ export function ProductGrid() {
 
   return (
     <>
-      {/* Filters - Sticky */}
-      <div className="sticky top-[73px] z-40 border-b border-[#E8E6E3] bg-white/95 backdrop-blur-sm">
+      {/* Filter tabs */}
+      <div className="border-y border-[#E5E5E5]">
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-          <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide sm:gap-3">
+          <div className="-mb-px flex gap-8 overflow-x-auto py-4">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`whitespace-nowrap px-4 py-2 text-sm font-medium transition-all sm:px-5 ${
+                className={`relative whitespace-nowrap text-sm transition-colors ${
                   activeCategory === cat.id
-                    ? "bg-[#1A1917] text-white"
-                    : "border border-[#E8E6E3] text-[#1A1917] hover:border-[#1A1917]"
+                    ? "text-[#1A1917]"
+                    : "text-[#999] hover:text-[#1A1917]"
                 }`}
               >
                 {cat.label}
+                {activeCategory === cat.id && (
+                  <span className="absolute -bottom-4 left-0 right-0 h-px bg-[#1A1917]" />
+                )}
               </button>
             ))}
           </div>
@@ -82,44 +85,38 @@ export function ProductGrid() {
       </div>
 
       {/* Grid */}
-      <section className="mx-auto max-w-7xl px-5 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+          <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-[4/3] bg-[#E8E6E3]" />
-                <div className="mt-4 space-y-2">
-                  <div className="h-5 w-1/2 bg-[#E8E6E3]" />
-                  <div className="h-4 w-3/4 bg-[#E8E6E3]" />
-                  <div className="h-4 w-1/4 bg-[#E8E6E3]" />
-                </div>
+              <div key={i}>
+                <div className="aspect-[4/3] animate-pulse bg-[#F5F5F5]" />
+                <div className="mt-6 h-4 w-24 animate-pulse bg-[#F5F5F5]" />
               </div>
             ))}
           </div>
         ) : error ? (
-          <div className="py-16 text-center">
-            <p className="text-[#706F6C]">{error}</p>
+          <div className="py-20 text-center">
+            <p className="text-[#999]">{error}</p>
             <button
               onClick={loadModels}
-              className="mt-6 inline-flex h-12 items-center justify-center border border-[#1A1917] px-8 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#1A1917] hover:text-white"
+              className="mt-6 text-sm text-[#1A1917] underline underline-offset-4"
             >
               Réessayer
             </button>
           </div>
         ) : filteredModels.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-[#706F6C]">
-              Aucun modèle dans cette catégorie.
-            </p>
-          </div>
+          <p className="py-20 text-center text-[#999]">
+            Aucun modèle dans cette catégorie.
+          </p>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+          <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {filteredModels.map((model) => (
               <ProductCard key={model.id} model={model} />
             ))}
           </div>
         )}
-      </section>
+      </div>
     </>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Star, Quote, CheckCircle, ArrowRight, ArrowLeft, MessageSquare } from "lucide-react";
 
 type Review = {
   id: string;
@@ -46,6 +48,20 @@ export function Reviews() {
         rating: 5,
         text: "Qualité irréprochable. Le meuble TV que j'ai commandé est exactement ce que j'imaginais, jusqu'au moindre détail.",
         date: "2025-07-28"
+      },
+      {
+        id: "5",
+        authorName: "Claire Fontaine",
+        rating: 5,
+        text: "Le dressing de mes rêves ! Chaque centimètre a été optimisé. Un travail d'orfèvre que je recommande les yeux fermés.",
+        date: "2025-06-12"
+      },
+      {
+        id: "6",
+        authorName: "Antoine Mercier",
+        rating: 5,
+        text: "Rapport qualité-prix imbattable pour du sur-mesure français. La pose a été rapide et soignée. Bravo à toute l'équipe.",
+        date: "2025-05-03"
       }
     ];
 
@@ -124,248 +140,297 @@ export function Reviews() {
     : 5;
 
   return (
-    <div className="bg-[#FAF9F7]">
+    <div className="bg-[#FAFAF9]">
       {/* Hero Section */}
-      <section className="px-5 pb-12 pt-8 sm:px-6 sm:pb-16 sm:pt-12 lg:px-8 lg:pb-20 lg:pt-16">
-        <div className="mx-auto max-w-6xl">
-          {/* Eyebrow */}
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.15em] text-[#78716C] sm:mb-5">
-            Témoignages clients
-          </p>
+      <section className="relative overflow-hidden bg-[#1A1917] py-20 lg:py-28">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }} />
+        </div>
 
-          {/* Headline */}
-          <h1 className="max-w-xl font-serif text-3xl font-normal leading-tight text-[#1A1A1A] sm:text-4xl lg:text-5xl">
-            Ce que nos clients{" "}
-            <span className="text-[#78716C]">pensent de nous</span>
-          </h1>
-
-          {/* Stats */}
-          <div className="mt-8 grid grid-cols-3 gap-4 sm:mt-10 sm:flex sm:gap-10 lg:mt-12 lg:gap-16">
-            {/* Rating */}
+        <div className="relative mx-auto max-w-7xl px-6">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <div className="flex items-baseline gap-1">
-                <span className="font-serif text-3xl font-light text-[#1A1A1A] sm:text-4xl lg:text-5xl">
-                  {avgRating.toFixed(1)}
-                </span>
-                <span className="text-sm text-[#78716C]">/5</span>
-              </div>
-              <p className="mt-1 text-xs text-[#A8A29E] sm:text-sm">Note moyenne</p>
+              <motion.span
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs font-medium uppercase tracking-[0.3em] text-[#8B7355]"
+              >
+                Témoignages
+              </motion.span>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mt-4 font-serif text-4xl leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl"
+              >
+                Ce que nos clients
+                <br />
+                <span className="text-[#8B7355]">disent de nous</span>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-6 max-w-md text-lg leading-relaxed text-white/70"
+              >
+                Découvrez les retours de nos clients sur leur expérience
+                avec ArchiMeuble. Chaque avis compte.
+              </motion.p>
             </div>
 
-            {/* Separator - hidden on mobile */}
-            <div className="hidden h-12 w-px self-center bg-[#E7E5E4] sm:block" />
-
-            {/* Count */}
-            <div>
-              <div className="flex items-baseline gap-1">
-                <span className="font-serif text-3xl font-light text-[#1A1A1A] sm:text-4xl lg:text-5xl">
-                  {reviews.length}
-                </span>
+            {/* Stats */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="grid grid-cols-3 gap-6"
+            >
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+                <div className="flex items-center justify-center gap-1">
+                  <span className="font-serif text-4xl text-white">{avgRating.toFixed(1)}</span>
+                  <Star className="h-6 w-6 fill-[#8B7355] text-[#8B7355]" />
+                </div>
+                <p className="mt-2 text-sm text-white/60">Note moyenne</p>
               </div>
-              <p className="mt-1 text-xs text-[#A8A29E] sm:text-sm">Avis vérifiés</p>
-            </div>
 
-            {/* Separator - hidden on mobile */}
-            <div className="hidden h-12 w-px self-center bg-[#E7E5E4] sm:block" />
-
-            {/* Satisfaction */}
-            <div>
-              <div className="flex items-baseline gap-1">
-                <span className="font-serif text-3xl font-light text-[#1A1A1A] sm:text-4xl lg:text-5xl">
-                  100
-                </span>
-                <span className="text-sm text-[#78716C]">%</span>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+                <span className="font-serif text-4xl text-white">{reviews.length}</span>
+                <p className="mt-2 text-sm text-white/60">Avis vérifiés</p>
               </div>
-              <p className="mt-1 text-xs text-[#A8A29E] sm:text-sm">Satisfaits</p>
-            </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+                <span className="font-serif text-4xl text-white">100%</span>
+                <p className="mt-2 text-sm text-white/60">Satisfaits</p>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Featured Review */}
       {reviews.length > 0 && (
-        <section className="bg-white px-5 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-          <div className="mx-auto max-w-6xl">
-            <div className="flex flex-col gap-6 sm:gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
+        <section className="border-b border-[#E8E4DE] bg-white py-16 lg:py-20">
+          <div className="mx-auto max-w-7xl px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-16"
+            >
+              {/* Quote Icon */}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#8B7355]/10 lg:h-24 lg:w-24">
+                <Quote className="h-8 w-8 text-[#8B7355] lg:h-12 lg:w-12" />
+              </div>
+
               {/* Quote */}
-              <blockquote className="max-w-3xl">
-                <p className="font-serif text-xl font-normal leading-relaxed text-[#1A1A1A] sm:text-2xl lg:text-3xl">
+              <blockquote className="flex-1">
+                <p className="font-serif text-2xl leading-relaxed text-[#1A1917] lg:text-3xl">
                   « {reviews[0].text} »
                 </p>
-              </blockquote>
-
-              {/* Author */}
-              <div className="flex items-center gap-4 lg:flex-shrink-0">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#7877C6] to-[#B45309] p-0.5 sm:h-14 sm:w-14">
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-sm font-medium text-[#1A1A1A] sm:text-base">
+                <footer className="mt-8 flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1A1917] font-medium text-white">
                     {reviews[0].authorName.split(' ').map(n => n[0]).join('')}
                   </div>
-                </div>
-                <div>
-                  <p className="font-medium text-[#1A1A1A]">{reviews[0].authorName}</p>
-                  <p className="text-xs text-[#A8A29E]">Client vérifié</p>
-                </div>
-              </div>
-            </div>
+                  <div>
+                    <p className="font-medium text-[#1A1917]">{reviews[0].authorName}</p>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`h-3.5 w-3.5 ${star <= reviews[0].rating ? 'fill-[#8B7355] text-[#8B7355]' : 'text-[#E8E4DE]'}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-[#6B6560]">Client vérifié</span>
+                    </div>
+                  </div>
+                </footer>
+              </blockquote>
+            </motion.div>
           </div>
         </section>
       )}
 
       {/* Reviews Grid */}
-      <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-6xl">
-          {/* Section header */}
-          <div className="mb-8 flex items-center gap-4 sm:mb-10">
-            <p className="text-xs font-medium uppercase tracking-[0.15em] text-[#78716C]">
-              Tous les avis ({reviews.length})
-            </p>
-            <div className="h-px flex-1 bg-gradient-to-r from-[#E7E5E4] to-transparent" />
+      <section className="py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-10 flex flex-col items-center text-center">
+            <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
+              Tous les avis
+            </span>
+            <h2 className="mt-3 font-serif text-2xl text-[#1A1917] lg:text-3xl">
+              {reviews.length} témoignages de confiance
+            </h2>
           </div>
 
-          {/* Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
-            {reviews.slice(1).map((review) => (
-              <ReviewCard key={review.id} review={review} />
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {reviews.slice(1).map((review, i) => (
+              <motion.article
+                key={review.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="group rounded-2xl border border-[#E8E4DE] bg-white p-6 transition-all hover:border-[#1A1917]/20 hover:shadow-lg"
+              >
+                {/* Rating */}
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-4 w-4 ${star <= review.rating ? 'fill-[#8B7355] text-[#8B7355]' : 'text-[#E8E4DE]'}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1 text-[#059669]">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium">Vérifié</span>
+                  </div>
+                </div>
+
+                {/* Text */}
+                <p className="mb-6 leading-relaxed text-[#6B6560]">
+                  {review.text}
+                </p>
+
+                {/* Author */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F3F0] text-sm font-medium text-[#1A1917]">
+                    {review.authorName.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#1A1917]">{review.authorName}</p>
+                    <p className="text-xs text-[#6B6560]">{formatRelativeDate(review.date)}</p>
+                  </div>
+                </div>
+              </motion.article>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="border-t border-[#E7E5E4] bg-white px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-6xl">
+      <section className="bg-white py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-6">
           {loadingSession ? (
-            <div className="flex justify-center py-8">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1A1917]/20 border-t-[#1A1917]" />
+            <div className="flex justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
             </div>
           ) : sessionUser ? (
             showForm ? (
-              <div className="mx-auto max-w-xl">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mx-auto max-w-2xl"
+              >
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="mb-8 flex items-center gap-2 text-sm text-[#78716C] transition-colors hover:text-[#1A1917]"
+                  className="mb-8 flex items-center gap-2 text-sm text-[#6B6560] transition-colors hover:text-[#1A1917]"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Retour
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour aux avis
                 </button>
-                <ReviewFormLight
+                <ReviewForm
                   onSubmit={addReview}
                   authorName={sessionUser.name}
                   onSuccess={() => setShowForm(false)}
                 />
-              </div>
+              </motion.div>
             ) : (
-              <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="font-serif text-2xl font-normal text-[#1A1917] sm:text-3xl lg:text-4xl">
-                    Partagez votre{" "}
-                    <span className="text-[#8B7355]">expérience</span>
-                  </h2>
-                  <p className="mt-3 max-w-md text-sm text-[#78716C] sm:text-base">
-                    Votre avis aide d'autres personnes à découvrir notre savoir-faire.
-                  </p>
+              <div className="overflow-hidden rounded-3xl bg-[#1A1917]">
+                <div className="grid lg:grid-cols-2">
+                  <div className="p-10 lg:p-16">
+                    <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
+                      Votre avis compte
+                    </span>
+                    <h2 className="mt-4 font-serif text-3xl text-white lg:text-4xl">
+                      Partagez votre
+                      <br />expérience
+                    </h2>
+                    <p className="mt-6 leading-relaxed text-white/70">
+                      Votre témoignage aide d'autres personnes à découvrir
+                      notre savoir-faire artisanal.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowForm(true)}
+                      className="mt-10 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 font-medium text-[#1A1917] transition-transform hover:scale-105"
+                    >
+                      Laisser un avis
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="relative hidden lg:block">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#8B7355]/20 to-transparent" />
+                    <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-[#8B7355]/10 blur-3xl" />
+                    <div className="absolute left-1/4 top-1/4 h-32 w-32 rounded-full bg-[#8B7355]/20" />
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowForm(true)}
-                  className="group flex w-full items-center justify-center gap-3 bg-[#1A1917] px-6 py-4 font-medium text-white transition-all hover:bg-[#2D2B28] sm:w-auto sm:px-8"
-                >
-                  Laisser un avis
-                  <svg
-                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </button>
               </div>
             )
           ) : (
-            <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-serif text-2xl font-normal text-[#1A1917] sm:text-3xl lg:text-4xl">
-                  Rejoignez la{" "}
-                  <span className="text-[#8B7355]">conversation</span>
-                </h2>
-                <p className="mt-3 max-w-md text-sm text-[#78716C] sm:text-base">
-                  Connectez-vous pour partager votre expérience.
-                </p>
+            <div className="overflow-hidden rounded-3xl bg-[#1A1917]">
+              <div className="grid lg:grid-cols-2">
+                <div className="p-10 lg:p-16">
+                  <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
+                    Rejoignez-nous
+                  </span>
+                  <h2 className="mt-4 font-serif text-3xl text-white lg:text-4xl">
+                    Partagez votre
+                    <br />expérience
+                  </h2>
+                  <p className="mt-6 leading-relaxed text-white/70">
+                    Connectez-vous pour partager votre avis et aider
+                    d'autres clients à découvrir ArchiMeuble.
+                  </p>
+                  <Link
+                    href="/auth/login"
+                    className="mt-10 inline-flex items-center gap-2 rounded-full border border-white/20 px-8 py-4 font-medium text-white transition-colors hover:bg-white/10"
+                  >
+                    Se connecter
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="relative hidden lg:block">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#8B7355]/20 to-transparent" />
+                  <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-[#8B7355]/10 blur-3xl" />
+                </div>
               </div>
-              <Link
-                href="/login"
-                className="group flex w-full items-center justify-center gap-3 border border-[#1A1917] bg-transparent px-6 py-4 font-medium text-[#1A1917] transition-all hover:bg-[#1A1917] hover:text-white sm:w-auto sm:px-8"
-              >
-                Se connecter
-                <svg
-                  className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </Link>
             </div>
           )}
         </div>
       </section>
+
+      {/* Trust Section */}
+      <section className="border-t border-[#E8E4DE] py-16">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-wrap items-center justify-center gap-10 text-sm text-[#6B6560]">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-0.5">
+                <div className="h-4 w-1.5 rounded-sm bg-[#0055A4]" />
+                <div className="h-4 w-1.5 rounded-sm bg-[#E8E4DE]" />
+                <div className="h-4 w-1.5 rounded-sm bg-[#EF4135]" />
+              </div>
+              <span>Fabriqué en France</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-[#059669]" />
+              <span>Avis vérifiés</span>
+            </div>
+            <div>Garantie 10 ans</div>
+            <div>100% sur mesure</div>
+          </div>
+        </div>
+      </section>
     </div>
-  );
-}
-
-function ReviewCard({ review }: { review: Review }) {
-  return (
-    <article className="rounded-sm bg-white p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6 lg:p-8">
-      {/* Rating */}
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex gap-0.5">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <svg
-              key={star}
-              className={`h-4 w-4 ${star <= review.rating ? 'text-[#1A1A1A]' : 'text-[#E7E5E4]'}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          ))}
-        </div>
-        <span className="text-xs text-[#A8A29E]">{review.rating}.0</span>
-      </div>
-
-      {/* Text */}
-      <p className="mb-6 text-sm leading-relaxed text-[#44403C] sm:text-base">
-        {review.text}
-      </p>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5F5F4] text-xs font-medium text-[#57534E] sm:h-10 sm:w-10 sm:text-sm">
-            {review.authorName.split(' ').map(n => n[0]).join('')}
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#1A1A1A]">{review.authorName}</p>
-            <p className="text-xs text-[#A8A29E]">{formatRelativeDate(review.date)}</p>
-          </div>
-        </div>
-
-        {/* Verified */}
-        <div className="flex items-center gap-1 text-[#059669]">
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          <span className="hidden text-xs font-medium sm:inline">Vérifié</span>
-        </div>
-      </div>
-    </article>
   );
 }
 
@@ -379,12 +444,12 @@ function formatRelativeDate(dateString: string) {
   if (diffDays === 0) return "Aujourd'hui";
   if (diffDays === 1) return "Hier";
   if (diffDays < 7) return `Il y a ${diffDays} jours`;
-  if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)} sem.`;
+  if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)} semaines`;
   if (diffDays < 365) return `Il y a ${Math.floor(diffDays / 30)} mois`;
   return `Il y a ${Math.floor(diffDays / 365)} an${Math.floor(diffDays / 365) > 1 ? 's' : ''}`;
 }
 
-function ReviewFormLight({
+function ReviewForm({
   onSubmit,
   authorName,
   onSuccess
@@ -396,6 +461,7 @@ function ReviewFormLight({
   const [text, setText] = useState("");
   const [rating, setRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -419,91 +485,97 @@ function ReviewFormLight({
   const ratingLabels = ['Décevant', 'Moyen', 'Bien', 'Très bien', 'Excellent'];
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Author */}
+    <div className="rounded-2xl border border-[#E8E4DE] bg-white p-8">
       <div className="mb-8 flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1A1917] text-base font-medium text-white">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1A1917] text-lg font-medium text-white">
           {authorName?.charAt(0) || 'U'}
         </div>
         <div>
           <p className="font-medium text-[#1A1917]">{authorName}</p>
-          <p className="text-xs text-[#78716C]">Partage son expérience</p>
+          <p className="text-sm text-[#6B6560]">Partage son expérience</p>
         </div>
       </div>
 
-      {/* Rating */}
-      <div className="mb-8">
-        <label className="mb-3 block text-xs font-medium uppercase tracking-wider text-[#78716C]">
-          Votre note
-        </label>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setRating(n)}
-              className={`flex h-11 w-11 items-center justify-center text-base font-light transition-all sm:h-12 sm:w-12 ${
-                n <= rating
-                  ? 'bg-[#1A1917] text-white'
-                  : 'border border-[#E7E5E4] bg-white text-[#78716C] hover:border-[#1A1917]'
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-          <span className="ml-2 text-sm text-[#78716C]">
-            {ratingLabels[rating - 1]}
-          </span>
+      <form onSubmit={handleSubmit}>
+        {/* Rating */}
+        <div className="mb-8">
+          <label className="mb-3 block text-sm font-medium text-[#1A1917]">
+            Votre note
+          </label>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRating(n)}
+                  onMouseEnter={() => setHoverRating(n)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="p-1 transition-transform hover:scale-110"
+                >
+                  <Star
+                    className={`h-8 w-8 transition-colors ${
+                      n <= (hoverRating || rating)
+                        ? 'fill-[#8B7355] text-[#8B7355]'
+                        : 'text-[#E8E4DE]'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            <span className="text-sm text-[#6B6560]">
+              {ratingLabels[(hoverRating || rating) - 1]}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Text */}
-      <div className="mb-8">
-        <label className="mb-3 block text-xs font-medium uppercase tracking-wider text-[#78716C]">
-          Votre expérience
-        </label>
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={4}
-          placeholder="Décrivez votre expérience avec ArchiMeuble..."
-          className="w-full resize-none border border-[#E7E5E4] bg-white p-4 text-base text-[#1A1917] placeholder-[#A8A29E] outline-none transition-colors focus:border-[#1A1917]"
-        />
-        <div className="mt-2 flex justify-between text-xs text-[#78716C]">
-          <span>{text.length} caractères</span>
-          <span className={text.length >= 20 ? 'text-[#059669]' : ''}>
-            {text.length >= 20 ? '✓ Prêt' : `${20 - text.length} min.`}
-          </span>
+        {/* Text */}
+        <div className="mb-8">
+          <label className="mb-3 block text-sm font-medium text-[#1A1917]">
+            Votre expérience
+          </label>
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={5}
+            placeholder="Décrivez votre expérience avec ArchiMeuble..."
+            className="w-full resize-none rounded-xl border border-[#E8E4DE] bg-white p-4 text-[#1A1917] placeholder-[#A8A29E] outline-none transition-colors focus:border-[#1A1917]"
+          />
+          <div className="mt-2 flex justify-between text-sm">
+            <span className="text-[#6B6560]">{text.length} caractères</span>
+            <span className={text.length >= 20 ? 'text-[#059669]' : 'text-[#6B6560]'}>
+              {text.length >= 20 ? (
+                <span className="flex items-center gap-1">
+                  <CheckCircle className="h-4 w-4" />
+                  Prêt à publier
+                </span>
+              ) : (
+                `${20 - text.length} caractères minimum`
+              )}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={submitting || text.length < 20}
-        className="group flex w-full items-center justify-center gap-3 bg-[#1A1917] py-4 font-medium text-white transition-colors hover:bg-[#2D2B28] disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {submitting ? (
-          <>
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-            Publication...
-          </>
-        ) : (
-          <>
-            Publier mon avis
-            <svg
-              className="h-4 w-4 transition-transform group-hover:translate-x-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </>
-        )}
-      </button>
-    </form>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={submitting || text.length < 20}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1A1917] py-4 font-medium text-white transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {submitting ? (
+            <>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              Publication en cours...
+            </>
+          ) : (
+            <>
+              <MessageSquare className="h-4 w-4" />
+              Publier mon avis
+            </>
+          )}
+        </button>
+      </form>
+    </div>
   );
 }
