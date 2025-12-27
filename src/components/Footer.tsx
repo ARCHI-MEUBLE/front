@@ -23,7 +23,7 @@ export function Footer() {
         <div className="lg:hidden">
           {/* Brand */}
           <div className="text-center">
-            <Link href="/" className="font-serif text-xl text-white">
+            <Link href="/Archimeuble/front/public" className="font-serif text-xl text-white">
               ArchiMeuble
             </Link>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-gray-400">
@@ -118,7 +118,7 @@ export function Footer() {
           <div className="grid gap-12 lg:grid-cols-12">
             {/* Brand */}
             <div className="lg:col-span-5">
-              <Link href="/" className="font-serif text-2xl text-white">
+              <Link href="/Archimeuble/front/public" className="font-serif text-2xl text-white">
                 ArchiMeuble
               </Link>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-400">

@@ -63,32 +63,56 @@ function ZoneNode({
         const isHorizontal = zone.type === 'horizontal';
         const currentRatios = getChildRatios();
 
+        // Calcul de la position normalisée (0 à 1)
+        // Pour horizontal : de haut en bas (e.clientY - rect.top)
+        // Pour vertical : de gauche à droite (e.clientX - rect.left)
         const rawPos = isHorizontal
-            ? (rect.bottom - e.clientY) / rect.height
+            ? (e.clientY - rect.top) / rect.height
             : (e.clientX - rect.left) / rect.width;
 
-        const orderedRatios = isHorizontal ? [...currentRatios].reverse() : currentRatios;
+        // Les ratios sont stockés de haut en bas (horizontal) ou gauche à droite (vertical)
+        const orderedRatios = currentRatios;
 
+        // Calculer la position cumulative avant et après le diviseur
         let cumBefore = 0;
         for (let i = 0; i <= dragIndex; i++) {
             cumBefore += orderedRatios[i];
         }
 
-        const newCumBefore = Math.max(10, Math.min(90, rawPos * 100));
-        const delta = newCumBefore - cumBefore;
+        // Position cumulée souhaitée (basée sur la position de la souris)
+        let desiredCumBefore = rawPos * 100;
+
+        // Calculer les limites pour que chaque zone ait au moins 10%
+        const minRatio = 10;
+        const numZones = orderedRatios.length;
+
+        // Limite min : somme des ratios min des zones avant + ratio min de la zone courante
+        const minCumBefore = (dragIndex + 1) * minRatio;
+
+        // Limite max : 100 - somme des ratios min des zones après
+        const maxCumBefore = 100 - (numZones - dragIndex - 1) * minRatio;
+
+        // Appliquer les limites
+        desiredCumBefore = Math.max(minCumBefore, Math.min(maxCumBefore, desiredCumBefore));
+
+        const delta = desiredCumBefore - cumBefore;
+
+        // Ne rien faire si le delta est trop petit (évite les micro-mouvements)
+        if (Math.abs(delta) < 0.5) return;
 
         const newRatios = [...orderedRatios];
-        const minRatio = 10;
+        newRatios[dragIndex] += delta;
+        newRatios[dragIndex + 1] -= delta;
 
-        const newCurrentRatio = Math.max(minRatio, newRatios[dragIndex] + delta);
-        const newNextRatio = Math.max(minRatio, newRatios[dragIndex + 1] - delta);
+        // Normaliser pour garantir que la somme = 100
+        const sum = newRatios.reduce((a, b) => a + b, 0);
+        const normalizedRatios = newRatios.map(r => (r / sum) * 100);
 
-        if (newCurrentRatio >= minRatio && newNextRatio >= minRatio) {
-            newRatios[dragIndex] = newCurrentRatio;
-            newRatios[dragIndex + 1] = newNextRatio;
+        // Vérifier que tous les ratios sont >= minRatio
+        const allValid = normalizedRatios.every(r => r >= minRatio - 0.1);
 
-            const finalRatios = isHorizontal ? [...newRatios].reverse() : newRatios;
-            onRatioChange(zone.id, finalRatios.map(r => Math.round(r)));
+        if (allValid) {
+            onRatioChange(zone.id, normalizedRatios.map(r => Math.round(r * 10) / 10));
         }
     }, [isDragging, dragIndex, zone, onRatioChange, getChildRatios]);
 
@@ -154,8 +178,9 @@ function ZoneNode({
     const children = zone.children ?? [];
     const ratios = getChildRatios();
 
-    const orderedChildren = isHorizontal ? [...children].reverse() : children;
-    const orderedRatios = isHorizontal ? [...ratios].reverse() : ratios;
+    // Pas d'inversion - affichage dans l'ordre naturel (haut en bas, gauche à droite)
+    const orderedChildren = children;
+    const orderedRatios = ratios;
 
     const getChildDimensions = (index: number): { w: number; h: number } => {
         const ratio = orderedRatios[index] / 100;
@@ -290,11 +315,12 @@ export default function ZoneCanvas({
 
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
-                className="mx-auto inline-flex items-center justify-center bg-[#FAFAF9] p-4"
+                className="mx-auto inline-flex items-center justify-center overflow-x-auto bg-[#FAFAF9] p-4"
                 style={{
                     borderRadius: '4px',
                     width: canvasWidth + 32, // canvas + padding (16px * 2)
                     minWidth: canvasWidth + 32,
+                    maxWidth: '100%', // Empêcher le débordement
                 }}
             >
                 <div

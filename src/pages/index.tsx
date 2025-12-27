@@ -141,7 +141,13 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
         swatch: buildSwatch(key)
       };
     })
-    .sort((a, b) => a.fancyName.localeCompare(b.fancyName, "fr"));
+    .sort((a, b) => {
+      // Forcer armoire_bleu_clair.png en premier
+      if (a.image.includes('armoire_bleu_clair.png')) return -1;
+      if (b.image.includes('armoire_bleu_clair.png')) return 1;
+      // Tri alphabétique pour le reste
+      return a.fancyName.localeCompare(b.fancyName, "fr");
+    });
 
   return {
     props: {

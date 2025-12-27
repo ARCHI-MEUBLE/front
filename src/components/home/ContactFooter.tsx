@@ -97,7 +97,7 @@ export function ContactFooter() {
                 <div className="grid gap-12 lg:grid-cols-12">
                     {/* Brand */}
                     <div className="lg:col-span-5">
-                        <Link href="/" className="font-serif text-2xl text-white">
+                        <Link href="/Archimeuble/front/public" className="font-serif text-2xl text-white">
                             ArchiMeuble
                         </Link>
                         <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-400">

@@ -250,7 +250,7 @@ export default function OrderConfirmationPage() {
               Créer une nouvelle configuration
             </Link>
             <Link
-              href="/"
+              href="/Archimeuble/front/public"
               className="flex-1 inline-flex items-center justify-center gap-2 border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <Home className="h-4 w-4" />

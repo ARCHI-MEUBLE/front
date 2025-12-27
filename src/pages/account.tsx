@@ -423,7 +423,7 @@ export default function Account() {
                     <h3 className="mt-6 font-serif text-xl text-[#1A1917]">Aucune commande</h3>
                     <p className="mt-2 text-[#6B6560]">Vous n'avez pas encore passé de commande</p>
                     <Link
-                      href="/"
+                      href="/Archimeuble/front/public"
                       className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
                     >
                       Découvrir nos meubles

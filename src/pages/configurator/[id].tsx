@@ -13,7 +13,28 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw } from 'lucide-react';
+
+// Hook pour détecter mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth < 768;
+      setIsMobile(mobileRegex.test(userAgent.toLowerCase()) || (isTouchDevice && isSmallScreen));
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
 
 const MATERIAL_ORDER = ['Aggloméré', 'MDF + revêtement (mélaminé)', 'Plaqué bois'];
 
@@ -50,6 +71,21 @@ export default function ConfiguratorPage() {
   const router = useRouter();
   const { id } = router.query;
   const { customer, isAuthenticated } = useCustomer();
+  const isMobile = useIsMobile();
+  const [showMobileWarning, setShowMobileWarning] = useState(true);
+
+  // Clé localStorage unique par modèle
+  const localStorageKey = useMemo(() => `configurator_config_${id}`, [id]);
+
+  // État pour la configuration initiale (pour réinitialiser)
+  const [initialConfig, setInitialConfig] = useState<{
+    width: number;
+    height: number;
+    depth: number;
+    socle: string;
+    rootZone: Zone;
+    finish: string;
+  } | null>(null);
 
   // États de base
   const [model, setModel] = useState<FurnitureModel | null>(null);
@@ -179,6 +215,31 @@ export default function ConfiguratorPage() {
     return colorsForMaterial.find((option) => option.id === selectedColorId) || null;
   }, [colorsForMaterial, selectedColorId]);
 
+  // Sauvegarder automatiquement dans localStorage
+  useEffect(() => {
+    if (!id || loading) return;
+
+    const configToSave = {
+      width,
+      height,
+      depth,
+      socle,
+      rootZone,
+      finish,
+      selectedColorId,
+      useMultiColor,
+      componentColors,
+      timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
+    };
+
+    try {
+      localStorage.setItem(localStorageKey, JSON.stringify(configToSave));
+      console.log('✅ Configuration sauvegardée automatiquement');
+    } catch (e) {
+      console.warn('❌ Impossible de sauvegarder dans localStorage', e);
+    }
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, localStorageKey]);
+
   // Charger les matériaux
   useEffect(() => {
     let cancelled = false;
@@ -263,9 +324,75 @@ export default function ConfiguratorPage() {
       if (id && !isNaN(Number(id))) {
         const modelData = await apiClient.models.getById(Number(id));
         setModel(modelData);
+
         if (modelData.prompt) {
           setTemplatePrompt(modelData.prompt);
+
+          // 1. Parser le prompt pour obtenir la config par défaut
           parsePromptToConfig(modelData.prompt);
+
+          // 2. Calculer et sauvegarder la config initiale pour réinitialisation
+          const dims = modelData.prompt.match(/\((\d+),(\d+),(\d+)\)/);
+          const compact = modelData.prompt.replace(/\s+/g, '');
+          let initSocle = 'none';
+          if (/S2/.test(compact)) initSocle = 'wood';
+          else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
+
+          let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
+          const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+          const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+
+          if (hStruct) {
+            const inner = hStruct[2];
+            const children = inner.split(',').map((content, idx) => ({
+              id: `zone-${idx}`,
+              type: 'leaf' as const,
+              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent,
+            }));
+            initRootZone = { id: 'root', type: 'horizontal', children };
+          } else if (vStruct) {
+            const inner = vStruct[2];
+            const children = inner.split(',').map((content, idx) => ({
+              id: `zone-${idx}`,
+              type: 'leaf' as const,
+              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent,
+            }));
+            initRootZone = { id: 'root', type: 'vertical', children };
+          }
+
+          setInitialConfig({
+            width: dims ? parseInt(dims[1]) : 1500,
+            height: dims ? parseInt(dims[3]) : 730,
+            depth: dims ? parseInt(dims[2]) : 500,
+            socle: initSocle,
+            rootZone: JSON.parse(JSON.stringify(initRootZone)), // Deep copy
+            finish: 'Aggloméré',
+          });
+
+          // 3. Vérifier s'il existe une config sauvegardée dans localStorage
+          try {
+            const savedConfig = localStorage.getItem(localStorageKey);
+            if (savedConfig) {
+              const parsed = JSON.parse(savedConfig);
+              console.log('📦 Configuration sauvegardée trouvée, restauration...');
+
+              setWidth(parsed.width ?? 1500);
+              setHeight(parsed.height ?? 730);
+              setDepth(parsed.depth ?? 500);
+              setSocle(parsed.socle ?? 'none');
+              setRootZone(parsed.rootZone ?? { id: 'root', type: 'leaf', content: 'empty' });
+              if (parsed.finish) setFinish(parsed.finish);
+              if (parsed.selectedColorId !== undefined) setSelectedColorId(parsed.selectedColorId);
+              if (parsed.useMultiColor !== undefined) setUseMultiColor(parsed.useMultiColor);
+              if (parsed.componentColors) setComponentColors(parsed.componentColors);
+
+              console.log('✅ Configuration restaurée avec succès');
+            } else {
+              console.log('ℹ️ Aucune configuration sauvegardée, utilisation du modèle par défaut');
+            }
+          } catch (e) {
+            console.warn('❌ Erreur lors de la lecture de localStorage', e);
+          }
         }
       } else {
         const qsPrompt = (router.query.prompt as string) || null;
@@ -288,11 +415,38 @@ export default function ConfiguratorPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, router.query.prompt, parsePromptToConfig]);
+  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey]);
 
   useEffect(() => {
     if (id) loadModel();
   }, [id, loadModel]);
+
+  // Fonction de réinitialisation de la configuration
+  const resetConfiguration = useCallback(() => {
+    if (!initialConfig) {
+      console.warn('⚠️ Aucune configuration initiale disponible');
+      return;
+    }
+
+    console.log('🔄 Réinitialisation à la configuration par défaut...');
+
+    // Restaurer la config initiale
+    setWidth(initialConfig.width);
+    setHeight(initialConfig.height);
+    setDepth(initialConfig.depth);
+    setSocle(initialConfig.socle);
+    setRootZone(JSON.parse(JSON.stringify(initialConfig.rootZone))); // Deep copy
+    setFinish(initialConfig.finish);
+    setSelectedZoneId('root');
+
+    // Supprimer la sauvegarde localStorage
+    try {
+      localStorage.removeItem(localStorageKey);
+      console.log('✅ Configuration réinitialisée et sauvegarde supprimée');
+    } catch (e) {
+      console.warn('❌ Erreur lors de la suppression de localStorage', e);
+    }
+  }, [initialConfig, localStorageKey]);
 
   // Construction du prompt depuis l'arbre de zones
   const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
@@ -304,20 +458,31 @@ export default function ConfiguratorPage() {
       }
     }
 
-    const childPrompts = zone.children?.map((c) => buildPromptFromZoneTree(c)) || [];
-    const prefix = zone.type === 'horizontal' ? 'H' : 'V';
-    const childCount = zone.children?.length ?? 0;
+    const isHorizontal = zone.type === 'horizontal';
+    const children = zone.children || [];
+    const childCount = children.length;
+
+    // Pour les divisions horizontales, le backend s'attend à l'ordre inverse (bas en haut)
+    // Inverser les enfants et les ratios uniquement pour le prompt
+    const orderedChildren = isHorizontal ? [...children].reverse() : children;
+    const childPrompts = orderedChildren.map((c) => buildPromptFromZoneTree(c));
+
+    const prefix = isHorizontal ? 'H' : 'V';
 
     // Pour 2 enfants avec splitRatio
     if (zone.splitRatio !== undefined && childCount === 2) {
       const r1 = Math.round(zone.splitRatio);
       const r2 = 100 - r1;
-      return `${prefix}[${r1},${r2}](${childPrompts.join(',')})`;
+      // Inverser les ratios pour horizontal
+      const ratios = isHorizontal ? [r2, r1] : [r1, r2];
+      return `${prefix}[${ratios[0]},${ratios[1]}](${childPrompts.join(',')})`;
     }
 
     // Pour 3+ enfants avec splitRatios
     if (zone.splitRatios && zone.splitRatios.length === childCount && childCount > 2) {
-      const ratiosStr = zone.splitRatios.map(r => Math.round(r)).join(',');
+      // Inverser les ratios pour horizontal
+      const ratios = isHorizontal ? [...zone.splitRatios].reverse() : zone.splitRatios;
+      const ratiosStr = ratios.map(r => Math.round(r)).join(',');
       return `${prefix}[${ratiosStr}](${childPrompts.join(',')})`;
     }
 
@@ -452,8 +617,7 @@ export default function ConfiguratorPage() {
   // Sauvegarde
   const saveConfiguration = async () => {
     if (!isAuthenticated || !customer) {
-      const redirectTarget = encodeURIComponent(router.asPath || `/configurator/${id}`);
-      router.push(`/auth/login?redirect=${redirectTarget}`);
+      setShowAuthModal(true);
       return;
     }
 
@@ -537,6 +701,50 @@ export default function ConfiguratorPage() {
     );
   }
 
+  // Message mobile
+  if (isMobile && showMobileWarning) {
+    return (
+      <>
+        <Head>
+          <title>Configurateur - {model?.name || 'ArchiMeuble'} | ArchiMeuble</title>
+        </Head>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center bg-[#1A1917]" style={{ borderRadius: '4px' }}>
+              <Monitor className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="font-serif text-2xl text-[#1A1917]">
+              Configuration sur ordinateur recommandée
+            </h1>
+            <p className="mt-4 text-base text-[#706F6C]">
+              Pour une meilleure expérience de configuration de votre meuble sur mesure,
+              nous vous recommandons d'utiliser un ordinateur.
+            </p>
+            <p className="mt-2 text-sm text-[#706F6C]">
+              Le configurateur 3D est optimisé pour les écrans larges et l'utilisation de la souris.
+            </p>
+            <div className="mt-8 space-y-3">
+              <button
+                onClick={() => setShowMobileWarning(false)}
+                className="w-full border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                style={{ borderRadius: '2px' }}
+              >
+                Continuer sur mobile quand même
+              </button>
+              <Link
+                href="/models"
+                className="block w-full bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                style={{ borderRadius: '2px' }}
+              >
+                Voir les modèles
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (!model) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
@@ -590,7 +798,7 @@ export default function ConfiguratorPage() {
                 </span>
               )}
               <Link
-                href="/"
+                href="/Archimeuble/front/public"
                 className="font-serif text-base text-[#1A1917] lg:text-lg"
               >
                 ArchiMeuble
@@ -671,7 +879,22 @@ export default function ConfiguratorPage() {
             {/* Content - Scrollable */}
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
               {activeTab === 'dimensions' && (
-                <div className="space-y-4 pb-24 lg:pb-0">
+                <div className="space-y-4 pb-32 lg:pb-0">
+                  {/* Bouton réinitialiser */}
+                  {initialConfig && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={resetConfiguration}
+                        className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                        style={{ borderRadius: '2px' }}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Réinitialiser au modèle par défaut
+                      </button>
+                    </div>
+                  )}
+
                   <ZoneEditor
                     rootZone={rootZone}
                     selectedZoneId={selectedZoneId}
@@ -696,7 +919,7 @@ export default function ConfiguratorPage() {
               )}
 
               {activeTab === 'materials' && (
-                <div className="pb-24 lg:pb-0">
+                <div className="pb-32 lg:pb-0">
                   <MaterialSelector
                     materialsMap={materialsMap}
                     selectedMaterialKey={selectedMaterialKey}

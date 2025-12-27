@@ -112,7 +112,7 @@ export default function ZoneControls({
                 </p>
 
                 <div className="space-y-4">
-                  {/* Étagères (horizontal) - Terme concret */}
+                  {/* Étagères (horizontal) - Max 10 niveaux */}
                   <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '4px' }}>
                     <div className="mb-3 flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center bg-[#FAFAF9]" style={{ borderRadius: '4px' }}>
@@ -120,25 +120,25 @@ export default function ZoneControls({
                       </div>
                       <div>
                         <span className="text-base font-medium text-[#1A1917]">Ajouter des étagères</span>
-                        <p className="text-sm text-[#706F6C]">Divise en niveaux superposés</p>
+                        <p className="text-sm text-[#706F6C]">Divise en niveaux superposés (max 10)</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      {[2, 3, 4].map((count) => (
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
                           <button
                               key={`h-${count}`}
                               type="button"
                               onClick={() => onSplitZone(selectedZone.id, 'horizontal', count)}
-                              className="flex h-12 items-center justify-center border-2 border-[#E8E6E3] bg-white text-base font-semibold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+                              className="flex h-10 items-center justify-center border-2 border-[#E8E6E3] bg-white text-sm font-semibold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
                               style={{ borderRadius: '4px' }}
                           >
-                            {count} niveaux
+                            {count}
                           </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Colonnes (vertical) - Terme concret */}
+                  {/* Colonnes (vertical) - Max 10 colonnes */}
                   <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '4px' }}>
                     <div className="mb-3 flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center bg-[#FAFAF9]" style={{ borderRadius: '4px' }}>
@@ -146,19 +146,19 @@ export default function ZoneControls({
                       </div>
                       <div>
                         <span className="text-base font-medium text-[#1A1917]">Ajouter des colonnes</span>
-                        <p className="text-sm text-[#706F6C]">Divise en compartiments côte à côte</p>
+                        <p className="text-sm text-[#706F6C]">Divise en compartiments côte à côte (max 10)</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      {[2, 3, 4].map((count) => (
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
                           <button
                               key={`v-${count}`}
                               type="button"
                               onClick={() => onSplitZone(selectedZone.id, 'vertical', count)}
-                              className="flex h-12 items-center justify-center border-2 border-[#E8E6E3] bg-white text-base font-semibold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+                              className="flex h-10 items-center justify-center border-2 border-[#E8E6E3] bg-white text-sm font-semibold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
                               style={{ borderRadius: '4px' }}
                           >
-                            {count} colonnes
+                            {count}
                           </button>
                       ))}
                     </div>
