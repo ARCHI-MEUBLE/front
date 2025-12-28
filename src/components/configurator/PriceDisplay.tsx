@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { Box } from 'lucide-react';
 
 interface PriceDisplayProps {
   price: number;
@@ -49,8 +49,8 @@ export default function PriceDisplay({
           </>
         ) : (
           <>
-            <ShoppingCart className="h-4 w-4" />
-            <span>Ajouter au panier</span>
+            <Box className="h-4 w-4" />
+            <span>Terminer</span>
           </>
         )}
       </button>

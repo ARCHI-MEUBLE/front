@@ -1,6 +1,6 @@
 /**
- * API Proxy - Admin configurations
- * Proxie vers le backend PHP pour gérer les configurations admin
+ * API Proxy - Payment links management
+ * Proxie vers le backend PHP pour gérer les liens de paiement
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
@@ -9,10 +9,9 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
-    const url = `${API_URL}/backend/api/admin/configurations.php${queryString ? '?' + queryString : ''}`;
+    const url = `${API_URL}/backend/api/admin/payment-links.php${queryString ? '?' + queryString : ''}`;
 
-    console.log('🔗 Proxy configurations vers:', url);
-    console.log('🍪 Cookies envoyés:', req.headers.cookie ? 'Oui' : 'Non');
+    console.log('🔗 Proxy payment-links vers:', url);
 
     const response = await fetch(url, {
       method: req.method || 'GET',
@@ -24,10 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       credentials: 'include',
     });
 
-    console.log('📡 Réponse backend PHP:', response.status);
+    console.log('📡 Réponse backend:', response.status);
 
     const data = await response.json();
-    console.log('📦 Données du backend:', JSON.stringify(data).substring(0, 200));
 
     const backendCookies = response.headers.getSetCookie?.() || [];
     if (backendCookies.length > 0) {
@@ -38,7 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('❌ Configurations proxy error:', error);
-    res.status(500).json({ error: 'Failed to fetch configurations', details: error instanceof Error ? error.message : String(error) });
+    console.error('❌ Payment links proxy error:', error);
+    res.status(500).json({
+      error: 'Failed to manage payment links',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }

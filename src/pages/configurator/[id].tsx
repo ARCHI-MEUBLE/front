@@ -188,6 +188,7 @@ export default function ConfiguratorPage() {
   // UI
   const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
   // Derived state
   const selectedMaterialKey = useMemo(() => normalizeMaterialKey(finish), [finish]);
@@ -660,6 +661,7 @@ export default function ConfiguratorPage() {
         dxf_url: dxfUrl,
         price,
         thumbnail_url: glbUrl,
+        status: 'en_attente_validation', // Nouveau statut : en attente de validation par le menuisier
       };
 
       const response = await fetch('/backend/api/configurations/save.php', {
@@ -674,14 +676,9 @@ export default function ConfiguratorPage() {
       const result = await response.json();
       setEditingConfigName(configNameInput.trim());
 
+      // Afficher le modal de confirmation au lieu de rediriger vers le panier
       if (result.configuration) {
-        await fetch('/backend/api/cart/index.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ configuration_id: result.configuration.id, quantity: 1 }),
-        });
-        router.push('/cart');
+        setShowConfirmationModal(true);
       }
     } catch (err: unknown) {
       console.error('Erreur saveConfiguration:', err);
@@ -798,7 +795,7 @@ export default function ConfiguratorPage() {
                 </span>
               )}
               <Link
-                href="/Archimeuble/front/public"
+                href="/"
                 className="font-serif text-base text-[#1A1917] lg:text-lg"
               >
                 ArchiMeuble
@@ -976,11 +973,11 @@ export default function ConfiguratorPage() {
             <button
               type="button"
               onClick={saveConfiguration}
-              className="flex h-11 flex-1 max-w-[160px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+              className="flex h-11 flex-1 max-w-[180px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
               style={{ borderRadius: '2px' }}
             >
               <Box className="h-4 w-4" />
-              <span>Ajouter</span>
+              <span>Terminer</span>
             </button>
           </div>
         </div>
@@ -993,6 +990,75 @@ export default function ConfiguratorPage() {
           setTimeout(() => saveConfiguration(), 500);
         }}
       />
+
+      {/* Modal de confirmation après configuration */}
+      {showConfirmationModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
+            <div className="p-6 sm:p-8">
+              {/* Icône de succès */}
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-green-100" style={{ borderRadius: '50%' }}>
+                <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              {/* Message personnalisé */}
+              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                Configuration enregistrée !
+              </h2>
+              <p className="mb-6 text-center text-base text-[#706F6C]">
+                {customer?.civility === 'M' ? 'Monsieur' : customer?.civility === 'Mme' ? 'Madame' : ''}{' '}
+                <span className="font-semibold text-[#1A1917]">
+                  {customer?.last_name}
+                </span>
+                , un menuisier va vous rappeler au plus vite pour valider votre projet et vous proposer un devis personnalisé.
+              </p>
+
+              {/* Informations complémentaires */}
+              <div className="mb-6 border-t border-[#E8E6E3] pt-4">
+                <p className="text-sm text-[#706F6C]">
+                  <strong className="text-[#1A1917]">Prochaines étapes :</strong>
+                </p>
+                <ul className="mt-2 space-y-2 text-sm text-[#706F6C]">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">📞</span>
+                    <span>Notre menuisier vous contactera pour vérifier la faisabilité</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">💰</span>
+                    <span>Vous recevrez un devis personnalisé avec le prix final</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">💳</span>
+                    <span>Un lien de paiement sécurisé vous sera envoyé après validation</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Boutons */}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => router.push('/my-configurations')}
+                  className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  Mes configurations
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push('/')}
+                  className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  Retour à l'accueil
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
