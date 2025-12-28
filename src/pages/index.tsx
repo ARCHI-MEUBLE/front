@@ -8,6 +8,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { CategoriesSection } from "@/components/home/CategoriesSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
+import { QuoteRequestCTA } from "@/components/home/QuoteRequestCTA";
 
 import {
   ColorsAndFinishesSection,
@@ -33,9 +34,10 @@ export default function HomePage({ colors }: HomePageProps) {
         <HeroSection />
         <ColorsAndFinishesSection colors={colors} />
         <WhyChooseUs />
+        <QuoteRequestCTA />
         <CategoriesSection />
         <TestimonialsSection />
-        
+
       </main>
       <Footer />
     </div>

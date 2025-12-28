@@ -14,6 +14,7 @@ import { DashboardAppointments } from '@/components/admin/DashboardAppointments'
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
+import { DashboardPricing } from '@/components/admin/DashboardPricing';
 import { hasAdminSession } from '@/lib/adminAuth';
 import NotificationsModal from '@/components/admin/NotificationsModal';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -40,6 +41,7 @@ const sectionTitles: Record<DashboardSection, { title: string; description: stri
   appointments: { title: 'Demandes de rendez-vous', description: 'Nouvelles demandes de rendez-vous' },
   calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
   avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
+  pricing: { title: 'Gestion des prix', description: 'Configurez les prix au mètre cube' },
   password: { title: 'Paramètres', description: 'Modifier le mot de passe' },
 };
 
@@ -216,6 +218,7 @@ export default function AdminDashboardPage() {
                 {selectedSection === 'appointments' && <DashboardAppointments />}
                 {selectedSection === 'calendar' && <DashboardCalendar />}
                 {selectedSection === 'avis' && <DashboardAvis />}
+                {selectedSection === 'pricing' && <DashboardPricing />}
                 {selectedSection === 'password' && <DashboardPassword />}
               </div>
             </div>

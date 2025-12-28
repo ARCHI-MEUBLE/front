@@ -114,6 +114,7 @@ export default function ConfiguratorPage() {
   const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [price, setPrice] = useState(899);
+  const [pricePerM3, setPricePerM3] = useState(1500); // Prix par défaut en €/m³
   const [doorsOpen, setDoorsOpen] = useState(true);
 
   // Mode multi-couleurs
@@ -256,6 +257,27 @@ export default function ConfiguratorPage() {
       }
     };
     loadMaterials();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Charger le prix au m³ depuis l'API
+  useEffect(() => {
+    let cancelled = false;
+    const loadPricing = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/backend/api/pricing/index.php?name=default`);
+        const data = await response.json();
+
+        if (!cancelled && data.success && data.data?.price_per_m3) {
+          setPricePerM3(data.data.price_per_m3);
+          console.log('✅ Prix au m³ chargé:', data.data.price_per_m3, '€/m³');
+        }
+      } catch (error) {
+        console.warn('Impossible de récupérer le prix au m³, utilisation du prix par défaut', error);
+      }
+    };
+    loadPricing();
     return () => { cancelled = true; };
   }, []);
 
@@ -490,7 +512,7 @@ export default function ConfiguratorPage() {
     return `${prefix}${childCount}(${childPrompts.join(',')})`;
   }, []);
 
-  // Calcul du prix
+  // Calcul du prix basé sur le volume en m³
   const calculatePrice = useCallback((config: {
     width: number;
     height: number;
@@ -499,18 +521,20 @@ export default function ConfiguratorPage() {
     socle: string;
     rootZone: Zone;
   }): number => {
-    let p = 580;
-    const modules = Math.max(1, Math.round(config.width / 500));
-    p += modules * 150;
-    const hauteurCm = Math.round(config.height / 10);
-    if (hauteurCm > 60) p += (hauteurCm - 60) * 2;
-    p += Math.round(config.depth / 10) * 3;
+    // 1. Calculer le volume en m³ (dimensions sont en mm)
+    const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
+
+    // 2. Prix de base selon le volume
+    let p = volumeM3 * pricePerM3;
+
+    // 3. Ajouter le supplément matériau
     p += MATERIAL_PRICE_BY_KEY[normalizeMaterialKey(config.finish)] || 0;
 
+    // 4. Ajouter le prix du socle
     const soclePrices: Record<string, number> = { none: 0, metal: 40, wood: 60 };
     p += soclePrices[config.socle] || 0;
 
-    // Compter tiroirs et penderies dans les zones
+    // 5. Compter tiroirs et penderies dans les zones
     const countContent = (zone: Zone, type: ZoneContent): number => {
       if (zone.type === 'leaf') return zone.content === type ? 1 : 0;
       return (zone.children || []).reduce((sum, child) => sum + countContent(child, type), 0);
@@ -518,7 +542,7 @@ export default function ConfiguratorPage() {
     p += countContent(config.rootZone, 'drawer') * 35;
 
     return Math.round(p);
-  }, []);
+  }, [pricePerM3]);
 
   // Génération du modèle 3D
   const generateModel = useCallback(async (prompt: string) => {

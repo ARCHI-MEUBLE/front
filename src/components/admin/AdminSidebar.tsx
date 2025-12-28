@@ -14,6 +14,7 @@ import {
   IconUserCircle,
   IconBell,
   IconDotsVertical,
+  IconCurrencyEuro,
 } from "@tabler/icons-react"
 
 import {
@@ -48,6 +49,7 @@ export type DashboardSection =
   | 'appointments'
   | 'calendar'
   | 'avis'
+  | 'pricing'
   | 'password'
 
 interface AdminSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -93,6 +95,11 @@ const navMain = [
     id: "calendar" as DashboardSection,
     title: "Calendrier",
     icon: IconCalendar,
+  },
+  {
+    id: "pricing" as DashboardSection,
+    title: "Gestion des prix",
+    icon: IconCurrencyEuro,
   },
 ]
 
