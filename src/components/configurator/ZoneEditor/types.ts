@@ -1,4 +1,6 @@
-export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double';
+export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'pegboard' | 'push_door' | 'push_drawer';
+
+export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
 export type Zone = {
   id: string;
@@ -10,6 +12,7 @@ export type Zone = {
   splitRatios?: number[]; // Pour 3+ enfants (pourcentages)
   hasLight?: boolean;
   hasCableHole?: boolean;
+  handleType?: HandleType; // Type de poignée pour portes/tiroirs
 };
 
 export interface ZoneContentMeta {
@@ -61,5 +64,35 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     shortLabel: 'Porte x2',
     icon: 'D2',
     description: 'Deux petites portes battantes',
+  },
+  glass_shelf: {
+    label: 'Étagère en verre',
+    shortLabel: 'Verre',
+    icon: 'V',
+    description: 'Étagère transparente moderne',
+  },
+  mirror_door: {
+    label: 'Façade miroir',
+    shortLabel: 'Miroir',
+    icon: 'M',
+    description: 'Porte avec miroir intégré',
+  },
+  pegboard: {
+    label: 'Panneau perforé',
+    shortLabel: 'Pegboard',
+    icon: 'PP',
+    description: 'Pour accrocher outils et accessoires',
+  },
+  push_door: {
+    label: 'Porte Push-to-Open',
+    shortLabel: 'Push Door',
+    icon: 'PTO',
+    description: 'Porte sans poignée, ouverture par pression',
+  },
+  push_drawer: {
+    label: 'Tiroir Push-to-Open',
+    shortLabel: 'Push Tiroir',
+    icon: 'PTD',
+    description: 'Tiroir sans poignée, ouverture par pression',
   },
 };

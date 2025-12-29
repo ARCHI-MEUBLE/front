@@ -241,6 +241,19 @@ export default function ConfiguratorPage() {
     setRootZone(updateZone(rootZone));
   }, [rootZone]);
 
+  const setZoneHandleType = useCallback((zoneId: string, handleType: 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed') => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, handleType };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
   // UI
   // Compter les étagères à partir de la rootZone pour Three.js
   const shelfCount = useMemo(() => {
@@ -1203,6 +1216,7 @@ export default function ConfiguratorPage() {
                     onSelectedZoneIdChange={setSelectedZoneId}
                     onToggleLight={toggleZoneLight}
                     onToggleCableHole={toggleZoneCableHole}
+                    onSetHandleType={setZoneHandleType}
                     width={width}
                     height={height}
                   />
@@ -1214,36 +1228,7 @@ export default function ConfiguratorPage() {
                     onDepthChange={setDepth}
                     onHeightChange={setHeight}
                   />
-                  <DoorSelector
-                    type={selectedZoneId === 'root' ? doorType : (
-                      selectedZone?.content === 'door' || selectedZone?.content === 'door_right' ? 'single' :
-                      selectedZone?.content === 'door_double' ? 'double' : 'none'
-                    )}
-                    side={selectedZoneId === 'root' ? doorSide : (
-                      selectedZone?.content === 'door_right' ? 'right' : 'left'
-                    )}
-                    doorsOpen={doorsOpen}
-                    onTypeChange={(type) => {
-                      if (selectedZoneId === 'root') {
-                        setDoorType(type);
-                      } else {
-                        let content: ZoneContent = 'empty';
-                        if (type === 'single') content = doorSide === 'right' ? 'door_right' : 'door';
-                        else if (type === 'double') content = 'door_double';
-                        setZoneContent(selectedZoneId, content);
-                        setDoorType('none'); // Désactiver la porte globale
-                      }
-                    }}
-                    onSideChange={(side) => {
-                      setDoorSide(side);
-                      if (selectedZoneId !== 'root') {
-                        if (selectedZone?.content === 'door' || selectedZone?.content === 'door_right') {
-                          setZoneContent(selectedZoneId, side === 'right' ? 'door_right' : 'door');
-                        }
-                      }
-                    }}
-                    onToggleDoors={handleToggleDoors}
-                  />
+                  {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
                   <SocleSelector
                     value={socle}
                     onChange={setSocle}

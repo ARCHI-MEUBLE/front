@@ -80,7 +80,49 @@ function useFurnitureMaterial(hexColor: string) {
   return material;
 }
 
-function AnimatedDoor({ position, width, height, hexColor, side, isOpen, onClick }: any) {
+// Composant pour rendre différents types de poignées
+function Handle({ type = 'vertical_bar', position, side, height, width }: { type?: string; position: [number, number, number]; side: string; height: number; width?: number }) {
+  const handleMaterial = <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />;
+
+  if (type === 'horizontal_bar') {
+    // Barre horizontale (utilise width si disponible, sinon height)
+    const barLength = width ? Math.min(width * 0.4, 0.5) : Math.min(height * 0.4, 0.3);
+    return (
+      <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.008, 0.008, barLength, 12]} />
+        {handleMaterial}
+      </mesh>
+    );
+  } else if (type === 'knob') {
+    // Bouton rond
+    return (
+      <mesh position={position}>
+        <sphereGeometry args={[0.02, 16, 16]} />
+        {handleMaterial}
+      </mesh>
+    );
+  } else if (type === 'recessed') {
+    // Poignée encastrée (encoche)
+    return (
+      <group position={position}>
+        <mesh>
+          <boxGeometry args={[0.08, 0.025, 0.015]} />
+          <meshStandardMaterial color="#2a2a2a" metalness={0.5} roughness={0.6} />
+        </mesh>
+      </group>
+    );
+  } else {
+    // Barre verticale (défaut)
+    return (
+      <mesh position={position}>
+        <cylinderGeometry args={[0.008, 0.008, Math.min(height * 0.25, 0.4), 12]} />
+        {handleMaterial}
+      </mesh>
+    );
+  }
+}
+
+function AnimatedDoor({ position, width, height, hexColor, side, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
   const material = useFurnitureMaterial(hexColor);
@@ -92,9 +134,9 @@ function AnimatedDoor({ position, width, height, hexColor, side, isOpen, onClick
   });
 
   return (
-    <group 
-      ref={groupRef} 
-      position={position} 
+    <group
+      ref={groupRef}
+      position={position}
       onClick={(e) => {
         if (onClick) {
           e.stopPropagation();
@@ -113,16 +155,162 @@ function AnimatedDoor({ position, width, height, hexColor, side, isOpen, onClick
         <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
         <primitive object={material} attach="material" />
       </mesh>
-      {/* Poignée (Verticale et proportionnelle) */}
-      <mesh position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.02]}>
-        <cylinderGeometry args={[0.008, 0.008, Math.min(height * 0.25, 0.4), 12]} />
-        <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />
+      {/* Poignée */}
+      <Handle
+        type={handleType || 'vertical_bar'}
+        position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.02]}
+        side={side}
+        height={height}
+      />
+    </group>
+  );
+}
+
+function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
+  const groupRef = useRef<THREE.Group>(null);
+  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
+
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
+    }
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      position={position}
+      onClick={(e) => {
+        if (onClick) {
+          e.stopPropagation();
+          onClick(e);
+        }
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default';
+      }}
+    >
+      {/* Porte avec effet miroir */}
+      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
+        <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
+        <meshStandardMaterial
+          color="#ffffff"
+          metalness={0.95}
+          roughness={0.05}
+          envMapIntensity={1.5}
+        />
+      </mesh>
+      {/* Poignée */}
+      <Handle
+        type={handleType || 'vertical_bar'}
+        position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.02]}
+        side={side}
+        height={height}
+      />
+    </group>
+  );
+}
+
+function AnimatedPushDoor({ position, width, height, hexColor, side, isOpen, onClick }: any) {
+  const groupRef = useRef<THREE.Group>(null);
+  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
+  const material = useFurnitureMaterial(hexColor);
+
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
+    }
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      position={position}
+      onClick={(e) => {
+        if (onClick) {
+          e.stopPropagation();
+          onClick(e);
+        }
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default';
+      }}
+    >
+      {/* Porte sans poignée - surface lisse */}
+      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
+        <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+      {/* Petite encoche discrète pour indiquer push-to-open */}
+      <mesh position={[side === 'left' ? width - 0.08 : -width + 0.08, 0, 0.015]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
+        <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
       </mesh>
     </group>
   );
 }
 
-function AnimatedDrawer({ position, width, height, depth, hexColor, isOpen, onClick }: any) {
+function AnimatedPushDrawer({ position, width, height, depth, hexColor, isOpen, onClick }: any) {
+  const groupRef = useRef<THREE.Group>(null);
+  const initialZ = position[2];
+  const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
+  const material = useFurnitureMaterial(hexColor);
+
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
+    }
+  });
+
+  const boxDepth = depth * 0.8;
+  const boxHeight = height * 0.8;
+
+  return (
+    <group
+      ref={groupRef}
+      position={[position[0], position[1], initialZ]}
+      onClick={(e) => {
+        if (onClick) {
+          e.stopPropagation();
+          onClick(e);
+        }
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default';
+      }}
+    >
+      {/* Façade sans poignée */}
+      <mesh castShadow>
+        <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+      {/* Petite encoche discrète pour indiquer push-to-open */}
+      <mesh position={[0, -height * 0.3, 0.015]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
+        <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
+      </mesh>
+      {/* Corps du tiroir (visible quand ouvert) */}
+      <mesh position={[0, 0, -boxDepth / 2]}>
+        <boxGeometry args={[width - 0.02, boxHeight, boxDepth]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+    </group>
+  );
+}
+
+function AnimatedDrawer({ position, width, height, depth, hexColor, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const initialZ = position[2];
   const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ; // Sortie de 60% de la profondeur
@@ -160,11 +348,14 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, isOpen, onCl
         <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
         <primitive object={material} attach="material" />
       </mesh>
-      {/* Poignée (Horizontale et proportionnelle) */}
-      <mesh position={[0, 0, 0.015]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.006, 0.006, Math.min(width * 0.4, 0.5), 12]} />
-        <meshStandardMaterial color="#111" metalness={0.8} />
-      </mesh>
+      {/* Poignée */}
+      <Handle
+        type={handleType || 'horizontal_bar'}
+        position={[0, 0, 0.015]}
+        side="center"
+        height={height}
+        width={width}
+      />
       {/* Fond du tiroir (boîte simplifiée) */}
       <mesh position={[0, -height / 2 + 0.05, -boxDepth / 2]} receiveShadow>
         <boxGeometry args={[width - 0.06, 0.01, boxDepth]} />
@@ -204,7 +395,7 @@ function Furniture({
     if (rootZone) {
       const newOpenStates: Record<string, boolean> = {};
       const applyOpenState = (zone: Zone) => {
-        if (zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double')) {
+        if (zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door')) {
           newOpenStates[zone.id] = doorsOpen || false;
         }
         if (zone.children) {
@@ -270,7 +461,7 @@ function Furniture({
     if (!rootZone) return false;
 
     const checkZone = (zone: Zone): boolean => {
-      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double')) {
+      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door')) {
         return true;
       }
       if (zone.children) {
@@ -330,7 +521,7 @@ function Furniture({
               e.stopPropagation();
               onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
               // Si c'est un tiroir ou une porte, on bascule aussi l'ouverture
-              if (zone.content === 'drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double') {
+              if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door') {
                 toggleCompartment(zone.id);
               }
             }}
@@ -384,6 +575,24 @@ function Furniture({
               height={height}
               depth={d}
               hexColor={drawerColor}
+              handleType={zone.handleType}
+              isOpen={openCompartments[zone.id]}
+              onClick={() => {
+                toggleCompartment(zone.id);
+                onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+              }}
+            />
+          );
+        } else if (zone.content === 'push_drawer') {
+          // Tiroir push-to-open sans poignée
+          items.push(
+            <AnimatedPushDrawer
+              key={zone.id}
+              position={[x, y, d / 2]}
+              width={width}
+              height={height}
+              depth={d}
+              hexColor={drawerColor}
               isOpen={openCompartments[zone.id]}
               onClick={() => {
                 toggleCompartment(zone.id);
@@ -412,6 +621,7 @@ function Furniture({
                   width={isDouble ? width/2 : width}
                   height={height}
                   hexColor={doorColor}
+                  handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
                     toggleCompartment(zone.id);
@@ -426,6 +636,7 @@ function Furniture({
                   width={isDouble ? width/2 : width}
                   height={height}
                   hexColor={doorColor}
+                  handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
                     toggleCompartment(zone.id);
@@ -433,6 +644,89 @@ function Furniture({
                   }}
                 />
               )}
+            </group>
+          );
+        } else if (zone.content === 'push_door') {
+          // Porte push-to-open sans poignée
+          items.push(
+            <group key={zone.id} position={[x, y, d/2]}>
+              <AnimatedPushDoor
+                side="left"
+                position={[-width/2, 0, 0]}
+                width={width}
+                height={height}
+                hexColor={doorColor}
+                isOpen={openCompartments[zone.id]}
+                onClick={() => {
+                  toggleCompartment(zone.id);
+                  onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                }}
+              />
+            </group>
+          );
+        } else if (zone.content === 'glass_shelf') {
+          // Étagère en verre transparente
+          items.push(
+            <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
+              <boxGeometry args={[width, thickness, d]} />
+              <meshPhysicalMaterial
+                color="#ffffff"
+                transparent
+                opacity={0.3}
+                roughness={0.1}
+                metalness={0.1}
+                transmission={0.9}
+                thickness={0.5}
+              />
+            </mesh>
+          );
+        } else if (zone.content === 'mirror_door') {
+          // Porte avec miroir
+          items.push(
+            <group key={zone.id} position={[x, y, d/2]}>
+              <AnimatedMirrorDoor
+                side="left"
+                position={[-width/2, 0, 0]}
+                width={width}
+                height={height}
+                handleType={zone.handleType}
+                isOpen={openCompartments[zone.id]}
+                onClick={() => {
+                  toggleCompartment(zone.id);
+                  onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                }}
+              />
+            </group>
+          );
+        } else if (zone.content === 'pegboard') {
+          // Panneau perforé
+          const holesX = Math.floor(width * 15);
+          const holesY = Math.floor(height * 15);
+          const totalHoles = holesX * holesY;
+
+          items.push(
+            <group key={zone.id} position={[x, y, -d/2 + 0.02]}>
+              {/* Panneau de fond */}
+              <mesh>
+                <boxGeometry args={[width - 0.02, height - 0.02, 0.02]} />
+                <meshStandardMaterial color="#8B7355" roughness={0.8} />
+              </mesh>
+              {/* Grille de trous */}
+              {Array.from({ length: totalHoles }).map((_, index) => {
+                const i = index % holesX;
+                const j = Math.floor(index / holesX);
+                const holeX = -width/2 + 0.04 + (i * 0.04);
+                const holeY = -height/2 + 0.04 + (j * 0.04);
+                if (holeX < width/2 - 0.02 && holeY < height/2 - 0.02) {
+                  return (
+                    <mesh key={`hole-${i}-${j}`} position={[holeX, holeY, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
+                      <cylinderGeometry args={[0.003, 0.003, 0.025, 8]} />
+                      <meshStandardMaterial color="#2A2A2A" />
+                    </mesh>
+                  );
+                }
+                return null;
+              })}
             </group>
           );
         } else {
@@ -597,6 +891,378 @@ function Furniture({
   );
 }
 
+// ============================================
+// TABLEAUX ARTISTIQUES MODERNES
+// ============================================
+
+// Composant pour un tableau style minimaliste japonais
+function JapaneseMinimalist({ position, width = 0.8, height = 1.0 }: { position: [number, number, number]; width?: number; height?: number }) {
+  return (
+    <group position={position}>
+      {/* Cadre noir fin */}
+      <mesh position={[0, height/2 + 0.01, 0]} castShadow>
+        <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, -height/2 - 0.01, 0]} castShadow>
+        <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
+      </mesh>
+      <mesh position={[-width/2 - 0.01, 0, 0]} castShadow>
+        <boxGeometry args={[0.015, height, 0.02]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
+      </mesh>
+      <mesh position={[width/2 + 0.01, 0, 0]} castShadow>
+        <boxGeometry args={[0.015, height, 0.02]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
+      </mesh>
+
+      {/* Fond crème */}
+      <mesh position={[0, 0, -0.005]}>
+        <planeGeometry args={[width, height]} />
+        <meshStandardMaterial color="#F5F2E8" roughness={0.95} />
+      </mesh>
+
+      {/* Branche de cerisier */}
+      <mesh position={[-width*0.1, -height*0.1, 0.001]} rotation={[0, 0, 0.3]}>
+        <boxGeometry args={[width*0.5, 0.008, 0.002]} />
+        <meshStandardMaterial color="#3E2723" roughness={0.8} />
+      </mesh>
+      <mesh position={[width*0.05, height*0.05, 0.001]} rotation={[0, 0, -0.5]}>
+        <boxGeometry args={[width*0.25, 0.005, 0.002]} />
+        <meshStandardMaterial color="#3E2723" roughness={0.8} />
+      </mesh>
+
+      {/* Fleurs de cerisier */}
+      <mesh position={[-width*0.05, height*0.1, 0.002]}>
+        <circleGeometry args={[0.025, 16]} />
+        <meshStandardMaterial color="#FFCDD2" roughness={0.6} />
+      </mesh>
+      <mesh position={[width*0.08, height*0.15, 0.002]}>
+        <circleGeometry args={[0.02, 16]} />
+        <meshStandardMaterial color="#F8BBD9" roughness={0.6} />
+      </mesh>
+      <mesh position={[width*0.15, height*0.08, 0.002]}>
+        <circleGeometry args={[0.022, 16]} />
+        <meshStandardMaterial color="#FFCDD2" roughness={0.6} />
+      </mesh>
+      <mesh position={[-width*0.12, height*0.02, 0.002]}>
+        <circleGeometry args={[0.018, 16]} />
+        <meshStandardMaterial color="#F8BBD9" roughness={0.6} />
+      </mesh>
+      <mesh position={[width*0.02, height*0.2, 0.002]}>
+        <circleGeometry args={[0.024, 16]} />
+        <meshStandardMaterial color="#FFCDD2" roughness={0.6} />
+      </mesh>
+
+      {/* Sceau rouge signature */}
+      <mesh position={[width*0.3, -height*0.35, 0.002]}>
+        <boxGeometry args={[0.04, 0.05, 0.001]} />
+        <meshStandardMaterial color="#C62828" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+// Composant pour un tableau abstrait contemporain
+function AbstractContemporary({ position, width = 1.2, height = 0.9 }: { position: [number, number, number]; width?: number; height?: number }) {
+  return (
+    <group position={position}>
+      {/* Cadre flottant blanc */}
+      <mesh position={[0, 0, -0.02]} castShadow>
+        <boxGeometry args={[width + 0.08, height + 0.08, 0.04]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.1} />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[width + 0.04, height + 0.04, 0.03]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
+      </mesh>
+
+      {/* Fond */}
+      <mesh position={[0, 0, 0.01]}>
+        <planeGeometry args={[width - 0.04, height - 0.04]} />
+        <meshStandardMaterial color="#FAFAFA" roughness={0.9} />
+      </mesh>
+
+      {/* Arc doré */}
+      <mesh position={[width*0.2, -height*0.05, 0.016]} rotation={[0, 0, -0.3]}>
+        <ringGeometry args={[width*0.12, width*0.18, 32, 1, 0, Math.PI]} />
+        <meshStandardMaterial color="#F2CC8F" roughness={0.6} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Cercle bleu foncé */}
+      <mesh position={[-width*0.2, height*0.15, 0.015]}>
+        <circleGeometry args={[width*0.18, 32]} />
+        <meshStandardMaterial color="#4A5F7F" roughness={0.6} />
+      </mesh>
+
+      {/* Cercle vert */}
+      <mesh position={[width*0.25, height*0.25, 0.017]}>
+        <circleGeometry args={[width*0.06, 24]} />
+        <meshStandardMaterial color="#81B29A" roughness={0.5} />
+      </mesh>
+
+      {/* Ligne graphique */}
+      <mesh position={[-width*0.1, -height*0.25, 0.018]}>
+        <boxGeometry args={[width*0.4, 0.008, 0.001]} />
+        <meshStandardMaterial color="#3D405B" roughness={0.4} />
+      </mesh>
+
+      {/* Points décoratifs */}
+      <mesh position={[-width*0.3, height*0.3, 0.019]}>
+        <circleGeometry args={[0.012, 12]} />
+        <meshStandardMaterial color="#3D405B" roughness={0.5} />
+      </mesh>
+      <mesh position={[width*0.32, -height*0.28, 0.019]}>
+        <circleGeometry args={[0.015, 12]} />
+        <meshStandardMaterial color="#81B29A" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+// Composant pour un paysage scandinave minimaliste
+function ScandinavianLandscape({ position, width = 1.0, height = 0.7 }: { position: [number, number, number]; width?: number; height?: number }) {
+  return (
+    <group position={position}>
+      {/* Cadre bois clair */}
+      <mesh position={[0, height/2 + 0.02, 0]} castShadow>
+        <boxGeometry args={[width + 0.07, 0.035, 0.025]} />
+        <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
+      </mesh>
+      <mesh position={[0, -height/2 - 0.02, 0]} castShadow>
+        <boxGeometry args={[width + 0.07, 0.035, 0.025]} />
+        <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
+      </mesh>
+      <mesh position={[-width/2 - 0.02, 0, 0]} castShadow>
+        <boxGeometry args={[0.035, height, 0.025]} />
+        <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
+      </mesh>
+      <mesh position={[width/2 + 0.02, 0, 0]} castShadow>
+        <boxGeometry args={[0.035, height, 0.025]} />
+        <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
+      </mesh>
+
+      {/* Ciel */}
+      <mesh position={[0, height*0.2, -0.005]}>
+        <planeGeometry args={[width, height*0.6]} />
+        <meshStandardMaterial color="#E8DFD6" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, height*0.35, -0.004]}>
+        <planeGeometry args={[width, height*0.3]} />
+        <meshStandardMaterial color="#D4C8BC" roughness={0.95} />
+      </mesh>
+
+      {/* Montagne arrière */}
+      <mesh position={[width*0.15, -height*0.05, 0.001]}>
+        <coneGeometry args={[width*0.35, height*0.5, 3]} />
+        <meshStandardMaterial color="#C4B8AC" roughness={0.8} flatShading />
+      </mesh>
+
+      {/* Montagne avant */}
+      <mesh position={[-width*0.1, -height*0.15, 0.002]}>
+        <coneGeometry args={[width*0.3, height*0.45, 3]} />
+        <meshStandardMaterial color="#8B7355" roughness={0.8} flatShading />
+      </mesh>
+
+      {/* Eau/Reflet */}
+      <mesh position={[0, -height*0.35, 0.003]}>
+        <planeGeometry args={[width, height*0.2]} />
+        <meshStandardMaterial color="#B8C4C8" roughness={0.3} metalness={0.2} />
+      </mesh>
+
+      {/* Ligne d'horizon */}
+      <mesh position={[0, -height*0.25, 0.004]}>
+        <boxGeometry args={[width, 0.003, 0.001]} />
+        <meshStandardMaterial color="#5C5552" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+// Composant One Line Art (dessin au trait)
+function OneLineArt({ position, width = 0.5, height = 0.7 }: { position: [number, number, number]; width?: number; height?: number }) {
+  return (
+    <group position={position}>
+      {/* Cadre flottant */}
+      <mesh position={[0, 0, -0.02]} castShadow>
+        <boxGeometry args={[width + 0.06, height + 0.06, 0.04]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.1} />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[width + 0.02, height + 0.02, 0.03]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
+      </mesh>
+
+      {/* Fond blanc */}
+      <mesh position={[0, 0, 0.01]}>
+        <planeGeometry args={[width - 0.02, height - 0.02]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.95} />
+      </mesh>
+
+      {/* Dessin visage au trait */}
+      {/* Contour du visage */}
+      <mesh position={[0, 0, 0.015]} rotation={[0, 0, 0.1]}>
+        <torusGeometry args={[width*0.18, 0.003, 8, 32, Math.PI * 1.2]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
+      </mesh>
+      {/* Œil */}
+      <mesh position={[-width*0.05, height*0.05, 0.016]}>
+        <torusGeometry args={[width*0.03, 0.002, 8, 16, Math.PI * 2]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
+      </mesh>
+      {/* Sourcil */}
+      <mesh position={[-width*0.05, height*0.1, 0.016]} rotation={[0, 0, 0.2]}>
+        <torusGeometry args={[width*0.04, 0.002, 8, 16, Math.PI * 0.6]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
+      </mesh>
+      {/* Nez */}
+      <mesh position={[width*0.02, -height*0.02, 0.016]}>
+        <boxGeometry args={[0.003, height*0.08, 0.001]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
+      </mesh>
+      {/* Lèvres */}
+      <mesh position={[0, -height*0.1, 0.016]}>
+        <torusGeometry args={[width*0.04, 0.002, 8, 16, Math.PI]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+// Composant Bauhaus géométrique
+function BauhausGeometric({ position, width = 0.6, height = 0.8 }: { position: [number, number, number]; width?: number; height?: number }) {
+  return (
+    <group position={position}>
+      {/* Cadre blanc fin */}
+      <mesh position={[0, height/2 + 0.01, 0]} castShadow>
+        <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, -height/2 - 0.01, 0]} castShadow>
+        <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
+      </mesh>
+      <mesh position={[-width/2 - 0.01, 0, 0]} castShadow>
+        <boxGeometry args={[0.015, height, 0.02]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
+      </mesh>
+      <mesh position={[width/2 + 0.01, 0, 0]} castShadow>
+        <boxGeometry args={[0.015, height, 0.02]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
+      </mesh>
+
+      {/* Fond */}
+      <mesh position={[0, 0, -0.005]}>
+        <planeGeometry args={[width, height]} />
+        <meshStandardMaterial color="#F5F5F0" roughness={0.95} />
+      </mesh>
+
+      {/* Cercle rouge */}
+      <mesh position={[-width*0.15, height*0.2, 0.001]}>
+        <circleGeometry args={[width*0.2, 32]} />
+        <meshStandardMaterial color="#D32F2F" roughness={0.5} />
+      </mesh>
+
+      {/* Triangle jaune */}
+      <mesh position={[width*0.15, height*0.15, 0.002]}>
+        <coneGeometry args={[width*0.15, width*0.25, 3]} />
+        <meshStandardMaterial color="#FBC02D" roughness={0.5} flatShading />
+      </mesh>
+
+      {/* Carré bleu */}
+      <mesh position={[width*0.1, -height*0.2, 0.003]} rotation={[0, 0, Math.PI/6]}>
+        <boxGeometry args={[width*0.22, width*0.22, 0.002]} />
+        <meshStandardMaterial color="#1976D2" roughness={0.5} />
+      </mesh>
+
+      {/* Lignes noires */}
+      <mesh position={[-width*0.2, -height*0.1, 0.004]}>
+        <boxGeometry args={[0.006, height*0.5, 0.001]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
+      </mesh>
+      <mesh position={[0, -height*0.3, 0.004]}>
+        <boxGeometry args={[width*0.6, 0.006, 0.001]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
+      </mesh>
+
+      {/* Petit cercle noir */}
+      <mesh position={[-width*0.25, -height*0.25, 0.005]}>
+        <circleGeometry args={[width*0.05, 24]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+// Composant Horloge murale moderne
+function WallClock({ position, radius = 0.25 }: { position: [number, number, number]; radius?: number }) {
+  return (
+    <group position={position}>
+      {/* Cadre/Bordure de l'horloge */}
+      <mesh position={[0, 0, -0.01]} castShadow>
+        <cylinderGeometry args={[radius + 0.015, radius + 0.015, 0.04, 32]} />
+        <meshStandardMaterial color="#2C2C2C" roughness={0.3} metalness={0.7} />
+      </mesh>
+
+      {/* Fond blanc de l'horloge */}
+      <mesh position={[0, 0, 0.01]}>
+        <circleGeometry args={[radius, 32]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.2} />
+      </mesh>
+
+      {/* Marques des heures (12, 3, 6, 9) */}
+      <mesh position={[0, radius * 0.85, 0.015]}>
+        <boxGeometry args={[0.008, radius * 0.12, 0.002]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
+      </mesh>
+      <mesh position={[radius * 0.85, 0, 0.015]}>
+        <boxGeometry args={[radius * 0.12, 0.008, 0.002]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
+      </mesh>
+      <mesh position={[0, -radius * 0.85, 0.015]}>
+        <boxGeometry args={[0.008, radius * 0.12, 0.002]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
+      </mesh>
+      <mesh position={[-radius * 0.85, 0, 0.015]}>
+        <boxGeometry args={[radius * 0.12, 0.008, 0.002]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
+      </mesh>
+
+      {/* Petites marques pour les autres heures */}
+      {Array.from({ length: 8 }).map((_, i) => {
+        const angle = (Math.PI / 6) * (i + (i >= 3 ? 2 : 1));
+        const x = Math.sin(angle) * radius * 0.88;
+        const y = Math.cos(angle) * radius * 0.88;
+        return (
+          <mesh key={i} position={[x, y, 0.015]} rotation={[0, 0, -angle]}>
+            <boxGeometry args={[0.004, radius * 0.08, 0.002]} />
+            <meshStandardMaterial color="#666" roughness={0.5} />
+          </mesh>
+        );
+      })}
+
+      {/* Aiguille des heures (10h) */}
+      <mesh position={[-radius * 0.15, radius * 0.25, 0.02]} rotation={[0, 0, Math.PI / 6]}>
+        <boxGeometry args={[0.01, radius * 0.5, 0.003]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
+      </mesh>
+
+      {/* Aiguille des minutes (10 minutes) */}
+      <mesh position={[radius * 0.08, radius * 0.4, 0.022]} rotation={[0, 0, -Math.PI / 18]}>
+        <boxGeometry args={[0.006, radius * 0.7, 0.003]} />
+        <meshStandardMaterial color="#2C2C2C" roughness={0.3} />
+      </mesh>
+
+      {/* Centre de l'horloge */}
+      <mesh position={[0, 0, 0.025]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.01, 16]} />
+        <meshStandardMaterial color="#D32F2F" roughness={0.4} metalness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
 function Room() {
   return (
     <group>
@@ -630,7 +1296,7 @@ function Room() {
         <meshStandardMaterial color="#FFFFFF" />
       </mesh>
 
-      {/* Interrupteur (Détail Tylko) */}
+      {/* Interrupteur */}
       <mesh position={[-4.98, 1.2, 0]}>
         <boxGeometry args={[0.02, 0.1, 0.1]} />
         <meshStandardMaterial color="#f0f0f0" />
@@ -643,9 +1309,9 @@ function Room() {
           <meshStandardMaterial color="#444444" />
         </mesh>
         {Array.from({ length: 12 }).map((_, i) => (
-          <mesh 
-            key={i} 
-            position={[0, 0.5, 0]} 
+          <mesh
+            key={i}
+            position={[0, 0.5, 0]}
             rotation={[Math.random() * 0.8, i * Math.PI/6, Math.random() * 0.8]}
             castShadow
           >
@@ -655,11 +1321,23 @@ function Room() {
         ))}
       </group>
 
-      {/* Cadre au mur */}
-      <mesh position={[-2.5, 2.2, -1.98]}>
-        <boxGeometry args={[0.8, 1.2, 0.02]} />
-        <meshStandardMaterial color="#111111" />
-      </mesh>
+      {/* ========== TABLEAUX ARTISTIQUES MODERNES ========== */}
+
+      {/* Tableau principal - Japonais minimaliste (centre) - NOUVEAU DESIGN */}
+      <JapaneseMinimalist position={[0.3, 2.6, -1.97]} width={1.2} height={0.95} />
+
+      {/* Tableau scandinave (gauche) */}
+      <ScandinavianLandscape position={[-2.2, 2.4, -1.97]} width={0.8} height={0.95} />
+
+      {/* Bauhaus géométrique (droite haut) */}
+      <BauhausGeometric position={[2.5, 2.8, -1.97]} width={0.65} height={0.8} />
+
+      {/* Horloge murale (droite bas) - REMPLACE LE TABLEAU NOIR */}
+      <WallClock position={[2.5, 1.8, -1.97]} radius={0.25} />
+
+      {/* Bauhaus géométrique (extrême gauche) */}
+      <BauhausGeometric position={[-3.5, 2.2, -1.97]} width={0.55} height={0.7} />
+
     </group>
   );
 }

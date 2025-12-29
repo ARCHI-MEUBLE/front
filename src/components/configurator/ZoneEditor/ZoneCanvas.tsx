@@ -153,7 +153,7 @@ function ZoneNode({
     }, [isDragging, handleDragMove, handleDragEnd]);
 
     if (zone.type === 'leaf') {
-        const meta = ZONE_CONTENT_META[zone.content ?? 'empty'];
+        const meta = ZONE_CONTENT_META[zone.content ?? 'empty'] || ZONE_CONTENT_META['empty'];
         return (
             <button
                 type="button"

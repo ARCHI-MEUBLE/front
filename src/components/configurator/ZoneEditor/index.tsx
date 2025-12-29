@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
 import ZoneControls from './ZoneControls';
-import { Zone, ZoneContent } from './types';
+import { Zone, ZoneContent, HandleType } from './types';
 
 export { type Zone, type ZoneContent } from './types';
 
@@ -18,6 +18,7 @@ interface ZoneEditorProps {
   onResetZone?: (zoneId: string) => void;
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
+  onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   exposeActions?: (actions: {
     splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
     setZoneContent: (zoneId: string, content: ZoneContent) => void;
@@ -37,6 +38,7 @@ export default function ZoneEditor({
   height,
   onToggleLight,
   onToggleCableHole,
+  onSetHandleType,
   exposeActions,
 }: ZoneEditorProps) {
   // Trouver une zone avec son parent
@@ -164,6 +166,27 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onToggleCableHole]
   );
 
+  // Définir le type de poignée
+  const setHandleType = useCallback(
+    (zoneId: string, handleType: HandleType) => {
+      if (onSetHandleType) {
+        onSetHandleType(zoneId, handleType);
+      } else {
+        const updateZone = (z: Zone): Zone => {
+          if (z.id === zoneId && z.type === 'leaf') {
+            return { ...z, handleType };
+          }
+          if (z.children) {
+            return { ...z, children: z.children.map(updateZone) };
+          }
+          return z;
+        };
+        onRootZoneChange(updateZone(rootZone));
+      }
+    },
+    [rootZone, onRootZoneChange, onSetHandleType]
+  );
+
   // Réinitialiser une zone
   const resetZone = useCallback(
     (zoneId: string) => {
@@ -278,6 +301,7 @@ export default function ZoneEditor({
             onSetSplitRatios={setSplitRatios}
             onToggleLight={toggleLight}
             onToggleCableHole={toggleCableHole}
+            onSetHandleType={setHandleType}
             onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
           />
         ) : (
