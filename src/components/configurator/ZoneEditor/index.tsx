@@ -7,19 +7,23 @@ export { type Zone, type ZoneContent } from './types';
 
 interface ZoneEditorProps {
   rootZone: Zone;
-  selectedZoneId: string;
+  selectedZoneId: string | null;
   onRootZoneChange: (zone: Zone) => void;
-  onSelectedZoneIdChange: (id: string) => void;
+  onSelectedZoneIdChange: (id: string | null) => void;
   width: number;
   height: number;
   // Expose les actions pour une utilisation externe (ActionBar)
   onSplitZone?: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
   onSetZoneContent?: (zoneId: string, content: ZoneContent) => void;
   onResetZone?: (zoneId: string) => void;
+  onToggleLight?: (zoneId: string) => void;
+  onToggleCableHole?: (zoneId: string) => void;
   exposeActions?: (actions: {
     splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
     setZoneContent: (zoneId: string, content: ZoneContent) => void;
     resetZone: (zoneId: string) => void;
+    toggleLight: (zoneId: string) => void;
+    toggleCableHole: (zoneId: string) => void;
     selectedZoneInfo: { zone: Zone; parent: Zone | null } | null;
   }) => void;
 }
@@ -31,11 +35,14 @@ export default function ZoneEditor({
   onSelectedZoneIdChange,
   width,
   height,
+  onToggleLight,
+  onToggleCableHole,
   exposeActions,
 }: ZoneEditorProps) {
   // Trouver une zone avec son parent
   const findZoneWithParent = useCallback(
-    (current: Zone, targetId: string, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
+    (current: Zone, targetId: string | null, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
+      if (!targetId) return null;
       if (current.id === targetId) {
         return { zone: current, parent };
       }
@@ -115,6 +122,48 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange]
   );
 
+  // Basculer l'éclairage
+  const toggleLight = useCallback(
+    (zoneId: string) => {
+      if (onToggleLight) {
+        onToggleLight(zoneId);
+      } else {
+        const updateZone = (z: Zone): Zone => {
+          if (z.id === zoneId && z.type === 'leaf') {
+            return { ...z, hasLight: !z.hasLight };
+          }
+          if (z.children) {
+            return { ...z, children: z.children.map(updateZone) };
+          }
+          return z;
+        };
+        onRootZoneChange(updateZone(rootZone));
+      }
+    },
+    [rootZone, onRootZoneChange, onToggleLight]
+  );
+
+  // Basculer le passe-câble
+  const toggleCableHole = useCallback(
+    (zoneId: string) => {
+      if (onToggleCableHole) {
+        onToggleCableHole(zoneId);
+      } else {
+        const updateZone = (z: Zone): Zone => {
+          if (z.id === zoneId && z.type === 'leaf') {
+            return { ...z, hasCableHole: !z.hasCableHole };
+          }
+          if (z.children) {
+            return { ...z, children: z.children.map(updateZone) };
+          }
+          return z;
+        };
+        onRootZoneChange(updateZone(rootZone));
+      }
+    },
+    [rootZone, onRootZoneChange, onToggleCableHole]
+  );
+
   // Réinitialiser une zone
   const resetZone = useCallback(
     (zoneId: string) => {
@@ -127,6 +176,8 @@ export default function ZoneEditor({
             children: undefined,
             splitRatio: undefined,
             splitRatios: undefined,
+            hasLight: false,
+            hasCableHole: false,
           };
         }
         if (z.children) {
@@ -189,6 +240,19 @@ export default function ZoneEditor({
     [setSplitRatio, setSplitRatios]
   );
 
+  useEffect(() => {
+    if (exposeActions) {
+      exposeActions({
+        splitZone,
+        setZoneContent,
+        resetZone,
+        toggleLight,
+        toggleCableHole,
+        selectedZoneInfo,
+      });
+    }
+  }, [exposeActions, splitZone, setZoneContent, resetZone, toggleLight, toggleCableHole, selectedZoneInfo]);
+
   return (
     <div className="space-y-3">
       {/* Canvas avec titre intégré */}
@@ -203,16 +267,28 @@ export default function ZoneEditor({
 
       {/* Contrôles dans une card */}
       <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
-        <ZoneControls
-          selectedZone={selectedZone}
-          parentZone={parentZone}
-          onSplitZone={splitZone}
-          onSetContent={setZoneContent}
-          onResetZone={resetZone}
-          onSetSplitRatio={setSplitRatio}
-          onSetSplitRatios={setSplitRatios}
-          onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
-        />
+        {selectedZoneId ? (
+          <ZoneControls
+            selectedZone={selectedZone}
+            parentZone={parentZone}
+            onSplitZone={splitZone}
+            onSetContent={setZoneContent}
+            onResetZone={resetZone}
+            onSetSplitRatio={setSplitRatio}
+            onSetSplitRatios={setSplitRatios}
+            onToggleLight={toggleLight}
+            onToggleCableHole={toggleCableHole}
+            onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center bg-white shadow-sm" style={{ borderRadius: '50%' }}>
+              <span className="text-2xl">☝️</span>
+            </div>
+            <p className="text-base font-medium text-[#1A1917]">Aucune zone sélectionnée</p>
+            <p className="text-sm text-[#706F6C]">Cliquez sur un compartiment du meuble pour le modifier</p>
+          </div>
+        )}
       </div>
     </div>
   );

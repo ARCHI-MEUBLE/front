@@ -1,4 +1,4 @@
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, ArrowUp } from 'lucide-react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, ArrowUp, Lightbulb, Plug } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 
 interface ZoneControlsProps {
@@ -10,6 +10,8 @@ interface ZoneControlsProps {
   onSetSplitRatio: (zoneId: string, ratio: number) => void;
   onSetSplitRatios?: (zoneId: string, ratios: number[]) => void;
   onSelectParent?: () => void;
+  onToggleLight?: (zoneId: string) => void;
+  onToggleCableHole?: (zoneId: string) => void;
 }
 
 export default function ZoneControls({
@@ -21,6 +23,8 @@ export default function ZoneControls({
                                        onSetSplitRatio,
                                        onSetSplitRatios,
                                        onSelectParent,
+                                       onToggleLight,
+                                       onToggleCableHole,
                                      }: ZoneControlsProps) {
   const isLeaf = selectedZone.type === 'leaf';
 
@@ -100,6 +104,53 @@ export default function ZoneControls({
                         </button>
                     );
                   })}
+                </div>
+
+                {/* Option Éclairage */}
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleLight?.(selectedZone.id)}
+                    className={`flex items-center justify-between border-2 p-4 transition-all ${
+                      selectedZone.hasLight
+                        ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
+                        : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                    }`}
+                    style={{ borderRadius: '4px' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Lightbulb className={`h-6 w-6 ${selectedZone.hasLight ? 'text-yellow-500 fill-yellow-200' : ''}`} />
+                      <div className="text-left">
+                        <span className="block text-base font-semibold">Éclairage LED</span>
+                        <span className="block text-sm text-[#706F6C]">Lumière intégrée</span>
+                      </div>
+                    </div>
+                    <div className={`h-6 w-10 rounded-full border-2 transition-all relative ${selectedZone.hasLight ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
+                      <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${selectedZone.hasLight ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onToggleCableHole?.(selectedZone.id)}
+                    className={`flex items-center justify-between border-2 p-4 transition-all ${
+                      selectedZone.hasCableHole
+                        ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
+                        : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                    }`}
+                    style={{ borderRadius: '4px' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Plug className={`h-6 w-6 ${selectedZone.hasCableHole ? 'text-blue-500' : ''}`} />
+                      <div className="text-left">
+                        <span className="block text-base font-semibold">Passe-câble</span>
+                        <span className="block text-sm text-[#706F6C]">Trou dans le fond</span>
+                      </div>
+                    </div>
+                    <div className={`h-6 w-10 rounded-full border-2 transition-all relative ${selectedZone.hasCableHole ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
+                      <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${selectedZone.hasCableHole ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
+                    </div>
+                  </button>
                 </div>
               </div>
 

@@ -1,19 +1,21 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import Viewer from '@/components/configurator/Viewer';
+import ThreeViewer from '@/components/configurator/ThreeViewer';
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
 import ZoneEditor, { Zone, ZoneContent } from '@/components/configurator/ZoneEditor';
 import SocleSelector from '@/components/configurator/SocleSelector';
+import DoorSelector from '@/components/configurator/DoorSelector';
 import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2 } from 'lucide-react';
 
 // Hook pour détecter mobile
 function useIsMobile() {
@@ -85,6 +87,8 @@ export default function ConfiguratorPage() {
     socle: string;
     rootZone: Zone;
     finish: string;
+    doorType?: 'none' | 'single' | 'double';
+    doorSide?: 'left' | 'right';
   } | null>(null);
 
   // États de base
@@ -116,6 +120,14 @@ export default function ConfiguratorPage() {
   const [price, setPrice] = useState(899);
   const [pricePerM3, setPricePerM3] = useState(1500); // Prix par défaut en €/m³
   const [doorsOpen, setDoorsOpen] = useState(true);
+  const [showDecorations, setShowDecorations] = useState(true);
+  const doorsOpenRef = useRef(doorsOpen);
+  const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
+  const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
+
+  useEffect(() => {
+    doorsOpenRef.current = doorsOpen;
+  }, [doorsOpen]);
 
   // Mode multi-couleurs
   const [useMultiColor, setUseMultiColor] = useState(false);
@@ -123,6 +135,8 @@ export default function ConfiguratorPage() {
     structure: { colorId: null, hex: null },
     drawers: { colorId: null, hex: null },
     doors: { colorId: null, hex: null },
+    shelves: { colorId: null, hex: null },
+    back: { colorId: null, hex: null },
     base: { colorId: null, hex: null },
   });
 
@@ -132,11 +146,26 @@ export default function ConfiguratorPage() {
     type: 'leaf',
     content: 'empty',
   });
-  const [selectedZoneId, setSelectedZoneId] = useState<string>('root');
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>('root');
   const [doors, setDoors] = useState(0);
+  
+  // Vérifier s'il y a des portes spécifiques dans les zones
+  const hasZoneSpecificDoors = useMemo(() => {
+    const checkZone = (zone: Zone): boolean => {
+      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double')) {
+        return true;
+      }
+      if (zone.children) {
+        return zone.children.some(child => checkZone(child));
+      }
+      return false;
+    };
+    return checkZone(rootZone);
+  }, [rootZone]);
 
   // Fonctions de manipulation des zones
-  const findZone = useCallback((zone: Zone, targetId: string): Zone | null => {
+  const findZone = useCallback((zone: Zone, targetId: string | null): Zone | null => {
+    if (!targetId) return null;
     if (zone.id === targetId) return zone;
     if (zone.children) {
       for (const child of zone.children) {
@@ -186,7 +215,64 @@ export default function ConfiguratorPage() {
     setRootZone(updateZone(rootZone));
   }, [rootZone]);
 
+  const toggleZoneLight = useCallback((zoneId: string) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, hasLight: !z.hasLight };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const toggleZoneCableHole = useCallback((zoneId: string) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, hasCableHole: !z.hasCableHole };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
   // UI
+  // Compter les étagères à partir de la rootZone pour Three.js
+  const shelfCount = useMemo(() => {
+    if (!rootZone || !rootZone.children) return 0;
+    // On compte le nombre de divisions horizontales
+    const countHorizontalDivisions = (zone: Zone): number => {
+      if (zone.type === 'horizontal' && zone.children) {
+        return zone.children.length - 1;
+      }
+      if (zone.children) {
+        return zone.children.reduce((sum, child) => sum + countHorizontalDivisions(child), 0);
+      }
+      return 0;
+    };
+    return countHorizontalDivisions(rootZone);
+  }, [rootZone]);
+
+  // Parsing du prompt pour extraire la structure du meuble pour Three.js
+  const furnitureStructure = useMemo(() => {
+    if (!glbUrl) return null;
+    
+    // On essaie d'extraire les infos du prompt ou de la rootZone
+    // Pour Three.js, on a besoin de savoir si c'est une bibliothèque, un buffet, etc.
+    const isBuffet = templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3');
+    
+    return {
+      isBuffet,
+      shelfCount: shelfCount,
+      // On peut ajouter d'autres infos extraites du prompt ici
+    };
+  }, [glbUrl, templatePrompt, shelfCount]);
+
   const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -231,6 +317,8 @@ export default function ConfiguratorPage() {
       selectedColorId,
       useMultiColor,
       componentColors,
+      doorType,
+      doorSide,
       timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
     };
 
@@ -240,7 +328,7 @@ export default function ConfiguratorPage() {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, localStorageKey]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, localStorageKey]);
 
   // Charger les matériaux
   useEffect(() => {
@@ -318,26 +406,78 @@ export default function ConfiguratorPage() {
     else if (/S(?!\d)/.test(compact)) setSocle('metal');
     else setSocle('none');
 
-    // Parse structure
-    const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
-    const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+    // Détecter les portes globales dans les flags (avant H/V)
+    const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+    if (/P2/.test(flagsPart)) setDoorType('double');
+    else if (/P/.test(flagsPart)) {
+      setDoorType('single');
+      if (flagsPart.includes('Pd')) setDoorSide('right');
+      else setDoorSide('left');
+    } else {
+      setDoorType('none');
+    }
 
-    if (hStruct) {
-      const inner = hStruct[2];
-      const children = inner.split(',').map((content, idx) => ({
-        id: `zone-${idx}`,
-        type: 'leaf' as const,
-        content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent,
-      }));
-      setRootZone({ id: 'root', type: 'horizontal', children });
-    } else if (vStruct) {
-      const inner = vStruct[2];
-      const children = inner.split(',').map((content, idx) => ({
-        id: `zone-${idx}`,
-        type: 'leaf' as const,
-        content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent,
-      }));
-      setRootZone({ id: 'root', type: 'vertical', children });
+    // Parse structure récursivement
+    const parseZones = (str: string, idPrefix: string): Zone => {
+      const hMatch = str.match(/^H(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
+      const vMatch = str.match(/^V(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
+      
+      if (hMatch || vMatch) {
+        const isH = !!hMatch;
+        const match = hMatch || vMatch;
+        const ratiosStr = match![1];
+        const count = ratiosStr ? ratiosStr.split(',').length : parseInt(match![2]);
+        const inner = match![3];
+        
+        // Splitting inner content while respecting parentheses
+        const parts: string[] = [];
+        let current = '';
+        let depth = 0;
+        for (let i = 0; i < inner.length; i++) {
+          if (inner[i] === '(') depth++;
+          if (inner[i] === ')') depth--;
+          if (inner[i] === ',' && depth === 0) {
+            parts.push(current);
+            current = '';
+          } else {
+            current += inner[i];
+          }
+        }
+        parts.push(current);
+
+        const ratios = ratiosStr ? ratiosStr.split(',').map(r => parseFloat(r)) : undefined;
+
+        return {
+          id: idPrefix,
+          type: isH ? 'horizontal' : 'vertical',
+          children: parts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
+          splitRatios: isH && ratios ? [...ratios].reverse() : ratios, // On inverse pour H car le Three.js monte
+        };
+      }
+
+      // Leaf node
+      return {
+        id: idPrefix,
+        type: 'leaf',
+        content: (
+          str.includes('T') ? 'drawer' : 
+          str.includes('D') ? 'dressing' : 
+          str.includes('P2') ? 'door_double' : 
+          str.includes('Pd') ? 'door_right' : 
+          (str.includes('P') || str.includes('Pg')) ? 'door' : 
+          'empty'
+        ) as ZoneContent,
+      };
+    };
+
+    // Extraire la partie structure du prompt (tout ce qui suit EbF, E, etc.)
+    const structurePart = compact.replace(/M\d+\([^)]+\)[^HVD]*/, '');
+    if (structurePart && !['P', 'P2', 'Pg', 'Pd'].includes(structurePart)) {
+      setRootZone(parseZones(structurePart, 'root'));
+    } else {
+      // Si c'est juste une porte globale, la rootZone est une feuille vide 
+      // car la porte est gérée par doorType
+      setRootZone({ id: 'root', type: 'leaf', content: 'empty' });
     }
   }, []);
 
@@ -361,6 +501,17 @@ export default function ConfiguratorPage() {
           if (/S2/.test(compact)) initSocle = 'wood';
           else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
 
+          // Détection portes pour la config initiale
+          const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+          let initDoorType: 'none' | 'single' | 'double' = 'none';
+          let initDoorSide: 'left' | 'right' = 'left';
+          
+          if (/P2/.test(flagsPart)) initDoorType = 'double';
+          else if (/P/.test(flagsPart)) {
+            initDoorType = 'single';
+            initDoorSide = flagsPart.includes('Pd') ? 'right' : 'left';
+          }
+
           let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
           const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
           const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
@@ -370,7 +521,7 @@ export default function ConfiguratorPage() {
             const children = inner.split(',').map((content, idx) => ({
               id: `zone-${idx}`,
               type: 'leaf' as const,
-              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent,
+              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
             }));
             initRootZone = { id: 'root', type: 'horizontal', children };
           } else if (vStruct) {
@@ -378,7 +529,7 @@ export default function ConfiguratorPage() {
             const children = inner.split(',').map((content, idx) => ({
               id: `zone-${idx}`,
               type: 'leaf' as const,
-              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent,
+              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
             }));
             initRootZone = { id: 'root', type: 'vertical', children };
           }
@@ -390,6 +541,8 @@ export default function ConfiguratorPage() {
             socle: initSocle,
             rootZone: JSON.parse(JSON.stringify(initRootZone)), // Deep copy
             finish: 'Aggloméré',
+            doorType: initDoorType,
+            doorSide: initDoorSide,
           });
 
           // 3. Vérifier s'il existe une config sauvegardée dans localStorage
@@ -408,6 +561,8 @@ export default function ConfiguratorPage() {
               if (parsed.selectedColorId !== undefined) setSelectedColorId(parsed.selectedColorId);
               if (parsed.useMultiColor !== undefined) setUseMultiColor(parsed.useMultiColor);
               if (parsed.componentColors) setComponentColors(parsed.componentColors);
+              if (parsed.doorType) setDoorType(parsed.doorType);
+              if (parsed.doorSide) setDoorSide(parsed.doorSide);
 
               console.log('✅ Configuration restaurée avec succès');
             } else {
@@ -460,6 +615,8 @@ export default function ConfiguratorPage() {
     setSocle(initialConfig.socle);
     setRootZone(JSON.parse(JSON.stringify(initialConfig.rootZone))); // Deep copy
     setFinish(initialConfig.finish);
+    setDoorType(initialConfig.doorType || 'none');
+    setDoorSide(initialConfig.doorSide || 'left');
     setSelectedZoneId('root');
 
     // Supprimer la sauvegarde localStorage
@@ -474,11 +631,19 @@ export default function ConfiguratorPage() {
   // Construction du prompt depuis l'arbre de zones
   const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
     if (zone.type === 'leaf') {
+      let leafChar = '';
       switch (zone.content) {
-        case 'drawer': return 'T';
-        case 'dressing': return 'D';
-        default: return '';
+        case 'drawer': leafChar = 'T'; break;
+        case 'dressing': leafChar = 'D'; break;
+        case 'door': leafChar = zone.id === 'root' ? '' : 'Pg'; break;
+        case 'door_right': leafChar = 'Pd'; break;
+        case 'door_double': leafChar = 'P2'; break;
+        default: leafChar = '';
       }
+      if (zone.hasCableHole) {
+        leafChar += 'c';
+      }
+      return leafChar;
     }
 
     const isHorizontal = zone.type === 'horizontal';
@@ -520,6 +685,7 @@ export default function ConfiguratorPage() {
     finish: string;
     socle: string;
     rootZone: Zone;
+    doorType?: 'none' | 'single' | 'double';
   }): number => {
     // 1. Calculer le volume en m³ (dimensions sont en mm)
     const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
@@ -535,11 +701,23 @@ export default function ConfiguratorPage() {
     p += soclePrices[config.socle] || 0;
 
     // 5. Compter tiroirs et penderies dans les zones
-    const countContent = (zone: Zone, type: ZoneContent): number => {
-      if (zone.type === 'leaf') return zone.content === type ? 1 : 0;
-      return (zone.children || []).reduce((sum, child) => sum + countContent(child, type), 0);
+    const countExtraPrice = (zone: Zone): number => {
+      if (zone.type === 'leaf') {
+        switch (zone.content) {
+          case 'drawer': return 35;
+          case 'door':
+          case 'door_right': return 40;
+          case 'door_double': return 80;
+          default: return 0;
+        }
+      }
+      return (zone.children || []).reduce((sum, child) => sum + countExtraPrice(child), 0);
     };
-    p += countContent(config.rootZone, 'drawer') * 35;
+    p += countExtraPrice(config.rootZone);
+
+    // 6. Ajouter le prix des portes globales
+    if (config.doorType === 'single') p += 40;
+    else if (config.doorType === 'double') p += 80;
 
     return Math.round(p);
   }, [pricePerM3]);
@@ -558,13 +736,16 @@ export default function ConfiguratorPage() {
           drawers: componentColors.drawers.hex || DEFAULT_COLOR_HEX,
           doors: componentColors.doors.hex || DEFAULT_COLOR_HEX,
           base: componentColors.base.hex || DEFAULT_COLOR_HEX,
+          shelves: componentColors.shelves.hex || DEFAULT_COLOR_HEX,
+          back: componentColors.back.hex || DEFAULT_COLOR_HEX,
         };
       } else {
         // Mode couleur unique
         singleColor = selectedColorOption?.hex || undefined;
       }
 
-      const result = await apiClient.generate.generate(prompt, !doorsOpen, singleColor, furnitureColors);
+      const excludeDoors = !doorsOpenRef.current || doorType === 'none';
+      const result = await apiClient.generate.generate(prompt, excludeDoors, singleColor, furnitureColors);
 
       let glbUrlAbsolute = result.glb_url;
       if (glbUrlAbsolute.startsWith('/')) {
@@ -578,7 +759,7 @@ export default function ConfiguratorPage() {
     } finally {
       setGenerating(false);
     }
-  }, [doorsOpen, selectedColorOption, useMultiColor, componentColors]);
+  }, [selectedColorOption, useMultiColor, componentColors, doorType]);
 
   // Effet de régénération
   useEffect(() => {
@@ -596,12 +777,26 @@ export default function ConfiguratorPage() {
     const meubleType = match[1];
     let prompt = `${meubleType}(${width},${depth},${height})`;
 
-    // Planches (E = enveloppe + b = bas + F = fond)
-    prompt += 'EbF';
+    // Garder les flags originaux (E, b, F, S, S2) mais nettoyer les contenus (P, T, D)
+    // On extrait uniquement ce qui précède la structure (H, V, ou [ )
+    const rest = match[3] || '';
+    const flagsMatch = rest.match(/^([^HV\[]*)/);
+    const originalFlags = flagsMatch ? flagsMatch[1] : '';
+    let flags = originalFlags.replace(/[PTD]/g, '');
+    
+    // S'assurer que le socle est correctement reflété dans les flags
+    // S = socle métal, S2 = socle bois
+    flags = flags.replace(/S2?/g, ''); // On enlève les anciens socles
+    if (socle === 'metal') flags += 'S';
+    else if (socle === 'wood') flags += 'S2';
 
-    // Socle
-    if (socle === 'metal') prompt += 'S';
-    else if (socle === 'wood') prompt += 'S2';
+    // Ajouter les portes globales si activées (uniquement s'il n'y a pas de portes de compartiment)
+    if (!hasZoneSpecificDoors) {
+      if (doorType === 'double') flags += 'P2';
+      else if (doorType === 'single') flags += doorSide === 'left' ? 'Pg' : 'Pd';
+    }
+    
+    prompt += flags;
 
     // Structure de zones
     const zonePrompt = buildPromptFromZoneTree(rootZone);
@@ -610,14 +805,18 @@ export default function ConfiguratorPage() {
     }
 
     // Calculer le prix
-    setPrice(calculatePrice({ width, height, depth, finish, socle, rootZone }));
+    setPrice(calculatePrice({ width, height, depth, finish, socle, rootZone, doorType }));
 
     // Générer
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, finish, rootZone, doorsOpen, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors]);
+  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide]);
 
   // Handlers
+  const handleToggleDoors = useCallback(() => {
+    setDoorsOpen(prev => !prev);
+  }, []);
+
   const handleMaterialChange = (key: string) => {
     const label = materialLabelFromKey(key);
     setFinish(label);
@@ -671,7 +870,7 @@ export default function ConfiguratorPage() {
           colorImage: selectedColorImage,
           socle,
         },
-        features: { doorsOpen },
+        features: { doorsOpen, doorType, doorSide },
         advancedZones: rootZone,
       };
 
@@ -835,12 +1034,62 @@ export default function ConfiguratorPage() {
             {/* Viewer wrapper - prend l'espace disponible */}
             <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
               <div className="absolute inset-0">
-                <Viewer glb={glbUrl || undefined} />
+                <ThreeViewer 
+                  width={width}
+                  height={height}
+                  depth={depth}
+                  color={color}
+                  hasSocle={socle !== 'none'}
+                  rootZone={rootZone}
+                  selectedZoneId={selectedZoneId}
+                  onSelectZone={setSelectedZoneId}
+                  isBuffet={furnitureStructure?.isBuffet}
+                  doorsOpen={doorsOpen}
+                  showDecorations={showDecorations}
+                  onToggleDoors={handleToggleDoors}
+                  componentColors={componentColors}
+                  useMultiColor={useMultiColor}
+                  doorType={doorType}
+                  doorSide={doorSide}
+                />
+
+                {/* Boutons flottants pour le viewer (Desktop) */}
+                <div className="absolute bottom-4 right-4 z-20 hidden flex-col gap-2 lg:flex">
+                  <button
+                    type="button"
+                    onClick={() => setShowDecorations(!showDecorations)}
+                    className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                      showDecorations 
+                        ? 'border-[#1A1917] bg-[#1A1917] text-white' 
+                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                    title={showDecorations ? "Cacher les décorations" : "Afficher les décorations"}
+                  >
+                    <Sparkles className={`h-4 w-4 ${showDecorations ? 'text-yellow-400' : ''}`} />
+                    <span>Décorations</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={handleToggleDoors}
+                    className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                      doorsOpen 
+                        ? 'border-[#1A1917] bg-[#1A1917] text-white' 
+                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    <Box className="h-4 w-4" />
+                    <span>{doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}</span>
+                  </button>
+                </div>
+
                 {generating && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/80">
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/40 backdrop-blur-[1px] z-10">
                     <div className="flex flex-col items-center gap-3">
                       <div className="h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-                      <p className="text-sm text-[#706F6C]">Génération du meuble 3D...</p>
+                      <p className="text-sm text-[#706F6C]">Mise à jour de la fabrication...</p>
                     </div>
                   </div>
                 )}
@@ -867,12 +1116,43 @@ export default function ConfiguratorPage() {
                     setZoneContent(selectedZoneId, 'drawer');
                   }
                 }}
-                onAddDoor={() => setDoors(doors + 1)}
+                onAddDoor={() => {
+                  if (selectedZoneId === 'root') {
+                    // Si on est sur la racine, on bascule le type de porte globale
+                    if (doorType === 'none') setDoorType('double');
+                    else if (doorType === 'double') setDoorType('single');
+                    else setDoorType('none');
+                  } else if (selectedZone?.type === 'leaf') {
+                    // Si on est sur un compartiment, on cycle les types de portes locaux
+                    const currentContent = selectedZone.content;
+                    let nextContent: ZoneContent = 'door';
+                    
+                    if (currentContent === 'door') nextContent = 'door_right';
+                    else if (currentContent === 'door_right') nextContent = 'door_double';
+                    else if (currentContent === 'door_double') nextContent = 'empty';
+                    else nextContent = 'door';
+                    
+                    setZoneContent(selectedZoneId, nextContent);
+                    setDoorType('none'); // On désactive la porte globale si on met une porte locale
+                  }
+                }}
                 onAddDressing={() => {
                   if (selectedZone?.type === 'leaf') {
                     setZoneContent(selectedZoneId, 'dressing');
                   }
                 }}
+                onToggleLight={() => {
+                  if (selectedZoneId && selectedZoneId !== 'root') {
+                    toggleZoneLight(selectedZoneId);
+                  }
+                }}
+                onToggleCableHole={() => {
+                  if (selectedZoneId && selectedZoneId !== 'root') {
+                    toggleZoneCableHole(selectedZoneId);
+                  }
+                }}
+                hasLight={selectedZone?.hasLight}
+                hasCableHole={selectedZone?.hasCableHole}
               />
             </div>
           </div>
@@ -921,6 +1201,8 @@ export default function ConfiguratorPage() {
                     selectedZoneId={selectedZoneId}
                     onRootZoneChange={setRootZone}
                     onSelectedZoneIdChange={setSelectedZoneId}
+                    onToggleLight={toggleZoneLight}
+                    onToggleCableHole={toggleZoneCableHole}
                     width={width}
                     height={height}
                   />
@@ -931,6 +1213,36 @@ export default function ConfiguratorPage() {
                     onWidthChange={setWidth}
                     onDepthChange={setDepth}
                     onHeightChange={setHeight}
+                  />
+                  <DoorSelector
+                    type={selectedZoneId === 'root' ? doorType : (
+                      selectedZone?.content === 'door' || selectedZone?.content === 'door_right' ? 'single' :
+                      selectedZone?.content === 'door_double' ? 'double' : 'none'
+                    )}
+                    side={selectedZoneId === 'root' ? doorSide : (
+                      selectedZone?.content === 'door_right' ? 'right' : 'left'
+                    )}
+                    doorsOpen={doorsOpen}
+                    onTypeChange={(type) => {
+                      if (selectedZoneId === 'root') {
+                        setDoorType(type);
+                      } else {
+                        let content: ZoneContent = 'empty';
+                        if (type === 'single') content = doorSide === 'right' ? 'door_right' : 'door';
+                        else if (type === 'double') content = 'door_double';
+                        setZoneContent(selectedZoneId, content);
+                        setDoorType('none'); // Désactiver la porte globale
+                      }
+                    }}
+                    onSideChange={(side) => {
+                      setDoorSide(side);
+                      if (selectedZoneId !== 'root') {
+                        if (selectedZone?.content === 'door' || selectedZone?.content === 'door_right') {
+                          setZoneContent(selectedZoneId, side === 'right' ? 'door_right' : 'door');
+                        }
+                      }
+                    }}
+                    onToggleDoors={handleToggleDoors}
                   />
                   <SocleSelector
                     value={socle}
@@ -986,12 +1298,22 @@ export default function ConfiguratorPage() {
             {/* Toggle portes */}
             <button
               type="button"
-              onClick={() => setDoorsOpen(!doorsOpen)}
+              onClick={handleToggleDoors}
               className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
               style={{ borderRadius: '2px' }}
             >
               <span>{doorsOpen ? '🚪' : '📦'}</span>
               <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
+            </button>
+            {/* Toggle déco */}
+            <button
+              type="button"
+              onClick={() => setShowDecorations(!showDecorations)}
+              className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${showDecorations ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
+              style={{ borderRadius: '2px' }}
+            >
+              <span>{showDecorations ? '🏺' : '✨'}</span>
+              <span className="hidden sm:inline">Déco</span>
             </button>
             {/* CTA */}
             <button

@@ -3,8 +3,8 @@ import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 
 interface ZoneNodeProps {
     zone: Zone;
-    selectedZoneId: string;
-    onSelect: (zoneId: string) => void;
+    selectedZoneId: string | null;
+    onSelect: (zoneId: string | null) => void;
     onRatioChange?: (zoneId: string, ratios: number[]) => void;
     depth?: number;
     realWidth: number;
@@ -27,13 +27,13 @@ function ZoneNode({
 
     const handleClick = (event: SyntheticEvent) => {
         event.stopPropagation();
-        onSelect(zone.id);
+        onSelect(isSelected ? null : zone.id);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement | HTMLButtonElement>) => {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            onSelect(zone.id);
+            onSelect(isSelected ? null : zone.id);
         }
     };
 
@@ -161,7 +161,7 @@ function ZoneNode({
                 onKeyDown={handleKeyDown}
                 className={`relative flex h-full w-full flex-col items-center justify-center border-2 transition-all duration-200 ${
                     isSelected
-                        ? 'border-[#8B7355] bg-[#8B7355]/10 text-[#8B7355]'
+                        ? 'border-[#FF9800] bg-[#FF9800]/10 text-[#FF9800]'
                         : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#1A1917] hover:bg-[#F5F5F4] hover:text-[#1A1917]'
                 }`}
                 style={{ borderRadius: '4px' }}
@@ -199,7 +199,7 @@ function ZoneNode({
             onKeyDown={handleKeyDown}
             className={`relative flex h-full w-full border-2 transition-all duration-200 ${
                 isSelected
-                    ? 'border-[#8B7355] bg-[#8B7355]/5'
+                    ? 'border-[#FF9800] bg-[#FF9800]/5'
                     : 'border-[#D0CEC9] bg-[#FAFAF9] hover:border-[#1A1917]'
             }`}
             style={{
@@ -243,7 +243,7 @@ function ZoneNode({
                                 style={{ touchAction: 'none' }}
                             >
                                 <div
-                                    className={`absolute bg-[#8B7355] transition-opacity ${
+                                    className={`absolute bg-[#FF9800] transition-opacity ${
                                         isDragging && dragIndex === index ? 'opacity-100' : 'opacity-30 hover:opacity-80'
                                     } ${
                                         isHorizontal
@@ -263,8 +263,8 @@ function ZoneNode({
 
 interface ZoneCanvasProps {
     zone: Zone;
-    selectedZoneId: string;
-    onSelect: (zoneId: string) => void;
+    selectedZoneId: string | null;
+    onSelect: (zoneId: string | null) => void;
     onRatioChange?: (zoneId: string, ratios: number[]) => void;
     width: number;
     height: number;
@@ -315,7 +315,8 @@ export default function ZoneCanvas({
 
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
-                className="mx-auto inline-flex items-center justify-center overflow-x-auto bg-[#FAFAF9] p-4"
+                className="mx-auto inline-flex items-center justify-center overflow-x-auto bg-[#FAFAF9] p-4 cursor-default"
+                onClick={() => onSelect(null)}
                 style={{
                     borderRadius: '4px',
                     width: canvasWidth + 32, // canvas + padding (16px * 2)

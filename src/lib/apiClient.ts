@@ -461,6 +461,8 @@ export interface FurnitureColors {
   drawers?: string;    // Tiroirs
   doors?: string;      // Portes
   base?: string;       // Socle/base
+  shelves?: string;    // Étagères
+  back?: string;       // Fond
 }
 
 /**

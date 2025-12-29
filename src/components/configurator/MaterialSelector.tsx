@@ -17,6 +17,8 @@ export type ComponentColors = {
   structure: { colorId: number | null; hex: string | null };
   drawers: { colorId: number | null; hex: string | null };
   doors: { colorId: number | null; hex: string | null };
+  shelves: { colorId: number | null; hex: string | null };
+  back: { colorId: number | null; hex: string | null };
   base: { colorId: number | null; hex: string | null };
 };
 
@@ -38,6 +40,8 @@ const COMPONENT_DEFINITIONS = [
   { key: 'structure' as const, label: 'Structure', icon: '🏗️', desc: 'Corps du meuble' },
   { key: 'drawers' as const, label: 'Tiroirs', icon: '📦', desc: 'Façades de tiroirs' },
   { key: 'doors' as const, label: 'Portes', icon: '🚪', desc: 'Portes battantes' },
+  { key: 'shelves' as const, label: 'Étagères', icon: '📏', desc: 'Tablettes intérieures' },
+  { key: 'back' as const, label: 'Fond', icon: '📋', desc: 'Panneau arrière' },
   { key: 'base' as const, label: 'Socle', icon: '⬛', desc: 'Base du meuble' },
 ];
 
@@ -201,12 +205,12 @@ export default function MaterialSelector({
               </div>
               <div className="flex flex-wrap gap-2">
                 {colorsForMaterial.map((color) => {
-                  const isActive = componentColors[key].colorId === color.id;
+                  const isActive = componentColors?.[key]?.colorId === color.id;
                   return (
                     <button
                       key={color.id}
                       type="button"
-                      onClick={() => onComponentColorChange(key, color.id, color.hex || '#D8C7A1')}
+                      onClick={() => onComponentColorChange?.(key, color.id, color.hex || '#D8C7A1')}
                       className={`flex items-center gap-2 border px-3 py-2 text-left text-xs transition-colors ${
                         isActive
                           ? 'border-[#1A1917] bg-[#FAFAF9]'
