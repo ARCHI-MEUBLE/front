@@ -44,12 +44,12 @@ const SOCLE_OPTIONS = [
 
 export default function SocleSelector({ value, onChange }: SocleSelectorProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div className="border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-base text-[#1A1917]">Socle</h3>
+        <h3 className="font-serif text-xs text-[#1A1917]">Socle</h3>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {SOCLE_OPTIONS.map((option) => {
           const isActive = value === option.id;
           return (
@@ -57,17 +57,17 @@ export default function SocleSelector({ value, onChange }: SocleSelectorProps) {
               key={option.id}
               type="button"
               onClick={() => onChange(option.id)}
-              className={`flex flex-col items-center border-2 p-3 transition-all duration-200 ${
+              className={`flex flex-col items-center border-2 p-2 transition-all duration-200 ${
                 isActive
                   ? 'border-[#1A1917] bg-[#1A1917] text-white'
                   : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
               }`}
               style={{ borderRadius: '2px' }}
             >
-              <div className={`mb-2 h-10 w-14 ${isActive ? 'text-white' : 'text-[#1A1917]'}`}>
+              <div className={`mb-1.5 h-6 w-8 ${isActive ? 'text-white' : 'text-[#1A1917]'}`}>
                 {option.visual}
               </div>
-              <span className="text-sm font-medium">{option.label}</span>
+              <span className="text-[10px] font-medium">{option.label}</span>
             </button>
           );
         })}

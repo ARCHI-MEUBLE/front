@@ -4,18 +4,21 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Viewer from '@/components/configurator/Viewer';
 import ThreeViewer from '@/components/configurator/ThreeViewer';
+import type { ThreeCanvasHandle } from '@/components/configurator/types';
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
-import ZoneEditor, { Zone, ZoneContent } from '@/components/configurator/ZoneEditor';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor } from '@/components/configurator/ZoneEditor';
+import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
-import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
+import MaterialSelector, { ComponentColors, MATERIAL_KEY_MAP } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2 } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2 } from 'lucide-react';
+import { useHistory } from '@/hooks/useHistory';
 
 // Hook pour détecter mobile
 function useIsMobile() {
@@ -54,17 +57,25 @@ const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
 
 const DEFAULT_COLOR_HEX = '#D8C7A1';
 
+// Normalise une clé de matériau - garde la valeur telle quelle pour les nouveaux matériaux
 function normalizeMaterialKey(value: string | null | undefined): string {
   if (!value) return 'agglomere';
   const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  // Matériaux connus (anciens)
   if (normalized.includes('agglom')) return 'agglomere';
   if (normalized.includes('mdf') || normalized.includes('melamine')) return 'mdf_melamine';
   if (normalized.includes('plaque') || normalized.includes('bois')) return 'plaque_bois';
-  return 'agglomere';
+  // Pour les nouveaux matériaux, retourner la valeur originale
+  return value;
 }
 
 function materialLabelFromKey(key: string): string {
-  return MATERIAL_LABEL_BY_KEY[key] || key;
+  // Si c'est un ancien matériau connu, retourner son label
+  if (MATERIAL_LABEL_BY_KEY[key]) {
+    return MATERIAL_LABEL_BY_KEY[key];
+  }
+  // Sinon retourner la clé telle quelle (pour les nouveaux matériaux)
+  return key;
 }
 
 type ConfigTab = 'dimensions' | 'materials';
@@ -122,12 +133,16 @@ export default function ConfiguratorPage() {
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
   const doorsOpenRef = useRef(doorsOpen);
+  // const viewerRef = useRef<ThreeCanvasHandle>(null); // TODO: Implémenter la capture d'écran
   const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
   const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
 
   useEffect(() => {
     doorsOpenRef.current = doorsOpen;
   }, [doorsOpen]);
+
+  // TODO: Implémenter la capture d'écran - nécessite de résoudre les problèmes SSR avec forwardRef
+  // const handleCaptureScreenshot = useCallback(() => { ... }, []);
 
   // Mode multi-couleurs
   const [useMultiColor, setUseMultiColor] = useState(false);
@@ -140,12 +155,44 @@ export default function ConfiguratorPage() {
     base: { colorId: null, hex: null },
   });
 
-  // Zones (mode par défaut)
-  const [rootZone, setRootZone] = useState<Zone>({
+  // Zones (mode par défaut) - avec historique pour undo/redo
+  const {
+    state: rootZone,
+    setState: setRootZone,
+    undo: undoZone,
+    redo: redoZone,
+    canUndo: canUndoZone,
+    canRedo: canRedoZone,
+  } = useHistory<Zone>({
     id: 'root',
     type: 'leaf',
     content: 'empty',
-  });
+  }, { maxHistory: 30 });
+
+  // Raccourcis clavier pour undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorer si l'utilisateur est dans un champ de saisie
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Ctrl+Z ou Cmd+Z pour Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndoZone) undoZone();
+      }
+      // Ctrl+Y ou Cmd+Shift+Z pour Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedoZone) redoZone();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndoZone, canRedoZone, undoZone, redoZone]);
+
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>('root');
   const [doors, setDoors] = useState(0);
   
@@ -254,6 +301,32 @@ export default function ConfiguratorPage() {
     setRootZone(updateZone(rootZone));
   }, [rootZone]);
 
+  // Modifier la couleur d'une zone spécifique (tiroir, porte)
+  const setZoneColor = useCallback((zoneId: string, zoneColor: ZoneColor) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        // Si la couleur est nulle, on supprime la propriété zoneColor
+        if (!zoneColor.hex) {
+          const { zoneColor: _, ...rest } = z;
+          return rest as Zone;
+        }
+        return { ...z, zoneColor };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  // Vérifier si la zone sélectionnée est un tiroir ou une porte (pour afficher le color picker)
+  const isSelectedZoneColorizable = useMemo(() => {
+    if (!selectedZone || selectedZone.type !== 'leaf') return false;
+    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door'];
+    return colorableContents.includes(selectedZone.content || '');
+  }, [selectedZone]);
+
   // UI
   // Compter les étagères à partir de la rootZone pour Three.js
   const shelfCount = useMemo(() => {
@@ -360,6 +433,21 @@ export default function ConfiguratorPage() {
     loadMaterials();
     return () => { cancelled = true; };
   }, []);
+
+  // Sélectionner le premier matériau disponible si le matériau actuel n'existe pas
+  useEffect(() => {
+    const materialKeys = Object.keys(materialsMap);
+    if (materialKeys.length === 0) return; // Pas encore chargé
+
+    // Vérifier si le matériau actuel existe dans la map
+    const currentMaterialLabel = materialLabelFromKey(normalizeMaterialKey(finish));
+    if (!materialsMap[currentMaterialLabel]) {
+      // Le matériau actuel n'existe pas, sélectionner le premier disponible
+      const firstMaterial = materialKeys[0];
+      console.log('[DEBUG] Matériau actuel non trouvé, sélection de:', firstMaterial);
+      setFinish(firstMaterial);
+    }
+  }, [materialsMap, finish]);
 
   // Charger le prix au m³ depuis l'API
   useEffect(() => {
@@ -831,7 +919,8 @@ export default function ConfiguratorPage() {
   }, []);
 
   const handleMaterialChange = (key: string) => {
-    const label = materialLabelFromKey(key);
+    // Si la clé est dans le mapping, on prend le label, sinon on garde la clé (nouveaux matériaux)
+    const label = MATERIAL_KEY_MAP[key] || key;
     setFinish(label);
     setSelectedColorId(null);
     setSelectedColorImage(null);
@@ -844,11 +933,32 @@ export default function ConfiguratorPage() {
     setSelectedColorImage(option.image_url || null);
   };
 
-  const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string) => {
+  const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string, imageUrl?: string | null) => {
     setComponentColors((prev) => ({
       ...prev,
-      [component]: { colorId, hex },
+      [component]: { colorId, hex, imageUrl },
     }));
+  };
+
+  // Gestion du changement de mode multi-couleurs
+  const handleUseMultiColorChange = (value: boolean) => {
+    setUseMultiColor(value);
+
+    // Quand on active le mode multi-couleurs, initialiser tous les composants avec la couleur actuelle
+    if (value) {
+      const currentHex = color || '#D8C7A1';
+      const currentImageUrl = selectedColorImage;
+      const currentColorId = selectedColorId;
+
+      setComponentColors({
+        structure: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        drawers: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        doors: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        shelves: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        back: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        base: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+      });
+    }
   };
 
   // Sauvegarde
@@ -1047,12 +1157,14 @@ export default function ConfiguratorPage() {
             {/* Viewer wrapper - prend l'espace disponible */}
             <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
               <div className="absolute inset-0">
-                <ThreeViewer 
+                <ThreeViewer
                   width={width}
                   height={height}
                   depth={depth}
                   color={color}
+                  imageUrl={selectedColorImage}
                   hasSocle={socle !== 'none'}
+                  socle={socle}
                   rootZone={rootZone}
                   selectedZoneId={selectedZoneId}
                   onSelectZone={setSelectedZoneId}
@@ -1066,14 +1178,40 @@ export default function ConfiguratorPage() {
                   doorSide={doorSide}
                 />
 
+                {/* Sélecteur de couleur pour la zone (tiroir/porte) - apparaît quand une zone colorisable est sélectionnée */}
+                {isSelectedZoneColorizable && selectedZone && (
+                  <ZoneColorPicker
+                    zone={selectedZone}
+                    materialsMap={materialsMap}
+                    selectedMaterialKey={selectedMaterialLabel}
+                    defaultColor={color}
+                    defaultImageUrl={selectedColorImage}
+                    onColorChange={setZoneColor}
+                    onClose={() => setSelectedZoneId(null)}
+                  />
+                )}
+
                 {/* Boutons flottants pour le viewer (Desktop) */}
                 <div className="absolute bottom-4 right-4 z-20 hidden flex-col gap-2 lg:flex">
+                  {/* TODO: Bouton capture d'écran - désactivé temporairement
+                  <button
+                    type="button"
+                    onClick={handleCaptureScreenshot}
+                    className="flex h-10 items-center gap-2 border border-[#E8E6E3] bg-white px-4 text-sm font-medium text-[#706F6C] shadow-sm transition-all hover:border-[#1A1917] hover:text-[#1A1917]"
+                    style={{ borderRadius: '2px' }}
+                    title="Télécharger une image du meuble"
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span>Capturer</span>
+                  </button>
+                  */}
+
                   <button
                     type="button"
                     onClick={() => setShowDecorations(!showDecorations)}
                     className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
-                      showDecorations 
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white' 
+                      showDecorations
+                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
                         : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
                     }`}
                     style={{ borderRadius: '2px' }}
@@ -1082,19 +1220,51 @@ export default function ConfiguratorPage() {
                     <Sparkles className={`h-4 w-4 ${showDecorations ? 'text-yellow-400' : ''}`} />
                     <span>Décorations</span>
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={handleToggleDoors}
                     className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
-                      doorsOpen 
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white' 
+                      doorsOpen
+                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
                         : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
                     }`}
                     style={{ borderRadius: '2px' }}
                   >
                     <Box className="h-4 w-4" />
                     <span>{doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}</span>
+                  </button>
+                </div>
+
+                {/* Boutons Undo/Redo flottants (Desktop) */}
+                <div className="absolute top-4 left-4 z-20 hidden flex-row gap-2 lg:flex">
+                  <button
+                    type="button"
+                    onClick={undoZone}
+                    disabled={!canUndoZone}
+                    className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
+                      canUndoZone
+                        ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                        : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                    title="Annuler (Ctrl+Z)"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={redoZone}
+                    disabled={!canRedoZone}
+                    className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
+                      canRedoZone
+                        ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                        : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                    title="Rétablir (Ctrl+Y)"
+                  >
+                    <Redo2 className="h-4 w-4" />
                   </button>
                 </div>
 
@@ -1246,7 +1416,7 @@ export default function ConfiguratorPage() {
                     onColorChange={handleColorChange}
                     loading={materialsLoading}
                     useMultiColor={useMultiColor}
-                    onUseMultiColorChange={setUseMultiColor}
+                    onUseMultiColorChange={handleUseMultiColorChange}
                     componentColors={componentColors}
                     onComponentColorChange={handleComponentColorChange}
                   />
@@ -1279,6 +1449,35 @@ export default function ConfiguratorPage() {
                   maximumFractionDigits: 0,
                 }).format(price)}
               </div>
+            </div>
+            {/* Undo/Redo mobile */}
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={undoZone}
+                disabled={!canUndoZone}
+                className={`flex items-center justify-center w-9 h-9 border transition-colors ${
+                  canUndoZone
+                    ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
+                    : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
+                }`}
+                style={{ borderRadius: '2px' }}
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={redoZone}
+                disabled={!canRedoZone}
+                className={`flex items-center justify-center w-9 h-9 border transition-colors ${
+                  canRedoZone
+                    ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
+                    : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
+                }`}
+                style={{ borderRadius: '2px' }}
+              >
+                <Redo2 className="h-4 w-4" />
+              </button>
             </div>
             {/* Toggle portes */}
             <button

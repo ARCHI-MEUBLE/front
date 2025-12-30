@@ -50,6 +50,7 @@ export type DashboardSection =
   | 'calendar'
   | 'avis'
   | 'pricing'
+  | 'samples'
   | 'password'
 
 interface AdminSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -100,6 +101,11 @@ const navMain = [
     id: "pricing" as DashboardSection,
     title: "Gestion des prix",
     icon: IconCurrencyEuro,
+  },
+  {
+    id: "samples" as DashboardSection,
+    title: "Échantillons",
+    icon: IconStar,
   },
 ]
 

@@ -2,6 +2,13 @@ export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | '
 
 export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
+// Couleur spécifique à une zone (tiroir, porte, etc.)
+export interface ZoneColor {
+  colorId: number | null;
+  hex: string | null;
+  imageUrl?: string | null;
+}
+
 export type Zone = {
   id: string;
   type: 'leaf' | 'horizontal' | 'vertical';
@@ -13,6 +20,7 @@ export type Zone = {
   hasLight?: boolean;
   hasCableHole?: boolean;
   handleType?: HandleType; // Type de poignée pour portes/tiroirs
+  zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
 };
 
 export interface ZoneContentMeta {

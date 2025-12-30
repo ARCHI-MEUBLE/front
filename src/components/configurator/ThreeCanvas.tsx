@@ -1,17 +1,22 @@
-import React, { Suspense, useMemo, useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { Suspense, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
 import { Zone } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
+import type { ThreeCanvasHandle } from './types';
+
+export type { ThreeCanvasHandle };
 
 interface ThreeViewerProps {
   width: number;
   height: number;
   depth: number;
   color: string;
+  imageUrl?: string | null;
   hasSocle: boolean;
+  socle?: string;
   rootZone: Zone | null;
   selectedZoneId?: string | null;
   onSelectZone?: (id: string | null) => void;
@@ -25,59 +30,118 @@ interface ThreeViewerProps {
   useMultiColor?: boolean;
 }
 
-const TEXTURE_MAPPING: Record<string, string> = {
-  '#D8C7A1': 'chene_halifax',
-  '#5D4037': 'noyer',
-  '#8B5A2B': 'chene_brun',
-  '#E8E6E3': 'meleze',
-  '#FFFFFF': 'blanc_premium',
-  '#1A1A1A': 'noir_graphite',
-};
+// Couleur par défaut (beige/bois naturel)
+const DEFAULT_MATERIAL_COLOR = '#D8C7A1';
 
-function useFurnitureMaterial(hexColor: string) {
-  const textureLoader = useMemo(() => new THREE.TextureLoader(), []);
-  const normalizedColor = hexColor?.toUpperCase() || '#D8C7A1';
-  const textureName = TEXTURE_MAPPING[normalizedColor];
+// Fonction utilitaire pour obtenir une couleur valide
+function getSafeColor(hexColor: string | null | undefined): string {
+  if (hexColor && hexColor !== '' && hexColor !== 'null' && hexColor !== 'undefined' && hexColor.startsWith('#')) {
+    return hexColor;
+  }
+  return DEFAULT_MATERIAL_COLOR;
+}
+
+// Composant pour un matériau avec support de texture
+function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?: string | null }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const textureRef = useRef<THREE.Texture | null>(null);
+  const currentImageUrlRef = useRef<string | null>(null);
+
+  // Couleur de fallback - calculée de manière synchrone à chaque render
+  const safeColor = getSafeColor(hexColor);
 
   useEffect(() => {
-    if (!textureName) {
+    // Si pas d'URL d'image, utiliser la couleur hex
+    if (!imageUrl) {
+      // Dispose de la texture précédente si elle existe
+      if (textureRef.current) {
+        textureRef.current.dispose();
+        textureRef.current = null;
+      }
       setTexture(null);
+      currentImageUrlRef.current = null;
       return;
     }
-    textureLoader.load(
-      `/textures/${textureName}.png`,
-      (tex) => {
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(2, 2);
-        setTexture(tex);
+
+    // Si c'est la même URL, ne pas recharger
+    if (currentImageUrlRef.current === imageUrl && textureRef.current) {
+      return;
+    }
+
+    currentImageUrlRef.current = imageUrl;
+
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      imageUrl,
+      (loadedTexture) => {
+        // Vérifier que l'URL n'a pas changé pendant le chargement
+        if (currentImageUrlRef.current !== imageUrl) {
+          loadedTexture.dispose();
+          return;
+        }
+
+        // Dispose de l'ancienne texture
+        if (textureRef.current) {
+          textureRef.current.dispose();
+        }
+
+        loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
+        loadedTexture.repeat.set(2, 2);
+        textureRef.current = loadedTexture;
+        setTexture(loadedTexture);
       },
       undefined,
       () => {
-        console.warn(`Failed to load texture: ${textureName}`);
-        setTexture(null);
+        console.warn('Failed to load texture:', imageUrl);
+        if (currentImageUrlRef.current === imageUrl) {
+          setTexture(null);
+        }
       }
     );
-  }, [textureName, textureLoader]);
 
-  const material = useMemo(() => {
-    const mat = new THREE.MeshStandardMaterial({
-      color: texture ? '#ffffff' : normalizedColor,
-      map: texture,
-      roughness: texture ? 0.7 : 0.4,
-      metalness: 0.1,
-      envMapIntensity: 1.0
-    });
-    return mat;
-  }, [normalizedColor, texture]);
+    return () => {
+      // Cleanup seulement si on démonte le composant
+    };
+  }, [imageUrl]);
 
+  // Cleanup au démontage
   useEffect(() => {
     return () => {
-      material.dispose();
+      if (textureRef.current) {
+        textureRef.current.dispose();
+        textureRef.current = null;
+      }
     };
-  }, [material]);
+  }, []);
 
-  return material;
+  // Utiliser une clé unique pour forcer React à recréer le matériau proprement
+  // quand la couleur ou la texture change
+  const materialKey = texture ? `tex-${currentImageUrlRef.current}` : `col-${safeColor}`;
+
+  // Si on a une texture chargée, l'utiliser
+  if (texture) {
+    return (
+      <meshStandardMaterial
+        key={materialKey}
+        attach="material"
+        map={texture}
+        color="#ffffff"
+        roughness={0.7}
+        metalness={0.1}
+      />
+    );
+  }
+
+  // Sinon utiliser la couleur hex (pendant le chargement ou en fallback)
+  return (
+    <meshStandardMaterial
+      key={materialKey}
+      attach="material"
+      color={safeColor}
+      roughness={0.4}
+      metalness={0.1}
+    />
+  );
 }
 
 // Composant pour rendre différents types de poignées
@@ -122,12 +186,14 @@ function Handle({ type = 'vertical_bar', position, side, height, width }: { type
   }
 }
 
-function AnimatedDoor({ position, width, height, hexColor, side, isOpen, onClick, handleType }: any) {
+function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
-  const material = useFurnitureMaterial(hexColor);
 
-  useFrame((state, delta) => {
+  // S'assurer que la couleur est valide
+  const safeHexColor = getSafeColor(hexColor);
+
+  useFrame(() => {
     if (groupRef.current) {
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
     }
@@ -153,7 +219,7 @@ function AnimatedDoor({ position, width, height, hexColor, side, isOpen, onClick
     >
       <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
         <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
-        <primitive object={material} attach="material" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       {/* Poignée */}
       <Handle
@@ -215,12 +281,14 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
   );
 }
 
-function AnimatedPushDoor({ position, width, height, hexColor, side, isOpen, onClick }: any) {
+function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
-  const material = useFurnitureMaterial(hexColor);
 
-  useFrame((state, delta) => {
+  // S'assurer que la couleur est valide
+  const safeHexColor = getSafeColor(hexColor);
+
+  useFrame(() => {
     if (groupRef.current) {
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
     }
@@ -244,10 +312,9 @@ function AnimatedPushDoor({ position, width, height, hexColor, side, isOpen, onC
         document.body.style.cursor = 'default';
       }}
     >
-      {/* Porte sans poignée - surface lisse */}
       <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
         <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
-        <primitive object={material} attach="material" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       {/* Petite encoche discrète pour indiquer push-to-open */}
       <mesh position={[side === 'left' ? width - 0.08 : -width + 0.08, 0, 0.015]}>
@@ -258,13 +325,15 @@ function AnimatedPushDoor({ position, width, height, hexColor, side, isOpen, onC
   );
 }
 
-function AnimatedPushDrawer({ position, width, height, depth, hexColor, isOpen, onClick }: any) {
+function AnimatedPushDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, onClick }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const initialZ = position[2];
   const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
-  const material = useFurnitureMaterial(hexColor);
 
-  useFrame((state, delta) => {
+  // S'assurer que la couleur est valide
+  const safeHexColor = getSafeColor(hexColor);
+
+  useFrame(() => {
     if (groupRef.current) {
       groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
     }
@@ -294,7 +363,7 @@ function AnimatedPushDrawer({ position, width, height, depth, hexColor, isOpen, 
       {/* Façade sans poignée */}
       <mesh castShadow>
         <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
-        <primitive object={material} attach="material" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       {/* Petite encoche discrète pour indiquer push-to-open */}
       <mesh position={[0, -height * 0.3, 0.015]}>
@@ -304,30 +373,32 @@ function AnimatedPushDrawer({ position, width, height, depth, hexColor, isOpen, 
       {/* Corps du tiroir (visible quand ouvert) */}
       <mesh position={[0, 0, -boxDepth / 2]}>
         <boxGeometry args={[width - 0.02, boxHeight, boxDepth]} />
-        <primitive object={material} attach="material" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
     </group>
   );
 }
 
-function AnimatedDrawer({ position, width, height, depth, hexColor, isOpen, onClick, handleType }: any) {
+function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const initialZ = position[2];
-  const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ; // Sortie de 60% de la profondeur
-  const material = useFurnitureMaterial(hexColor);
+  const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
 
-  useFrame((state, delta) => {
+  // S'assurer que la couleur est valide
+  const safeHexColor = getSafeColor(hexColor);
+
+  useFrame(() => {
     if (groupRef.current) {
       groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
     }
   });
 
   const boxDepth = depth * 0.8;
-  const boxHeight = height * 0.8; // Proportionnelle à la hauteur du tiroir (80%)
+  const boxHeight = height * 0.8;
 
   return (
-    <group 
-      ref={groupRef} 
+    <group
+      ref={groupRef}
       position={[position[0], position[1], initialZ]}
       onClick={(e) => {
         if (onClick) {
@@ -346,7 +417,7 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, isOpen, onCl
       {/* Façade */}
       <mesh castShadow>
         <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
-        <primitive object={material} attach="material" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       {/* Poignée */}
       <Handle
@@ -356,31 +427,31 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, isOpen, onCl
         height={height}
         width={width}
       />
-      {/* Fond du tiroir (boîte simplifiée) */}
+      {/* Fond du tiroir */}
       <mesh position={[0, -height / 2 + 0.05, -boxDepth / 2]} receiveShadow>
         <boxGeometry args={[width - 0.06, 0.01, boxDepth]} />
-        <meshStandardMaterial color="#eee" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       {/* Côtés du tiroir */}
       <mesh position={[-width / 2 + 0.03, -height / 2 + 0.05 + boxHeight / 2, -boxDepth / 2]} castShadow>
         <boxGeometry args={[0.012, boxHeight, boxDepth]} />
-        <meshStandardMaterial color="#ddd" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       <mesh position={[width / 2 - 0.03, -height / 2 + 0.05 + boxHeight / 2, -boxDepth / 2]} castShadow>
         <boxGeometry args={[0.012, boxHeight, boxDepth]} />
-        <meshStandardMaterial color="#ddd" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
       {/* Arrière du tiroir */}
       <mesh position={[0, -height / 2 + 0.05 + boxHeight / 2, -boxDepth]} castShadow>
         <boxGeometry args={[width - 0.06, boxHeight, 0.012]} />
-        <meshStandardMaterial color="#ddd" />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
       </mesh>
     </group>
   );
 }
 
 function Furniture({ 
-  width, height, depth, color, hasSocle, rootZone, isBuffet, 
+  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet, 
   doorsOpen, showDecorations, onToggleDoors, componentColors,
   doorType = 'none',
   doorSide = 'left',
@@ -423,38 +494,82 @@ function Furniture({
     return { w, h, d, sideHeight, yOffset, thickness };
   }, [width, height, depth, hasSocle]);
 
-  // En mode couleur unie, toutes les pièces utilisent la même couleur
-  // En mode multi-couleur, chaque composant peut avoir sa propre couleur
-  const structureColor = useMultiColor
-    ? (componentColors?.structure?.hex || color || '#D8C7A1')
-    : (color || '#D8C7A1');
+  // Couleur par défaut
+  const DEFAULT_COLOR = '#D8C7A1';
 
-  const shelfColor = useMultiColor
-    ? (componentColors?.shelves?.hex || structureColor)
-    : structureColor;
+  // Couleur de base (structure) - utilisée comme fallback pour tout
+  const baseStructureColor = color || DEFAULT_COLOR;
+  const baseStructureImageUrl = imageUrl || null;
 
-  const doorColor = useMultiColor
-    ? (componentColors?.doors?.hex || structureColor)
-    : structureColor;
+  // Calcul des couleurs finales - simplifié et robuste
+  const finalStructureColor = useMemo(() => {
+    if (!useMultiColor) return baseStructureColor;
+    const hex = componentColors?.structure?.hex;
+    return (hex && hex !== '') ? hex : baseStructureColor;
+  }, [useMultiColor, componentColors?.structure?.hex, baseStructureColor]);
 
-  const backColor = useMultiColor
-    ? (componentColors?.back?.hex || structureColor)
-    : structureColor;
+  const finalStructureImageUrl = useMemo(() => {
+    if (!useMultiColor) return baseStructureImageUrl;
+    return componentColors?.structure?.imageUrl ?? baseStructureImageUrl;
+  }, [useMultiColor, componentColors?.structure?.imageUrl, baseStructureImageUrl]);
 
-  const drawerColor = useMultiColor
-    ? (componentColors?.drawers?.hex || structureColor)
-    : structureColor;
+  const finalShelfColor = useMemo(() => {
+    if (!useMultiColor) return baseStructureColor;
+    const hex = componentColors?.shelves?.hex;
+    return (hex && hex !== '') ? hex : finalStructureColor;
+  }, [useMultiColor, componentColors?.shelves?.hex, baseStructureColor, finalStructureColor]);
 
-  const baseColor = useMultiColor
-    ? (componentColors?.base?.hex || structureColor)
-    : structureColor;
+  const finalShelfImageUrl = useMemo(() => {
+    if (!useMultiColor) return baseStructureImageUrl;
+    return componentColors?.shelves?.imageUrl ?? finalStructureImageUrl;
+  }, [useMultiColor, componentColors?.shelves?.imageUrl, baseStructureImageUrl, finalStructureImageUrl]);
 
-  const mainMat = useFurnitureMaterial(structureColor);
-  const shelfMat = useFurnitureMaterial(shelfColor);
-  const doorMat = useFurnitureMaterial(doorColor);
-  const backMat = useFurnitureMaterial(backColor);
-  const drawerMat = useFurnitureMaterial(drawerColor);
-  const baseMat = useFurnitureMaterial(baseColor);
+  const finalDoorColor = useMemo(() => {
+    if (!useMultiColor) return baseStructureColor;
+    const hex = componentColors?.doors?.hex;
+    return (hex && hex !== '') ? hex : finalStructureColor;
+  }, [useMultiColor, componentColors?.doors?.hex, baseStructureColor, finalStructureColor]);
+
+  const finalDoorImageUrl = useMemo(() => {
+    if (!useMultiColor) return baseStructureImageUrl;
+    return componentColors?.doors?.imageUrl ?? finalStructureImageUrl;
+  }, [useMultiColor, componentColors?.doors?.imageUrl, baseStructureImageUrl, finalStructureImageUrl]);
+
+  const finalBackColor = useMemo(() => {
+    if (!useMultiColor) return baseStructureColor;
+    const hex = componentColors?.back?.hex;
+    return (hex && hex !== '') ? hex : finalStructureColor;
+  }, [useMultiColor, componentColors?.back?.hex, baseStructureColor, finalStructureColor]);
+
+  const finalBackImageUrl = useMemo(() => {
+    if (!useMultiColor) return baseStructureImageUrl;
+    return componentColors?.back?.imageUrl ?? finalStructureImageUrl;
+  }, [useMultiColor, componentColors?.back?.imageUrl, baseStructureImageUrl, finalStructureImageUrl]);
+
+  const finalDrawerColor = useMemo(() => {
+    if (!useMultiColor) return baseStructureColor;
+    const hex = componentColors?.drawers?.hex;
+    return (hex && hex !== '') ? hex : finalStructureColor;
+  }, [useMultiColor, componentColors?.drawers?.hex, baseStructureColor, finalStructureColor]);
+
+  const finalDrawerImageUrl = useMemo(() => {
+    if (!useMultiColor) return baseStructureImageUrl;
+    return componentColors?.drawers?.imageUrl ?? finalStructureImageUrl;
+  }, [useMultiColor, componentColors?.drawers?.imageUrl, baseStructureImageUrl, finalStructureImageUrl]);
+
+  const finalBaseColor = useMemo(() => {
+    if (!useMultiColor) return baseStructureColor;
+    const hex = componentColors?.base?.hex;
+    return (hex && hex !== '') ? hex : finalStructureColor;
+  }, [useMultiColor, componentColors?.base?.hex, baseStructureColor, finalStructureColor]);
+
+  const finalBaseImageUrl = useMemo(() => {
+    if (!useMultiColor) return baseStructureImageUrl;
+    return componentColors?.base?.imageUrl ?? finalStructureImageUrl;
+  }, [useMultiColor, componentColors?.base?.imageUrl, baseStructureImageUrl, finalStructureImageUrl]);
+
+  const separatorColor = finalStructureColor;
+  const separatorImageUrl = finalStructureImageUrl;
 
   // Check if any zone has a zone-specific door
   const hasZoneSpecificDoors = useMemo(() => {
@@ -555,7 +670,7 @@ function Furniture({
           items.push(
             <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
               <boxGeometry args={[width, thickness, d]} />
-              <primitive object={shelfMat} attach="material" />
+              <TexturedMaterial hexColor={finalShelfColor} imageUrl={finalShelfImageUrl} />
             </mesh>
           );
           // Ajouter des décorations sur l'étagère
@@ -567,6 +682,9 @@ function Furniture({
             );
           }
         } else if (zone.content === 'drawer') {
+          // Utiliser la couleur spécifique de la zone si disponible
+          const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
+          const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
           items.push(
             <AnimatedDrawer
               key={zone.id}
@@ -574,7 +692,8 @@ function Furniture({
               width={width}
               height={height}
               depth={d}
-              hexColor={drawerColor}
+              hexColor={drawerHexColor}
+              imageUrl={drawerImageUrl}
               handleType={zone.handleType}
               isOpen={openCompartments[zone.id]}
               onClick={() => {
@@ -584,7 +703,9 @@ function Furniture({
             />
           );
         } else if (zone.content === 'push_drawer') {
-          // Tiroir push-to-open sans poignée
+          // Tiroir push-to-open sans poignée - utiliser la couleur spécifique de la zone si disponible
+          const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
+          const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
           items.push(
             <AnimatedPushDrawer
               key={zone.id}
@@ -592,7 +713,8 @@ function Furniture({
               width={width}
               height={height}
               depth={d}
-              hexColor={drawerColor}
+              hexColor={drawerHexColor}
+              imageUrl={drawerImageUrl}
               isOpen={openCompartments[zone.id]}
               onClick={() => {
                 toggleCompartment(zone.id);
@@ -608,9 +730,11 @@ function Furniture({
             </mesh>
           );
         } else if (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double') {
-          // Porte spécifique à cette zone uniquement
+          // Porte spécifique à cette zone - utiliser la couleur spécifique si disponible
           const isDouble = zone.content === 'door_double';
           const isRight = zone.content === 'door_right';
+          const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
+          const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
           items.push(
             <group key={zone.id} position={[x, y, d/2]}>
@@ -620,7 +744,8 @@ function Furniture({
                   position={[-width/2, 0, 0]}
                   width={isDouble ? width/2 : width}
                   height={height}
-                  hexColor={doorColor}
+                  hexColor={doorHexColor}
+                  imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
@@ -635,7 +760,8 @@ function Furniture({
                   position={[width/2, 0, 0]}
                   width={isDouble ? width/2 : width}
                   height={height}
-                  hexColor={doorColor}
+                  hexColor={doorHexColor}
+                  imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
@@ -647,7 +773,9 @@ function Furniture({
             </group>
           );
         } else if (zone.content === 'push_door') {
-          // Porte push-to-open sans poignée
+          // Porte push-to-open sans poignée - utiliser la couleur spécifique si disponible
+          const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
+          const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
           items.push(
             <group key={zone.id} position={[x, y, d/2]}>
               <AnimatedPushDoor
@@ -655,7 +783,8 @@ function Furniture({
                 position={[-width/2, 0, 0]}
                 width={width}
                 height={height}
-                hexColor={doorColor}
+                hexColor={doorHexColor}
+                imageUrl={doorImageUrl}
                 isOpen={openCompartments[zone.id]}
                 onClick={() => {
                   toggleCompartment(zone.id);
@@ -753,7 +882,7 @@ function Furniture({
               items.push(
                 <mesh key={`${zone.id}-sep-${i}`} position={[x, (y + height/2) - currentPos, z]} castShadow receiveShadow>
                   <boxGeometry args={[width, thickness, d]} />
-                  <primitive object={shelfMat} attach="material" />
+                  <TexturedMaterial hexColor={finalShelfColor} imageUrl={finalShelfImageUrl} />
                 </mesh>
               );
             }
@@ -765,7 +894,7 @@ function Furniture({
               items.push(
                 <mesh key={`${zone.id}-sep-${i}`} position={[x - width/2 + currentPos, y, z]} castShadow receiveShadow>
                   <boxGeometry args={[thickness, height, d]} />
-                  <primitive object={mainMat} attach="material" />
+                  <TexturedMaterial hexColor={separatorColor} imageUrl={separatorImageUrl} />
                 </mesh>
               );
             }
@@ -778,24 +907,29 @@ function Furniture({
     return items;
   }, [
     rootZone, w, sideHeight, yOffset, thickness, d,
-    mainMat, shelfMat, drawerColor, doorColor, backColor, baseColor,
+    finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
+    finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
+    separatorColor, separatorImageUrl,
     openCompartments, showDecorations, selectedZoneId, onSelectZone
   ]);
 
+  // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
+  // et des flashs blancs lors des changements de couleur
+
   return (
     <group>
-      {/* Structure */}
+      {/* Côtés */}
       <mesh position={[-w/2 + thickness/2, sideHeight/2 + yOffset, 0]} castShadow receiveShadow>
         <boxGeometry args={[thickness, sideHeight, d]} />
-        <primitive object={mainMat} attach="material" />
+        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
       </mesh>
       <mesh position={[w/2 - thickness/2, sideHeight/2 + yOffset, 0]} castShadow receiveShadow>
         <boxGeometry args={[thickness, sideHeight, d]} />
-        <primitive object={mainMat} attach="material" />
+        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
       </mesh>
       <mesh position={[0, h - thickness/2, 0]} castShadow receiveShadow>
         <boxGeometry args={[w, thickness, d]} />
-        <primitive object={mainMat} attach="material" />
+        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
       </mesh>
 
       {/* Décorations sur le dessus */}
@@ -818,7 +952,7 @@ function Furniture({
 
       <mesh position={[0, yOffset + thickness/2, 0]} castShadow receiveShadow>
         <boxGeometry args={[w, thickness, d]} />
-        <primitive object={mainMat} attach="material" />
+        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
       </mesh>
 
       {/* Dynamic Elements */}
@@ -833,7 +967,8 @@ function Furniture({
               position={[-w/2, 0, 0]}
               width={doorType === 'double' ? w/2 : w}
               height={sideHeight}
-              hexColor={doorColor}
+              hexColor={finalDoorColor}
+              imageUrl={finalDoorImageUrl}
               isOpen={doorsOpen}
               onClick={() => {
                 onToggleDoors?.();
@@ -847,7 +982,8 @@ function Furniture({
               position={[w/2, 0, 0]}
               width={doorType === 'double' ? w/2 : w}
               height={sideHeight}
-              hexColor={doorColor}
+              hexColor={finalDoorColor}
+              imageUrl={finalDoorImageUrl}
               isOpen={doorsOpen}
               onClick={() => {
                 onToggleDoors?.();
@@ -876,16 +1012,41 @@ function Furniture({
 
       {/* Socle */}
       {hasSocle && (
-        <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
-          <boxGeometry args={[w, 0.1, d - 0.02]} />
-          <primitive object={baseMat} attach="material" />
-        </mesh>
+        <>
+          {socle === 'metal' ? (
+            <group position={[0, 0, 0]}>
+              {/* Pieds métal */}
+              <mesh position={[-w/2 + 0.05, 0.05, -d/2 + 0.05]} castShadow>
+                <boxGeometry args={[0.03, 0.1, 0.03]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
+              </mesh>
+              <mesh position={[w/2 - 0.05, 0.05, -d/2 + 0.05]} castShadow>
+                <boxGeometry args={[0.03, 0.1, 0.03]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
+              </mesh>
+              <mesh position={[-w/2 + 0.05, 0.05, d/2 - 0.05]} castShadow>
+                <boxGeometry args={[0.03, 0.1, 0.03]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
+              </mesh>
+              <mesh position={[w/2 - 0.05, 0.05, d/2 - 0.05]} castShadow>
+                <boxGeometry args={[0.03, 0.1, 0.03]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
+              </mesh>
+            </group>
+          ) : (
+            /* Socle plein (bois) */
+            <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
+              <boxGeometry args={[w, 0.1, d - 0.02]} />
+              <TexturedMaterial hexColor={finalBaseColor} imageUrl={finalBaseImageUrl} />
+            </mesh>
+          )}
+        </>
       )}
 
       {/* Back Panel */}
       <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]} receiveShadow>
         <boxGeometry args={[w - 0.01, sideHeight - 0.01, 0.004]} />
-        <primitive object={backMat} attach="material" />
+        <TexturedMaterial hexColor={finalBackColor} imageUrl={finalBackImageUrl} />
       </mesh>
     </group>
   );
@@ -1802,8 +1963,47 @@ function ShelfDecoration({ width, height, depth, seed }: { width: number, height
   );
 }
 
-export default function ThreeCanvas(props: ThreeViewerProps) {
+// Composant interne pour capturer le screenshot
+function ScreenshotCapture({ onCapture }: { onCapture: (fn: () => string | null) => void }) {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    const captureScreenshot = () => {
+      try {
+        // Rendre une frame
+        gl.render(scene, camera);
+        // Capturer le canvas en base64
+        const dataUrl = gl.domElement.toDataURL('image/png');
+        return dataUrl;
+      } catch (error) {
+        console.error('Erreur lors de la capture:', error);
+        return null;
+      }
+    };
+
+    onCapture(captureScreenshot);
+  }, [gl, scene, camera, onCapture]);
+
+  return null;
+}
+
+const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
   const { onSelectZone } = props;
+  const captureRef = useRef<(() => string | null) | null>(null);
+
+  // Exposer la méthode de capture via la ref
+  useImperativeHandle(ref, () => ({
+    captureScreenshot: () => {
+      if (captureRef.current) {
+        return captureRef.current();
+      }
+      return null;
+    }
+  }), []);
+
+  const handleCapture = (fn: () => string | null) => {
+    captureRef.current = fn;
+  };
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '500px', background: '#FAFAF9', position: 'relative' }}>
@@ -1819,6 +2019,7 @@ export default function ThreeCanvas(props: ThreeViewerProps) {
         }}
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
       >
+        <ScreenshotCapture onCapture={handleCapture} />
         <OrbitControls
           enableDamping
           minDistance={1.5}
@@ -1829,10 +2030,10 @@ export default function ThreeCanvas(props: ThreeViewerProps) {
         <ambientLight intensity={0.4} />
         <hemisphereLight intensity={0.5} groundColor="#ffffff" color="#ffffff" />
         <pointLight position={[10, 10, 10]} intensity={1.0} />
-        <directionalLight 
-          position={[-5, 8, 5]} 
-          intensity={1.0} 
-          castShadow 
+        <directionalLight
+          position={[-5, 8, 5]}
+          intensity={1.0}
+          castShadow
           shadow-mapSize={[2048, 2048]}
           shadow-camera-left={-10}
           shadow-camera-right={10}
@@ -1843,7 +2044,10 @@ export default function ThreeCanvas(props: ThreeViewerProps) {
 
         <Suspense fallback={null}>
           <Room />
-          <Furniture {...props} />
+          <Furniture
+            {...props}
+            imageUrl={props.imageUrl}
+          />
           <HumanSilhouette />
           <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={15} blur={2.5} far={1.5} />
           <Environment preset="city" />
@@ -1851,4 +2055,8 @@ export default function ThreeCanvas(props: ThreeViewerProps) {
       </Canvas>
     </div>
   );
-}
+});
+
+ThreeCanvas.displayName = 'ThreeCanvas';
+
+export default ThreeCanvas;
