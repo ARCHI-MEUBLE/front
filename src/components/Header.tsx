@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { Menu, X, ShoppingBag, User, ChevronRight } from "lucide-react";
+import { Menu, X, ShoppingBag, User, ChevronRight, Layers } from "lucide-react";
 import { useCustomer } from "@/context/CustomerContext";
 
 const navLinks = [
@@ -159,6 +159,16 @@ export function Header() {
                 <User className="h-5 w-5" />
                 {customer ? "Mon compte" : "Se connecter"}
               </Link>
+              {customer && (
+                <Link
+                  href="/my-configurations"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <Layers className="h-5 w-5" />
+                  Mes configurations
+                </Link>
+              )}
               <Link
                 href="/cart"
                 onClick={() => setIsMenuOpen(false)}

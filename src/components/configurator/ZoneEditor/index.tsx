@@ -12,6 +12,8 @@ interface ZoneEditorProps {
   onSelectedZoneIdChange: (id: string | null) => void;
   width: number;
   height: number;
+  hideControls?: boolean;
+  showNumbers?: boolean;
   // Expose les actions pour une utilisation externe (ActionBar)
   onSplitZone?: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
   onSetZoneContent?: (zoneId: string, content: ZoneContent) => void;
@@ -36,6 +38,8 @@ export default function ZoneEditor({
   onSelectedZoneIdChange,
   width,
   height,
+  hideControls,
+  showNumbers,
   onToggleLight,
   onToggleCableHole,
   onSetHandleType,
@@ -286,34 +290,37 @@ export default function ZoneEditor({
         onRatioChange={handleRatioChange}
         width={width}
         height={height}
+        showNumbers={showNumbers}
       />
 
-      {/* Contrôles dans une card */}
-      <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
-        {selectedZoneId ? (
-          <ZoneControls
-            selectedZone={selectedZone}
-            parentZone={parentZone}
-            onSplitZone={splitZone}
-            onSetContent={setZoneContent}
-            onResetZone={resetZone}
-            onSetSplitRatio={setSplitRatio}
-            onSetSplitRatios={setSplitRatios}
-            onToggleLight={toggleLight}
-            onToggleCableHole={toggleCableHole}
-            onSetHandleType={setHandleType}
-            onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center bg-white shadow-sm" style={{ borderRadius: '50%' }}>
-              <span className="text-2xl">☝️</span>
+      {/* Contrôles dans une card - masqués en mode hideControls */}
+      {!hideControls && (
+        <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
+          {selectedZoneId ? (
+            <ZoneControls
+              selectedZone={selectedZone}
+              parentZone={parentZone}
+              onSplitZone={splitZone}
+              onSetContent={setZoneContent}
+              onResetZone={resetZone}
+              onSetSplitRatio={setSplitRatio}
+              onSetSplitRatios={setSplitRatios}
+              onToggleLight={toggleLight}
+              onToggleCableHole={toggleCableHole}
+              onSetHandleType={setHandleType}
+              onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center bg-white shadow-sm" style={{ borderRadius: '50%' }}>
+                <span className="text-2xl">☝️</span>
+              </div>
+              <p className="text-base font-medium text-[#1A1917]">Aucune zone sélectionnée</p>
+              <p className="text-sm text-[#706F6C]">Cliquez sur un compartiment du meuble pour le modifier</p>
             </div>
-            <p className="text-base font-medium text-[#1A1917]">Aucune zone sélectionnée</p>
-            <p className="text-sm text-[#706F6C]">Cliquez sur un compartiment du meuble pour le modifier</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

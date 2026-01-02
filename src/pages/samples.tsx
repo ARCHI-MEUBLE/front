@@ -17,12 +17,7 @@ const Toaster = dynamic(
 
 type MaterialsMap = Record<string, SampleType[]>;
 
-const MATERIAL_ORDER = [
-  "Aggloméré",
-  "MDF + revêtement (mélaminé)",
-  "Plaqué bois",
-];
-
+// Descriptions par défaut pour les matériaux connus (optionnel)
 const MATERIAL_DESCRIPTIONS: Record<string, string> = {
   "Aggloméré": "Économique et polyvalent, idéal pour les intérieurs de meubles",
   "MDF + revêtement (mélaminé)": "Surface lisse et résistante, large choix de finitions",
@@ -45,9 +40,8 @@ export default function SamplesPage() {
       .then((data) => {
         if (!mounted) return;
         setMaterials(data);
-        const first = MATERIAL_ORDER.find((m) => data[m]?.length)
-          || Object.keys(data)[0]
-          || null;
+        // Sélectionner le premier matériau qui a des échantillons
+        const first = Object.keys(data).find((m) => data[m]?.length) || null;
         setSelectedMaterial(first);
       })
       .catch((err) => {
@@ -123,9 +117,10 @@ export default function SamplesPage() {
     }
   };
 
-  const materialList = MATERIAL_ORDER.concat(
-    Object.keys(materials).filter((m) => !MATERIAL_ORDER.includes(m))
-  ).filter(m => materials[m]?.length);
+  // Liste de tous les matériaux disponibles, triés alphabétiquement
+  const materialList = Object.keys(materials)
+    .filter(m => materials[m]?.length)
+    .sort((a, b) => a.localeCompare(b, 'fr'));
 
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAF9]">

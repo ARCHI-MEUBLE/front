@@ -11,6 +11,7 @@ import {
   IconChevronDown,
   IconFilter,
   IconX,
+  IconBox,
 } from '@tabler/icons-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import { Label } from '@/components/ui/label';
 
 interface AdminConfiguration {
   id: number;
+  name?: string | null;
   customer_email: string | null;
   customer_first_name?: string | null;
   customer_last_name?: string | null;
@@ -65,14 +67,15 @@ export function DashboardConfigs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
-  // Column visibility - mobile montre moins de colonnes par défaut
+  // Column visibility
   const [columnVisibility, setColumnVisibility] = useState({
     id: true,
+    name: true,
     client: true,
-    model: false, // Caché sur mobile
+    model: true,
     price: true,
     status: true,
-    date: false, // Caché sur mobile
+    date: true,
   });
 
   useEffect(() => {
@@ -116,6 +119,7 @@ export function DashboardConfigs() {
       filtered = filtered.filter(c =>
         c.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.model_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.id.toString().includes(searchTerm)
       );
     }
@@ -296,6 +300,7 @@ export function DashboardConfigs() {
                       <TableHeader className="bg-muted/50">
                         <TableRow>
                           {columnVisibility.id && <TableHead className="w-[70px] font-semibold">ID</TableHead>}
+                          {columnVisibility.name && <TableHead className="min-w-[140px] font-semibold">Nom</TableHead>}
                           {columnVisibility.client && <TableHead className="min-w-[180px] font-semibold">Client</TableHead>}
                           {columnVisibility.model && <TableHead className="min-w-[140px] font-semibold">Modèle</TableHead>}
                           {columnVisibility.price && <TableHead className="w-[90px] font-semibold">Prix</TableHead>}
@@ -313,9 +318,14 @@ export function DashboardConfigs() {
                               {columnVisibility.id && (
                                 <TableCell className="font-mono font-medium text-xs">#{config.id}</TableCell>
                               )}
+                              {columnVisibility.name && (
+                                <TableCell className="text-sm font-medium">
+                                  {config.name || `Configuration #${config.id}`}
+                                </TableCell>
+                              )}
                               {columnVisibility.client && (
                                 <TableCell className="text-sm">
-                                  <div className="max-w-[180px] truncate font-medium">{config.customer_email || '—'}</div>
+                                  <div className="max-w-[180px] truncate">{config.customer_email || '—'}</div>
                                 </TableCell>
                               )}
                               {columnVisibility.model && (
@@ -340,6 +350,19 @@ export function DashboardConfigs() {
                               )}
                               <TableCell className="text-right sticky right-0 bg-background">
                                 <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    onClick={() => {
+                                      const match = config.prompt?.match(/^(M[1-5])\(/);
+                                      const templateKey = config.model_id ? String(config.model_id) : (match ? match[1] : 'M1');
+                                      window.open(`/configurator/${templateKey}?mode=view&configId=${config.id}`, '_blank');
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2 sm:px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  >
+                                    <IconBox className="h-4 w-4" />
+                                    <span className="ml-1 hidden sm:inline">Voir 3D</span>
+                                  </Button>
                                   <Button
                                     onClick={() => viewDetails(config)}
                                     variant="ghost"
@@ -384,11 +407,31 @@ export function DashboardConfigs() {
           {selectedConfig && (
             <div className="flex flex-col h-full">
               <SheetHeader className="px-4 sm:px-6 py-4 sm:py-6 border-b">
-                <SheetTitle className="text-lg sm:text-xl">Config #{selectedConfig.id}</SheetTitle>
+                <SheetTitle className="text-lg sm:text-xl">{selectedConfig.name || `Config #${selectedConfig.id}`}</SheetTitle>
                 <SheetDescription className="text-sm">Détails et gestion</SheetDescription>
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm sm:text-base">Visualisation</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Voir la configuration interactive</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      onClick={() => {
+                        const match = selectedConfig.prompt?.match(/^(M[1-5])\(/);
+                        const templateKey = selectedConfig.model_id ? String(selectedConfig.model_id) : (match ? match[1] : 'M1');
+                        window.open(`/configurator/${templateKey}?mode=view&configId=${selectedConfig.id}`, '_blank');
+                      }}
+                      className="w-full h-10 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <IconBox className="w-4 h-4 mr-2" />
+                      Ouvrir le configurateur 3D
+                    </Button>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -456,7 +499,7 @@ export function DashboardConfigs() {
                     <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
                       <div>
                         <p className="text-muted-foreground mb-1">Modèle</p>
-                        <p className="font-medium">{selectedConfig.model_name || `M${selectedConfig.model_id}` || '—'}</p>
+                        <p className="font-medium">{selectedConfig.model_name || (selectedConfig.model_id ? `M${selectedConfig.model_id}` : '—')}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground mb-1">Prix</p>
@@ -483,16 +526,18 @@ export function DashboardConfigs() {
                     <CardTitle className="text-sm sm:text-base">Fichiers</CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-2">
-                    {selectedConfig.glb_url && (
-                      <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline" size="sm" disabled={!selectedConfig.glb_url}>
+                      {selectedConfig.glb_url ? (
                         <a href={selectedConfig.glb_url} target="_blank" rel="noopener noreferrer" className="text-xs sm:text-sm">
                           GLB (3D)
                         </a>
-                      </Button>
-                    )}
-                    <Button asChild variant="outline" size="sm" disabled={!selectedConfig.dxf_url}>
+                      ) : (
+                        <span className="text-xs sm:text-sm text-muted-foreground opacity-50">GLB (non généré)</span>
+                      )}
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
                       <a href={`/api/files/dxf?id=${selectedConfig.id}`} download className="text-xs sm:text-sm">
-                        DXF{!selectedConfig.dxf_url && ' (indisponible)'}
+                        DXF {!selectedConfig.dxf_url && '(générique)'}
                       </a>
                     </Button>
                   </CardContent>

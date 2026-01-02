@@ -9,6 +9,8 @@ interface ZoneNodeProps {
     depth?: number;
     realWidth: number;
     realHeight: number;
+    showNumbers?: boolean;
+    leafNumbers?: Record<string, number>;
 }
 
 function ZoneNode({
@@ -19,6 +21,8 @@ function ZoneNode({
                       depth = 0,
                       realWidth,
                       realHeight,
+                      showNumbers = false,
+                      leafNumbers,
                   }: ZoneNodeProps) {
     const isSelected = zone.id === selectedZoneId;
     const containerRef = useRef<HTMLDivElement>(null);
@@ -40,12 +44,15 @@ function ZoneNode({
     const getChildRatios = useCallback((): number[] => {
         const children = zone.children ?? [];
         if (children.length === 0) return [];
+        
+        if (zone.splitRatios?.length === children.length) {
+            return zone.splitRatios;
+        }
+        
         if (children.length === 2 && zone.splitRatio !== undefined) {
             return [zone.splitRatio, 100 - zone.splitRatio];
         }
-        if (children.length > 2 && zone.splitRatios?.length === children.length) {
-            return zone.splitRatios;
-        }
+        
         return children.map(() => 100 / children.length);
     }, [zone]);
 
@@ -154,6 +161,8 @@ function ZoneNode({
 
     if (zone.type === 'leaf') {
         const meta = ZONE_CONTENT_META[zone.content ?? 'empty'] || ZONE_CONTENT_META['empty'];
+        const zoneNumber = leafNumbers?.[zone.id];
+
         return (
             <button
                 type="button"
@@ -166,6 +175,11 @@ function ZoneNode({
                 }`}
                 style={{ borderRadius: '4px' }}
             >
+                {showNumbers && zoneNumber && (
+                    <div className="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#1A1917] text-[10px] font-bold text-white shadow-sm">
+                        {zoneNumber}
+                    </div>
+                )}
                 <span className="text-lg font-semibold">{meta.shortLabel}</span>
                 <span className="mt-2 font-mono text-base text-[#706F6C]">
           {Math.round(realWidth)} × {Math.round(realHeight)} mm
@@ -230,6 +244,8 @@ function ZoneNode({
                             depth={depth + 1}
                             realWidth={dims.w}
                             realHeight={dims.h}
+                            showNumbers={showNumbers}
+                            leafNumbers={leafNumbers}
                         />
 
                         {showDivider && onRatioChange && (
@@ -268,6 +284,7 @@ interface ZoneCanvasProps {
     onRatioChange?: (zoneId: string, ratios: number[]) => void;
     width: number;
     height: number;
+    showNumbers?: boolean;
 }
 
 export default function ZoneCanvas({
@@ -277,6 +294,7 @@ export default function ZoneCanvas({
                                        onRatioChange,
                                        width,
                                        height,
+                                       showNumbers = false,
                                    }: ZoneCanvasProps) {
     // ✅ GRAND CANVAS - Prend toute la largeur disponible du panneau
     // Le panneau fait 560px, moins padding = ~500px disponibles
@@ -302,6 +320,20 @@ export default function ZoneCanvas({
     // Assurer une taille minimum lisible
     canvasWidth = Math.max(canvasWidth, 300);
     canvasHeight = Math.max(canvasHeight, 200);
+
+    // ✅ Calculer les numéros de feuilles de manière pure
+    const leafNumbers: Record<string, number> = {};
+    let count = 0;
+    const computeNumbers = (z: Zone) => {
+        if (z.type === 'leaf') {
+            count++;
+            leafNumbers[z.id] = count;
+        }
+        if (z.children) {
+            z.children.forEach(computeNumbers);
+        }
+    };
+    computeNumbers(zone);
 
     return (
         <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
@@ -338,13 +370,15 @@ export default function ZoneCanvas({
                         onRatioChange={onRatioChange}
                         realWidth={width}
                         realHeight={height}
+                        showNumbers={showNumbers}
+                        leafNumbers={leafNumbers}
                     />
                 </div>
             </div>
 
             {/* Instruction claire */}
             <p className="mt-4 text-center text-base text-[#706F6C]">
-                Cliquez sur une zone pour la modifier
+                {showNumbers ? "Les numéros correspondent à l'inventaire détaillé" : "Cliquez sur une zone pour la modifier"}
             </p>
         </div>
     );

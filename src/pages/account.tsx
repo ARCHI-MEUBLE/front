@@ -27,7 +27,8 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  MapPin
+  MapPin,
+  Layers
 } from 'lucide-react';
 
 type Section = 'orders' | 'profile' | 'help';
@@ -366,6 +367,14 @@ export default function Account() {
                   {item.label}
                 </button>
               ))}
+              {/* Lien direct vers Mes configurations */}
+              <Link
+                href="/my-configurations"
+                className="flex items-center gap-2 whitespace-nowrap rounded-full px-5 py-2.5 text-sm font-medium text-[#6B6560] transition-all hover:bg-[#F5F3F0] hover:text-[#1A1917]"
+              >
+                <Layers className="h-4 w-4" />
+                Mes configurations
+              </Link>
             </nav>
           </div>
         </section>

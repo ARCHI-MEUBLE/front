@@ -18,11 +18,11 @@ export function HeroSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden bg-[#FAFAF9]"
+      className="relative z-20 bg-[#FAFAF9]"
     >
-      {/* Subtle grid pattern */}
+      {/* Subtle grid pattern - Caché sur desktop pour ne pas cacher l'image */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.03] lg:hidden"
         style={{
           backgroundImage: `linear-gradient(#1A1917 1px, transparent 1px),
                            linear-gradient(90deg, #1A1917 1px, transparent 1px)`,
@@ -86,8 +86,8 @@ export function HeroSection() {
           <div data-animate className="mt-8 opacity-0">
             <div className="relative aspect-[4/3] overflow-hidden">
               <Image
-                src="/images/accueil image/dressing.jpg"
-                alt="Dressing sur mesure ArchiMeuble"
+                src="/images/accueil image/img.png"
+                alt="Bibliothèque sur mesure ArchiMeuble"
                 fill
                 priority
                 className="object-cover"
@@ -99,7 +99,7 @@ export function HeroSection() {
                   Réalisation récente
                 </p>
                 <p className="mt-1 font-serif text-base text-[#1A1917]">
-                  Dressing sur mesure — Lille, 2024
+                  Bibliothèque sur mesure — Lille, 2024
                 </p>
               </div>
             </div>
@@ -198,15 +198,14 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* RIGHT - Image */}
-          <div className="relative lg:col-span-6">
+          <div className="relative lg:col-span-6 lg:hidden">
             <div
               data-animate
-              className="relative opacity-0 lg:absolute lg:-right-8 lg:top-1/2 lg:h-[80vh] lg:max-h-[800px] lg:w-[calc(100%+32px)] lg:-translate-y-1/2"
+              className="relative opacity-0"
             >
               <Image
-                src="/images/accueil image/dressing.jpg"
-                alt="Dressing sur mesure ArchiMeuble"
+                src="/images/accueil image/img.png"
+                alt="Bibliothèque sur mesure ArchiMeuble"
                 fill
                 priority
                 className="object-cover"
@@ -218,7 +217,7 @@ export function HeroSection() {
                   Réalisation récente
                 </p>
                 <p className="mt-1 font-serif text-lg text-[#1A1917]">
-                  Dressing sur mesure
+                  Bibliothèque sur mesure
                 </p>
                 <p className="mt-1 text-sm text-[#706F6C]">
                   Lille, 2024

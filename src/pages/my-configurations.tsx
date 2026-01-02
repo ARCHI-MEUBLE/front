@@ -2,10 +2,25 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import Image from 'next/image';
+import type { Zone } from '@/components/configurator/ZoneEditor';
+
+// Import dynamique pour éviter les erreurs SSR avec Three.js
+const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-bg-light to-bg-default">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-sm text-text-secondary">Chargement 3D...</p>
+      </div>
+    </div>
+  ),
+});
 
 interface SavedConfiguration {
   id: number;
@@ -17,6 +32,8 @@ interface SavedConfiguration {
   thumbnail_url: string | null;
   price: number;
   created_at: string;
+  status: string;
+  order_id?: number | null;
 }
 
 export default function MyConfigurations() {
@@ -54,17 +71,25 @@ export default function MyConfigurations() {
         let parsed: any = raw;
         // Normaliser: decoder config_string -> config_data et exposer name/thumbnails
         try {
+          // Si config_string existe mais pas config_data, parser config_string
           if (raw.config_string && !raw.config_data) {
             const cfg = JSON.parse(raw.config_string);
             parsed.config_data = cfg;
             if (!raw.name && cfg.name) parsed.name = cfg.name;
             if (!raw.thumbnail_url && cfg.thumbnail_url) parsed.thumbnail_url = cfg.thumbnail_url;
           }
-        } catch (_) {}
+          // Si config_data est une chaîne, la parser
+          if (typeof parsed.config_data === 'string') {
+            parsed.config_data = JSON.parse(parsed.config_data);
+          }
+        } catch (parseError) {
+          console.warn('Erreur de parsing config_data:', parseError);
+        }
         // Valeur par défaut pour le nom
         if (!parsed.name) parsed.name = `Configuration #${raw.id}`;
         return parsed as SavedConfiguration;
       });
+      console.log('📥 Configurations chargées:', items);
       setConfigurations(items);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
@@ -124,9 +149,14 @@ export default function MyConfigurations() {
   };
 
   const handleViewConfiguration = (config: SavedConfiguration) => {
+    console.log('📤 handleViewConfiguration - config complète:', config);
+    console.log('📤 handleViewConfiguration - config.config_data:', config.config_data);
+    console.log('📤 handleViewConfiguration - advancedZones:', config.config_data?.advancedZones);
+
     if (typeof window !== 'undefined') {
       try {
         const serialized = JSON.stringify(config);
+        console.log('📤 Stockage dans localStorage:', `archimeuble:configuration:${config.id}`);
         window.localStorage.setItem(`archimeuble:configuration:${config.id}`, serialized);
         window.localStorage.setItem('archimeuble:configuration:last', serialized);
       } catch (storageError) {
@@ -156,7 +186,9 @@ export default function MyConfigurations() {
       query.set('prompt', config.prompt);
     }
 
-    router.push(`/configurator/${templateKey}?${query.toString()}`);
+    const url = `/configurator/${templateKey}?${query.toString()}`;
+    console.log('📤 Redirection vers:', url);
+    router.push(url);
   };
 
   const formatDate = (dateString: string) => {
@@ -166,6 +198,27 @@ export default function MyConfigurations() {
       month: 'long', 
       year: 'numeric' 
     });
+  };
+
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'en_attente_validation':
+        return { label: 'En attente de validation', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+      case 'validee':
+        return { label: 'Validée - Prêt pour commande', color: 'bg-green-50 text-green-700 border-green-200' };
+      case 'payee':
+        return { label: 'Payée', color: 'bg-blue-50 text-blue-700 border-blue-200' };
+      case 'en_production':
+        return { label: 'En production', color: 'bg-purple-50 text-purple-700 border-purple-200' };
+      case 'livree':
+        return { label: 'Livrée', color: 'bg-gray-50 text-gray-700 border-gray-200' };
+      case 'annulee':
+        return { label: 'Annulée', color: 'bg-red-50 text-red-700 border-red-200' };
+      case 'en_commande':
+        return { label: 'En commande', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+      default:
+        return { label: status, color: 'bg-gray-50 text-gray-700 border-gray-200' };
+    }
   };
 
   if (authLoading || isLoading) {
@@ -259,29 +312,42 @@ export default function MyConfigurations() {
                 key={config.id}
                 className="card overflow-hidden hover:shadow-lg transition"
               >
-                {/* Preview 3D */}
-                <div className="aspect-video bg-gradient-to-br from-bg-light to-bg-default flex items-center justify-center">
-                  {config.glb_url ? (
-                    <div className="w-full h-full relative">
-                      {/* Utiliser model-viewer pour afficher le GLB */}
-                      <model-viewer
-                        src={config.glb_url}
-                        alt={config.name}
-                        auto-rotate
-                        camera-controls
-                        style={{ width: '100%', height: '100%' }}
+                {/* Preview 3D - Configuration réelle */}
+                <div className="aspect-video bg-gradient-to-br from-bg-light to-bg-default overflow-hidden">
+                  {config.config_data ? (
+                    <ThreeViewer
+                        width={config.config_data.dimensions?.width || 1500}
+                        height={config.config_data.dimensions?.height || 730}
+                        depth={config.config_data.dimensions?.depth || 500}
+                        color={config.config_data.styling?.color || '#D8C7A1'}
+                        hasSocle={config.config_data.styling?.socle !== 'none'}
+                        rootZone={config.config_data.advancedZones || { id: 'root', type: 'leaf', content: 'empty' } as Zone}
+                        selectedZoneId={null}
+                        onSelectZone={() => {}}
+                        isBuffet={false}
+                        doorsOpen={config.config_data.features?.doorsOpen ?? false}
+                        showDecorations={false}
+                        componentColors={config.config_data.componentColors}
+                        useMultiColor={config.config_data.useMultiColor || false}
+                        doorType={config.config_data.features?.doorType || 'none'}
+                        doorSide={config.config_data.features?.doorSide || 'left'}
+                        onToggleDoors={() => {}}
                       />
-                    </div>
                   ) : (
-                    <div className="text-6xl">🪑</div>
+                    <div className="flex items-center justify-center h-full text-6xl">🪑</div>
                   )}
                 </div>
 
                 {/* Info */}
                 <div className="p-5">
-                  <h3 className="text-base font-medium text-text-primary mb-2">
-                    {config.name}
-                  </h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-base font-medium text-text-primary">
+                      {config.name}
+                    </h3>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getStatusInfo(config.status).color}`}>
+                      {getStatusInfo(config.status).label}
+                    </span>
+                  </div>
                   
                   <div className="space-y-2 text-sm text-text-secondary mb-4">
                     <div className="flex items-center gap-2">
@@ -304,12 +370,43 @@ export default function MyConfigurations() {
 
                   {/* Actions */}
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleAddToCart(config.id)}
-                      className="btn-primary"
-                    >
-                      🛒 Ajouter
-                    </button>
+                    {config.status === 'validee' ? (
+                      <button
+                        onClick={() => handleAddToCart(config.id)}
+                        className="btn-primary"
+                      >
+                        🛒 Commander
+                      </button>
+                    ) : config.status === 'en_commande' && config.order_id ? (
+                      <button
+                        onClick={() => router.push(`/checkout?order_id=${config.order_id}`)}
+                        className="btn-primary bg-indigo-600 hover:bg-indigo-700 border-none flex items-center justify-center gap-1 shadow-md"
+                      >
+                        💳 <span className="text-[10px] uppercase font-bold tracking-wider">Payer</span>
+                      </button>
+                    ) : ['payee', 'en_production', 'livree', 'en_commande'].includes(config.status) ? (
+                      <button
+                        disabled
+                        className="btn-primary opacity-70 cursor-not-allowed text-[10px] bg-green-600 border-none"
+                      >
+                        ✅ Commandé
+                      </button>
+                    ) : config.status === 'annulee' ? (
+                      <button
+                        disabled
+                        className="btn-primary opacity-50 cursor-not-allowed text-[10px] bg-red-600 border-none"
+                      >
+                        ❌ Annulée
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        title="En attente de validation par un menuisier"
+                        className="btn-primary opacity-50 cursor-not-allowed text-[10px]"
+                      >
+                        ⌛ En attente
+                      </button>
+                    )}
                     <button
                       onClick={() => handleViewConfiguration(config)}
                       className="btn-secondary"

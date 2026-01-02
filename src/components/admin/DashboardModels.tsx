@@ -355,14 +355,14 @@ export function DashboardModels() {
         {/* Configurator Link */}
         <Card>
           <CardHeader>
-            <CardTitle>Configurateur 3D</CardTitle>
-            <CardDescription>Créez un nouveau meuble avec le configurateur Mode EZ</CardDescription>
+            <CardTitle>Conception visuelle</CardTitle>
+            <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l'ajouter directement au catalogue.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <a href="/models" target="_blank" rel="noopener noreferrer">
+            <Button asChild className="bg-[#8B7355] hover:bg-[#705D45]">
+              <a href="/configurator/M1?adminMode=createModel" target="_blank" rel="noopener noreferrer">
                 <IconExternalLink className="w-4 h-4 mr-2" />
-                Ouvrir le configurateur
+                Lancer la création visuelle
               </a>
             </Button>
           </CardContent>

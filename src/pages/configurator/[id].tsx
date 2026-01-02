@@ -1,10 +1,23 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import Link from 'next/link';
 import Viewer from '@/components/configurator/Viewer';
-import ThreeViewer from '@/components/configurator/ThreeViewer';
 import type { ThreeCanvasHandle } from '@/components/configurator/types';
+
+// Import dynamique pour éviter les erreurs SSR avec R3F
+const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '500px' }}>
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
+        <p className="text-sm font-medium text-[#706F6C]">Chargement du studio 3D...</p>
+      </div>
+    </div>
+  ),
+});
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
 import ZoneEditor, { Zone, ZoneContent, ZoneColor } from '@/components/configurator/ZoneEditor';
@@ -17,8 +30,33 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2 } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2, Edit3 } from 'lucide-react';
+import { 
+  IconRuler2, 
+  IconPalette as IconTablerPalette, 
+  IconApps, 
+  IconInfoCircle, 
+  IconEdit,
+  IconTrendingUp,
+  IconPlus,
+  IconRefresh,
+  IconX as IconTablerX
+} from '@tabler/icons-react';
+import { Button } from '@/components/ui/button';
 import { useHistory } from '@/hooks/useHistory';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import toast from 'react-hot-toast';
 
 // Hook pour détecter mobile
 function useIsMobile() {
@@ -41,14 +79,14 @@ function useIsMobile() {
   return isMobile;
 }
 
-const MATERIAL_ORDER = ['Aggloméré', 'MDF + revêtement (mélaminé)', 'Plaqué bois'];
-
+// Mapping pour les anciens matériaux uniquement (backward compatibility)
 const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
   agglomere: 'Aggloméré',
   mdf_melamine: 'MDF + revêtement (mélaminé)',
   plaque_bois: 'Plaqué bois',
 };
 
+// Prix par défaut pour les anciens matériaux (backward compatibility)
 const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
   agglomere: 0,
   mdf_melamine: 70,
@@ -56,6 +94,14 @@ const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
 };
 
 const DEFAULT_COLOR_HEX = '#D8C7A1';
+
+// Mapping pour les poignées vers codes prompt
+const HANDLE_TYPE_CODE: Record<string, string> = {
+  'vertical_bar': '1',
+  'horizontal_bar': '2',
+  'knob': '3',
+  'recessed': '4',
+};
 
 // Normalise une clé de matériau - garde la valeur telle quelle pour les nouveaux matériaux
 function normalizeMaterialKey(value: string | null | undefined): string {
@@ -78,14 +124,342 @@ function materialLabelFromKey(key: string): string {
   return key;
 }
 
+function ConfigurationSummary({ 
+  width, height, depth, finish, color, socle, rootZone, price, modelName,
+  isAdmin, onEdit 
+}: any) {
+  const analyzeConfiguration = (zone: Zone) => {
+    const handleTypes = new Set<string>();
+    const leafZones: any[] = [];
+    
+    let leafCounter = 0;
+    
+    const traverse = (z: Zone) => {
+      if (z.type === 'leaf') {
+        leafCounter++;
+        leafZones.push({
+          number: leafCounter,
+          id: z.id,
+          content: z.content || 'empty',
+          handleType: z.handleType,
+          hasLight: z.hasLight,
+          hasCableHole: z.hasCableHole,
+          color: z.zoneColor?.hex
+        });
+
+        if (z.content && z.content !== 'empty') {
+          if (z.handleType) {
+            handleTypes.add(z.handleType);
+          }
+        }
+      }
+      
+      if (z.children) z.children.forEach(traverse);
+    };
+    
+    traverse(zone);
+    
+    return { 
+      handleTypes: Array.from(handleTypes),
+      leafZones
+    };
+  };
+
+  const analysis = analyzeConfiguration(rootZone);
+  
+  const labels: Record<string, string> = {
+    drawer: 'Tiroir(s)',
+    push_drawer: 'Tiroir(s) Push-to-Open',
+    dressing: 'Penderie(s)',
+    door: 'Porte(s) Gauche',
+    door_right: 'Porte(s) Droite',
+    door_double: 'Double Porte(s)',
+    mirror_door: 'Porte(s) Miroir',
+    push_door: 'Porte(s) Push-to-Open',
+    glass_shelf: 'Étagère(s) en verre',
+    pegboard: 'Panneau(x) perforé(s)',
+    shelf: 'Étagère(s) standard',
+    light: 'Éclairage(s) LED',
+    cable_hole: 'Passe-câble(s)',
+  };
+
+  const handleLabels: Record<string, string> = {
+    vertical_bar: 'Barre verticale',
+    horizontal_bar: 'Barre horizontale',
+    knob: 'Bouton',
+    recessed: 'Encastrée',
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#FAFAF9] overflow-y-auto custom-scrollbar">
+      {/* Header simple et chic */}
+      <div className="p-6 lg:p-8 border-b border-[#E8E6E3] bg-white">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[#706F6C] font-medium mb-2 block">Administration</span>
+        <h2 className="font-serif text-3xl text-[#1A1917] leading-tight">Récapitulatif de configuration</h2>
+        <p className="mt-2 text-sm text-[#706F6C]">Analyse technique du meuble configuré par le client.</p>
+      </div>
+
+      <div className="p-6 lg:p-8 space-y-8">
+        {/* Visualisation 2D - Le "vrai" plus pour l'admin */}
+        <section>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] mb-4 flex items-center gap-2">
+            <IconApps className="h-3.5 w-3.5" />
+            Structure visuelle
+          </h3>
+          <div className="bg-white border border-[#E8E6E3] rounded-[2px] p-4 shadow-sm">
+            <ZoneEditor
+              rootZone={rootZone}
+              selectedZoneId={null}
+              onRootZoneChange={() => {}}
+              onSelectedZoneIdChange={() => {}}
+              width={width}
+              height={height}
+              hideControls={true}
+              showNumbers={true}
+            />
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Dimensions */}
+          <section>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] mb-4 flex items-center gap-2">
+              <IconRuler2 className="h-3.5 w-3.5" />
+              Dimensions (mm)
+            </h3>
+            <div className="space-y-3">
+              {[
+                { label: 'Largeur', value: width },
+                { label: 'Hauteur', value: height },
+                { label: 'Profondeur', value: depth }
+              ].map((dim) => (
+                <div key={dim.label} className="flex justify-between items-baseline border-b border-[#E8E6E3] pb-2">
+                  <span className="text-sm text-[#706F6C]">{dim.label}</span>
+                  <span className="text-base font-bold tabular-nums">{dim.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Finitions */}
+          <section>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] mb-4 flex items-center gap-2">
+              <IconTablerPalette className="h-3.5 w-3.5" />
+              Esthétique
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
+                <span className="text-sm text-[#706F6C]">Finition</span>
+                <span className="text-sm font-semibold">{finish}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
+                <span className="text-sm text-[#706F6C]">Couleur</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: color }}></div>
+                  <span className="text-sm font-semibold">{color}</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
+                <span className="text-sm text-[#706F6C]">Socle</span>
+                <span className="text-sm font-semibold">
+                  {socle === 'metal' ? 'Métal Noir' : socle === 'wood' ? 'Plinthe Bois' : 'Aucun'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
+                <span className="text-sm text-[#706F6C]">Poignée</span>
+                <span className="text-sm font-semibold">
+                  {analysis.handleTypes.length > 0 
+                    ? analysis.handleTypes.map(h => handleLabels[h] || h).join(', ')
+                    : 'Aucune'}
+                </span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Inventaire détaillé par compartiment */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] flex items-center gap-2">
+              <IconRuler2 className="h-3.5 w-3.5" />
+              Inventaire par compartiment
+            </h3>
+            <span className="text-[9px] text-[#706F6C] uppercase font-bold tracking-tighter bg-[#F5F5F4] px-2 py-1">Lecture de gauche à droite, haut en bas</span>
+          </div>
+          <div className="bg-white border border-[#E8E6E3] rounded-[2px] overflow-hidden shadow-sm">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="bg-[#FAFAF9] border-b border-[#E8E6E3]">
+                  <th className="p-3 font-bold text-[10px] uppercase tracking-wider w-12 text-center">N°</th>
+                  <th className="p-3 font-bold text-[10px] uppercase tracking-wider">Équipement</th>
+                  <th className="p-3 font-bold text-[10px] uppercase tracking-wider">Détails / Poignée</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E6E3]">
+                {analysis.leafZones.map((z: any) => (
+                  <tr key={z.id} className="hover:bg-[#FAFAF9] transition-colors">
+                    <td className="p-3 text-center">
+                      <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[#1A1917] text-white text-[10px] font-bold shadow-sm">
+                        {z.number}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-semibold text-[#1A1917]">
+                        {labels[z.content] || (z.content === 'empty' ? 'Étagères / Vide' : z.content)}
+                      </div>
+                      <div className="flex gap-1.5 mt-1.5">
+                        {z.hasLight && (
+                          <span className="text-[8px] bg-yellow-400 text-black px-1.5 py-0.5 rounded-[1px] font-black uppercase">LED</span>
+                        )}
+                        {z.hasCableHole && (
+                          <span className="text-[8px] bg-blue-500 text-white px-1.5 py-0.5 rounded-[1px] font-black uppercase">Câble</span>
+                        )}
+                        {z.color && (
+                          <div className="flex items-center gap-1 bg-[#F5F5F4] px-1.5 py-0.5 rounded-[1px] border border-[#E8E6E3]">
+                            <div className="h-2 w-2 rounded-full border border-black/10" style={{ backgroundColor: z.color }}></div>
+                            <span className="text-[8px] font-bold text-[#706F6C]">{z.color}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3 text-[#706F6C] text-xs">
+                      {z.handleType ? (
+                        <div className="flex items-center gap-2">
+                          <IconTrendingUp className="h-3 w-3 text-[#1A1917]" />
+                          <span className="font-medium italic">{handleLabels[z.handleType] || z.handleType}</span>
+                        </div>
+                      ) : (
+                        z.content !== 'empty' && !['shelf', 'glass_shelf', 'pegboard', 'dressing'].includes(z.content) ? (
+                          <div className="flex items-center gap-2 text-amber-700">
+                            <div className="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
+                            <span className="text-[10px] uppercase tracking-tighter font-black">Pousser-Lâcher</span>
+                          </div>
+                        ) : (
+                          <span className="text-[#D0CEC9]">—</span>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Prix style PriceDisplay */}
+        <div className="pt-4 border-t border-[#E8E6E3]">
+          <div className="flex items-center justify-between bg-[#1A1917] p-6 rounded-[2px] text-white">
+            <div>
+              <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1 block">Estimation brute</span>
+              <div className="flex items-baseline gap-1 font-serif text-4xl">
+                <span>{price}</span>
+                <span className="text-xl">€</span>
+              </div>
+            </div>
+            {isAdmin && (
+              <Button
+                onClick={onEdit}
+                className="bg-white text-[#1A1917] hover:bg-[#E8E6E3] h-12 px-6 font-bold rounded-[2px] transition-all active:scale-[0.98]"
+              >
+                <IconEdit className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Note informative */}
+        <div className="p-4 bg-blue-50 border border-blue-100 rounded-[2px] flex gap-3">
+          <IconInfoCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-800 leading-relaxed">
+            <strong>Mode Consultation</strong> : Les modifications directes sont désactivées dans cette vue. Utilisez le bouton "Modifier" pour ajuster la configuration avec le client.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type ConfigTab = 'dimensions' | 'materials';
 
 export default function ConfiguratorPage() {
   const router = useRouter();
-  const { id } = router.query;
+  const { id, mode, configId: queryConfigId, adminMode } = router.query;
   const { customer, isAuthenticated } = useCustomer();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdminCreateModel = adminMode === 'createModel';
   const isMobile = useIsMobile();
   const [showMobileWarning, setShowMobileWarning] = useState(true);
+
+  // Formulaire création modèle
+  const [isCreateModelDialogOpen, setIsCreateModelDialogOpen] = useState(false);
+  const [showModelCreatedModal, setShowModelCreatedModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [modelForm, setModelForm] = useState({
+    name: '',
+    description: '',
+    category: 'dressing',
+    price: 890,
+    imageUrl: ''
+  });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setIsUploading(true);
+      console.log('📤 Début de l\'upload de l\'image...', file.name);
+      const response = await fetch('/api/admin/upload-model-image', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      console.log('📥 Réponse du serveur (status):', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur serveur upload:', errorText);
+        throw new Error('Erreur lors de l\'upload');
+      }
+
+      const data = await response.json();
+      console.log('✅ Données upload reçues:', data);
+      if (data.success) {
+        setModelForm({ ...modelForm, imageUrl: data.url });
+        toast.success('Image mise en ligne !');
+      }
+    } catch (err) {
+      console.error('💥 Exception upload:', err);
+      toast.error('Échec de l\'upload de l\'image');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Modes
+  const isEditMode = mode === 'edit' && queryConfigId;
+  const isViewMode = mode === 'view' && queryConfigId;
+  const configIdToEdit = queryConfigId ? Number(queryConfigId) : null;
+
+  // Vérifier la session admin au chargement
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const data = await apiClient.adminAuth.getSession();
+        if (data.admin) {
+          setIsAdmin(true);
+          console.log('👑 Session administrateur détectée');
+        }
+      } catch (e) {
+        // Not an admin, ignore
+      }
+    };
+    checkAdmin();
+  }, []);
 
   // Clé localStorage unique par modèle
   const localStorageKey = useMemo(() => `configurator_config_${id}`, [id]);
@@ -105,6 +479,7 @@ export default function ConfiguratorPage() {
   // États de base
   const [model, setModel] = useState<FurnitureModel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingConfiguration, setEditingConfiguration] = useState<any>(null);
   const [generating, setGenerating] = useState(false);
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
   const [dxfUrl, setDxfUrl] = useState<string | null>(null);
@@ -548,11 +923,15 @@ export default function ConfiguratorPage() {
 
         const ratios = ratiosStr ? ratiosStr.split(',').map(r => parseFloat(r)) : undefined;
 
+        const orderedParts = isH ? [...parts].reverse() : parts;
+        const orderedRatios = isH && ratios ? [...ratios].reverse() : ratios;
+
         return {
           id: idPrefix,
           type: isH ? 'horizontal' : 'vertical',
-          children: parts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
-          splitRatios: isH && ratios ? [...ratios].reverse() : ratios, // On inverse pour H car le Three.js monte
+          children: orderedParts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
+          splitRatio: (orderedRatios && orderedRatios.length === 2) ? orderedRatios[0] : undefined,
+          splitRatios: (orderedRatios && orderedRatios.length > 2) ? orderedRatios : undefined,
         };
       }
 
@@ -561,13 +940,23 @@ export default function ConfiguratorPage() {
         id: idPrefix,
         type: 'leaf',
         content: (
+          str.includes('To') ? 'push_drawer' :
           str.includes('T') ? 'drawer' : 
           str.includes('D') ? 'dressing' : 
           str.includes('P2') ? 'door_double' : 
+          str.includes('Pm') ? 'mirror_door' :
+          str.includes('Po') ? 'push_door' :
           str.includes('Pd') ? 'door_right' : 
           (str.includes('P') || str.includes('Pg')) ? 'door' : 
+          str.includes('v') ? 'glass_shelf' :
+          str.includes('p') ? 'pegboard' :
           'empty'
         ) as ZoneContent,
+        handleType: (() => {
+          const m = str.match(/(?:T|Pg|Pd|P2|Pm)(\d)/);
+          if (!m) return undefined;
+          return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
+        })(),
       };
     };
 
@@ -584,109 +973,325 @@ export default function ConfiguratorPage() {
 
   // Charger le modèle
   const loadModel = useCallback(async () => {
+    setLoading(true);
     try {
+      let configDataToUse: any = null;
+      let configToRestore: any = null;
+
+      // 1. Charger la configuration si on est en mode édition ou vue
+      if ((isEditMode || isViewMode) && configIdToEdit) {
+        console.log(`🔄 Mode ${isViewMode ? 'vue' : 'édition'} détecté, chargement de la configuration #${configIdToEdit}`);
+
+        // D'abord essayer de charger depuis localStorage (uniquement pour l'édition client)
+        const savedConfigKey = `archimeuble:configuration:${configIdToEdit}`;
+        const savedConfigStr = !isViewMode ? localStorage.getItem(savedConfigKey) : null;
+
+        if (savedConfigStr) {
+          configDataToUse = JSON.parse(savedConfigStr);
+          console.log('📦 Configuration trouvée dans localStorage:', configDataToUse);
+        } else {
+          // Sinon, charger depuis l'API (indispensable pour l'admin)
+          console.log('📡 Chargement de la configuration via l\'API...');
+          try {
+            const response = await fetch(`/backend/api/admin/configurations.php?id=${configIdToEdit}`, { credentials: 'include' });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.configuration) {
+                configDataToUse = data.configuration;
+                console.log('📦 Configuration chargée via l\'API admin:', configDataToUse);
+              }
+            } else {
+              // Essayer l'API client si l'API admin échoue (cas client recharge la page)
+              const resClient = await fetch(`/backend/api/configurations/list.php?id=${configIdToEdit}`, { credentials: 'include' });
+              if (resClient.ok) {
+                const data = await resClient.json();
+                if (data.configuration) {
+                  configDataToUse = data.configuration;
+                  console.log('📦 Configuration chargée via l\'API client:', configDataToUse);
+                }
+              }
+            }
+          } catch (apiErr) {
+            console.warn('❌ Erreur lors du chargement API:', apiErr);
+          }
+        }
+
+        if (configDataToUse) {
+          // La config sauvegardée contient config_data avec toutes les infos
+          // config_data peut être une chaîne JSON ou un objet
+          let configDataObj = configDataToUse.config_data || configDataToUse.config_string;
+          if (typeof configDataObj === 'string') {
+            try {
+              configDataObj = JSON.parse(configDataObj);
+              console.log('📦 config_data était une chaîne, parsé en objet:', configDataObj);
+            } catch (e) {
+              console.warn('❌ Impossible de parser config_data:', e);
+            }
+          }
+
+          if (configDataObj) {
+            configToRestore = {
+              width: configDataObj.dimensions?.width,
+              height: configDataObj.dimensions?.height,
+              depth: configDataObj.dimensions?.depth,
+              socle: configDataObj.styling?.socle || 'none',
+              rootZone: configDataObj.advancedZones,
+              finish: configDataObj.styling?.finish,
+              color: configDataObj.styling?.color,
+              colorImage: configDataObj.styling?.colorImage,
+              selectedColorId: configDataObj.styling?.selectedColorId,
+              useMultiColor: configDataObj.useMultiColor,
+              componentColors: configDataObj.componentColors,
+              doorType: configDataObj.features?.doorType,
+              doorSide: configDataObj.features?.doorSide,
+              prompt: configDataToUse.prompt || configDataObj.prompt,
+              name: configDataToUse.name || configDataObj.name
+            };
+
+            setEditingConfiguration(configDataToUse);
+            setEditingConfigId(configIdToEdit);
+            if (configToRestore.name) {
+              setEditingConfigName(configToRestore.name);
+            }
+          }
+        }
+      }
+
+      // 2. Initialiser le modèle (soit via ID numérique, soit via Template key)
       if (id && !isNaN(Number(id))) {
         const modelData = await apiClient.models.getById(Number(id));
         setModel(modelData);
 
+        // Si le modèle a des données de config riches, les utiliser en priorité pour la restauration
+        if (modelData.config_data && !configToRestore) {
+          try {
+            const dataObj = typeof modelData.config_data === 'string' ? JSON.parse(modelData.config_data) : modelData.config_data;
+            configToRestore = {
+              width: dataObj.dimensions?.width,
+              height: dataObj.dimensions?.height,
+              depth: dataObj.dimensions?.depth,
+              socle: dataObj.styling?.socle || 'none',
+              rootZone: dataObj.advancedZones,
+              finish: dataObj.styling?.finish,
+              color: dataObj.styling?.color,
+              colorImage: dataObj.styling?.colorImage,
+              selectedColorId: dataObj.styling?.selectedColorId,
+              useMultiColor: dataObj.useMultiColor,
+              componentColors: dataObj.componentColors,
+              doorType: dataObj.features?.doorType,
+              doorSide: dataObj.features?.doorSide,
+              prompt: modelData.prompt,
+              name: modelData.name
+            };
+            console.log('💎 Configuration riche restaurée depuis le modèle catalogue');
+            
+            // Initialiser rootZone immédiatement pour éviter le bloc vide
+            if (configToRestore.rootZone) {
+              setRootZone(configToRestore.rootZone);
+            }
+          } catch (e) {
+            console.warn('⚠️ Erreur lors du parsing de config_data du modèle:', e);
+          }
+        }
+
         if (modelData.prompt) {
           setTemplatePrompt(modelData.prompt);
 
-          // 1. Parser le prompt pour obtenir la config par défaut
-          parsePromptToConfig(modelData.prompt);
+          // Parser le prompt pour obtenir la config par défaut (seulement si pas de restauration)
+          if (!configToRestore) {
+            parsePromptToConfig(modelData.prompt);
+          }
 
-          // 2. Calculer et sauvegarder la config initiale pour réinitialisation
+          // Sauvegarder la config initiale pour réinitialisation
+          // On utilise configToRestore si disponible pour la config initiale
           const dims = modelData.prompt.match(/\((\d+),(\d+),(\d+)\)/);
-          const compact = modelData.prompt.replace(/\s+/g, '');
-          let initSocle = 'none';
-          if (/S2/.test(compact)) initSocle = 'wood';
-          else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
-
-          // Détection portes pour la config initiale
-          const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
-          let initDoorType: 'none' | 'single' | 'double' = 'none';
-          let initDoorSide: 'left' | 'right' = 'left';
           
-          if (/P2/.test(flagsPart)) initDoorType = 'double';
-          else if (/P/.test(flagsPart)) {
-            initDoorType = 'single';
-            initDoorSide = flagsPart.includes('Pd') ? 'right' : 'left';
-          }
+          if (configToRestore) {
+            setInitialConfig({
+              width: configToRestore.width || (dims ? parseInt(dims[1]) : 1000),
+              height: configToRestore.height || (dims ? parseInt(dims[3]) : 2000),
+              depth: configToRestore.depth || (dims ? parseInt(dims[2]) : 400),
+              socle: configToRestore.socle || 'none',
+              rootZone: JSON.parse(JSON.stringify(configToRestore.rootZone)),
+              finish: configToRestore.finish || 'Aggloméré',
+              doorType: configToRestore.doorType || 'none',
+              doorSide: configToRestore.doorSide || 'left',
+            });
+          } else {
+            const compact = modelData.prompt.replace(/\s+/g, '');
+            let initSocle = 'none';
+            if (/S2/.test(compact)) initSocle = 'wood';
+            else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
 
-          let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
-          const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
-          const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
-
-          if (hStruct) {
-            const inner = hStruct[2];
-            const children = inner.split(',').map((content, idx) => ({
-              id: `zone-${idx}`,
-              type: 'leaf' as const,
-              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
-            }));
-            initRootZone = { id: 'root', type: 'horizontal', children };
-          } else if (vStruct) {
-            const inner = vStruct[2];
-            const children = inner.split(',').map((content, idx) => ({
-              id: `zone-${idx}`,
-              type: 'leaf' as const,
-              content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
-            }));
-            initRootZone = { id: 'root', type: 'vertical', children };
-          }
-
-          setInitialConfig({
-            width: dims ? parseInt(dims[1]) : 1500,
-            height: dims ? parseInt(dims[3]) : 730,
-            depth: dims ? parseInt(dims[2]) : 500,
-            socle: initSocle,
-            rootZone: JSON.parse(JSON.stringify(initRootZone)), // Deep copy
-            finish: 'Aggloméré',
-            doorType: initDoorType,
-            doorSide: initDoorSide,
-          });
-
-          // 3. Vérifier s'il existe une config sauvegardée dans localStorage
-          try {
-            const savedConfig = localStorage.getItem(localStorageKey);
-            if (savedConfig) {
-              const parsed = JSON.parse(savedConfig);
-              console.log('📦 Configuration sauvegardée trouvée, restauration...');
-
-              setWidth(parsed.width ?? 1500);
-              setHeight(parsed.height ?? 730);
-              setDepth(parsed.depth ?? 500);
-              setSocle(parsed.socle ?? 'none');
-              setRootZone(parsed.rootZone ?? { id: 'root', type: 'leaf', content: 'empty' });
-              if (parsed.finish) setFinish(parsed.finish);
-              if (parsed.selectedColorId !== undefined) setSelectedColorId(parsed.selectedColorId);
-              if (parsed.useMultiColor !== undefined) setUseMultiColor(parsed.useMultiColor);
-              if (parsed.componentColors) setComponentColors(parsed.componentColors);
-              if (parsed.doorType) setDoorType(parsed.doorType);
-              if (parsed.doorSide) setDoorSide(parsed.doorSide);
-
-              console.log('✅ Configuration restaurée avec succès');
-            } else {
-              console.log('ℹ️ Aucune configuration sauvegardée, utilisation du modèle par défaut');
+            const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+            let initDoorType: 'none' | 'single' | 'double' = 'none';
+            let initDoorSide: 'left' | 'right' = 'left';
+            
+            if (/P2/.test(flagsPart)) initDoorType = 'double';
+            else if (/P/.test(flagsPart)) {
+              initDoorType = 'single';
+              initDoorSide = flagsPart.includes('Pd') ? 'right' : 'left';
             }
-          } catch (e) {
-            console.warn('❌ Erreur lors de la lecture de localStorage', e);
+
+            let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
+            const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+            const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+
+            if (hStruct) {
+              const inner = hStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'horizontal', children };
+            } else if (vStruct) {
+              const inner = vStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'vertical', children };
+            }
+
+            setInitialConfig({
+              width: dims ? parseInt(dims[1]) : 1500,
+              height: dims ? parseInt(dims[3]) : 1130,
+              depth: dims ? parseInt(dims[2]) : 350,
+              socle: initSocle,
+              rootZone: JSON.parse(JSON.stringify(initRootZone)),
+              finish: 'Aggloméré',
+              doorType: initDoorType,
+              doorSide: initDoorSide,
+            });
           }
         }
       } else {
-        const qsPrompt = (router.query.prompt as string) || null;
-        if (qsPrompt) {
-          setTemplatePrompt(qsPrompt);
-          parsePromptToConfig(qsPrompt);
-          setModel({
+        // C'est un template (M1, M2...)
+        let promptToUse = (router.query.prompt as string) || configToRestore?.prompt || null;
+        
+        // Mode création de modèle : si pas de prompt, utiliser un prompt par défaut (caisson vide)
+        if (isAdminCreateModel && !promptToUse) {
+          const type = String(id).toUpperCase();
+          if (type === 'M1') promptToUse = 'M1(1000,400,2000)bFS';
+          else if (type === 'M2') promptToUse = 'M2(1200,400,2000)bFS';
+          else if (type === 'M3') promptToUse = 'M3(1500,400,2000)bFS';
+          else if (type === 'M4') promptToUse = 'M4(1800,400,2000)bFS';
+          else if (type === 'M5') promptToUse = 'M5(2000,400,2000)bFS';
+          else promptToUse = 'M1(1000,400,2000)bFS';
+        }
+
+        if (promptToUse || configToRestore) {
+          const virtualModel = {
             id: 0,
-            name: `Template ${id}`,
+            name: configToRestore?.name || `Template ${id}`,
             description: null,
-            prompt: qsPrompt,
+            prompt: promptToUse || configToRestore?.prompt,
             price: 0,
             image_url: null,
             created_at: new Date().toISOString(),
-          } as FurnitureModel);
+          } as FurnitureModel;
+          
+          setModel(virtualModel);
+
+          if (promptToUse) {
+            setTemplatePrompt(promptToUse);
+            if (!configToRestore) {
+              parsePromptToConfig(promptToUse);
+            }
+
+            // Calculer la config initiale pour les templates aussi
+            const dims = promptToUse.match(/\((\d+),(\d+),(\d+)\)/);
+            const compact = promptToUse.replace(/\s+/g, '');
+            let initSocle = 'none';
+            if (/S2/.test(compact)) initSocle = 'wood';
+            else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
+
+            const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+            let initDoorType: 'none' | 'single' | 'double' = 'none';
+            let initDoorSide: 'left' | 'right' = 'left';
+            
+            if (/P2/.test(flagsPart)) initDoorType = 'double';
+            else if (/P/.test(flagsPart)) {
+              initDoorType = 'single';
+              initDoorSide = flagsPart.includes('Pd') ? 'right' : 'left';
+            }
+
+            let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
+            const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+            const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+
+            if (hStruct) {
+              const inner = hStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'horizontal', children };
+            } else if (vStruct) {
+              const inner = vStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'vertical', children };
+            }
+
+            setInitialConfig({
+              width: dims ? parseInt(dims[1]) : 1500,
+              height: dims ? parseInt(dims[3]) : 1130,
+              depth: dims ? parseInt(dims[2]) : 350,
+              socle: initSocle,
+              rootZone: JSON.parse(JSON.stringify(initRootZone)),
+              finish: 'Aggloméré',
+              doorType: initDoorType,
+              doorSide: initDoorSide,
+            });
+          }
+        }
+      }
+
+      // 3. Appliquer la configuration restaurée si trouvée
+      if (configToRestore) {
+        console.log('🔧 Application de la configuration restaurée:', configToRestore);
+        if (configToRestore.width) setWidth(configToRestore.width);
+        if (configToRestore.height) setHeight(configToRestore.height);
+        if (configToRestore.depth) setDepth(configToRestore.depth);
+        if (configToRestore.socle) setSocle(configToRestore.socle);
+        if (configToRestore.rootZone) setRootZone(configToRestore.rootZone);
+        if (configToRestore.finish) setFinish(configToRestore.finish);
+        if (configToRestore.color) setColor(configToRestore.color);
+        if (configToRestore.colorImage !== undefined) setSelectedColorImage(configToRestore.colorImage);
+        if (configToRestore.selectedColorId !== undefined) setSelectedColorId(configToRestore.selectedColorId);
+        if (configToRestore.useMultiColor !== undefined) setUseMultiColor(configToRestore.useMultiColor);
+        if (configToRestore.componentColors) setComponentColors(configToRestore.componentColors);
+        if (configToRestore.doorType) setDoorType(configToRestore.doorType);
+        if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
+        console.log('✅ Configuration restaurée avec succès');
+      } else if (!id || isNaN(Number(id))) {
+        // Fallback local pour template (IGNORÉ en mode création de modèle admin pour éviter les résidus)
+        if (!isAdminCreateModel) {
+          const savedConfig = localStorage.getItem(localStorageKey);
+          if (savedConfig) {
+            const localRestore = JSON.parse(savedConfig);
+            console.log('📦 Configuration locale (template) trouvée, restauration...');
+            if (localRestore.width) setWidth(localRestore.width);
+            if (localRestore.height) setHeight(localRestore.height);
+            if (localRestore.depth) setDepth(localRestore.depth);
+            if (localRestore.socle) setSocle(localRestore.socle);
+            if (localRestore.rootZone) setRootZone(localRestore.rootZone);
+            if (localRestore.finish) setFinish(localRestore.finish);
+            if (localRestore.color) setColor(localRestore.color);
+            if (localRestore.colorImage !== undefined) setSelectedColorImage(localRestore.colorImage);
+            if (localRestore.selectedColorId !== undefined) setSelectedColorId(localRestore.selectedColorId);
+            if (localRestore.useMultiColor !== undefined) setUseMultiColor(localRestore.useMultiColor);
+            if (localRestore.componentColors) setComponentColors(localRestore.componentColors);
+            if (localRestore.doorType) setDoorType(localRestore.doorType);
+            if (localRestore.doorSide) setDoorSide(localRestore.doorSide);
+          }
         }
       }
     } catch (error) {
@@ -694,11 +1299,13 @@ export default function ConfiguratorPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey]);
+  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey, isEditMode, isViewMode, configIdToEdit]);
 
   useEffect(() => {
+    // Attendre que le router soit prêt (important pour les query params)
+    if (!router.isReady) return;
     if (id) loadModel();
-  }, [id, loadModel]);
+  }, [id, loadModel, router.isReady]);
 
   // Fonction de réinitialisation de la configuration
   const resetConfiguration = useCallback(() => {
@@ -735,12 +1342,24 @@ export default function ConfiguratorPage() {
       let leafChar = '';
       switch (zone.content) {
         case 'drawer': leafChar = 'T'; break;
+        case 'push_drawer': leafChar = 'To'; break;
         case 'dressing': leafChar = 'D'; break;
         case 'door': leafChar = zone.id === 'root' ? '' : 'Pg'; break;
         case 'door_right': leafChar = 'Pd'; break;
         case 'door_double': leafChar = 'P2'; break;
+        case 'mirror_door': leafChar = 'Pm'; break;
+        case 'push_door': leafChar = 'Po'; break;
+        case 'glass_shelf': leafChar = 'v'; break;
+        case 'pegboard': leafChar = 'p'; break;
         default: leafChar = '';
       }
+
+      // Ajouter le code de poignée si applicable (tiroirs et portes)
+      if (['drawer', 'door', 'door_right', 'door_double', 'mirror_door'].includes(zone.content || '')) {
+        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
+        if (hCode) leafChar += hCode;
+      }
+
       if (zone.hasCableHole) {
         leafChar += 'c';
       }
@@ -751,8 +1370,10 @@ export default function ConfiguratorPage() {
     const children = zone.children || [];
     const childCount = children.length;
 
-    // Pour les divisions horizontales, le backend s'attend à l'ordre inverse (bas en haut)
-    // Inverser les enfants et les ratios uniquement pour le prompt
+    // For horizontal divisions, the backend expects bottom to top order.
+    // In front-end, the 3D scene (Three.js) has Y up, but the UI usually lists from top to bottom.
+    // In procedure_real.py, process(seq1, meublebas) followed by process(seq2, meublehaut)
+    // confirms that the first sequence is for the bottom-most zone.
     const orderedChildren = isHorizontal ? [...children].reverse() : children;
     const childPrompts = orderedChildren.map((c) => buildPromptFromZoneTree(c));
 
@@ -806,9 +1427,15 @@ export default function ConfiguratorPage() {
       if (zone.type === 'leaf') {
         switch (zone.content) {
           case 'drawer': return 35;
+          case 'push_drawer': return 45;
           case 'door':
           case 'door_right': return 40;
+          case 'push_door': return 50;
           case 'door_double': return 80;
+          case 'mirror_door': return 95;
+          case 'glass_shelf': return 25;
+          case 'pegboard': return 30;
+          case 'dressing': return 20;
           default: return 0;
         }
       }
@@ -961,15 +1588,103 @@ export default function ConfiguratorPage() {
     }
   };
 
+  // Fonction pour enregistrer comme modèle de catalogue
+  const saveAsModel = async () => {
+    if (!isAdmin) {
+      toast.error("Vous devez être administrateur pour effectuer cette action.");
+      return;
+    }
+
+    try {
+      const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
+      const match = templatePrompt?.match(regex);
+      const meubleType = match?.[1] || 'M1';
+
+      let fullPrompt = `${meubleType}(${width},${depth},${height})bF`;
+      if (socle === 'metal') fullPrompt += 'S';
+      else if (socle === 'wood') fullPrompt += 'S2';
+      
+      const zonePrompt = buildPromptFromZoneTree(rootZone);
+      if (zonePrompt) {
+        fullPrompt += zonePrompt;
+      }
+
+      const currentConfigData = {
+        dimensions: { width, depth, height },
+        styling: {
+          materialKey: selectedMaterialKey,
+          materialLabel: selectedMaterialLabel,
+          finish,
+          color,
+          colorLabel,
+          colorId: selectedColorId,
+          colorImage: selectedColorImage,
+          selectedColorId,
+          socle,
+        },
+        features: { doorsOpen, doorType, doorSide },
+        advancedZones: rootZone,
+        useMultiColor,
+        componentColors,
+      };
+
+      const payload = {
+        name: modelForm.name,
+        description: modelForm.description,
+        prompt: fullPrompt,
+        category: modelForm.category,
+        price: modelForm.price,
+        image_url: modelForm.imageUrl || '/images/accueil image/meubletv.jpg', // Utiliser une image par défaut valide
+        config_data: currentConfigData, // Sauvegarder l'objet JSON complet pour une restauration parfaite
+      };
+
+      const response = await fetch('/api/admin/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Votre session administrateur a expiré. Veuillez vous reconnecter au tableau de bord.');
+      }
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Erreur lors de la création du modèle');
+      }
+
+      toast.success('Le modèle a été ajouté au catalogue avec succès !');
+      setIsCreateModelDialogOpen(false);
+      setShowModelCreatedModal(true);
+      
+      // Optionnel: Rediriger vers le dashboard admin
+      // router.push('/admin?tab=models');
+    } catch (err: any) {
+      console.error('Erreur saveAsModel:', err);
+      toast.error(err.message || 'Erreur lors de l\'enregistrement du modèle');
+    }
+  };
+
   // Sauvegarde
   const saveConfiguration = async () => {
-    if (!isAuthenticated || !customer) {
+    if (!isAdmin && (!isAuthenticated || !customer)) {
       setShowAuthModal(true);
       return;
     }
 
-    const configNameInput = prompt('Nom de cette configuration :', editingConfigName || '');
-    if (!configNameInput?.trim()) return;
+    let configNameInput = editingConfigName;
+
+    // Si ce n'est pas un admin qui édite une config existante, on demande le nom
+    if (!(isAdmin && editingConfigId)) {
+      const promptedName = prompt('Nom de cette configuration :', editingConfigName || '');
+      if (promptedName === null) return; // Annulation
+      if (!promptedName.trim()) {
+        alert('Veuillez donner un nom à la configuration');
+        return;
+      }
+      configNameInput = promptedName;
+    }
 
     try {
       const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
@@ -991,23 +1706,26 @@ export default function ConfiguratorPage() {
           colorLabel,
           colorId: selectedColorId,
           colorImage: selectedColorImage,
+          selectedColorId,
           socle,
         },
         features: { doorsOpen, doorType, doorSide },
         advancedZones: rootZone,
+        useMultiColor,
+        componentColors,
       };
 
       const payload = {
         id: editingConfigId ?? undefined,
         name: configNameInput.trim(),
-        model_id: model?.id || null,
+        model_id: model?.id ? Number(model.id) : null,
         prompt: fullPrompt,
         config_data: configData,
         glb_url: glbUrl,
         dxf_url: dxfUrl,
         price,
         thumbnail_url: glbUrl,
-        status: 'en_attente_validation', // Nouveau statut : en attente de validation par le menuisier
+        status: isAdmin ? (editingConfiguration?.status || 'en_attente_validation') : 'en_attente_validation',
       };
 
       const response = await fetch('/backend/api/configurations/save.php', {
@@ -1032,14 +1750,52 @@ export default function ConfiguratorPage() {
     }
   };
 
-  // Loading state
+  // Fonction pour passer en mode édition admin
+  const handleAdminEdit = useCallback(() => {
+    const { mode, ...rest } = router.query;
+    router.push({
+      pathname: router.pathname,
+      query: { ...rest, mode: 'edit' },
+    }, undefined, { shallow: true });
+  }, [router]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-          <p className="mt-4 text-sm text-[#706F6C]">Chargement...</p>
+          <p className="mt-4 text-sm text-[#706F6C]">Chargement de la configuration...</p>
         </div>
+      </div>
+    );
+  }
+
+  const modelCategories = [
+    { id: "dressing", label: "Dressings" },
+    { id: "bibliotheque", label: "Bibliothèques" },
+    { id: "buffet", label: "Buffets" },
+    { id: "bureau", label: "Bureaux" },
+    { id: "meuble-tv", label: "Meubles TV" },
+    { id: "sous-escalier", label: "Sous-escaliers" },
+    { id: "tete-de-lit", label: "Têtes de lit" },
+  ];
+
+  // Message si le modèle ou la configuration n'existe pas
+  if (!model) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6 text-center">
+        <IconInfoCircle className="h-12 w-12 text-[#8B7355] mb-4" />
+        <h1 className="font-serif text-2xl text-[#1A1917] mb-2">Configuration introuvable</h1>
+        <p className="text-[#706F6C] max-w-md mb-8">
+          Désolé, nous ne parvenons pas à charger cette configuration. Elle n'existe peut-être plus ou le lien est incorrect.
+        </p>
+        <button 
+          onClick={() => router.push('/')}
+          className="bg-[#1A1917] text-white px-8 py-3 text-sm font-medium hover:bg-[#2A2927] transition-colors"
+          style={{ borderRadius: '2px' }}
+        >
+          Retour à l'accueil
+        </button>
       </div>
     );
   }
@@ -1116,6 +1872,110 @@ export default function ConfiguratorPage() {
         <title>Configurateur - {model.name} | ArchiMeuble</title>
       </Head>
 
+      {/* Modal création modèle (Admin) */}
+      <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Enregistrer comme modèle de catalogue</DialogTitle>
+            <DialogDescription>
+              Ce meuble sera ajouté à la liste des modèles disponibles pour tous les clients.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nom du modèle</Label>
+              <Input
+                id="name"
+                value={modelForm.name}
+                onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })}
+                placeholder="Ex: Dressing Élégance"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">Catégorie</Label>
+              <Select 
+                value={modelForm.category} 
+                onValueChange={(value) => setModelForm({ ...modelForm, category: value })}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Choisir une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {modelCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="price">Prix de base (€)</Label>
+              <Input
+                id="price"
+                type="number"
+                value={modelForm.price}
+                onChange={(e) => setModelForm({ ...modelForm, price: Number(e.target.value) })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="image">Photo du modèle</Label>
+              <div className="flex flex-col gap-3">
+                {modelForm.imageUrl && (
+                  <div className="relative aspect-video w-full overflow-hidden rounded-md border">
+                    <img 
+                      src={modelForm.imageUrl} 
+                      alt="Aperçu" 
+                      className="h-full w-full object-cover"
+                    />
+                    <button 
+                      onClick={() => setModelForm({ ...modelForm, imageUrl: '' })}
+                      className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                    >
+                      <IconTablerX className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="cursor-pointer"
+                  />
+                  {isUploading && <IconRefresh className="h-4 w-4 animate-spin text-[#8B7355]" />}
+                </div>
+                <p className="text-[10px] text-muted-foreground italic">
+                  Format JPG, PNG ou WEBP. Max 20Mo.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={modelForm.description}
+                onChange={(e) => setModelForm({ ...modelForm, description: e.target.value })}
+                placeholder="Description du meuble..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModelDialogOpen(false)}>Annuler</Button>
+            <Button 
+              onClick={saveAsModel} 
+              disabled={!modelForm.name}
+              className="bg-[#1A1917] text-white"
+            >
+              Enregistrer le modèle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex h-screen flex-col overflow-hidden bg-[#FAFAF9]">
         {/* Header compact */}
         <header className="flex-shrink-0 border-b border-[#E8E6E3] bg-white">
@@ -1129,13 +1989,33 @@ export default function ConfiguratorPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
-                <p className="hidden text-xs text-[#706F6C] sm:block">Configurateur sur mesure</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
+                  {isViewMode && (
+                    <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
+                  )}
+                  {(isEditMode && isAdmin) && (
+                    <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Édition Admin</span>
+                  )}
+                </div>
+                <p className="hidden text-xs text-[#706F6C] sm:block">
+                  {isViewMode ? 'Consultation de la configuration client' : 'Configurateur sur mesure'}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {isAuthenticated && customer && (
+              {isAdminCreateModel && (
+                <Button 
+                  onClick={() => setIsCreateModelDialogOpen(true)}
+                  className="bg-[#8B7355] hover:bg-[#705D45] text-white h-9 lg:h-10 px-4 lg:px-6 rounded-[2px]"
+                >
+                  <IconPlus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Enregistrer le modèle</span>
+                  <span className="sm:hidden">Enregistrer</span>
+                </Button>
+              )}
+              {!isAdminCreateModel && isAuthenticated && customer && (
                 <span className="hidden text-xs text-[#706F6C] md:block">
                   {customer.first_name} {customer.last_name}
                 </span>
@@ -1237,36 +2117,38 @@ export default function ConfiguratorPage() {
                 </div>
 
                 {/* Boutons Undo/Redo flottants (Desktop) */}
-                <div className="absolute top-4 left-4 z-20 hidden flex-row gap-2 lg:flex">
-                  <button
-                    type="button"
-                    onClick={undoZone}
-                    disabled={!canUndoZone}
-                    className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
-                      canUndoZone
-                        ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
-                        : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
-                    }`}
-                    style={{ borderRadius: '2px' }}
-                    title="Annuler (Ctrl+Z)"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={redoZone}
-                    disabled={!canRedoZone}
-                    className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
-                      canRedoZone
-                        ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
-                        : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
-                    }`}
-                    style={{ borderRadius: '2px' }}
-                    title="Rétablir (Ctrl+Y)"
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </button>
-                </div>
+                {!isViewMode && (
+                  <div className="absolute top-4 left-4 z-20 hidden flex-row gap-2 lg:flex">
+                    <button
+                      type="button"
+                      onClick={undoZone}
+                      disabled={!canUndoZone}
+                      className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
+                        canUndoZone
+                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title="Annuler (Ctrl+Z)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoZone}
+                      disabled={!canRedoZone}
+                      className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
+                        canRedoZone
+                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title="Rétablir (Ctrl+Y)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
 
                 {generating && (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/40 backdrop-blur-[1px] z-10">
@@ -1280,237 +2162,265 @@ export default function ConfiguratorPage() {
             </div>
 
             {/* Action bar - sous le viewer */}
-            <div className="hidden flex-shrink-0 lg:block">
-              <ActionBar
-                selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneId : null}
-                disabled={generating}
-                onSplitHorizontal={() => {
-                  if (selectedZone?.type === 'leaf') {
-                    splitZone(selectedZoneId, 'horizontal', 2);
-                  }
-                }}
-                onSplitVertical={() => {
-                  if (selectedZone?.type === 'leaf') {
-                    splitZone(selectedZoneId, 'vertical', 2);
-                  }
-                }}
-                onAddDrawer={() => {
-                  if (selectedZone?.type === 'leaf') {
-                    setZoneContent(selectedZoneId, 'drawer');
-                  }
-                }}
-                onAddDoor={() => {
-                  if (selectedZoneId === 'root') {
-                    // Si on est sur la racine, on bascule le type de porte globale
-                    if (doorType === 'none') setDoorType('double');
-                    else if (doorType === 'double') setDoorType('single');
-                    else setDoorType('none');
-                  } else if (selectedZone?.type === 'leaf') {
-                    // Si on est sur un compartiment, on cycle les types de portes locaux
-                    const currentContent = selectedZone.content;
-                    let nextContent: ZoneContent = 'door';
-                    
-                    if (currentContent === 'door') nextContent = 'door_right';
-                    else if (currentContent === 'door_right') nextContent = 'door_double';
-                    else if (currentContent === 'door_double') nextContent = 'empty';
-                    else nextContent = 'door';
-                    
-                    setZoneContent(selectedZoneId, nextContent);
-                    setDoorType('none'); // On désactive la porte globale si on met une porte locale
-                  }
-                }}
-                onAddDressing={() => {
-                  if (selectedZone?.type === 'leaf') {
-                    setZoneContent(selectedZoneId, 'dressing');
-                  }
-                }}
-                onToggleLight={() => {
-                  if (selectedZoneId && selectedZoneId !== 'root') {
-                    toggleZoneLight(selectedZoneId);
-                  }
-                }}
-                onToggleCableHole={() => {
-                  if (selectedZoneId && selectedZoneId !== 'root') {
-                    toggleZoneCableHole(selectedZoneId);
-                  }
-                }}
-                hasLight={selectedZone?.hasLight}
-                hasCableHole={selectedZone?.hasCableHole}
-              />
-            </div>
+            {!isViewMode && (
+              <div className="hidden flex-shrink-0 lg:block">
+                <ActionBar
+                  selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneId : null}
+                  disabled={generating}
+                  onSplitHorizontal={() => {
+                    if (selectedZone?.type === 'leaf') {
+                      splitZone(selectedZoneId, 'horizontal', 2);
+                    }
+                  }}
+                  onSplitVertical={() => {
+                    if (selectedZone?.type === 'leaf') {
+                      splitZone(selectedZoneId, 'vertical', 2);
+                    }
+                  }}
+                  onAddDrawer={() => {
+                    if (selectedZone?.type === 'leaf') {
+                      setZoneContent(selectedZoneId, 'drawer');
+                    }
+                  }}
+                  onAddDoor={() => {
+                    if (selectedZoneId === 'root') {
+                      // Si on est sur la racine, on bascule le type de porte globale
+                      if (doorType === 'none') setDoorType('double');
+                      else if (doorType === 'double') setDoorType('single');
+                      else setDoorType('none');
+                    } else if (selectedZone?.type === 'leaf') {
+                      // Si on est sur un compartiment, on cycle les types de portes locaux
+                      const currentContent = selectedZone.content;
+                      let nextContent: ZoneContent = 'door';
+                      
+                      if (currentContent === 'door') nextContent = 'door_right';
+                      else if (currentContent === 'door_right') nextContent = 'door_double';
+                      else if (currentContent === 'door_double') nextContent = 'empty';
+                      else nextContent = 'door';
+                      
+                      setZoneContent(selectedZoneId, nextContent);
+                      setDoorType('none'); // On désactive la porte globale si on met une porte locale
+                    }
+                  }}
+                  onAddDressing={() => {
+                    if (selectedZone?.type === 'leaf') {
+                      setZoneContent(selectedZoneId, 'dressing');
+                    }
+                  }}
+                  onToggleLight={() => {
+                    if (selectedZoneId && selectedZoneId !== 'root') {
+                      toggleZoneLight(selectedZoneId);
+                    }
+                  }}
+                  onToggleCableHole={() => {
+                    if (selectedZoneId && selectedZoneId !== 'root') {
+                      toggleZoneCableHole(selectedZoneId);
+                    }
+                  }}
+                  hasLight={selectedZone?.hasLight}
+                  hasCableHole={selectedZone?.hasCableHole}
+                />
+              </div>
+            )}
           </div>
 
           {/* Panel de configuration - Mobile: scrollable, Desktop: fixed width 620px pour contenir le grand canvas */}
           <div className="flex min-h-0 flex-1 flex-col border-t border-[#E8E6E3] bg-white lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
-            {/* Tabs - Toujours visibles avec labels */}
-            <div className="flex flex-shrink-0 border-b border-[#E8E6E3]">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-medium transition-colors sm:gap-2 sm:py-4 sm:text-sm ${
-                    activeTab === tab.id
-                      ? 'border-[#1A1917] text-[#1A1917]'
-                      : 'border-transparent text-[#706F6C] hover:text-[#1A1917]'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
+            {isViewMode ? (
+              <ConfigurationSummary
+                width={width}
+                height={height}
+                depth={depth}
+                finish={finish}
+                color={color}
+                socle={socle}
+                rootZone={rootZone}
+                price={price}
+                modelName={model?.name}
+                isAdmin={isAdmin}
+                onEdit={handleAdminEdit}
+              />
+            ) : (
+              <>
+                {/* Tabs - Toujours visibles avec labels */}
+                <div className="flex flex-shrink-0 border-b border-[#E8E6E3]">
+                  {TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-medium transition-colors sm:gap-2 sm:py-4 sm:text-sm ${
+                        activeTab === tab.id
+                          ? 'border-[#1A1917] text-[#1A1917]'
+                          : 'border-transparent text-[#706F6C] hover:text-[#1A1917]'
+                      }`}
+                    >
+                      <tab.icon className="h-4 w-4" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
 
-            {/* Content - Scrollable */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-              {activeTab === 'dimensions' && (
-                <div className="space-y-4 pb-32 lg:pb-0">
-                  {/* Bouton réinitialiser */}
-                  {initialConfig && (
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={resetConfiguration}
-                        className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
-                        style={{ borderRadius: '2px' }}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        Réinitialiser au modèle par défaut
-                      </button>
+                {/* Content - Scrollable */}
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+                  {activeTab === 'dimensions' && (
+                    <div className="space-y-4 pb-32 lg:pb-0">
+                      {/* Bouton réinitialiser */}
+                      {initialConfig && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={resetConfiguration}
+                            className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                            style={{ borderRadius: '2px' }}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Réinitialiser au modèle par défaut
+                          </button>
+                        </div>
+                      )}
+
+                      <ZoneEditor
+                        rootZone={rootZone}
+                        selectedZoneId={selectedZoneId}
+                        onRootZoneChange={setRootZone}
+                        onSelectedZoneIdChange={setSelectedZoneId}
+                        onToggleLight={toggleZoneLight}
+                        onToggleCableHole={toggleZoneCableHole}
+                        onSetHandleType={setZoneHandleType}
+                        width={width}
+                        height={height}
+                      />
+                      <DimensionsPanel
+                        width={width}
+                        depth={depth}
+                        height={height}
+                        onWidthChange={setWidth}
+                        onDepthChange={setDepth}
+                        onHeightChange={setHeight}
+                      />
+                      {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
+                      <SocleSelector
+                        value={socle}
+                        onChange={setSocle}
+                      />
                     </div>
                   )}
 
-                  <ZoneEditor
-                    rootZone={rootZone}
-                    selectedZoneId={selectedZoneId}
-                    onRootZoneChange={setRootZone}
-                    onSelectedZoneIdChange={setSelectedZoneId}
-                    onToggleLight={toggleZoneLight}
-                    onToggleCableHole={toggleZoneCableHole}
-                    onSetHandleType={setZoneHandleType}
-                    width={width}
-                    height={height}
-                  />
-                  <DimensionsPanel
-                    width={width}
-                    depth={depth}
-                    height={height}
-                    onWidthChange={setWidth}
-                    onDepthChange={setDepth}
-                    onHeightChange={setHeight}
-                  />
-                  {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
-                  <SocleSelector
-                    value={socle}
-                    onChange={setSocle}
+                  {activeTab === 'materials' && (
+                    <div className="pb-32 lg:pb-0">
+                      <MaterialSelector
+                        materialsMap={materialsMap}
+                        selectedMaterialKey={selectedMaterialKey}
+                        selectedColorId={selectedColorId}
+                        onMaterialChange={handleMaterialChange}
+                        onColorChange={handleColorChange}
+                        loading={materialsLoading}
+                        useMultiColor={useMultiColor}
+                        onUseMultiColorChange={handleUseMultiColorChange}
+                        componentColors={componentColors}
+                        onComponentColorChange={handleComponentColorChange}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer avec prix - Desktop: dans le panel */}
+                <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
+                  <PriceDisplay
+                    price={price}
+                    onAddToCart={saveConfiguration}
+                    isAuthenticated={isAuthenticated}
+                    isAdmin={isAdmin}
+                    isAdminCreateModel={isAdminCreateModel}
                   />
                 </div>
-              )}
-
-              {activeTab === 'materials' && (
-                <div className="pb-32 lg:pb-0">
-                  <MaterialSelector
-                    materialsMap={materialsMap}
-                    selectedMaterialKey={selectedMaterialKey}
-                    selectedColorId={selectedColorId}
-                    onMaterialChange={handleMaterialChange}
-                    onColorChange={handleColorChange}
-                    loading={materialsLoading}
-                    useMultiColor={useMultiColor}
-                    onUseMultiColorChange={handleUseMultiColorChange}
-                    componentColors={componentColors}
-                    onComponentColorChange={handleComponentColorChange}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Footer avec prix - Desktop: dans le panel */}
-            <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
-              <PriceDisplay
-                price={price}
-                onAddToCart={saveConfiguration}
-                isAuthenticated={isAuthenticated}
-              />
-            </div>
+              </>
+            )}
           </div>
         </div>
 
         {/* Mobile bottom bar - Fixed with price and CTA */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E8E6E3] bg-white px-4 py-3 lg:hidden">
-          <div className="flex items-center justify-between gap-3">
-            {/* Prix compact */}
-            <div className="flex-shrink-0">
-              <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
-              <div className="font-serif text-xl text-[#1A1917]">
-                {new Intl.NumberFormat('fr-FR', {
-                  style: 'currency',
-                  currency: 'EUR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(price)}
+        {!isViewMode && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E8E6E3] bg-white px-4 py-3 lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              {/* Prix compact */}
+              <div className="flex-shrink-0">
+                <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
+                <div className="font-serif text-xl text-[#1A1917]">
+                  {new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: 'EUR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  }).format(price)}
+                </div>
               </div>
-            </div>
-            {/* Undo/Redo mobile */}
-            <div className="flex gap-1">
+              {/* Undo/Redo mobile */}
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={undoZone}
+                  disabled={!canUndoZone}
+                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
+                    canUndoZone
+                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
+                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
+                  }`}
+                  style={{ borderRadius: '2px' }}
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={redoZone}
+                  disabled={!canRedoZone}
+                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
+                    canRedoZone
+                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
+                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
+                  }`}
+                  style={{ borderRadius: '2px' }}
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
+              {/* Toggle portes */}
               <button
                 type="button"
-                onClick={undoZone}
-                disabled={!canUndoZone}
-                className={`flex items-center justify-center w-9 h-9 border transition-colors ${
-                  canUndoZone
-                    ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
-                    : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
-                }`}
+                onClick={handleToggleDoors}
+                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
                 style={{ borderRadius: '2px' }}
               >
-                <Undo2 className="h-4 w-4" />
+                <span>{doorsOpen ? '🚪' : '📦'}</span>
+                <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
               </button>
+              {/* Toggle déco */}
               <button
                 type="button"
-                onClick={redoZone}
-                disabled={!canRedoZone}
-                className={`flex items-center justify-center w-9 h-9 border transition-colors ${
-                  canRedoZone
-                    ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
-                    : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
-                }`}
+                onClick={() => setShowDecorations(!showDecorations)}
+                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${showDecorations ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
                 style={{ borderRadius: '2px' }}
               >
-                <Redo2 className="h-4 w-4" />
+                <span>{showDecorations ? '🏺' : '✨'}</span>
+                <span className="hidden sm:inline">Déco</span>
               </button>
+              {/* CTA */}
+              {!isAdminCreateModel && (
+                <button
+                  type="button"
+                  onClick={saveConfiguration}
+                  className="flex h-11 flex-1 max-w-[180px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <Box className="h-4 w-4" />
+                  <span>
+                    {isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider' : 'Enregistrer')}
+                  </span>
+                </button>
+              )}
             </div>
-            {/* Toggle portes */}
-            <button
-              type="button"
-              onClick={handleToggleDoors}
-              className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
-              style={{ borderRadius: '2px' }}
-            >
-              <span>{doorsOpen ? '🚪' : '📦'}</span>
-              <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
-            </button>
-            {/* Toggle déco */}
-            <button
-              type="button"
-              onClick={() => setShowDecorations(!showDecorations)}
-              className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${showDecorations ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
-              style={{ borderRadius: '2px' }}
-            >
-              <span>{showDecorations ? '🏺' : '✨'}</span>
-              <span className="hidden sm:inline">Déco</span>
-            </button>
-            {/* CTA */}
-            <button
-              type="button"
-              onClick={saveConfiguration}
-              className="flex h-11 flex-1 max-w-[180px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
-              style={{ borderRadius: '2px' }}
-            >
-              <Box className="h-4 w-4" />
-              <span>Terminer</span>
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
       <AuthModal
@@ -1520,6 +2430,65 @@ export default function ConfiguratorPage() {
           setTimeout(() => saveConfiguration(), 500);
         }}
       />
+
+      {/* Modal de confirmation après création de modèle (Admin) */}
+      {showModelCreatedModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
+            <div className="p-6 sm:p-8">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-amber-100" style={{ borderRadius: '50%' }}>
+                <IconPlus className="h-8 w-8 text-amber-600" />
+              </div>
+
+              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                Modèle créé avec succès !
+              </h2>
+              <p className="mb-6 text-center text-base text-[#706F6C]">
+                Votre nouveau modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été ajouté au catalogue et est désormais visible par tous les clients.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push('/models')}
+                  className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  Voir dans le catalogue
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModelCreatedModal(false);
+                      setModelForm({
+                        name: '',
+                        description: '',
+                        category: 'dressing',
+                        price: 890,
+                        imageUrl: ''
+                      });
+                      resetConfiguration();
+                    }}
+                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    Créer un autre
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/admin/dashboard')}
+                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de confirmation après configuration */}
       {showConfirmationModal && (
@@ -1542,39 +2511,44 @@ export default function ConfiguratorPage() {
                 <span className="font-semibold text-[#1A1917]">
                   {customer?.last_name}
                 </span>
-                , un menuisier va vous rappeler au plus vite pour valider votre projet et vous proposer un devis personnalisé.
+                , un menuisier va vous rappeler au plus vite pour valider votre projet et finaliser votre commande.
               </p>
 
               {/* Informations complémentaires */}
-              <div className="mb-6 border-t border-[#E8E6E3] pt-4">
-                <p className="text-sm text-[#706F6C]">
-                  <strong className="text-[#1A1917]">Prochaines étapes :</strong>
-                </p>
-                <ul className="mt-2 space-y-2 text-sm text-[#706F6C]">
-                  <li className="flex items-start gap-2">
-                    <span className="mt-0.5">📞</span>
-                    <span>Notre menuisier vous contactera pour vérifier la faisabilité</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-0.5">💰</span>
-                    <span>Vous recevrez un devis personnalisé avec le prix final</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-0.5">💳</span>
-                    <span>Un lien de paiement sécurisé vous sera envoyé après validation</span>
-                  </li>
-                </ul>
-              </div>
+              {!isAdmin && (
+                <div className="mb-6 border-t border-[#E8E6E3] pt-4">
+                  <p className="text-sm text-[#706F6C]">
+                    <strong className="text-[#1A1917]">Prochaines étapes :</strong>
+                  </p>
+                  <ul className="mt-2 space-y-2 text-sm text-[#706F6C]">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5">📞</span>
+                      <span>Notre menuisier vous contactera pour valider les détails du projet</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5">💳</span>
+                      <span>Un lien de paiement sécurisé vous sera envoyé après validation</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5">🚚</span>
+                      <span>Votre meuble sera fabriqué sur-mesure et livré chez vous</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
 
               {/* Boutons */}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
-                  onClick={() => router.push('/my-configurations')}
+                  onClick={() => {
+                    const isAdminUser = typeof window !== 'undefined' && localStorage.getItem('admin_email');
+                    router.push(isAdminUser ? '/admin/dashboard' : '/my-configurations');
+                  }}
                   className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
                   style={{ borderRadius: '2px' }}
                 >
-                  Mes configurations
+                  {typeof window !== 'undefined' && localStorage.getItem('admin_email') ? 'Retour au Dashboard' : 'Mes configurations'}
                 </button>
                 <button
                   type="button"

@@ -34,7 +34,10 @@ export default function ZoneColorPicker({
 }: ZoneColorPickerProps) {
   // Récupérer les couleurs disponibles pour le matériau sélectionné
   const colorsForMaterial = useMemo<SampleColor[]>(() => {
+    console.log('🎨 ZoneColorPicker - selectedMaterialKey:', selectedMaterialKey);
+    console.log('🎨 ZoneColorPicker - materialsMap keys:', Object.keys(materialsMap));
     const materialTypes = materialsMap[selectedMaterialKey] || [];
+    console.log('🎨 ZoneColorPicker - materialTypes trouvés:', materialTypes.length);
     const list: SampleColor[] = [];
     const seen = new Set<number>();
 

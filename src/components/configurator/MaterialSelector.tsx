@@ -62,12 +62,7 @@ function MiniSwatch({ hex, imageUrl }: { hex?: string | null; imageUrl?: string 
   );
 }
 
-const MATERIAL_ORDER = [
-  'Aggloméré',
-  'MDF + revêtement (mélaminé)',
-  'Plaqué bois',
-];
-
+// Mapping pour les anciens matériaux uniquement (backward compatibility)
 export const MATERIAL_KEY_MAP: Record<string, string> = {
   agglomere: 'Aggloméré',
   mdf_melamine: 'MDF + revêtement (mélaminé)',
@@ -121,28 +116,13 @@ export default function MaterialSelector({
   // État pour le composant en cours d'édition en mode multi-couleurs
   const [activeComponent, setActiveComponent] = useState<keyof ComponentColors | null>(null);
 
-  // Ordonner les matériaux dynamiquement
+  // Ordonner les matériaux dynamiquement - tous les matériaux de l'API sont affichés
   const orderedMaterialLabels = useMemo(() => {
-    // On prend tous les matériaux présents dans la map
+    // On prend TOUS les matériaux présents dans la map (venant de l'API)
     const materials = Object.keys(materialsMap);
-    
-    // On définit un ordre préférentiel pour les matériaux connus
-    const preferredOrder = [
-      'Aggloméré',
-      'MDF + revêtement (mélaminé)',
-      'Plaqué bois',
-    ];
 
-    return materials.sort((a, b) => {
-      const indexA = preferredOrder.indexOf(a);
-      const indexB = preferredOrder.indexOf(b);
-      
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      
-      return a.localeCompare(b, 'fr');
-    });
+    // Tri alphabétique simple en français
+    return materials.sort((a, b) => a.localeCompare(b, 'fr'));
   }, [materialsMap]);
 
   // Retrouver le label correct

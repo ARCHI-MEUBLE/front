@@ -15,6 +15,7 @@ import {
   IconBell,
   IconDotsVertical,
   IconCurrencyEuro,
+  IconColorSwatch,
 } from "@tabler/icons-react"
 
 import {
@@ -105,7 +106,7 @@ const navMain = [
   {
     id: "samples" as DashboardSection,
     title: "Échantillons",
-    icon: IconStar,
+    icon: IconColorSwatch,
   },
 ]
 

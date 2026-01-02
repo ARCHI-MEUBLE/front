@@ -1,5 +1,6 @@
-import React, { Suspense, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import React, { Suspense, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
+// On retire useFrame de l'import react-three/fiber
+import { Canvas, useThree, RootState } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -8,6 +9,11 @@ import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 
 export type { ThreeCanvasHandle };
+
+// --- Hooks Utilitaires ---
+
+// On supprime useAnimationFrame car il causait des erreurs de contexte R3F
+// Les composants utilisent maintenant requestAnimationFrame directement dans useEffect
 
 interface ThreeViewerProps {
   width: number;
@@ -186,6 +192,8 @@ function Handle({ type = 'vertical_bar', position, side, height, width }: { type
   }
 }
 
+// --- Composants Animés (Utilisant requestAnimationFrame manuel pour plus de robustesse) ---
+
 function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
@@ -193,11 +201,19 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
 
-  useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-    }
-  });
+  useEffect(() => {
+    let animationFrameId: number;
+    
+    const animate = () => {
+      if (groupRef.current) {
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [targetRot]);
 
   return (
     <group
@@ -236,11 +252,17 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
   const groupRef = useRef<THREE.Group>(null);
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
 
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-    }
-  });
+  useEffect(() => {
+    let animationFrameId: number;
+    const animate = () => {
+      if (groupRef.current) {
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [targetRot]);
 
   return (
     <group
@@ -288,11 +310,17 @@ function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, i
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
 
-  useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-    }
-  });
+  useEffect(() => {
+    let animationFrameId: number;
+    const animate = () => {
+      if (groupRef.current) {
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [targetRot]);
 
   return (
     <group
@@ -333,7 +361,7 @@ function AnimatedPushDrawer({ position, width, height, depth, hexColor, imageUrl
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
 
-  useFrame(() => {
+  useAnimationFrame(() => {
     if (groupRef.current) {
       groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
     }
@@ -387,11 +415,17 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, is
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
 
-  useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
-    }
-  });
+  useEffect(() => {
+    let animationFrameId: number;
+    const animate = () => {
+      if (groupRef.current) {
+        groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [targetZ]);
 
   const boxDepth = depth * 0.8;
   const boxHeight = height * 0.8;
@@ -478,12 +512,12 @@ function Furniture({
     }
   }, [doorsOpen, rootZone]);
 
-  const toggleCompartment = (id: string) => {
+  const toggleCompartment = useCallback((id: string) => {
     setOpenCompartments(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
-  };
+  }, []);
   const { w, h, d, sideHeight, yOffset, thickness } = useMemo(() => {
     const w = (width || 1500) / 1000;
     const h = (height || 730) / 1000;
@@ -591,6 +625,11 @@ function Furniture({
   const elements = useMemo(() => {
     const items: React.ReactNode[] = [];
     if (!rootZone) return items;
+
+    // Debug: afficher la rootZone reçue
+    // console.log('🎨 ThreeCanvas - rootZone reçue:', JSON.stringify(rootZone, null, 2));
+    // console.log('🎨 ThreeCanvas - rootZone.type:', rootZone.type);
+    // console.log('🎨 ThreeCanvas - rootZone.children:', rootZone.children?.length || 0, 'enfants');
 
     const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number) => {
       if (zone.type === 'leaf') {
@@ -868,10 +907,23 @@ function Furniture({
             );
           }
         }
-      } else if (zone.children) {
+      } else if (zone.children && zone.children.length > 0) {
+        console.log('🎨 parseZone - zone avec enfants:', zone.id, 'type:', zone.type, 'enfants:', zone.children.length);
         let currentPos = 0;
         zone.children.forEach((child, i) => {
-          const ratio = (zone.splitRatios ? zone.splitRatios[i] : (zone.splitRatio && i === 0 ? zone.splitRatio : (zone.splitRatio && i === 1 ? 100 - zone.splitRatio : 100 / zone.children!.length))) / 100;
+          // Calcul du ratio pour chaque enfant
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            // Ratios explicites pour chaque enfant
+            ratio = zone.splitRatios[i] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            // Mode splitRatio pour exactement 2 enfants
+            ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            // Par défaut: distribution égale
+            ratio = 1 / zone.children!.length;
+          }
+          console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
           
           if (zone.type === 'horizontal') {
             const childHeight = height * ratio;
@@ -910,7 +962,7 @@ function Furniture({
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
-    openCompartments, showDecorations, selectedZoneId, onSelectZone
+    openCompartments, showDecorations, selectedZoneId, onSelectZone, toggleCompartment
   ]);
 
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
@@ -1504,7 +1556,16 @@ function Room() {
 }
 
 function HumanSilhouette() {
-  const texture = useTexture('/images/human-silhouette.png');
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    const loader = new THREE.TextureLoader();
+    loader.load('/images/human-silhouette.png', (t) => {
+      setTexture(t);
+    });
+  }, []);
+
+  if (!texture) return null;
 
   return (
     <group position={[1.4, 0.85, 0.9]}>
@@ -2019,7 +2080,8 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
         }}
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
       >
-        <ScreenshotCapture onCapture={handleCapture} />
+        {/* Screenshot capture temporairement désactivé pour éviter les erreurs SSR */}
+        {/* <ScreenshotCapture onCapture={handleCapture} /> */}
         <OrbitControls
           enableDamping
           minDistance={1.5}
@@ -2050,7 +2112,7 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
           />
           <HumanSilhouette />
           <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={15} blur={2.5} far={1.5} />
-          <Environment preset="city" />
+          <Environment preset="city" background={false} />
         </Suspense>
       </Canvas>
     </div>
