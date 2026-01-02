@@ -129,7 +129,7 @@ export default function Login() {
           </div>
 
           <div className="mt-4 text-center">
-            <Link href="/" className="text-sm text-text-tertiary hover:text-text-secondary">
+            <Link href="/Archimeuble/front/public" className="text-sm text-text-tertiary hover:text-text-secondary">
               ← Retour à l&apos;accueil
             </Link>
           </div>

@@ -129,7 +129,7 @@ function MaterialSection({ title, list, onChanged }: { title: string; list: Samp
 
 function CreateTypeCard({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
-  const [material, setMaterial] = useState('Aggloméré');
+  const [material, setMaterial] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -138,7 +138,7 @@ function CreateTypeCard({ onCreated }: { onCreated: () => void }) {
     setSaving(true);
     try {
       await apiClient.samples.createType({ name, material, description });
-      setName(''); setDescription(''); setMaterial('Aggloméré');
+      setName(''); setDescription(''); setMaterial('');
       onCreated();
     } finally {
       setSaving(false);
@@ -155,11 +155,14 @@ function CreateTypeCard({ onCreated }: { onCreated: () => void }) {
         </div>
         <div>
           <label className="label">Matériau</label>
-          <select className="select" value={material} onChange={(e) => setMaterial(e.target.value)}>
-            <option>Aggloméré</option>
-            <option>MDF + revêtement (mélaminé)</option>
-            <option>Plaqué bois</option>
-          </select>
+          <input
+            className="input"
+            value={material}
+            onChange={(e) => setMaterial(e.target.value)}
+            placeholder="Ex: Chêne massif, Contreplaqué, Mélaminé..."
+            required
+          />
+          <p className="text-xs text-text-tertiary mt-1">Entrez le nom du matériau (libre)</p>
         </div>
         <div>
           <label className="label">Description</label>

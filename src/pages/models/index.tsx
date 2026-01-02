@@ -30,21 +30,21 @@ export default function ModelsPage() {
       setIsLoading(true);
       setError(null);
       const data = await apiClient.models.getAll();
-      const productModels: ProductModel[] = data.map((model: FurnitureModel) => ({
+      const productModels: ProductModel[] = data.map((model: FurnitureModel & { category?: string }) => ({
         id: model.id,
         name: model.name,
         description: model.description || "",
         image_path: model.image_url || "",
         created_at: model.created_at,
-        base_price: 890,
-        category: model.name.toLowerCase().includes("dressing") ? "dressing"
+        base_price: model.price || 890,
+        category: model.category || (model.name.toLowerCase().includes("dressing") ? "dressing"
           : model.name.toLowerCase().includes("biblio") ? "bibliotheque"
           : model.name.toLowerCase().includes("buffet") ? "buffet"
           : model.name.toLowerCase().includes("bureau") ? "bureau"
           : model.name.toLowerCase().includes("tv") ? "meuble-tv"
           : model.name.toLowerCase().includes("escalier") ? "sous-escalier"
           : model.name.toLowerCase().includes("lit") ? "tete-de-lit"
-          : "all"
+          : "all")
       }));
       setModels(productModels);
     } catch (err) {

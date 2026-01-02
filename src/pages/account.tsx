@@ -27,7 +27,8 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  MapPin
+  MapPin,
+  Layers
 } from 'lucide-react';
 
 type Section = 'orders' | 'profile' | 'help';
@@ -366,6 +367,14 @@ export default function Account() {
                   {item.label}
                 </button>
               ))}
+              {/* Lien direct vers Mes configurations */}
+              <Link
+                href="/my-configurations"
+                className="flex items-center gap-2 whitespace-nowrap rounded-full px-5 py-2.5 text-sm font-medium text-[#6B6560] transition-all hover:bg-[#F5F3F0] hover:text-[#1A1917]"
+              >
+                <Layers className="h-4 w-4" />
+                Mes configurations
+              </Link>
             </nav>
           </div>
         </section>
@@ -423,7 +432,7 @@ export default function Account() {
                     <h3 className="mt-6 font-serif text-xl text-[#1A1917]">Aucune commande</h3>
                     <p className="mt-2 text-[#6B6560]">Vous n'avez pas encore passé de commande</p>
                     <Link
-                      href="/"
+                      href="/Archimeuble/front/public"
                       className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-transform hover:scale-105"
                     >
                       Découvrir nos meubles

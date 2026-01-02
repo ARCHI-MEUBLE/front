@@ -8,6 +8,8 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { CategoriesSection } from "@/components/home/CategoriesSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
+import { QuoteRequestCTA } from "@/components/home/QuoteRequestCTA";
+import { ConfiguratorDemoSection } from "@/components/home/ConfiguratorDemoSection";
 
 import {
   ColorsAndFinishesSection,
@@ -31,11 +33,12 @@ export default function HomePage({ colors }: HomePageProps) {
       <Header />
       <main className="flex flex-1 flex-col">
         <HeroSection />
+        <ConfiguratorDemoSection />
         <ColorsAndFinishesSection colors={colors} />
         <WhyChooseUs />
+        <QuoteRequestCTA />
         <CategoriesSection />
         <TestimonialsSection />
-        
       </main>
       <Footer />
     </div>
@@ -129,19 +132,35 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
   const directory = path.join(process.cwd(), "public", "images", "photos_meuble_couleur");
   const entries = await fs.readdir(directory);
 
-  const colors: ColorOption[] = entries
+  const colors: ColorOption[] = (await Promise.all(entries
     .filter((file) => /\.(png|jpe?g|webp)$/i.test(file))
-    .map((file) => {
-      const key = normalizeKeyFromFileName(file);
+    .map(async (file) => {
+      const filePath = path.join(directory, file);
+      try {
+        const stats = await fs.stat(filePath);
+        if (stats.size === 0) return null;
 
-      return {
-        slug: key,
-        image: "/images/photos_meuble_couleur/" + file,
-        fancyName: buildFancyName(key),
-        swatch: buildSwatch(key)
-      };
-    })
-    .sort((a, b) => a.fancyName.localeCompare(b.fancyName, "fr"));
+        const key = normalizeKeyFromFileName(file);
+
+        return {
+          slug: key,
+          image: "/images/photos_meuble_couleur/" + file,
+          fancyName: buildFancyName(key),
+          swatch: buildSwatch(key)
+        };
+      } catch (e) {
+        return null;
+      }
+    })))
+    .filter((color): color is ColorOption => color !== null)
+    .sort((a, b) => {
+      // Forcer armoire_bleu.png en premier (car bleu_clair est vide)
+      const primaryImage = 'armoire_bleu.png';
+      if (a.image.includes(primaryImage)) return -1;
+      if (b.image.includes(primaryImage)) return 1;
+      // Tri alphabétique pour le reste
+      return a.fancyName.localeCompare(b.fancyName, "fr");
+    });
 
   return {
     props: {

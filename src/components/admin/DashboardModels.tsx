@@ -1,5 +1,24 @@
 /* eslint-disable @next/next/no-img-element */
+"use client"
+
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import toast from 'react-hot-toast';
+import {
+  IconPackage,
+  IconPlus,
+  IconRefresh,
+  IconEdit,
+  IconTrash,
+  IconUpload,
+  IconExternalLink,
+  IconTrendingUp,
+} from '@tabler/icons-react';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export interface AdminModel {
   id: number;
@@ -33,6 +52,7 @@ export function DashboardModels() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchModels = async () => {
     try {
@@ -52,6 +72,7 @@ export function DashboardModels() {
       setModels(data.models);
     } catch (err) {
       setError((err as Error).message ?? 'Une erreur est survenue');
+      toast.error((err as Error).message ?? 'Une erreur est survenue');
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +91,15 @@ export function DashboardModels() {
   }, [preview]);
 
   const sortedModels = useMemo(() => models, [models]);
+
+  const stats = {
+    total: models.length,
+    thisMonth: models.filter(m => {
+      const created = new Date(m.created_at);
+      const now = new Date();
+      return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+    }).length,
+  };
 
   const handleInputChange = (
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -102,6 +132,7 @@ export function DashboardModels() {
       URL.revokeObjectURL(preview);
     }
     setPreview(null);
+    setIsDialogOpen(false);
   };
 
   const fileToBase64 = (selectedFile: File) =>
@@ -125,9 +156,8 @@ export function DashboardModels() {
     setError(null);
     setIsSubmitting(true);
 
-    // Validation : le prompt doit contenir "b" (planche de base)
     if (!formState.prompt.includes('b')) {
-      setError('Le prompt doit contenir "b" (planche de base obligatoire)');
+      toast.error('Le prompt doit contenir "b" (planche de base obligatoire)');
       setIsSubmitting(false);
       return;
     }
@@ -188,7 +218,6 @@ export function DashboardModels() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
-        console.error('Error response:', errorData);
         throw new Error(errorData.error || errorData.message || 'Impossible de sauvegarder le modèle');
       }
 
@@ -201,9 +230,12 @@ export function DashboardModels() {
         return [data.model, ...prev];
       });
 
+      toast.success(editingId ? 'Modèle mis à jour !' : 'Modèle créé !');
       resetForm();
     } catch (err) {
-      setError((err as Error).message ?? 'Une erreur est survenue');
+      const errorMessage = (err as Error).message ?? 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -222,11 +254,11 @@ export function DashboardModels() {
       URL.revokeObjectURL(preview);
     }
     setPreview(model.image_url ?? null);
+    setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    const confirmation = window.confirm('Supprimer ce modèle ?');
-    if (!confirmation) {
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Supprimer le modèle "${name}" ?`)) {
       return;
     }
 
@@ -245,191 +277,271 @@ export function DashboardModels() {
       }
 
       setModels((prev) => prev.filter((model) => model.id !== id));
+      toast.success('Modèle supprimé');
 
       if (editingId === id) {
         resetForm();
       }
     } catch (err) {
-      setError((err as Error).message ?? 'Une erreur est survenue');
+      const errorMessage = (err as Error).message ?? 'Une erreur est survenue';
+      toast.error(errorMessage);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <IconRefresh className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-  <div className="space-y-6">
-    {/* Bouton Configurateur Admin - Design sobre */}
-    <div className="flex items-center justify-between border border-gray-200 bg-white p-4">
-      <div>
-        <h3 className="text-base font-semibold text-gray-900">🛠️ Configurateur Admin</h3>
-        <p className="mt-1 text-xs text-gray-600">
-          Créez un nouveau meuble personnalisé en Mode EZ avec le configurateur 3D
-        </p>
-      </div>
-      <a
-        href="/models"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="px-4 py-2 bg-gray-900 text-white font-medium text-xs uppercase hover:bg-gray-800 transition"
-      >
-        Ouvrir le configurateur
-      </a>
-    </div>
-
-    {/* Formulaire - Design sobre */}
-    <section className="border border-gray-200 bg-white p-4">
-      <h2 className="text-base font-semibold text-gray-900">
-        {editingId ? 'Modifier le modèle' : 'Ajouter un modèle'}
-      </h2>
-      <p className="text-xs text-gray-500 mt-1">
-        {editingId
-          ? 'Mettez à jour les informations du modèle sélectionné.'
-          : 'Renseignez un nouveau modèle pour le catalogue numérique.'}
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">
-            Nom du modèle
-          </label>
-          <input
-            id="name"
-            name="name"
-            required
-            value={formState.name}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            required
-            rows={3}
-            value={formState.description}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="prompt" className="block text-xs font-medium text-gray-700 mb-1">
-            Prompt interne
-          </label>
-          <textarea
-            id="prompt"
-            name="prompt"
-            required
-            rows={4}
-            value={formState.prompt}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="image" className="block text-xs font-medium text-gray-700 mb-1">
-            Image du modèle
-          </label>
-          <input
-            id="image"
-            name="image"
-            type="file"
-            accept="image/png, image/jpeg"
-            onChange={handleFileChange}
-            className="w-full text-xs text-gray-600"
-          />
-          {(preview || formState.imagePath) && (
-            <img
-              src={preview ?? formState.imagePath}
-              alt={formState.name || 'Prévisualisation du modèle'}
-              className="mt-3 w-full max-h-64 object-contain border border-gray-200"
-            />
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-gray-900 px-4 py-2 text-xs font-medium text-white uppercase hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-75"
-          >
-            {isSubmitting ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Enregistrer'}
-          </button>
-          {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Annuler
-            </button>
-          )}
-        </div>
-      </form>
-    </section>
-
-    {/* Liste des modèles - Design sobre */}
-    <div className="border-t border-gray-200 pt-4">
-      <h2 className="text-base font-semibold text-gray-900">Modèles enregistrés</h2>
-      <p className="text-xs text-gray-500 mt-1">
-        Gérez votre catalogue de meubles et leurs prompts génératifs.
-      </p>
-    </div>
-    {error && (
-      <div className="border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
-        {error}
-      </div>
-    )}
-
-    {isLoading ? (
-      <div className="border border-gray-200 bg-white p-4 text-xs text-gray-500">
-        Chargement des modèles...
-      </div>
-    ) : (
-      <div className="grid gap-6 md:grid-cols-2">
-        {sortedModels.map((model) => (
-          <article key={model.id} className="border border-gray-200 bg-white p-3">
-            {model.image_url && (
-              <img
-                src={model.image_url.startsWith('http') ? model.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${model.image_url}`}
-                alt={model.name}
-                className="mb-3 w-full max-h-72 object-contain border border-gray-200"
-              />
-            )}
-            <h3 className="text-sm font-semibold text-gray-900">{model.name}</h3>
-            <p className="mt-2 text-xs text-gray-600">{model.description}</p>
-            <p className="mt-2 text-xs text-gray-400">
-              Ajouté le {new Date(model.created_at).toLocaleString()}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleEdit(model)}
-                className="flex-1 border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Modifier
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(model.id)}
-                className="flex-1 border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-              >
-                Supprimer
-              </button>
+    <>
+      {/* Stats Cards */}
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2">
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Total Modèles</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {stats.total}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconPackage className="size-3" />
+                Tous
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Modèles au catalogue <IconPackage className="size-4" />
             </div>
-          </article>
-        ))}
-        {sortedModels.length === 0 && (
-          <div className="border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-xs text-gray-500">
-            Aucun modèle enregistré pour le moment.
+            <div className="text-muted-foreground">
+              Meubles disponibles
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Ce mois-ci</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {stats.thisMonth}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconTrendingUp className="size-3" />
+                Nouveaux
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Ajoutés récemment <IconTrendingUp className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Depuis le début du mois
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* Actions */}
+      <div className="px-4 lg:px-6 space-y-4">
+        {/* Configurator Link */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Conception visuelle</CardTitle>
+            <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l'ajouter directement au catalogue.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="bg-[#8B7355] hover:bg-[#705D45]">
+              <a href="/configurator/M1?adminMode=createModel" target="_blank" rel="noopener noreferrer">
+                <IconExternalLink className="w-4 h-4 mr-2" />
+                Lancer la création visuelle
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Add Button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Modèles enregistrés</h3>
+            <p className="text-sm text-muted-foreground">Gérez votre catalogue de meubles</p>
+          </div>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <IconPlus className="w-4 h-4 mr-2" />
+            Ajouter un modèle
+          </Button>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-sm text-destructive">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Models Grid */}
+        {sortedModels.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="text-4xl mb-3">📦</div>
+              <h3 className="text-lg font-medium mb-1">Aucun modèle</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Créez votre premier modèle de meuble
+              </p>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <IconPlus className="w-4 h-4 mr-2" />
+                Ajouter un modèle
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {sortedModels.map((model) => (
+              <Card key={model.id} className="overflow-hidden">
+                {model.image_url && (
+                  <div className="aspect-square w-full overflow-hidden bg-muted">
+                    <img
+                      src={model.image_url.startsWith('http') ? model.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${model.image_url}`}
+                      alt={model.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+                <CardHeader>
+                  <CardTitle className="text-base">{model.name}</CardTitle>
+                  <CardDescription className="line-clamp-2">{model.description}</CardDescription>
+                </CardHeader>
+                <CardFooter className="flex gap-2">
+                  <Button
+                    onClick={() => handleEdit(model)}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <IconEdit className="w-4 h-4 mr-1" />
+                    Modifier
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(model.id, model.name)}
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <IconTrash className="w-4 h-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         )}
       </div>
-    )}
-  </div>
-);
 
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Modifier le modèle' : 'Ajouter un modèle'}</DialogTitle>
+            <DialogDescription>
+              {editingId
+                ? 'Mettez à jour les informations du modèle'
+                : 'Créez un nouveau modèle pour le catalogue'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nom du modèle</Label>
+              <Input
+                id="name"
+                name="name"
+                required
+                value={formState.name}
+                onChange={handleInputChange}
+                placeholder="Ex: Bibliothèque modulaire"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <textarea
+                id="description"
+                name="description"
+                required
+                rows={3}
+                value={formState.description}
+                onChange={handleInputChange}
+                placeholder="Décrivez le modèle..."
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prompt">Prompt interne</Label>
+              <textarea
+                id="prompt"
+                name="prompt"
+                required
+                rows={4}
+                value={formState.prompt}
+                onChange={handleInputChange}
+                placeholder="Le prompt doit contenir 'b' (planche de base)"
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="image">Image du modèle</Label>
+              <Input
+                id="image"
+                name="image"
+                type="file"
+                accept="image/png, image/jpeg"
+                onChange={handleFileChange}
+              />
+              {(preview || formState.imagePath) && (
+                <div className="mt-2 rounded-md border bg-muted p-2">
+                  <img
+                    src={preview ?? formState.imagePath}
+                    alt={formState.name || 'Prévisualisation'}
+                    className="mx-auto max-h-48 object-contain"
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetForm}
+                disabled={isSubmitting}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <IconRefresh className="w-4 h-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <IconUpload className="w-4 h-4 mr-2" />
+                    {editingId ? 'Mettre à jour' : 'Enregistrer'}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 export default DashboardModels;

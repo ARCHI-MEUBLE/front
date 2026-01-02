@@ -86,7 +86,7 @@ export default function OrderConfirmation() {
             <h1 className="font-serif text-2xl text-[#1A1917]">Erreur</h1>
             <p className="mt-3 text-[#6B6560]">{error || 'Commande non trouvée'}</p>
             <Link
-              href="/"
+              href="/Archimeuble/front/public"
               className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[#8B7355] hover:underline"
             >
               Retour à l'accueil
@@ -251,7 +251,7 @@ export default function OrderConfirmation() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/"
+              href="/Archimeuble/front/public"
               className="flex items-center justify-center gap-2 border border-[#E8E4DE] bg-white px-6 py-4 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#F5F3F0]"
             >
               Retour à l'accueil

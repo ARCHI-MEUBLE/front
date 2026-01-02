@@ -15,7 +15,7 @@ export default function LoginPage() {
       {/* Back link */}
       <div className="px-5 py-4 sm:px-6 lg:px-8">
         <Link
-          href="/"
+          href="/Archimeuble/front/public"
           className="inline-flex items-center gap-2 text-sm text-[#6B6560] transition-colors hover:text-[#1A1917]"
         >
           <ArrowLeft className="h-4 w-4" />

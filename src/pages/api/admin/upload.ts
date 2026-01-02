@@ -12,7 +12,15 @@ type UploadPayload = {
   data?: string;
 };
 
-const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg']);
+const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Note: L'authentification admin est vérifiée par le backend PHP (upload.php)

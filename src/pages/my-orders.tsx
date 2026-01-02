@@ -355,11 +355,15 @@ export default function MyOrders() {
                                 credentials: 'include'
                               });
                               if (!response.ok) throw new Error('Erreur de téléchargement');
+                              
+                              const contentType = response.headers.get('Content-Type');
+                              const extension = contentType?.includes('application/pdf') ? 'pdf' : 'html';
+                              
                               const blob = await response.blob();
                               const url = window.URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url;
-                              a.download = `facture-${order.order_number}.pdf`;
+                              a.download = `facture-${order.order_number}.${extension}`;
                               document.body.appendChild(a);
                               a.click();
                               window.URL.revokeObjectURL(url);
@@ -575,11 +579,18 @@ export default function MyOrders() {
                             credentials: 'include'
                           });
                           if (!response.ok) throw new Error('Erreur');
+                          
+                          const contentType = response.headers.get('Content-Type');
                           const blob = await response.blob();
                           const url = window.URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
-                          a.download = `facture-${selectedOrder.order_number}.pdf`;
+                          
+                          // Déterminer l'extension en fonction du Content-Type
+                          const isHtml = contentType && contentType.includes('text/html');
+                          const extension = isHtml ? 'html' : 'pdf';
+                          
+                          a.download = `facture-${selectedOrder.order_number}.${extension}`;
                           document.body.appendChild(a);
                           a.click();
                           window.URL.revokeObjectURL(url);

@@ -17,7 +17,7 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 
 import "../../styles/globals.css";
-import "../styles/configurator.css";
+import "@/styles/configurator.css";
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {

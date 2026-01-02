@@ -48,9 +48,9 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
   const percentage = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-[#1A1917]">{label}</label>
+        <label className="text-[11px] font-medium text-[#1A1917]">{label}</label>
         <div className="flex items-center gap-1.5">
           <input
             type="text"
@@ -59,10 +59,10 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
-            className="w-20 border-2 border-[#E8E6E3] bg-white px-2 py-2 text-right font-mono text-sm text-[#1A1917] outline-none transition-colors hover:border-[#1A1917] focus:border-[#1A1917]"
+            className="w-14 border-2 border-[#E8E6E3] bg-white px-1.5 py-0.5 text-right font-mono text-[11px] text-[#1A1917] outline-none transition-colors hover:border-[#1A1917] focus:border-[#1A1917]"
             style={{ borderRadius: '2px' }}
           />
-          <span className="text-sm text-[#706F6C]">{unit}</span>
+          <span className="text-[10px] text-[#706F6C]">{unit}</span>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           className="dimension-slider w-full"
         />
         <div
-          className="pointer-events-none absolute top-1/2 left-0 h-1.5 -translate-y-1/2 bg-[#1A1917]"
+          className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 bg-[#1A1917]"
           style={{ width: `${percentage}%`, borderRadius: '2px' }}
         />
       </div>
@@ -86,7 +86,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
         .dimension-slider {
           -webkit-appearance: none;
           appearance: none;
-          height: 6px;
+          height: 4px;
           background: #E8E6E3;
           border-radius: 2px;
           cursor: pointer;
@@ -142,10 +142,10 @@ export default function DimensionsPanel({
   onHeightChange,
 }: DimensionsPanelProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-3">
-        <h3 className="font-serif text-base text-[#1A1917]">Dimensions</h3>
-        <span className="font-mono text-xs text-[#706F6C]">{width} × {depth} × {height} mm</span>
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
+        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions</h3>
+        <span className="font-mono text-[10px] text-[#706F6C]">{width} × {depth} × {height} mm</span>
       </div>
 
       <DimensionInput
