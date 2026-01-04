@@ -9,6 +9,16 @@ const nextConfig = {
     // Désactiver TypeScript pendant le build de production pour Vercel
     ignoreBuildErrors: true
   },
+  webpack: (config, { isServer }) => {
+    // Éviter les instances multiples de Three.js
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'three': require.resolve('three')
+      };
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {
