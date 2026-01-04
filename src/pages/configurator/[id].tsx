@@ -481,11 +481,13 @@ export default function ConfiguratorPage() {
   const [loading, setLoading] = useState(true);
   const [editingConfiguration, setEditingConfiguration] = useState<any>(null);
   const [generating, setGenerating] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [pendingRestoreConfig, setPendingRestoreDialog] = useState<any>(null);
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
   const [dxfUrl, setDxfUrl] = useState<string | null>(null);
   const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
   const [editingConfigName, setEditingConfigName] = useState<string>('');
-  const [initialConfigApplied, setInitialConfigApplied] = useState(true);
+  const [initialConfigApplied, setInitialConfigApplied] = useState(false);
   const [skipNextAutoGenerate, setSkipNextAutoGenerate] = useState(false);
 
   // Prompt template
@@ -766,7 +768,7 @@ export default function ConfiguratorPage() {
 
   // Sauvegarder automatiquement dans localStorage
   useEffect(() => {
-    if (!id || loading) return;
+    if (!id || loading || isViewMode || !initialConfigApplied || showRestoreDialog) return;
 
     const configToSave = {
       width,
@@ -775,21 +777,26 @@ export default function ConfiguratorPage() {
       socle,
       rootZone,
       finish,
+      color,
+      colorLabel,
+      colorImage: selectedColorImage,
       selectedColorId,
       useMultiColor,
       componentColors,
       doorType,
       doorSide,
+      doorsOpen,
+      showDecorations,
       timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
     };
 
     try {
       localStorage.setItem(localStorageKey, JSON.stringify(configToSave));
-      console.log('✅ Configuration sauvegardée automatiquement');
+      // console.log('✅ Configuration sauvegardée automatiquement');
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, localStorageKey]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations]);
 
   // Charger les matériaux
   useEffect(() => {
@@ -1271,27 +1278,30 @@ export default function ConfiguratorPage() {
         if (configToRestore.doorType) setDoorType(configToRestore.doorType);
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         console.log('✅ Configuration restaurée avec succès');
-      } else if (!id || isNaN(Number(id))) {
-        // Fallback local pour template (IGNORÉ en mode création de modèle admin pour éviter les résidus)
-        if (!isAdminCreateModel) {
-          const savedConfig = localStorage.getItem(localStorageKey);
-          if (savedConfig) {
-            const localRestore = JSON.parse(savedConfig);
-            console.log('📦 Configuration locale (template) trouvée, restauration...');
-            if (localRestore.width) setWidth(localRestore.width);
-            if (localRestore.height) setHeight(localRestore.height);
-            if (localRestore.depth) setDepth(localRestore.depth);
-            if (localRestore.socle) setSocle(localRestore.socle);
-            if (localRestore.rootZone) setRootZone(localRestore.rootZone);
-            if (localRestore.finish) setFinish(localRestore.finish);
-            if (localRestore.color) setColor(localRestore.color);
-            if (localRestore.colorImage !== undefined) setSelectedColorImage(localRestore.colorImage);
-            if (localRestore.selectedColorId !== undefined) setSelectedColorId(localRestore.selectedColorId);
-            if (localRestore.useMultiColor !== undefined) setUseMultiColor(localRestore.useMultiColor);
-            if (localRestore.componentColors) setComponentColors(localRestore.componentColors);
-            if (localRestore.doorType) setDoorType(localRestore.doorType);
-            if (localRestore.doorSide) setDoorSide(localRestore.doorSide);
+        setInitialConfigApplied(true);
+      } else {
+        // Fallback local pour template ou modèle (IGNORÉ en mode création de modèle admin pour éviter les résidus)
+        let restoreFound = false;
+        if (!isAdminCreateModel && !isViewMode) {
+          const savedConfigStr = localStorage.getItem(localStorageKey);
+          if (savedConfigStr) {
+            try {
+              const localRestore = JSON.parse(savedConfigStr);
+              // On ne restaure pas automatiquement, on demande
+              // Session valide si moins de 24h
+              if (localRestore.timestamp && (Date.now() - localRestore.timestamp < 24 * 60 * 60 * 1000)) {
+                setPendingRestoreDialog(localRestore);
+                setShowRestoreDialog(true);
+                restoreFound = true;
+              }
+            } catch (e) {
+              console.warn('Erreur parsing localStorage restore:', e);
+            }
           }
+        }
+        
+        if (!restoreFound) {
+          setInitialConfigApplied(true);
         }
       }
     } catch (error) {
@@ -1335,6 +1345,52 @@ export default function ConfiguratorPage() {
       console.warn('❌ Erreur lors de la suppression de localStorage', e);
     }
   }, [initialConfig, localStorageKey]);
+
+  // Actions pour le dialogue de restauration
+  const applyPendingRestore = () => {
+    if (!pendingRestoreConfig) return;
+    const c = pendingRestoreConfig;
+    console.log('🔄 Application de la configuration restaurée depuis localStorage:', c);
+    
+    // Désactiver temporairement la régénération auto pour grouper les changements
+    setSkipNextAutoGenerate(false); 
+    setInitialConfigApplied(false);
+
+    if (c.width) setWidth(c.width);
+    if (c.height) setHeight(c.height);
+    if (c.depth) setDepth(c.depth);
+    if (c.socle) setSocle(c.socle);
+    if (c.rootZone) {
+      console.log('📦 Restauration de la zone racine:', c.rootZone);
+      setRootZone(JSON.parse(JSON.stringify(c.rootZone)));
+    }
+    if (c.finish) setFinish(c.finish);
+    if (c.color) setColor(c.color);
+    if (c.colorLabel) setColorLabel(c.colorLabel);
+    if (c.colorImage !== undefined) setSelectedColorImage(c.colorImage);
+    if (c.selectedColorId !== undefined) setSelectedColorId(c.selectedColorId);
+    if (c.useMultiColor !== undefined) setUseMultiColor(c.useMultiColor);
+    if (c.componentColors) setComponentColors(JSON.parse(JSON.stringify(c.componentColors)));
+    if (c.doorType) setDoorType(c.doorType);
+    if (c.doorSide) setDoorSide(c.doorSide);
+    if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
+    if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
+    
+    // Réactiver la régénération et forcer l'application
+    setTimeout(() => {
+      setInitialConfigApplied(true);
+      setShowRestoreDialog(false);
+      setPendingRestoreDialog(null);
+      toast.success('Configuration restaurée');
+    }, 100);
+  };
+
+  const discardPendingRestore = () => {
+    localStorage.removeItem(localStorageKey);
+    setShowRestoreDialog(false);
+    setPendingRestoreDialog(null);
+    setInitialConfigApplied(true);
+  };
 
   // Construction du prompt depuis l'arbre de zones
   const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
@@ -1531,6 +1587,8 @@ export default function ConfiguratorPage() {
     if (zonePrompt && zonePrompt.trim()) {
       prompt += zonePrompt;
     }
+
+    console.log('🚀 Génération du modèle avec le prompt:', prompt);
 
     // Calculer le prix
     setPrice(calculatePrice({ width, height, depth, finish, socle, rootZone, doorType }));
@@ -1738,6 +1796,10 @@ export default function ConfiguratorPage() {
       if (!response.ok) throw new Error('Erreur lors de la sauvegarde');
 
       const result = await response.json();
+      
+      // Nettoyer localStorage après une sauvegarde réussie
+      localStorage.removeItem(localStorageKey);
+      
       setEditingConfigName(configNameInput.trim());
 
       // Afficher le modal de confirmation au lieu de rediriger vers le panier
@@ -2166,59 +2228,6 @@ export default function ConfiguratorPage() {
               <div className="hidden flex-shrink-0 lg:block">
                 <ActionBar
                   selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneId : null}
-                  disabled={generating}
-                  onSplitHorizontal={() => {
-                    if (selectedZone?.type === 'leaf') {
-                      splitZone(selectedZoneId, 'horizontal', 2);
-                    }
-                  }}
-                  onSplitVertical={() => {
-                    if (selectedZone?.type === 'leaf') {
-                      splitZone(selectedZoneId, 'vertical', 2);
-                    }
-                  }}
-                  onAddDrawer={() => {
-                    if (selectedZone?.type === 'leaf') {
-                      setZoneContent(selectedZoneId, 'drawer');
-                    }
-                  }}
-                  onAddDoor={() => {
-                    if (selectedZoneId === 'root') {
-                      // Si on est sur la racine, on bascule le type de porte globale
-                      if (doorType === 'none') setDoorType('double');
-                      else if (doorType === 'double') setDoorType('single');
-                      else setDoorType('none');
-                    } else if (selectedZone?.type === 'leaf') {
-                      // Si on est sur un compartiment, on cycle les types de portes locaux
-                      const currentContent = selectedZone.content;
-                      let nextContent: ZoneContent = 'door';
-                      
-                      if (currentContent === 'door') nextContent = 'door_right';
-                      else if (currentContent === 'door_right') nextContent = 'door_double';
-                      else if (currentContent === 'door_double') nextContent = 'empty';
-                      else nextContent = 'door';
-                      
-                      setZoneContent(selectedZoneId, nextContent);
-                      setDoorType('none'); // On désactive la porte globale si on met une porte locale
-                    }
-                  }}
-                  onAddDressing={() => {
-                    if (selectedZone?.type === 'leaf') {
-                      setZoneContent(selectedZoneId, 'dressing');
-                    }
-                  }}
-                  onToggleLight={() => {
-                    if (selectedZoneId && selectedZoneId !== 'root') {
-                      toggleZoneLight(selectedZoneId);
-                    }
-                  }}
-                  onToggleCableHole={() => {
-                    if (selectedZoneId && selectedZoneId !== 'root') {
-                      toggleZoneCableHole(selectedZoneId);
-                    }
-                  }}
-                  hasLight={selectedZone?.hasLight}
-                  hasCableHole={selectedZone?.hasCableHole}
                 />
               </div>
             )}
@@ -2422,6 +2431,34 @@ export default function ConfiguratorPage() {
           </div>
         )}
       </div>
+
+      {/* Dialogue de restauration */}
+      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle>Reprendre votre session ?</DialogTitle>
+            <DialogDescription>
+              Une configuration non enregistrée a été trouvée pour ce modèle. 
+              Voulez-vous la restaurer pour reprendre là où vous en étiez ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={discardPendingRestore}
+              className="border-[#E8E6E3] text-[#706F6C] hover:bg-[#F5F5F5] hover:text-[#1A1917]"
+            >
+              Ignorer
+            </Button>
+            <Button 
+              onClick={applyPendingRestore}
+              className="bg-[#1A1917] text-white hover:bg-[#333]"
+            >
+              Restaurer ma session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AuthModal
         isOpen={showAuthModal}

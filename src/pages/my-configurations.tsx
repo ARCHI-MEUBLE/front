@@ -313,7 +313,7 @@ export default function MyConfigurations() {
                 className="card overflow-hidden hover:shadow-lg transition"
               >
                 {/* Preview 3D - Configuration réelle */}
-                <div className="aspect-video bg-gradient-to-br from-bg-light to-bg-default overflow-hidden">
+                <div className="h-64 bg-gradient-to-br from-bg-light to-bg-default overflow-hidden relative">
                   {config.config_data ? (
                     <ThreeViewer
                         width={config.config_data.dimensions?.width || 1500}

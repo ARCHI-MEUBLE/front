@@ -1,4 +1,4 @@
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, ArrowUp, Lightbulb, Plug, DoorClosed, Square, Sparkles, Grid, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal } from 'lucide-react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Grid, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal } from 'lucide-react';
 import { Zone, ZoneContent, HandleType, ZONE_CONTENT_META } from './types';
 
 interface ZoneControlsProps {
@@ -407,19 +407,6 @@ export default function ZoneControls({
       ═══════════════════════════════════════════════════════════ */}
         {(!isLeaf || (parentZone && parentZone.type !== 'leaf')) && (
             <div className="flex flex-col gap-3 border-t border-[#E8E6E3] pt-5">
-              {/* Revenir au niveau supérieur */}
-              {isLeaf && parentCanAdjust && onSelectParent && (
-                  <button
-                      type="button"
-                      onClick={onSelectParent}
-                      className="flex items-center justify-center gap-3 border-2 border-[#E8E6E3] bg-white py-3 text-base font-medium text-[#1A1917] transition-all hover:border-[#1A1917]"
-                      style={{ borderRadius: '4px' }}
-                  >
-                    <ArrowUp className="h-5 w-5" />
-                    <span>Voir le groupe entier</span>
-                  </button>
-              )}
-
               {/* Supprimer la division actuelle */}
               {!isLeaf && (
                   <button
@@ -430,19 +417,6 @@ export default function ZoneControls({
                   >
                     <Trash2 className="h-5 w-5" />
                     <span>Annuler cette division</span>
-                  </button>
-              )}
-
-              {/* Supprimer la division parente */}
-              {parentZone && parentZone.type !== 'leaf' && isLeaf && (
-                  <button
-                      type="button"
-                      onClick={() => onResetZone(parentZone.id)}
-                      className="flex items-center justify-center gap-3 border-2 border-[#E8E6E3] bg-white py-3 text-base font-medium text-[#706F6C] transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
-                      style={{ borderRadius: '4px' }}
-                  >
-                    <Trash2 className="h-5 w-5" />
-                    <span>Supprimer toutes les divisions</span>
                   </button>
               )}
             </div>
