@@ -26,13 +26,13 @@ export function WhyChooseUs() {
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
               Pourquoi nous
             </span>
-            <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+            <h2 className="mt-4 font-sans text-3xl font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
               La précision du
               <br />
               sur-mesure
             </h2>
           </div>
-          <p className="max-w-md text-base leading-relaxed text-[#706F6C] lg:text-right">
+          <p className="max-w-md text-base font-medium leading-relaxed text-[#706F6C] lg:text-right">
             Du premier croquis à l'installation, chaque détail est pensé
             pour créer un meuble qui traverse les années.
           </p>
@@ -46,13 +46,13 @@ export function WhyChooseUs() {
               className="group relative border border-[#E8E6E3] bg-[#FAFAF9] p-6 transition-colors duration-200 hover:border-[#1A1917] sm:p-8 lg:p-10"
             >
               {/* Number */}
-              <span className="font-mono text-xs text-[#8B7355]">{reason.number}</span>
+              <span className="font-sans font-black text-xs text-[#8B7355]">{reason.number}</span>
 
               {/* Title */}
-              <h3 className="mt-4 font-serif text-xl text-[#1A1917] sm:mt-6 sm:text-2xl">{reason.title}</h3>
+              <h3 className="mt-4 font-sans font-bold text-xl text-[#1A1917] sm:mt-6 sm:text-2xl">{reason.title}</h3>
 
               {/* Description */}
-              <p className="mt-3 text-sm leading-relaxed text-[#706F6C] sm:mt-4">
+              <p className="mt-3 text-sm font-medium leading-relaxed text-[#706F6C] sm:mt-4">
                 {reason.description}
               </p>
 

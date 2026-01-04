@@ -58,10 +58,10 @@ export function TestimonialsSection() {
           <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
             Témoignages
           </span>
-          <h2 className="mt-4 font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl">
+          <h2 className="mt-4 font-sans text-3xl font-bold tracking-[-0.02em] text-[#1A1917] sm:text-4xl">
             Ils nous font confiance
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-[#706F6C]">
+          <p className="mx-auto mt-4 max-w-xl font-medium text-[#706F6C]">
             Découvrez les avis de nos clients satisfaits
           </p>
         </div>
@@ -74,14 +74,14 @@ export function TestimonialsSection() {
               <div>
                 <StarRating rating={featured.rating} size="lg" />
                 <blockquote className="mt-6">
-                  <p className="font-serif text-xl leading-relaxed text-[#1A1917] sm:text-2xl">
+                  <p className="font-sans text-xl font-bold leading-relaxed text-[#1A1917] sm:text-2xl">
                     « {featured.quote} »
                   </p>
                 </blockquote>
               </div>
               <div className="mt-8">
-                <p className="font-medium text-[#1A1917]">{featured.name}</p>
-                <p className="text-sm text-[#706F6C]">{featured.location}</p>
+                <p className="font-bold text-[#1A1917]">{featured.name}</p>
+                <p className="text-sm font-medium text-[#706F6C]">{featured.location}</p>
               </div>
             </div>
           )}
@@ -96,14 +96,14 @@ export function TestimonialsSection() {
                 <div>
                   <StarRating rating={testimonial.rating} />
                   <blockquote className="mt-4">
-                    <p className="leading-relaxed text-[#706F6C]">
+                    <p className="font-medium leading-relaxed text-[#706F6C]">
                       « {testimonial.quote} »
                     </p>
                   </blockquote>
                 </div>
                 <div className="mt-5">
-                  <p className="text-sm font-medium text-[#1A1917]">{testimonial.name}</p>
-                  <p className="text-xs text-[#706F6C]">{testimonial.location}</p>
+                  <p className="text-sm font-bold text-[#1A1917]">{testimonial.name}</p>
+                  <p className="text-xs font-medium text-[#706F6C]">{testimonial.location}</p>
                 </div>
               </div>
             ))}

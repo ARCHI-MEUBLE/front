@@ -56,7 +56,7 @@ export function Header() {
       <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center">
-            <span className="text-xl font-semibold text-gray-900">ArchiMeuble</span>
+            <span className="text-xl font-black tracking-tighter text-gray-900">ArchiMeuble</span>
           </Link>
 
           <nav className="hidden lg:flex lg:items-center lg:gap-8">
@@ -122,7 +122,7 @@ export function Header() {
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-            <span className="text-lg font-semibold text-gray-900">Menu</span>
+            <span className="text-lg font-black tracking-tighter text-gray-900">ArchiMeuble</span>
             <button
               type="button"
               onClick={() => setIsMenuOpen(false)}

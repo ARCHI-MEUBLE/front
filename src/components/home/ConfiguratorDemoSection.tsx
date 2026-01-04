@@ -83,15 +83,15 @@ export function ConfiguratorDemoSection() {
 
             <h2
               data-animate
-              className="mt-6 font-serif text-4xl font-light leading-[1.05] tracking-tight text-white opacity-0 transition-all duration-700 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 sm:text-5xl lg:text-7xl"
+              className="mt-6 font-sans text-4xl font-bold leading-[1.05] tracking-tight text-white opacity-0 transition-all duration-700 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 sm:text-5xl lg:text-7xl"
             >
               Le sur-mesure <br />
-              <span className="text-[#8B7355] italic font-serif">réinventé</span>
+              <span className="text-[#8B7355] font-sans">réinventé</span>
             </h2>
 
             <p
               data-animate
-              className="mt-8 text-lg font-light leading-relaxed text-[#A8A7A3]/90 opacity-0 transition-all duration-700 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0"
+              className="mt-8 text-lg font-normal leading-relaxed text-[#A8A7A3]/90 opacity-0 transition-all duration-700 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0"
             >
               Concevez votre intérieur avec une précision millimétrée. Notre technologie 3D haute fidélité vous place aux commandes de la création, directement depuis votre navigateur.
             </p>
@@ -166,17 +166,17 @@ export function ConfiguratorDemoSection() {
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-10 border-t border-white/5 pt-16">
           {[
             {
-              icon: <div className="text-3xl font-serif italic text-[#8B7355] font-light">30j</div>,
+              icon: <div className="text-3xl font-sans font-bold text-[#8B7355]">30j</div>,
               title: "Fabrication",
               desc: "Un délai maîtrisé pour une qualité artisanale sans compromis."
             },
             {
-              icon: <div className="text-3xl font-serif italic text-[#8B7355] font-light">100%</div>,
+              icon: <div className="text-3xl font-sans font-bold text-[#8B7355]">100%</div>,
               title: "Français",
               desc: "Soutenir l'artisanat local avec des matériaux sourcés en France."
             },
             {
-              icon: <div className="text-3xl font-serif italic text-[#8B7355] font-light">10 ans</div>,
+              icon: <div className="text-3xl font-sans font-bold text-[#8B7355]">10 ans</div>,
               title: "Garantie",
               desc: "La sérénité d'un meuble conçu pour traverser les générations."
             }
@@ -187,7 +187,7 @@ export function ConfiguratorDemoSection() {
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-white/90">{item.title}</h3>
-                <p className="text-sm font-light text-[#706F6C] leading-relaxed line-clamp-2">{item.desc}</p>
+                <p className="text-sm font-medium text-[#706F6C] leading-relaxed line-clamp-2">{item.desc}</p>
               </div>
             </div>
           ))}

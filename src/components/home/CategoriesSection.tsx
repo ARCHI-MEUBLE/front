@@ -49,7 +49,7 @@ export function CategoriesSection() {
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
               Nos créations
             </span>
-            <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+            <h2 className="mt-4 font-sans text-3xl font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
               Chaque pièce,
               <br />
               sur mesure
@@ -57,7 +57,7 @@ export function CategoriesSection() {
           </div>
           <Link
             href="/showrooms"
-            className="hidden text-sm font-medium text-[#1A1917] underline underline-offset-4 hover:no-underline sm:block"
+            className="hidden text-sm font-bold uppercase tracking-wider text-[#1A1917] underline underline-offset-4 hover:no-underline sm:block"
           >
             Tout voir
           </Link>
@@ -88,10 +88,10 @@ export function CategoriesSection() {
 
               {/* Content */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-                <p className="text-xs uppercase tracking-[0.15em] text-white/60">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">
                   {category.description}
                 </p>
-                <h3 className="mt-1.5 font-serif text-xl text-white sm:mt-2 sm:text-2xl">
+                <h3 className="mt-1.5 font-sans text-xl font-bold text-white sm:mt-2 sm:text-2xl">
                   {category.title}
                 </h3>
               </div>

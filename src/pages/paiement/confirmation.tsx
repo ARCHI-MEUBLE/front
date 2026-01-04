@@ -22,8 +22,7 @@ export default function PaymentConfirmation() {
 
   const verifyPayment = async (paymentIntentId: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiUrl}/backend/api/payment-link/verify-payment.php`, {
+      const response = await fetch(`/backend/api/payment-link/verify-payment.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,8 +234,7 @@ export default function PaymentConfirmation() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-                    window.open(`${apiUrl}/backend/api/payment-link/download-invoice.php?payment_intent_id=${payment_intent}`, '_blank');
+                    window.open(`/backend/api/payment-link/download-invoice.php?payment_intent_id=${payment_intent}`, '_blank');
                   }}
                   className="flex-1 h-12"
                   size="lg"

@@ -63,7 +63,7 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
 
   const createPaymentIntent = async () => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/payment-link/create-payment-intent.php', {
+      const response = await fetch('/backend/api/payment-link/create-payment-intent.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,7 +244,7 @@ export default function PaymentLinkPage() {
 
   const loadOrderData = async (linkToken: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/backend/api/payment-link/index.php?token=${linkToken}`);
+      const response = await fetch(`/backend/api/payment-link/index.php?token=${linkToken}`);
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -263,7 +263,7 @@ export default function PaymentLinkPage() {
 
   const createInitialPaymentIntent = async (linkToken: string) => {
     try {
-      const response = await fetch('http://localhost:8000/backend/api/payment-link/create-payment-intent.php', {
+      const response = await fetch('/backend/api/payment-link/create-payment-intent.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -43,8 +43,8 @@ export function ColorsAndFinishesSection({ colors }: Props) {
 
             {/* Selected color label */}
             <div className="absolute bottom-4 left-4 right-4 border border-white/20 bg-white/90 p-4 backdrop-blur-sm sm:bottom-6 sm:left-6 sm:right-auto sm:p-5">
-              <p className="text-xs uppercase tracking-[0.15em] text-[#706F6C]">Teinte sélectionnée</p>
-              <p className="mt-1 font-serif text-lg text-[#1A1917] sm:text-xl">{activeColor.fancyName}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#706F6C]">Teinte sélectionnée</p>
+              <p className="mt-1 font-sans text-lg font-bold text-[#1A1917] sm:text-xl">{activeColor.fancyName}</p>
             </div>
           </div>
 
@@ -53,12 +53,12 @@ export function ColorsAndFinishesSection({ colors }: Props) {
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
               Matériaux
             </span>
-            <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+            <h2 className="mt-4 font-sans text-3xl font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
               Toutes les teintes
               <br />
               sont possibles
             </h2>
-            <p className="mt-5 text-base leading-relaxed text-[#706F6C] sm:mt-6">
+            <p className="mt-5 text-base font-medium leading-relaxed text-[#706F6C] sm:mt-6">
               Bois naturels, nuances contemporaines, finitions mates ou satinées —
               votre meuble sera exactement comme vous l'imaginez.
             </p>

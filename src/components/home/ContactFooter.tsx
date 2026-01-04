@@ -28,12 +28,12 @@ export function ContactFooter() {
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
               Contact
             </span>
-                        <h2 className="mt-4 font-serif text-[clamp(36px,5vw,56px)] leading-[1.1] tracking-[-0.02em] text-white">
+                        <h2 className="mt-4 font-sans text-[clamp(36px,5vw,56px)] font-bold leading-[1.1] tracking-[-0.02em] text-white">
                             Parlons de
                             <br />
                             votre projet
                         </h2>
-                        <p className="mt-6 max-w-md text-base leading-relaxed text-white">
+                        <p className="mt-6 max-w-md text-base font-medium leading-relaxed text-white">
                             Appelez-nous directement ou envoyez un message.
                             Un artisan dédié vous accompagne de A à Z.
                         </p>
@@ -69,10 +69,10 @@ export function ContactFooter() {
                     {/* Right - Contact form teaser */}
                     <div className="flex items-center justify-center">
                         <div className="w-full max-w-md border border-white/10 bg-white/5 p-10">
-                            <p className="font-serif text-2xl text-white">
+                            <p className="font-sans text-2xl font-bold text-white">
                                 Décrivez votre projet
                             </p>
-                            <p className="mt-4 text-sm leading-relaxed text-white">
+                            <p className="mt-4 text-sm font-medium leading-relaxed text-white">
                                 Dimensions, style, contraintes — plus vous nous en dites,
                                 plus notre proposition sera précise.
                             </p>
@@ -97,10 +97,10 @@ export function ContactFooter() {
                 <div className="grid gap-12 lg:grid-cols-12">
                     {/* Brand */}
                     <div className="lg:col-span-5">
-                        <Link href="/Archimeuble/front/public" className="font-serif text-2xl text-white">
+                        <Link href="/Archimeuble/front/public" className="font-sans text-2xl font-black tracking-tighter text-white">
                             ArchiMeuble
                         </Link>
-                        <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-400">
+                        <p className="mt-4 max-w-sm text-sm font-medium leading-relaxed text-gray-400">
                             Menuisiers à Lille, nous concevons et fabriquons des meubles sur mesure
                             durables pour votre intérieur.
                         </p>

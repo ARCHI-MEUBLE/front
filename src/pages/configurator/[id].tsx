@@ -836,8 +836,7 @@ export default function ConfiguratorPage() {
     let cancelled = false;
     const loadPricing = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${API_URL}/backend/api/pricing/index.php?name=default`);
+        const response = await fetch(`/backend/api/pricing/index.php?name=default`);
         const data = await response.json();
 
         if (!cancelled && data.success && data.data?.price_per_m3) {
@@ -1532,10 +1531,7 @@ export default function ConfiguratorPage() {
       const result = await apiClient.generate.generate(prompt, excludeDoors, singleColor, furnitureColors);
 
       let glbUrlAbsolute = result.glb_url;
-      if (glbUrlAbsolute.startsWith('/')) {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        glbUrlAbsolute = `${API_URL}${glbUrlAbsolute}`;
-      }
+      // On utilise maintenant le proxy configuré dans next.config.js
       setGlbUrl(glbUrlAbsolute);
       setDxfUrl(result.dxf_url || null);
     } catch (error) {

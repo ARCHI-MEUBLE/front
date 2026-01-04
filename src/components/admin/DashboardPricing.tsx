@@ -59,7 +59,7 @@ export function DashboardPricing() {
   const loadPricings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/backend/api/pricing/index.php');
+      const response = await fetch('/backend/api/pricing/index.php');
       const data = await response.json();
 
       if (data.success) {
@@ -109,7 +109,7 @@ export function DashboardPricing() {
     }
 
     try {
-      const url = 'http://localhost:8000/backend/api/pricing/index.php';
+      const url = '/backend/api/pricing/index.php';
       const method = editingPricing ? 'PUT' : 'POST';
       const body = editingPricing
         ? {
@@ -152,7 +152,7 @@ export function DashboardPricing() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/backend/api/pricing/index.php', {
+      const response = await fetch('/backend/api/pricing/index.php', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

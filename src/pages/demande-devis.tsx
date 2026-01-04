@@ -76,7 +76,7 @@ export default function DemandeDevisPage() {
         formDataToSend.append(`files[]`, file);
       });
 
-      const response = await fetch('http://localhost:8000/backend/api/quote-request/index.php', {
+      const response = await fetch('/backend/api/quote-request/index.php', {
         method: 'POST',
         body: formDataToSend,
       });

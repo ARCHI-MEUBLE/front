@@ -46,7 +46,7 @@ export function HeroSection() {
             {/* Titre */}
             <h1
               data-animate
-              className="mt-5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.02em] text-[#1A1917] opacity-0 sm:text-4xl"
+              className="mt-5 font-sans text-[32px] font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] opacity-0 sm:text-4xl"
             >
               Meubles sur mesure,
               <br />
@@ -56,7 +56,7 @@ export function HeroSection() {
             {/* Paragraphe */}
             <p
               data-animate
-              className="mt-4 text-base leading-relaxed text-[#706F6C] opacity-0"
+              className="mt-4 text-base font-medium leading-relaxed text-[#706F6C] opacity-0"
             >
               Chaque pièce est dessinée pour votre espace,
               fabriquée dans notre atelier lillois.
@@ -111,16 +111,16 @@ export function HeroSection() {
             className="mt-8 flex justify-between border-t border-[#E8E6E3] pt-6 opacity-0"
           >
             <div className="text-center">
-              <span className="block font-mono text-lg text-[#1A1917]">30j</span>
-              <span className="text-xs text-[#706F6C]">fabrication</span>
+              <span className="block font-sans font-bold text-lg text-[#1A1917]">30j</span>
+              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">fabrication</span>
             </div>
             <div className="text-center">
-              <span className="block font-mono text-lg text-[#1A1917]">100%</span>
-              <span className="text-xs text-[#706F6C]">français</span>
+              <span className="block font-sans font-bold text-lg text-[#1A1917]">100%</span>
+              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">français</span>
             </div>
             <div className="text-center">
-              <span className="block font-mono text-lg text-[#1A1917]">10 ans</span>
-              <span className="text-xs text-[#706F6C]">garantie</span>
+              <span className="block font-sans font-bold text-lg text-[#1A1917]">10 ans</span>
+              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">garantie</span>
             </div>
           </div>
         </div>
@@ -140,7 +140,7 @@ export function HeroSection() {
             {/* Titre */}
             <h1
               data-animate
-              className="mt-8 font-serif text-6xl font-normal leading-[0.95] tracking-[-0.02em] text-[#1A1917] opacity-0 xl:text-7xl"
+              className="mt-8 font-sans text-6xl font-bold leading-[0.95] tracking-[-0.02em] text-[#1A1917] opacity-0 xl:text-7xl"
             >
               Meubles sur mesure,
               <br />
@@ -150,7 +150,7 @@ export function HeroSection() {
             {/* Paragraphe */}
             <p
               data-animate
-              className="mt-8 max-w-md text-lg leading-relaxed text-[#706F6C] opacity-0"
+              className="mt-8 max-w-md text-lg font-medium leading-relaxed text-[#706F6C] opacity-0"
             >
               Chaque pièce est dessinée pour votre espace,
               fabriquée dans notre atelier lillois, livrée chez vous.
@@ -182,18 +182,18 @@ export function HeroSection() {
               className="mt-16 flex items-center gap-8 text-sm text-[#706F6C] opacity-0"
             >
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#8B7355]">30j</span>
-                <span>fabrication</span>
+                <span className="font-sans font-bold text-base text-[#8B7355]">30j</span>
+                <span className="font-medium uppercase tracking-wider text-[10px]">fabrication</span>
               </div>
               <div className="h-4 w-px bg-[#E8E6E3]" />
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#8B7355]">100%</span>
-                <span>Made in France</span>
+                <span className="font-sans font-bold text-base text-[#8B7355]">100%</span>
+                <span className="font-medium uppercase tracking-wider text-[10px]">Made in France</span>
               </div>
               <div className="h-4 w-px bg-[#E8E6E3]" />
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#8B7355]">10 ans</span>
-                <span>garantie</span>
+                <span className="font-sans font-bold text-base text-[#8B7355]">10 ans</span>
+                <span className="font-medium uppercase tracking-wider text-[10px]">garantie</span>
               </div>
             </div>
           </div>
