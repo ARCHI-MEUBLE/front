@@ -174,7 +174,6 @@ export function DashboardModels() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isHintOpen, setIsHintOpen] = useState(false);
 
   const fetchModels = async () => {
     try {
@@ -487,11 +486,6 @@ export function DashboardModels() {
                 Lancer la création visuelle
               </a>
             </Button>
-
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsHintOpen(true)}>
-              <IconHelpCircle className="w-4 h-4" />
-              Guide des codes (Hint)
-            </Button>
           </CardContent>
         </Card>
 
@@ -612,16 +606,6 @@ export function DashboardModels() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="prompt">Prompt interne</Label>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  type="button"
-                  className="h-8 w-8 text-muted-foreground hover:text-primary"
-                  onClick={() => setIsHintOpen(true)}
-                >
-                  <IconHelpCircle className="h-5 w-5" />
-                  <span className="sr-only">Guide des abréviations</span>
-                </Button>
               </div>
               <textarea
                 id="prompt"
@@ -677,23 +661,6 @@ export function DashboardModels() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-      {/* Guide Dialog */}
-      <Dialog open={isHintOpen} onOpenChange={setIsHintOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>Guide des codes techniques</DialogTitle>
-            <DialogDescription>
-              Lexique des abréviations pour la conception des modèles.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <PromptGuideContent />
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsHintOpen(false)}>Fermer</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

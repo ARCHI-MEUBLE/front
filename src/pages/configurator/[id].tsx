@@ -1692,7 +1692,7 @@ export default function ConfiguratorPage() {
         config_data: currentConfigData, // Sauvegarder l'objet JSON complet pour une restauration parfaite
       };
 
-      const response = await fetch('/api/admin/models', {
+      const response = await fetch('/api/models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1704,8 +1704,14 @@ export default function ConfiguratorPage() {
       }
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Erreur lors de la création du modèle');
+        let errorMessage = 'Erreur lors de la création du modèle';
+        try {
+          const errData = await response.json();
+          errorMessage = errData.error || errorMessage;
+        } catch (e) {
+          console.error('Failed to parse error response', e);
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success('Le modèle a été ajouté au catalogue avec succès !');
