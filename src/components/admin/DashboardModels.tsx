@@ -12,11 +12,13 @@ import {
   IconUpload,
   IconExternalLink,
   IconTrendingUp,
+  IconHelpCircle,
 } from '@tabler/icons-react';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -43,6 +45,125 @@ const EMPTY_FORM: FormState = {
   imagePath: '',
 };
 
+const PromptGuideContent = () => (
+  <div className="space-y-8">
+    <div className="grid gap-8 sm:grid-cols-2">
+      {/* Structure Column */}
+      <div className="space-y-4">
+        <h5 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+          <span className="h-[1px] w-4 bg-zinc-300" /> Structure globale
+        </h5>
+        <div className="space-y-3">
+          <div className="flex items-center group">
+            <code className="min-w-[60px] text-xs font-bold text-primary bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">M1</code>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400 ml-4 group-hover:text-primary transition-colors">Modèle de base</span>
+          </div>
+          <div className="flex items-center group">
+            <code className="min-w-[60px] text-xs font-bold text-primary bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">(L,P,H)</code>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400 ml-4 group-hover:text-primary transition-colors">Dimensions (mm)</span>
+          </div>
+          <div className="flex items-center group">
+            <code className="min-w-[60px] text-xs font-bold text-primary bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">H / V</code>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400 ml-4 group-hover:text-primary transition-colors">Découpe Horiz. / Vert.</span>
+          </div>
+          <div className="flex items-center group">
+            <code className="min-w-[60px] text-xs font-bold text-primary bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">[x,y]</code>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400 ml-4 group-hover:text-primary transition-colors">Ratios des divisions</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Column */}
+      <div className="space-y-4">
+        <h5 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+          <span className="h-[1px] w-4 bg-zinc-300" /> Équipements & Options
+        </h5>
+        <div className="grid grid-cols-1 gap-2">
+          <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-blue-600 dark:text-blue-400">v</code>
+              <span className="text-xs text-zinc-500">Étagère Verre</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-emerald-600 dark:text-emerald-400">p</code>
+              <span className="text-xs text-zinc-500">Pegboard</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-primary">T</code>
+              <span className="text-xs text-zinc-500">Tiroir std</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-primary">To</code>
+              <span className="text-xs text-zinc-500">Tiroir Push</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-primary">P / Pd</code>
+              <span className="text-xs text-zinc-500">Porte G / D</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-primary">P2</code>
+              <span className="text-xs text-zinc-500">Double Porte</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <code className="text-xs font-bold text-primary">D</code>
+              <span className="text-xs text-zinc-500">Penderie</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Example Section - KEPT AS BLACK BOX */}
+    <div className="bg-zinc-950 rounded-xl p-6 font-mono text-xs overflow-hidden border border-zinc-800 shadow-2xl relative">
+      <div className="absolute top-0 right-0 p-2 opacity-10">
+        <IconPackage className="w-12 h-12" />
+      </div>
+      <div className="flex justify-between items-center mb-4 text-zinc-500 border-b border-zinc-800/50 pb-3">
+        <span className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Structure du Prompt
+        </span>
+        <Badge variant="outline" className="text-[10px] h-5 border-zinc-800 text-zinc-400 uppercase tracking-widest px-2">Syntaxe</Badge>
+      </div>
+      <div className="space-y-4">
+        <div className="bg-zinc-900/50 p-3 rounded border border-zinc-800/50">
+          <p className="text-sm leading-relaxed tracking-wider">
+            <span className="text-blue-400 font-bold">M1</span>
+            <span className="text-zinc-600">(</span>
+            <span className="text-amber-400">1000,400,2000</span>
+            <span className="text-zinc-600">)</span>
+            <span className="text-purple-400 font-bold">V</span>
+            <span className="text-zinc-600">[</span>
+            <span className="text-emerald-400">50,50</span>
+            <span className="text-zinc-600">](</span>
+            <span className="text-white font-bold underline decoration-zinc-700 underline-offset-4">T</span>
+            <span className="text-zinc-600">,</span>
+            <span className="text-white font-bold underline decoration-zinc-700 underline-offset-4">v</span>
+            <span className="text-zinc-600">)</span>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-3 mt-4 text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-sm bg-blue-400" /> Modèle & Dimensions
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-sm bg-purple-400" /> Structure & Ratios
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-sm bg-white" /> Équipements
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export function DashboardModels() {
   const [models, setModels] = useState<AdminModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +174,7 @@ export function DashboardModels() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isHintOpen, setIsHintOpen] = useState(false);
 
   const fetchModels = async () => {
     try {
@@ -358,12 +480,17 @@ export function DashboardModels() {
             <CardTitle>Conception visuelle</CardTitle>
             <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l'ajouter directement au catalogue.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex items-center justify-between">
             <Button asChild className="bg-[#8B7355] hover:bg-[#705D45]">
               <a href="/configurator/M1?adminMode=createModel" target="_blank" rel="noopener noreferrer">
                 <IconExternalLink className="w-4 h-4 mr-2" />
                 Lancer la création visuelle
               </a>
+            </Button>
+
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsHintOpen(true)}>
+              <IconHelpCircle className="w-4 h-4" />
+              Guide des codes (Hint)
             </Button>
           </CardContent>
         </Card>
@@ -483,7 +610,19 @@ export function DashboardModels() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="prompt">Prompt interne</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="prompt">Prompt interne</Label>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  type="button"
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  onClick={() => setIsHintOpen(true)}
+                >
+                  <IconHelpCircle className="h-5 w-5" />
+                  <span className="sr-only">Guide des abréviations</span>
+                </Button>
+              </div>
               <textarea
                 id="prompt"
                 name="prompt"
@@ -538,6 +677,23 @@ export function DashboardModels() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      {/* Guide Dialog */}
+      <Dialog open={isHintOpen} onOpenChange={setIsHintOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Guide des codes techniques</DialogTitle>
+            <DialogDescription>
+              Lexique des abréviations pour la conception des modèles.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <PromptGuideContent />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsHintOpen(false)}>Fermer</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

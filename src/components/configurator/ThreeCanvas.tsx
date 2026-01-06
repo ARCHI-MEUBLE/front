@@ -361,11 +361,17 @@ function AnimatedPushDrawer({ position, width, height, depth, hexColor, imageUrl
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
 
-  useAnimationFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
-    }
-  });
+  useEffect(() => {
+    let animationFrameId: number;
+    const animate = () => {
+      if (groupRef.current) {
+        groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
+      }
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [targetZ]);
 
   const boxDepth = depth * 0.8;
   const boxHeight = height * 0.8;
