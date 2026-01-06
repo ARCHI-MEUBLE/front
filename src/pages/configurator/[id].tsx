@@ -1645,6 +1645,10 @@ export default function ConfiguratorPage() {
 
   // Fonction pour enregistrer comme modèle de catalogue
   const saveAsModel = async () => {
+    console.log('🔵 FONCTION saveAsModel APPELEE !');
+    console.log('🔵 isAdmin:', isAdmin);
+    console.log('🔵 modelForm:', modelForm);
+
     if (!isAdmin) {
       toast.error("Vous devez être administrateur pour effectuer cette action.");
       return;
@@ -1978,7 +1982,10 @@ export default function ConfiguratorPage() {
               <Input
                 id="name"
                 value={modelForm.name}
-                onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })}
+                onChange={(e) => {
+                  console.log('🟢 Changement du nom du modèle:', e.target.value);
+                  setModelForm({ ...modelForm, name: e.target.value });
+                }}
                 placeholder="Ex: Dressing Élégance"
               />
             </div>
@@ -2056,8 +2063,12 @@ export default function ConfiguratorPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateModelDialogOpen(false)}>Annuler</Button>
-            <Button 
-              onClick={saveAsModel} 
+            <Button
+              onClick={() => {
+                console.log('🟡 CLICK SUR BOUTON DIALOG - modelForm.name:', modelForm.name);
+                console.log('🟡 Bouton désactivé?', !modelForm.name);
+                saveAsModel();
+              }}
               disabled={!modelForm.name}
               className="bg-[#1A1917] text-white"
             >
@@ -2097,8 +2108,11 @@ export default function ConfiguratorPage() {
 
             <div className="flex items-center gap-3">
               {isAdminCreateModel && (
-                <Button 
-                  onClick={() => setIsCreateModelDialogOpen(true)}
+                <Button
+                  onClick={() => {
+                    console.log('🔴 CLICK SUR BOUTON HEADER (ouverture dialog)');
+                    setIsCreateModelDialogOpen(true);
+                  }}
                   className="bg-[#8B7355] hover:bg-[#705D45] text-white h-9 lg:h-10 px-4 lg:px-6 rounded-[2px]"
                 >
                   <IconPlus className="h-4 w-4 mr-2" />
