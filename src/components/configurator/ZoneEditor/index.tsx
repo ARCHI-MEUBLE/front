@@ -7,9 +7,9 @@ export { type Zone, type ZoneContent, type ZoneColor } from './types';
 
 interface ZoneEditorProps {
   rootZone: Zone;
-  selectedZoneId: string | null;
+  selectedZoneIds: string[];
   onRootZoneChange: (zone: Zone) => void;
-  onSelectedZoneIdChange: (id: string | null) => void;
+  onSelectedZoneIdsChange: (ids: string[]) => void;
   width: number;
   height: number;
   hideControls?: boolean;
@@ -17,32 +17,41 @@ interface ZoneEditorProps {
   // Expose les actions pour une utilisation externe (ActionBar)
   onSplitZone?: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
   onSetZoneContent?: (zoneId: string, content: ZoneContent) => void;
+  onSetDoorContent?: (zoneId: string, content: ZoneContent) => void;
   onResetZone?: (zoneId: string) => void;
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
+  onToggleDressing?: (zoneId: string) => void;
+  onGroupZones?: (zoneIds: string[]) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   exposeActions?: (actions: {
     splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
     setZoneContent: (zoneId: string, content: ZoneContent) => void;
+    setDoorContent: (zoneId: string, content: ZoneContent) => void;
     resetZone: (zoneId: string) => void;
     toggleLight: (zoneId: string) => void;
     toggleCableHole: (zoneId: string) => void;
+    toggleDressing: (zoneId: string) => void;
+    groupZones: (zoneIds: string[]) => void;
     selectedZoneInfo: { zone: Zone; parent: Zone | null } | null;
   }) => void;
 }
 
 export default function ZoneEditor({
   rootZone,
-  selectedZoneId,
+  selectedZoneIds,
   onRootZoneChange,
-  onSelectedZoneIdChange,
+  onSelectedZoneIdsChange,
   width,
   height,
   hideControls,
   showNumbers,
   onToggleLight,
   onToggleCableHole,
+  onToggleDressing,
+  onGroupZones,
   onSetHandleType,
+  onSetDoorContent,
   exposeActions,
 }: ZoneEditorProps) {
   // Trouver une zone avec son parent
@@ -70,8 +79,8 @@ export default function ZoneEditor({
   );
 
   const selectedZoneInfo = useMemo(
-    () => findZoneWithParent(rootZone, selectedZoneId),
-    [findZoneWithParent, rootZone, selectedZoneId]
+    () => findZoneWithParent(rootZone, selectedZoneIds[0] || null),
+    [findZoneWithParent, rootZone, selectedZoneIds]
   );
 
   const selectedZone = selectedZoneInfo?.zone ?? rootZone;
@@ -105,9 +114,9 @@ export default function ZoneEditor({
       };
 
       onRootZoneChange(updateZone(rootZone));
-      onSelectedZoneIdChange(`${zoneId}-0`);
+      onSelectedZoneIdsChange([`${zoneId}-0`]);
     },
-    [rootZone, onRootZoneChange, onSelectedZoneIdChange]
+    [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
   );
 
   // Modifier le contenu
@@ -126,6 +135,27 @@ export default function ZoneEditor({
       onRootZoneChange(updateZone(rootZone));
     },
     [rootZone, onRootZoneChange]
+  );
+
+  // Modifier les portes
+  const setDoorContent = useCallback(
+    (zoneId: string, content: ZoneContent) => {
+      if (onSetDoorContent) {
+        onSetDoorContent(zoneId, content);
+      } else {
+        const updateZone = (z: Zone): Zone => {
+          if (z.id === zoneId) {
+            return { ...z, doorContent: content === 'empty' ? undefined : content };
+          }
+          if (z.children) {
+            return { ...z, children: z.children.map(updateZone) };
+          }
+          return z;
+        };
+        onRootZoneChange(updateZone(rootZone));
+      }
+    },
+    [rootZone, onRootZoneChange, onSetDoorContent]
   );
 
   // Basculer l'éclairage
@@ -168,6 +198,27 @@ export default function ZoneEditor({
       }
     },
     [rootZone, onRootZoneChange, onToggleCableHole]
+  );
+
+  // Basculer la penderie
+  const toggleDressing = useCallback(
+    (zoneId: string) => {
+      if (onToggleDressing) {
+        onToggleDressing(zoneId);
+      } else {
+        const updateZone = (z: Zone): Zone => {
+          if (z.id === zoneId && z.type === 'leaf') {
+            return { ...z, hasDressing: !z.hasDressing };
+          }
+          if (z.children) {
+            return { ...z, children: z.children.map(updateZone) };
+          }
+          return z;
+        };
+        onRootZoneChange(updateZone(rootZone));
+      }
+    },
+    [rootZone, onRootZoneChange, onToggleDressing]
   );
 
   // Définir le type de poignée
@@ -214,9 +265,9 @@ export default function ZoneEditor({
       };
 
       onRootZoneChange(updateZone(rootZone));
-      onSelectedZoneIdChange(zoneId);
+      onSelectedZoneIdsChange([zoneId]);
     },
-    [rootZone, onRootZoneChange, onSelectedZoneIdChange]
+    [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
   );
 
   // Modifier le ratio
@@ -267,26 +318,53 @@ export default function ZoneEditor({
     [setSplitRatio, setSplitRatios]
   );
 
+  // Grouper des zones
+  const groupZones = useCallback(
+    (zoneIds: string[]) => {
+      if (onGroupZones) {
+        onGroupZones(zoneIds);
+      }
+    },
+    [onGroupZones]
+  );
+
   useEffect(() => {
     if (exposeActions) {
       exposeActions({
         splitZone,
         setZoneContent,
+        setDoorContent,
         resetZone,
         toggleLight,
         toggleCableHole,
+        toggleDressing,
+        groupZones,
         selectedZoneInfo,
       });
     }
-  }, [exposeActions, splitZone, setZoneContent, resetZone, toggleLight, toggleCableHole, selectedZoneInfo]);
+  }, [exposeActions, splitZone, setZoneContent, setDoorContent, resetZone, toggleLight, toggleCableHole, toggleDressing, groupZones, selectedZoneInfo]);
 
   return (
     <div className="space-y-3">
       {/* Canvas avec titre intégré */}
       <ZoneCanvas
         zone={rootZone}
-        selectedZoneId={selectedZoneId}
-        onSelect={onSelectedZoneIdChange}
+        selectedZoneIds={selectedZoneIds}
+        onSelect={(id, multi) => {
+          if (!id) {
+            onSelectedZoneIdsChange([]);
+            return;
+          }
+          if (multi) {
+            if (selectedZoneIds.includes(id)) {
+              onSelectedZoneIdsChange(selectedZoneIds.filter((sid) => sid !== id));
+            } else {
+              onSelectedZoneIdsChange([...selectedZoneIds, id]);
+            }
+          } else {
+            onSelectedZoneIdsChange([id]);
+          }
+        }}
         onRatioChange={handleRatioChange}
         width={width}
         height={height}
@@ -296,19 +374,23 @@ export default function ZoneEditor({
       {/* Contrôles dans une card - masqués en mode hideControls */}
       {!hideControls && (
         <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
-          {selectedZoneId ? (
+          {selectedZoneIds.length > 0 ? (
             <ZoneControls
               selectedZone={selectedZone}
+              selectedZoneIds={selectedZoneIds}
               parentZone={parentZone}
               onSplitZone={splitZone}
               onSetContent={setZoneContent}
+              onSetDoorContent={onSetDoorContent || setDoorContent}
               onResetZone={resetZone}
               onSetSplitRatio={setSplitRatio}
               onSetSplitRatios={setSplitRatios}
-              onToggleLight={toggleLight}
-              onToggleCableHole={toggleCableHole}
-              onSetHandleType={setHandleType}
-              onSelectParent={parentZone ? () => onSelectedZoneIdChange(parentZone.id) : undefined}
+              onToggleLight={onToggleLight || toggleLight}
+              onToggleCableHole={onToggleCableHole || toggleCableHole}
+              onToggleDressing={onToggleDressing || toggleDressing}
+              onGroupZones={groupZones}
+              onSetHandleType={onSetHandleType || setHandleType}
+              onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-10 text-center">

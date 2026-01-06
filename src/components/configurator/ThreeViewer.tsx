@@ -27,7 +27,7 @@ export interface ThreeViewerProps {
   hasSocle: boolean;
   socle?: string;
   rootZone: Zone | null;
-  selectedZoneId?: string | null;
+  selectedZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;

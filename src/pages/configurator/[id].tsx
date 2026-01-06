@@ -208,9 +208,9 @@ function ConfigurationSummary({
           <div className="bg-white border border-[#E8E6E3] rounded-[2px] p-4 shadow-sm">
             <ZoneEditor
               rootZone={rootZone}
-              selectedZoneId={null}
+              selectedZoneIds={[]}
               onRootZoneChange={() => {}}
-              onSelectedZoneIdChange={() => {}}
+              onSelectedZoneIdsChange={() => {}}
               width={width}
               height={height}
               hideControls={true}
@@ -574,7 +574,7 @@ export default function ConfiguratorPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canUndoZone, canRedoZone, undoZone, redoZone]);
 
-  const [selectedZoneId, setSelectedZoneId] = useState<string | null>('root');
+  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
   const [doors, setDoors] = useState(0);
   
   // Vérifier s'il y a des portes spécifiques dans les zones
@@ -604,7 +604,7 @@ export default function ConfiguratorPage() {
     return null;
   }, []);
 
-  const selectedZone = useMemo(() => findZone(rootZone, selectedZoneId), [rootZone, selectedZoneId, findZone]);
+  const selectedZone = useMemo(() => findZone(rootZone, selectedZoneIds[0] || null), [rootZone, selectedZoneIds, findZone]);
 
   const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
     const updateZone = (z: Zone): Zone => {
@@ -627,7 +627,7 @@ export default function ConfiguratorPage() {
       return z;
     };
     setRootZone(updateZone(rootZone));
-    setSelectedZoneId(`${zoneId}-0`);
+    setSelectedZoneIds([zoneId]);
   }, [rootZone]);
 
   const setZoneContent = useCallback((zoneId: string, content: ZoneContent) => {
@@ -660,6 +660,149 @@ export default function ConfiguratorPage() {
     const updateZone = (z: Zone): Zone => {
       if (z.id === zoneId && z.type === 'leaf') {
         return { ...z, hasCableHole: !z.hasCableHole };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const toggleZoneDressing = useCallback((zoneId: string) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, hasDressing: !z.hasDressing };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const groupZones = useCallback((zoneIds: string[]) => {
+    if (zoneIds.length <= 1) return;
+
+    // Trouver le parent commun et les index des zones
+    const findParentAndIndices = (current: Zone, targetIds: string[]): { parent: Zone, indices: number[] } | null => {
+      if (!current.children) return null;
+      
+      const indices = targetIds.map(id => current.children!.findIndex(c => c.id === id)).filter(idx => idx !== -1);
+      
+      if (indices.length === targetIds.length) {
+        return { parent: current, indices: indices.sort((a, b) => a - b) };
+      }
+
+      for (const child of current.children) {
+        const found = findParentAndIndices(child, targetIds);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const result = findParentAndIndices(rootZone, zoneIds);
+    if (!result) {
+      toast.error("Les zones doivent faire partie du même groupe.");
+      return;
+    }
+
+    const { parent, indices } = result;
+    
+    // Vérifier si consécutives
+    for (let i = 0; i < indices.length - 1; i++) {
+      if (indices[i+1] !== indices[i] + 1) {
+        toast.error("Les zones doivent être côte à côte pour être groupées.");
+        return;
+      }
+    }
+
+    const updateZoneTree = (z: Zone): Zone => {
+      if (z.id === parent.id) {
+        const newChildren: Zone[] = [];
+        const groupedChildren: Zone[] = [];
+        const groupedRatios: number[] = [];
+        
+        const currentRatios = z.splitRatios || (z.children!.length === 2 ? [z.splitRatio!, 100 - z.splitRatio!] : z.children!.map(() => 100 / z.children!.length));
+        
+        let groupedRatioSum = 0;
+        
+        z.children!.forEach((child, idx) => {
+          if (indices.includes(idx)) {
+            groupedChildren.push(child);
+            groupedRatioSum += currentRatios[idx];
+            groupedRatios.push(currentRatios[idx]);
+          } else {
+            if (groupedChildren.length > 0 && newChildren.every(c => !c.id.startsWith('group-'))) {
+              // Créer le groupe
+              const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
+              const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
+              
+              newChildren.push({
+                id: groupId,
+                type: z.type, // même type que le parent
+                children: groupedChildren.map(c => ({...c})),
+                splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
+                splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
+              });
+              groupedChildren.length = 0; // Clear
+            }
+            newChildren.push(child);
+          }
+        });
+
+        // Si le groupe est à la fin
+        if (groupedChildren.length > 0) {
+          const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
+          const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
+          
+          newChildren.push({
+            id: groupId,
+            type: z.type,
+            children: groupedChildren.map(c => ({...c})),
+            splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
+            splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
+          });
+        }
+
+        // Calculer les nouveaux ratios du parent
+        const newParentRatios: number[] = [];
+        let groupAdded = false;
+        z.children!.forEach((_, idx) => {
+          if (indices.includes(idx)) {
+            if (!groupAdded) {
+              newParentRatios.push(groupedRatioSum);
+              groupAdded = true;
+            }
+          } else {
+            newParentRatios.push(currentRatios[idx]);
+          }
+        });
+
+        return {
+          ...z,
+          children: newChildren,
+          splitRatio: newChildren.length === 2 ? newParentRatios[0] : undefined,
+          splitRatios: newChildren.length > 2 ? newParentRatios : undefined,
+        };
+      }
+      
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZoneTree) };
+      }
+      return z;
+    };
+
+    setRootZone(updateZoneTree(rootZone));
+    setSelectedZoneIds([]); // Désélectionner après regroupement
+    toast.success("Zones groupées avec succès");
+  }, [rootZone]);
+
+  const setZoneDoorContent = useCallback((zoneId: string, content: ZoneContent) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId) {
+        return { ...z, doorContent: content === 'empty' ? undefined : content };
       }
       if (z.children) {
         return { ...z, children: z.children.map(updateZone) };
@@ -1338,7 +1481,7 @@ export default function ConfiguratorPage() {
     setFinish(initialConfig.finish);
     setDoorType(initialConfig.doorType || 'none');
     setDoorSide(initialConfig.doorSide || 'left');
-    setSelectedZoneId('root');
+    setSelectedZoneIds(['root']);
 
     // Supprimer la sauvegarde localStorage
     try {
@@ -1397,63 +1540,92 @@ export default function ConfiguratorPage() {
 
   // Construction du prompt depuis l'arbre de zones
   const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
+    let doorCode = '';
+    const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
+
+    if (currentDoor) {
+      switch (currentDoor) {
+        case 'door': doorCode = zone.id === 'root' ? '' : 'Pg'; break;
+        case 'door_right': doorCode = 'Pd'; break;
+        case 'door_double': doorCode = 'P2'; break;
+        case 'mirror_door': doorCode = 'Pm'; break;
+        case 'push_door': doorCode = 'Po'; break;
+      }
+      
+      // Ajouter le code de poignée si c'est une porte
+      if (doorCode && ['door', 'door_right', 'door_double', 'mirror_door'].includes(currentDoor)) {
+        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
+        if (hCode) doorCode += hCode;
+      }
+    }
+
     if (zone.type === 'leaf') {
       let leafChar = '';
       switch (zone.content) {
         case 'drawer': leafChar = 'T'; break;
         case 'push_drawer': leafChar = 'To'; break;
         case 'dressing': leafChar = 'D'; break;
-        case 'door': leafChar = zone.id === 'root' ? '' : 'Pg'; break;
-        case 'door_right': leafChar = 'Pd'; break;
-        case 'door_double': leafChar = 'P2'; break;
-        case 'mirror_door': leafChar = 'Pm'; break;
         case 'glass_shelf': leafChar = 'v'; break;
+        case 'shelf': leafChar = ''; break; // étagère standard
         default: leafChar = '';
       }
 
-      // Ajouter le code de poignée si applicable (tiroirs et portes)
-      if (['drawer', 'door', 'door_right', 'door_double', 'mirror_door'].includes(zone.content || '')) {
+      // Ajouter le code de poignée si c'est un tiroir
+      if (zone.content === 'drawer') {
         const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
         if (hCode) leafChar += hCode;
       }
 
-      if (zone.hasCableHole) {
-        leafChar += 'c';
+      // Combiner avec le code de porte si présent sur la feuille
+      // Note: doorCode contient déjà Pg, Pd, etc.
+      // Si on a un contenu interne (T, v, D) ET une porte sur la même feuille
+      let finalLeaf = leafChar;
+      if (doorCode) {
+        // Le prompt accepte PgT (Porte Gauche + Tiroir)
+        finalLeaf = doorCode + leafChar;
       }
-      return leafChar;
+
+      if (zone.hasCableHole) {
+        finalLeaf += 'c';
+      }
+      if (zone.hasDressing && zone.content !== 'dressing') {
+        finalLeaf += 'D';
+      }
+      return finalLeaf;
     }
 
     const isHorizontal = zone.type === 'horizontal';
     const children = zone.children || [];
     const childCount = children.length;
 
-    // For horizontal divisions, the backend expects bottom to top order.
-    // In front-end, the 3D scene (Three.js) has Y up, but the UI usually lists from top to bottom.
-    // In procedure_real.py, process(seq1, meublebas) followed by process(seq2, meublehaut)
-    // confirms that the first sequence is for the bottom-most zone.
     const orderedChildren = isHorizontal ? [...children].reverse() : children;
     const childPrompts = orderedChildren.map((c) => buildPromptFromZoneTree(c));
 
     const prefix = isHorizontal ? 'H' : 'V';
+    let zoneCode = '';
 
     // Pour 2 enfants avec splitRatio
     if (zone.splitRatio !== undefined && childCount === 2) {
       const r1 = Math.round(zone.splitRatio);
       const r2 = 100 - r1;
-      // Inverser les ratios pour horizontal
       const ratios = isHorizontal ? [r2, r1] : [r1, r2];
-      return `${prefix}[${ratios[0]},${ratios[1]}](${childPrompts.join(',')})`;
-    }
-
-    // Pour 3+ enfants avec splitRatios
-    if (zone.splitRatios && zone.splitRatios.length === childCount && childCount > 2) {
-      // Inverser les ratios pour horizontal
+      zoneCode = `${prefix}[${ratios[0]},${ratios[1]}](${childPrompts.join(',')})`;
+    } else if (zone.splitRatios && zone.splitRatios.length === childCount && childCount > 2) {
+      // Pour 3+ enfants avec splitRatios
       const ratios = isHorizontal ? [...zone.splitRatios].reverse() : zone.splitRatios;
       const ratiosStr = ratios.map(r => Math.round(r)).join(',');
-      return `${prefix}[${ratiosStr}](${childPrompts.join(',')})`;
+      zoneCode = `${prefix}[${ratiosStr}](${childPrompts.join(',')})`;
+    } else {
+      zoneCode = `${prefix}${childCount}(${childPrompts.join(',')})`;
     }
 
-    return `${prefix}${childCount}(${childPrompts.join(',')})`;
+    // Si on a une porte sur ce groupe (parent)
+    if (doorCode) {
+      // Syntaxe : Pg(V2(T,T)) -> Porte sur le groupe
+      return doorCode + '(' + zoneCode + ')';
+    }
+
+    return zoneCode;
   }, []);
 
   // Calcul du prix basé sur le volume en m³
@@ -1481,21 +1653,38 @@ export default function ConfiguratorPage() {
 
     // 5. Compter tiroirs et penderies dans les zones
     const countExtraPrice = (zone: Zone): number => {
-      if (zone.type === 'leaf') {
-        switch (zone.content) {
-          case 'drawer': return 35;
-          case 'push_drawer': return 45;
+      let extra = 0;
+      
+      // Prix de la porte sur cette zone (feuille ou parent)
+      const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
+      if (door) {
+        switch (door) {
           case 'door':
-          case 'door_right': return 40;
-          case 'push_door': return 50;
-          case 'door_double': return 80;
-          case 'mirror_door': return 95;
-          case 'glass_shelf': return 25;
-          case 'dressing': return 20;
-          default: return 0;
+          case 'door_right': extra += 40; break;
+          case 'push_door': extra += 50; break;
+          case 'door_double': extra += 80; break;
+          case 'mirror_door': extra += 95; break;
         }
       }
-      return (zone.children || []).reduce((sum, child) => sum + countExtraPrice(child), 0);
+
+      if (zone.type === 'leaf') {
+        switch (zone.content) {
+          case 'drawer': extra += 35; break;
+          case 'push_drawer': extra += 45; break;
+          case 'glass_shelf': extra += 25; break;
+          case 'dressing': extra += 20; break;
+          default: extra += 0; break;
+        }
+
+        // Ajouter le prix de la penderie si l'option toggle est activée (et qu'on n'a pas déjà compté Dressing via content)
+        if (zone.hasDressing && zone.content !== 'dressing') {
+          extra += 20;
+        }
+      } else if (zone.children) {
+        extra += zone.children.reduce((sum, child) => sum + countExtraPrice(child), 0);
+      }
+      
+      return extra;
     };
     p += countExtraPrice(config.rootZone);
 
@@ -2152,8 +2341,8 @@ export default function ConfiguratorPage() {
                   hasSocle={socle !== 'none'}
                   socle={socle}
                   rootZone={rootZone}
-                  selectedZoneId={selectedZoneId}
-                  onSelectZone={setSelectedZoneId}
+                  selectedZoneIds={selectedZoneIds}
+                  onSelectZone={(id) => setSelectedZoneIds(id ? [id] : [])}
                   isBuffet={furnitureStructure?.isBuffet}
                   doorsOpen={doorsOpen}
                   showDecorations={showDecorations}
@@ -2173,7 +2362,7 @@ export default function ConfiguratorPage() {
                     defaultColor={color}
                     defaultImageUrl={selectedColorImage}
                     onColorChange={setZoneColor}
-                    onClose={() => setSelectedZoneId(null)}
+                    onClose={() => setSelectedZoneIds([])}
                   />
                 )}
 
@@ -2271,7 +2460,7 @@ export default function ConfiguratorPage() {
             {!isViewMode && (
               <div className="hidden flex-shrink-0 lg:block">
                 <ActionBar
-                  selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneId : null}
+                  selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneIds[0] : null}
                 />
               </div>
             )}
@@ -2334,11 +2523,14 @@ export default function ConfiguratorPage() {
 
                       <ZoneEditor
                         rootZone={rootZone}
-                        selectedZoneId={selectedZoneId}
+                        selectedZoneIds={selectedZoneIds}
                         onRootZoneChange={setRootZone}
-                        onSelectedZoneIdChange={setSelectedZoneId}
+                        onSelectedZoneIdsChange={setSelectedZoneIds}
                         onToggleLight={toggleZoneLight}
                         onToggleCableHole={toggleZoneCableHole}
+                        onToggleDressing={toggleZoneDressing}
+                        onGroupZones={groupZones}
+                        onSetDoorContent={setZoneDoorContent}
                         onSetHandleType={setZoneHandleType}
                         width={width}
                         height={height}

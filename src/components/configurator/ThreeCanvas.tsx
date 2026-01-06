@@ -24,7 +24,7 @@ interface ThreeViewerProps {
   hasSocle: boolean;
   socle?: string;
   rootZone: Zone | null;
-  selectedZoneId?: string | null;
+  selectedZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;
@@ -498,7 +498,7 @@ function Furniture({
   doorType = 'none',
   doorSide = 'left',
   useMultiColor = false,
-  selectedZoneId,
+  selectedZoneIds = [],
   onSelectZone
 }: ThreeViewerProps) {
   const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
@@ -681,7 +681,10 @@ function Furniture({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+              const isMulti = e.shiftKey || e.ctrlKey || e.metaKey;
+              // Pour l'instant on garde onSelectZone tel quel si on ne veut pas tout casser
+              // mais on pourrait passer un deuxième argument isMulti
+              onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
               // Si c'est un tiroir ou une porte, on bascule aussi l'ouverture
               if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door') {
                 toggleCompartment(zone.id);
@@ -691,12 +694,12 @@ function Furniture({
             <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
             <meshBasicMaterial 
               transparent 
-              opacity={selectedZoneId === zone.id ? 0.5 : 0} 
+              opacity={selectedZoneIds.includes(zone.id) ? 0.5 : 0} 
               color="#FF9800"
               depthWrite={false}
               toneMapped={false}
             />
-            {selectedZoneId === zone.id && (
+            {selectedZoneIds.includes(zone.id) && (
               <>
                 {/* Grillage (Wireframe) pour effet de sélection */}
                 <mesh>
@@ -745,7 +748,7 @@ function Furniture({
               isOpen={openCompartments[zone.id]}
               onClick={() => {
                 toggleCompartment(zone.id);
-                onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
               }}
             />
           );
@@ -765,82 +768,110 @@ function Furniture({
               isOpen={openCompartments[zone.id]}
               onClick={() => {
                 toggleCompartment(zone.id);
-                onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
               }}
             />
           );
-        } else if (zone.content === 'dressing') {
+        }
+
+        // Rendu de la penderie (Dressing) - Indépendant du contenu principal
+        if (zone.hasDressing || zone.content === 'dressing') {
           items.push(
-            <mesh key={zone.id} position={[x, y + height/2 - 0.05, z]} rotation={[0, 0, Math.PI/2]}>
+            <mesh key={`${zone.id}-dressing`} position={[x, y + height / 2 - 0.05, z]} rotation={[0, 0, Math.PI / 2]}>
               <cylinderGeometry args={[0.01, 0.01, width - 0.02, 16]} />
               <meshStandardMaterial color="#aaa" metalness={0.9} />
             </mesh>
           );
-        } else if (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double') {
-          // Porte spécifique à cette zone - utiliser la couleur spécifique si disponible
-          const isDouble = zone.content === 'door_double';
-          const isRight = zone.content === 'door_right';
+        }
+
+        // Rendu des portes (Indépendant du type de zone : feuille ou parent)
+        const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'mirror_door') ? zone.content : null);
+
+        if (doorToRender) {
+          const isDouble = doorToRender === 'door_double';
+          const isRight = doorToRender === 'door_right';
+          const isPush = doorToRender === 'push_door';
+          const isMirror = doorToRender === 'mirror_door';
+          
           const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
           const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
-          items.push(
-            <group key={zone.id} position={[x, y, d/2]}>
-              {(isDouble || !isRight) && (
-                <AnimatedDoor
+          if (isMirror) {
+            items.push(
+              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+                <AnimatedMirrorDoor
                   side="left"
                   position={[-width/2, 0, 0]}
-                  width={isDouble ? width/2 : width}
+                  width={width}
                   height={height}
-                  hexColor={doorHexColor}
-                  imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
                     toggleCompartment(zone.id);
-                    onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                   }}
                 />
-              )}
-              {(isDouble || isRight) && (
-                <AnimatedDoor
-                  side="right"
-                  position={[width/2, 0, 0]}
-                  width={isDouble ? width/2 : width}
+              </group>
+            );
+          } else if (isPush) {
+            items.push(
+              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+                <AnimatedPushDoor
+                  side="left"
+                  position={[-width/2, 0, 0]}
+                  width={width}
                   height={height}
                   hexColor={doorHexColor}
                   imageUrl={doorImageUrl}
-                  handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
                     toggleCompartment(zone.id);
-                    onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                   }}
                 />
-              )}
-            </group>
-          );
-        } else if (zone.content === 'push_door') {
-          // Porte push-to-open sans poignée - utiliser la couleur spécifique si disponible
-          const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
-          const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
-          items.push(
-            <group key={zone.id} position={[x, y, d/2]}>
-              <AnimatedPushDoor
-                side="left"
-                position={[-width/2, 0, 0]}
-                width={width}
-                height={height}
-                hexColor={doorHexColor}
-                imageUrl={doorImageUrl}
-                isOpen={openCompartments[zone.id]}
-                onClick={() => {
-                  toggleCompartment(zone.id);
-                  onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
-                }}
-              />
-            </group>
-          );
-        } else if (zone.content === 'glass_shelf') {
+              </group>
+            );
+          } else {
+            items.push(
+              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+                {(isDouble || !isRight) && (
+                  <AnimatedDoor
+                    side="left"
+                    position={[-width/2, 0, 0]}
+                    width={isDouble ? width/2 : width}
+                    height={height}
+                    hexColor={doorHexColor}
+                    imageUrl={doorImageUrl}
+                    handleType={zone.handleType}
+                    isOpen={openCompartments[zone.id]}
+                    onClick={() => {
+                      toggleCompartment(zone.id);
+                      onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                    }}
+                  />
+                )}
+                {(isDouble || isRight) && (
+                  <AnimatedDoor
+                    side="right"
+                    position={[width/2, 0, 0]}
+                    width={isDouble ? width/2 : width}
+                    height={height}
+                    hexColor={doorHexColor}
+                    imageUrl={doorImageUrl}
+                    handleType={zone.handleType}
+                    isOpen={openCompartments[zone.id]}
+                    onClick={() => {
+                      toggleCompartment(zone.id);
+                      onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                    }}
+                  />
+                )}
+              </group>
+            );
+          }
+        }
+
+        if (zone.content === 'glass_shelf') {
           // Étagère en verre transparente
           items.push(
             <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
@@ -869,7 +900,7 @@ function Furniture({
                 isOpen={openCompartments[zone.id]}
                 onClick={() => {
                   toggleCompartment(zone.id);
-                  onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
+                  onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                 }}
               />
             </group>
@@ -884,7 +915,97 @@ function Furniture({
             );
           }
         }
-      } else if (zone.children && zone.children.length > 0) {
+      }
+      
+      // --- Gestion des Portes sur les Groupes ---
+      // Si la zone a des enfants (groupe) et qu'elle a un contenu de type porte
+      const groupDoor = zone.doorContent || (zone.children && zone.children.length > 0 ? zone.content : null);
+      if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty') {
+        const doorToRender = groupDoor;
+        const isDouble = doorToRender === 'door_double';
+        const isRight = doorToRender === 'door_right';
+        const isPush = doorToRender === 'push_door';
+        const isMirror = doorToRender === 'mirror_door';
+        
+        const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
+        const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
+
+        if (isMirror) {
+          items.push(
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+              <AnimatedMirrorDoor
+                side="left"
+                position={[-width/2, 0, 0]}
+                width={width}
+                height={height}
+                handleType={zone.handleType}
+                isOpen={openCompartments[zone.id]}
+                onClick={() => {
+                  toggleCompartment(zone.id);
+                  onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                }}
+              />
+            </group>
+          );
+        } else if (isPush) {
+          items.push(
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+              <AnimatedPushDoor
+                side="left"
+                position={[-width/2, 0, 0]}
+                width={width}
+                height={height}
+                hexColor={doorHexColor}
+                imageUrl={doorImageUrl}
+                isOpen={openCompartments[zone.id]}
+                onClick={() => {
+                  toggleCompartment(zone.id);
+                  onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                }}
+              />
+            </group>
+          );
+        } else {
+          items.push(
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+              {(isDouble || !isRight) && (
+                <AnimatedDoor
+                  side="left"
+                  position={[-width/2, 0, 0]}
+                  width={isDouble ? width/2 : width}
+                  height={height}
+                  hexColor={doorHexColor}
+                  imageUrl={doorImageUrl}
+                  handleType={zone.handleType}
+                  isOpen={openCompartments[zone.id]}
+                  onClick={() => {
+                    toggleCompartment(zone.id);
+                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                  }}
+                />
+              )}
+              {(isDouble || isRight) && (
+                <AnimatedDoor
+                  side="right"
+                  position={[width/2, 0, 0]}
+                  width={isDouble ? width/2 : width}
+                  height={height}
+                  hexColor={doorHexColor}
+                  imageUrl={doorImageUrl}
+                  handleType={zone.handleType}
+                  isOpen={openCompartments[zone.id]}
+                  onClick={() => {
+                    toggleCompartment(zone.id);
+                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                  }}
+                />
+              )}
+            </group>
+          );
+        }
+      }
+
+      if (zone.children && zone.children.length > 0) {
         console.log('🎨 parseZone - zone avec enfants:', zone.id, 'type:', zone.type, 'enfants:', zone.children.length);
         let currentPos = 0;
         zone.children.forEach((child, i) => {
@@ -939,7 +1060,7 @@ function Furniture({
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
-    openCompartments, showDecorations, selectedZoneId, onSelectZone, toggleCompartment
+    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment
   ]);
 
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
@@ -1001,7 +1122,7 @@ function Furniture({
               isOpen={doorsOpen}
               onClick={() => {
                 onToggleDoors?.();
-                onSelectZone?.(selectedZoneId === 'root' ? null : 'root');
+                onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
               }}
             />
           )}
@@ -1016,7 +1137,7 @@ function Furniture({
               isOpen={doorsOpen}
               onClick={() => {
                 onToggleDoors?.();
-                onSelectZone?.(selectedZoneId === 'root' ? null : 'root');
+                onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
               }}
             />
           )}
@@ -1032,7 +1153,7 @@ function Furniture({
           onClick={(e) => {
             e.stopPropagation();
             onToggleDoors?.();
-            onSelectZone?.(selectedZoneId === 'root' ? null : 'root');
+            onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
           }}
         >
           <boxGeometry args={[w, sideHeight, 0.02]} />

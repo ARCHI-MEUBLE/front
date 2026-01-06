@@ -3,8 +3,8 @@ import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 
 interface ZoneNodeProps {
     zone: Zone;
-    selectedZoneId: string | null;
-    onSelect: (zoneId: string | null) => void;
+    selectedZoneIds: string[];
+    onSelect: (zoneId: string | null, multi?: boolean) => void;
     onRatioChange?: (zoneId: string, ratios: number[]) => void;
     depth?: number;
     realWidth: number;
@@ -15,7 +15,7 @@ interface ZoneNodeProps {
 
 function ZoneNode({
                       zone,
-                      selectedZoneId,
+                      selectedZoneIds,
                       onSelect,
                       onRatioChange,
                       depth = 0,
@@ -24,20 +24,23 @@ function ZoneNode({
                       showNumbers = false,
                       leafNumbers,
                   }: ZoneNodeProps) {
-    const isSelected = zone.id === selectedZoneId;
+    const isSelected = selectedZoneIds.includes(zone.id);
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragIndex, setDragIndex] = useState<number | null>(null);
 
     const handleClick = (event: SyntheticEvent) => {
         event.stopPropagation();
-        onSelect(isSelected ? null : zone.id);
+        const nativeEvent = event.nativeEvent as any;
+        const isMulti = nativeEvent.shiftKey || nativeEvent.ctrlKey || nativeEvent.metaKey;
+        onSelect(zone.id, isMulti);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement | HTMLButtonElement>) => {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            onSelect(isSelected ? null : zone.id);
+            const isMulti = event.shiftKey || event.ctrlKey || event.metaKey;
+            onSelect(zone.id, isMulti);
         }
     };
 
@@ -170,8 +173,8 @@ function ZoneNode({
                 onKeyDown={handleKeyDown}
                 className={`relative flex h-full w-full flex-col items-center justify-center border-2 transition-all duration-200 ${
                     isSelected
-                        ? 'border-[#FF9800] bg-[#FF9800]/10 text-[#FF9800]'
-                        : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#1A1917] hover:bg-[#F5F5F4] hover:text-[#1A1917]'
+                        ? 'border-[#FF9800] bg-[#FF9800]/10 text-[#FF9800] z-10'
+                        : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#FF9800]/50 hover:bg-[#F5F5F4] hover:text-[#1A1917]'
                 }`}
                 style={{ borderRadius: '4px' }}
             >
@@ -191,6 +194,9 @@ function ZoneNode({
     const isHorizontal = zone.type === 'horizontal';
     const children = zone.children ?? [];
     const ratios = getChildRatios();
+    const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
+    const meta = ZONE_CONTENT_META[currentDoor ?? 'empty'] || ZONE_CONTENT_META['empty'];
+    const hasDoor = currentDoor && currentDoor !== 'empty' && currentDoor.includes('door');
 
     // Pas d'inversion - affichage dans l'ordre naturel (haut en bas, gauche à droite)
     const orderedChildren = children;
@@ -213,14 +219,22 @@ function ZoneNode({
             onKeyDown={handleKeyDown}
             className={`relative flex h-full w-full border-2 transition-all duration-200 ${
                 isSelected
-                    ? 'border-[#FF9800] bg-[#FF9800]/5'
-                    : 'border-[#D0CEC9] bg-[#FAFAF9] hover:border-[#1A1917]'
+                    ? 'border-[#3B82F6] bg-[#3B82F6]/5 ring-2 ring-[#3B82F6]/20'
+                    : 'border-[#D0CEC9] bg-[#FAFAF9] hover:border-[#3B82F6]/50'
             }`}
             style={{
                 flexDirection: isHorizontal ? 'column' : 'row',
                 borderRadius: '4px',
+                padding: '2px', // Petit padding pour voir la sélection du parent autour des enfants
             }}
         >
+            {hasDoor && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                    <div className="bg-[#1A1917]/80 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm border border-white/20">
+                        {meta.label}
+                    </div>
+                </div>
+            )}
             {orderedChildren.map((child, index) => {
                 const dims = getChildDimensions(index);
                 const showDivider = index < orderedChildren.length - 1;
@@ -238,7 +252,7 @@ function ZoneNode({
                     >
                         <ZoneNode
                             zone={child}
-                            selectedZoneId={selectedZoneId}
+                            selectedZoneIds={selectedZoneIds}
                             onSelect={onSelect}
                             onRatioChange={onRatioChange}
                             depth={depth + 1}
@@ -263,8 +277,8 @@ function ZoneNode({
                                         isDragging && dragIndex === index ? 'opacity-100' : 'opacity-30 hover:opacity-80'
                                     } ${
                                         isHorizontal
-                                            ? 'left-1/4 right-1/4 top-1/2 h-1.5 -translate-y-1/2'
-                                            : 'top-1/4 bottom-1/4 left-1/2 w-1.5 -translate-x-1/2'
+                                            ? 'left-4 right-4 top-1/2 h-1.5 -translate-y-1/2'
+                                            : 'top-4 bottom-4 left-1/2 w-1.5 -translate-x-1/2'
                                     }`}
                                     style={{ borderRadius: '2px' }}
                                 />
@@ -279,8 +293,8 @@ function ZoneNode({
 
 interface ZoneCanvasProps {
     zone: Zone;
-    selectedZoneId: string | null;
-    onSelect: (zoneId: string | null) => void;
+    selectedZoneIds: string[];
+    onSelect: (zoneId: string | null, multi?: boolean) => void;
     onRatioChange?: (zoneId: string, ratios: number[]) => void;
     width: number;
     height: number;
@@ -289,7 +303,7 @@ interface ZoneCanvasProps {
 
 export default function ZoneCanvas({
                                        zone,
-                                       selectedZoneId,
+                                       selectedZoneIds,
                                        onSelect,
                                        onRatioChange,
                                        width,
@@ -365,7 +379,7 @@ export default function ZoneCanvas({
                 >
                     <ZoneNode
                         zone={zone}
-                        selectedZoneId={selectedZoneId}
+                        selectedZoneIds={selectedZoneIds}
                         onSelect={onSelect}
                         onRatioChange={onRatioChange}
                         realWidth={width}

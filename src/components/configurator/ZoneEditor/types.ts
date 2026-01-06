@@ -13,12 +13,14 @@ export type Zone = {
   id: string;
   type: 'leaf' | 'horizontal' | 'vertical';
   content?: ZoneContent;
+  doorContent?: ZoneContent; // Portes superposées sur une zone (feuille ou parent)
   children?: Zone[];
   height?: number;
   splitRatio?: number; // Pour 2 enfants (0-100 pour le premier)
   splitRatios?: number[]; // Pour 3+ enfants (pourcentages)
   hasLight?: boolean;
   hasCableHole?: boolean;
+  hasDressing?: boolean;
   handleType?: HandleType; // Type de poignée pour portes/tiroirs
   zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
 };
