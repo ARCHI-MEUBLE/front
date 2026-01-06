@@ -1651,10 +1651,11 @@ export default function ConfiguratorPage() {
   const saveAsModel = async () => {
     console.log('🔵 FONCTION saveAsModel APPELEE !');
     console.log('🔵 isAdmin:', isAdmin);
+    console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
     console.log('🔵 modelForm:', modelForm);
 
-    if (!isAdmin) {
-      toast.error("Vous devez être administrateur pour effectuer cette action.");
+    if (!isAdminCreateModel) {
+      toast.error("Vous devez être en mode création de modèle pour effectuer cette action.");
       return;
     }
 
