@@ -1653,30 +1653,10 @@ export default function ConfiguratorPage() {
     try {
       setIsSavingModel(true);
       console.log('--- DEBUT SAUVEGARDE MODELE ---');
-      
-      // 1. Upload de l'image si elle existe
-      let finalImageUrl = modelForm.imageUrl;
-      if (file) {
-        console.log('Upload image en cours...');
-        const formData = new FormData();
-        formData.append('image', file);
-        
-        const uploadRes = await fetch('/backend/api/admin/upload-image.php', {
-          method: 'POST',
-          credentials: 'include',
-          body: formData
-        });
-        
-        const uploadData = await uploadRes.json();
-        console.log('Resultat upload:', uploadData);
-        
-        if (uploadData.success && uploadData.url) {
-          finalImageUrl = uploadData.url;
-          console.log('URL Image mise à jour:', finalImageUrl);
-        } else {
-          throw new Error("Échec de l'upload de l'image: " + (uploadData.error || "inconnu"));
-        }
-      }
+
+      // 1. Utiliser l'URL de l'image déjà uploadée
+      const finalImageUrl = modelForm.imageUrl;
+      console.log('URL Image:', finalImageUrl);
 
       // 2. Préparation du prompt
       const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
