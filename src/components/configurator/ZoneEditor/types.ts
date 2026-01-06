@@ -1,4 +1,4 @@
-export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'pegboard' | 'push_door' | 'push_drawer';
+export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'push_door' | 'push_drawer';
 
 export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
@@ -80,16 +80,10 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     description: 'Étagère transparente moderne',
   },
   mirror_door: {
-    label: 'Façade miroir',
-    shortLabel: 'Miroir',
-    icon: 'M',
-    description: 'Porte avec miroir intégré',
-  },
-  pegboard: {
-    label: 'Panneau perforé',
-    shortLabel: 'Pegboard',
-    icon: 'PP',
-    description: 'Pour accrocher outils et accessoires',
+    label: 'Porte vitrée',
+    shortLabel: 'Vitrée',
+    icon: 'V',
+    description: 'Porte avec façade vitrée',
   },
   push_door: {
     label: 'Porte Push-to-Open',

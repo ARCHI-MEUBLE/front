@@ -85,8 +85,8 @@ const PromptGuideContent = () => (
               <span className="text-xs text-zinc-500">Étagère Verre</span>
             </div>
             <div className="flex items-center gap-3">
-              <code className="text-xs font-bold text-emerald-600 dark:text-emerald-400">p</code>
-              <span className="text-xs text-zinc-500">Pegboard</span>
+              <code className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Pm</code>
+              <span className="text-xs text-zinc-500">Porte vitrée</span>
             </div>
           </div>
           <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">

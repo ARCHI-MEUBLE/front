@@ -282,14 +282,16 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
         document.body.style.cursor = 'default';
       }}
     >
-      {/* Porte avec effet miroir */}
+      {/* Porte avec effet vitré */}
       <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
         <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
         <meshStandardMaterial
-          color="#ffffff"
-          metalness={0.95}
-          roughness={0.05}
-          envMapIntensity={1.5}
+          color="#A5D8FF"
+          transparent={true}
+          opacity={0.4}
+          metalness={0.9}
+          roughness={0.1}
+          envMapIntensity={2}
         />
       </mesh>
       {/* Poignée */}
@@ -870,37 +872,6 @@ function Furniture({
                   onSelectZone?.(selectedZoneId === zone.id ? null : zone.id);
                 }}
               />
-            </group>
-          );
-        } else if (zone.content === 'pegboard') {
-          // Panneau perforé
-          const holesX = Math.floor(width * 15);
-          const holesY = Math.floor(height * 15);
-          const totalHoles = holesX * holesY;
-
-          items.push(
-            <group key={zone.id} position={[x, y, -d/2 + 0.02]}>
-              {/* Panneau de fond */}
-              <mesh>
-                <boxGeometry args={[width - 0.02, height - 0.02, 0.02]} />
-                <meshStandardMaterial color="#8B7355" roughness={0.8} />
-              </mesh>
-              {/* Grille de trous */}
-              {Array.from({ length: totalHoles }).map((_, index) => {
-                const i = index % holesX;
-                const j = Math.floor(index / holesX);
-                const holeX = -width/2 + 0.04 + (i * 0.04);
-                const holeY = -height/2 + 0.04 + (j * 0.04);
-                if (holeX < width/2 - 0.02 && holeY < height/2 - 0.02) {
-                  return (
-                    <mesh key={`hole-${i}-${j}`} position={[holeX, holeY, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
-                      <cylinderGeometry args={[0.003, 0.003, 0.025, 8]} />
-                      <meshStandardMaterial color="#2A2A2A" />
-                    </mesh>
-                  );
-                }
-                return null;
-              })}
             </group>
           );
         } else {

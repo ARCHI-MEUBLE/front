@@ -174,10 +174,9 @@ function ConfigurationSummary({
     door: 'Porte(s) Gauche',
     door_right: 'Porte(s) Droite',
     door_double: 'Double Porte(s)',
-    mirror_door: 'Porte(s) Miroir',
+    mirror_door: 'Porte(s) Vitrée',
     push_door: 'Porte(s) Push-to-Open',
     glass_shelf: 'Étagère(s) en verre',
-    pegboard: 'Panneau(x) perforé(s)',
     shelf: 'Étagère(s) standard',
     light: 'Éclairage(s) LED',
     cable_hole: 'Passe-câble(s)',
@@ -1408,9 +1407,7 @@ export default function ConfiguratorPage() {
         case 'door_right': leafChar = 'Pd'; break;
         case 'door_double': leafChar = 'P2'; break;
         case 'mirror_door': leafChar = 'Pm'; break;
-        case 'push_door': leafChar = 'Po'; break;
         case 'glass_shelf': leafChar = 'v'; break;
-        case 'pegboard': leafChar = 'p'; break;
         default: leafChar = '';
       }
 
@@ -1494,7 +1491,6 @@ export default function ConfiguratorPage() {
           case 'door_double': return 80;
           case 'mirror_door': return 95;
           case 'glass_shelf': return 25;
-          case 'pegboard': return 30;
           case 'dressing': return 20;
           default: return 0;
         }
@@ -1974,7 +1970,7 @@ export default function ConfiguratorPage() {
 
       {/* Modal création modèle (Admin) */}
       <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Enregistrer comme modèle de catalogue</DialogTitle>
             <DialogDescription>

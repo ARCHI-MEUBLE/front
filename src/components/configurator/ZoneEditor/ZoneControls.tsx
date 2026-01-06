@@ -75,7 +75,6 @@ export default function ZoneControls({
     { id: 'push_drawer' as ZoneContent, icon: BoxSelect, label: 'Tiroir Push', desc: 'Sans poignée' },
     { id: 'dressing' as ZoneContent, icon: Shirt, label: 'Penderie', desc: 'Pour vêtements' },
     { id: 'glass_shelf' as ZoneContent, icon: Square, label: 'Étagère verre', desc: 'Transparente' },
-    { id: 'pegboard' as ZoneContent, icon: Grid, label: 'Panneau perforé', desc: 'Accrocher outils' },
   ];
 
   const DOOR_OPTIONS = [
@@ -83,7 +82,7 @@ export default function ZoneControls({
     { id: 'door_right' as ZoneContent, icon: DoorClosed, label: 'Porte droite', desc: 'Une seule porte' },
     { id: 'door_double' as ZoneContent, icon: DoorClosed, label: 'Double porte', desc: 'Deux portes' },
     { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée' },
-    { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Façade miroir', desc: 'Porte miroir' },
+    { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Porte vitrée', desc: 'Porte vitrée' },
   ];
 
   return (
