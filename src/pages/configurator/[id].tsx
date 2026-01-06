@@ -450,13 +450,17 @@ export default function ConfiguratorPage() {
   useEffect(() => {
     const checkAdmin = async () => {
       try {
+        console.log('🔍 Vérification session admin...');
         const data = await apiClient.adminAuth.getSession();
+        console.log('🔍 Réponse getSession:', data);
         if (data.admin) {
           setIsAdmin(true);
           console.log('👑 Session administrateur détectée');
+        } else {
+          console.log('❌ Pas de session admin (data.admin = false ou undefined)');
         }
       } catch (e) {
-        // Not an admin, ignore
+        console.error('❌ Erreur lors de la vérification admin:', e);
       }
     };
     checkAdmin();
