@@ -1692,14 +1692,17 @@ export default function ConfiguratorPage() {
         config_data: currentConfigData, // Sauvegarder l'objet JSON complet pour une restauration parfaite
       };
 
-      const response = await fetch('/api/models', {
+      const response = await fetch('/backend/api/models.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
 
+      console.log('SaveAsModel response status:', response.status);
+
       if (response.status === 401 || response.status === 403) {
+        toast.error("Session admin expirée ou accès refusé (Status: " + response.status + ")");
         throw new Error('Votre session administrateur a expiré. Veuillez vous reconnecter au tableau de bord.');
       }
 
@@ -1708,8 +1711,12 @@ export default function ConfiguratorPage() {
         try {
           const errData = await response.json();
           errorMessage = errData.error || errorMessage;
+          console.error('API Error Data:', errData);
         } catch (e) {
           console.error('Failed to parse error response', e);
+          const text = await response.text();
+          console.error('API Raw response:', text);
+          errorMessage += " (Status: " + response.status + ")";
         }
         throw new Error(errorMessage);
       }

@@ -178,7 +178,7 @@ export function DashboardModels() {
   const fetchModels = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/admin/models');
+      const response = await fetch('/backend/api/models.php');
 
       if (response.status === 401) {
         window.location.href = '/admin/login';
@@ -323,7 +323,7 @@ export function DashboardModels() {
         throw new Error('Tous les champs sont requis');
       }
 
-      const endpoint = editingId ? `/api/admin/models/${editingId}` : '/api/admin/models';
+      const endpoint = editingId ? `/backend/api/models.php?id=${editingId}` : '/backend/api/models.php';
       const method = editingId ? 'PUT' : 'POST';
 
       const response = await fetch(endpoint, {
@@ -384,7 +384,7 @@ export function DashboardModels() {
     }
 
     try {
-      const response = await fetch(`/api/admin/models/${id}`, {
+      const response = await fetch(`/backend/api/models.php?id=${id}`, {
         method: 'DELETE',
       });
 
