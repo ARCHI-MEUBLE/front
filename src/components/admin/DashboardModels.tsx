@@ -480,16 +480,12 @@ export function DashboardModels() {
             <CardTitle>Conception visuelle</CardTitle>
             <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l'ajouter directement au catalogue.</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-between gap-3">
+          <CardContent className="flex items-center">
             <Button asChild className="bg-[#8B7355] hover:bg-[#705D45]">
               <a href="/configurator/M1?adminMode=createModel" target="_blank" rel="noopener noreferrer">
                 <IconExternalLink className="w-4 h-4 mr-2" />
                 Lancer la création visuelle
               </a>
-            </Button>
-            <Button variant="outline" onClick={() => setIsGuideOpen(true)}>
-              <IconHelpCircle className="w-4 h-4 mr-2" />
-              Guide du prompt
             </Button>
           </CardContent>
         </Card>
