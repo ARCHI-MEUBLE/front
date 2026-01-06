@@ -174,6 +174,7 @@ export function DashboardModels() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const fetchModels = async () => {
     try {
@@ -479,12 +480,16 @@ export function DashboardModels() {
             <CardTitle>Conception visuelle</CardTitle>
             <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l'ajouter directement au catalogue.</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-between">
+          <CardContent className="flex items-center justify-between gap-3">
             <Button asChild className="bg-[#8B7355] hover:bg-[#705D45]">
               <a href="/configurator/M1?adminMode=createModel" target="_blank" rel="noopener noreferrer">
                 <IconExternalLink className="w-4 h-4 mr-2" />
                 Lancer la création visuelle
               </a>
+            </Button>
+            <Button variant="outline" onClick={() => setIsGuideOpen(true)}>
+              <IconHelpCircle className="w-4 h-4 mr-2" />
+              Guide du prompt
             </Button>
           </CardContent>
         </Card>
@@ -606,17 +611,10 @@ export function DashboardModels() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="prompt">Prompt interne</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="h-8 gap-2">
-                      <IconHelpCircle className="w-4 h-4" />
-                      <span className="text-xs">Guide du prompt</span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[600px] max-h-[80vh] overflow-y-auto" align="end">
-                    <PromptGuideContent />
-                  </PopoverContent>
-                </Popover>
+                <Button type="button" variant="ghost" size="sm" className="h-8 gap-2" onClick={() => setIsGuideOpen(true)}>
+                  <IconHelpCircle className="w-4 h-4" />
+                  <span className="text-xs">Guide du prompt</span>
+                </Button>
               </div>
               <textarea
                 id="prompt"
@@ -672,6 +670,19 @@ export function DashboardModels() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Guide du Prompt Dialog */}
+      <Dialog open={isGuideOpen} onOpenChange={setIsGuideOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Guide du prompt ArchiMeuble</DialogTitle>
+            <DialogDescription>
+              Syntaxe et codes pour créer vos modèles de meubles
+            </DialogDescription>
+          </DialogHeader>
+          <PromptGuideContent />
         </DialogContent>
       </Dialog>
     </>
