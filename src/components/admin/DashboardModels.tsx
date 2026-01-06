@@ -606,6 +606,17 @@ export function DashboardModels() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="prompt">Prompt interne</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="h-8 gap-2">
+                      <IconHelpCircle className="w-4 h-4" />
+                      <span className="text-xs">Guide du prompt</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[600px] max-h-[80vh] overflow-y-auto" align="end">
+                    <PromptGuideContent />
+                  </PopoverContent>
+                </Popover>
               </div>
               <textarea
                 id="prompt"
