@@ -220,7 +220,7 @@ export const adminAuthApi = {
    * Connexion admin
    */
   async login(email: string, password: string): Promise<{ success: boolean; admin: Admin }> {
-    return request<{ success: boolean; admin: Admin }>('/api/admin-auth/login', {
+    return request<{ success: boolean; admin: Admin }>('/api/admin/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -230,7 +230,7 @@ export const adminAuthApi = {
    * Déconnexion admin
    */
   async logout(): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>('/api/admin-auth/logout', {
+    return request<{ success: boolean }>('/api/admin/logout', {
       method: 'POST',
     });
   },
@@ -239,7 +239,7 @@ export const adminAuthApi = {
    * Vérifier la session admin
    */
   async getSession(): Promise<{ admin: Admin }> {
-    return request<{ admin: Admin }>('/api/admin-auth/session');
+    return request<{ admin: Admin }>('/api/admin/session');
   },
 };
 
