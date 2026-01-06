@@ -395,6 +395,7 @@ export default function ConfiguratorPage() {
   const [isCreateModelDialogOpen, setIsCreateModelDialogOpen] = useState(false);
   const [showModelCreatedModal, setShowModelCreatedModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSavingModel, setIsSavingModel] = useState(false);
   const [modelForm, setModelForm] = useState({
     name: '',
     description: '',
@@ -1650,6 +1651,34 @@ export default function ConfiguratorPage() {
     }
 
     try {
+      setIsSavingModel(true);
+      console.log('--- DEBUT SAUVEGARDE MODELE ---');
+      
+      // 1. Upload de l'image si elle existe
+      let finalImageUrl = modelForm.imageUrl;
+      if (file) {
+        console.log('Upload image en cours...');
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const uploadRes = await fetch('/backend/api/admin/upload-image.php', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        
+        const uploadData = await uploadRes.json();
+        console.log('Resultat upload:', uploadData);
+        
+        if (uploadData.success && uploadData.url) {
+          finalImageUrl = uploadData.url;
+          console.log('URL Image mise à jour:', finalImageUrl);
+        } else {
+          throw new Error("Échec de l'upload de l'image: " + (uploadData.error || "inconnu"));
+        }
+      }
+
+      // 2. Préparation du prompt
       const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
       const match = templatePrompt?.match(regex);
       const meubleType = match?.[1] || 'M1';
@@ -1662,7 +1691,9 @@ export default function ConfiguratorPage() {
       if (zonePrompt) {
         fullPrompt += zonePrompt;
       }
+      console.log('Prompt généré:', fullPrompt);
 
+      // 3. Préparation des données techniques
       const currentConfigData = {
         dimensions: { width, depth, height },
         styling: {
@@ -1677,21 +1708,26 @@ export default function ConfiguratorPage() {
           socle,
         },
         features: { doorsOpen, doorType, doorSide },
-        advancedZones: rootZone,
+        advancedZones: JSON.parse(JSON.stringify(rootZone)),
         useMultiColor,
         componentColors,
       };
 
+      // 4. Payload final
       const payload = {
         name: modelForm.name,
         description: modelForm.description,
         prompt: fullPrompt,
         category: modelForm.category,
         price: modelForm.price,
-        image_url: modelForm.imageUrl || '/images/accueil image/meubletv.jpg', // Utiliser une image par défaut valide
-        config_data: currentConfigData, // Sauvegarder l'objet JSON complet pour une restauration parfaite
+        image_url: finalImageUrl || '/images/accueil image/meubletv.jpg',
+        config_data: currentConfigData,
       };
+      
+      console.log('Payload prêt pour envoi:', payload);
 
+      // 5. Envoi final au backend
+      console.log('Appel API /backend/api/models.php...');
       const response = await fetch('/backend/api/models.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1699,7 +1735,7 @@ export default function ConfiguratorPage() {
         body: JSON.stringify(payload),
       });
 
-      console.log('SaveAsModel response status:', response.status);
+      console.log('Réponse API (Status):', response.status);
 
       if (response.status === 401 || response.status === 403) {
         toast.error("Session admin expirée ou accès refusé (Status: " + response.status + ")");
@@ -1721,15 +1757,19 @@ export default function ConfiguratorPage() {
         throw new Error(errorMessage);
       }
 
+      const result = await response.json();
+      console.log('Résultat final API:', result);
+
       toast.success('Le modèle a été ajouté au catalogue avec succès !');
       setIsCreateModelDialogOpen(false);
       setShowModelCreatedModal(true);
+      console.log('--- FIN SAUVEGARDE MODELE (SUCCES) ---');
       
-      // Optionnel: Rediriger vers le dashboard admin
-      // router.push('/admin?tab=models');
     } catch (err: any) {
-      console.error('Erreur saveAsModel:', err);
+      console.error('CRITICAL ERROR saveAsModel:', err);
       toast.error(err.message || 'Erreur lors de l\'enregistrement du modèle');
+    } finally {
+      setIsSavingModel(false);
     }
   };
 
