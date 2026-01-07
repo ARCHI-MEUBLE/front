@@ -32,6 +32,7 @@ export default function SamplesPage() {
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
   const [samplesInCart, setSamplesInCart] = useState(0);
   const [samplesInCartIds, setSamplesInCartIds] = useState<Set<number>>(new Set());
+  const [freeSamplesInCart, setFreeSamplesInCart] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -66,8 +67,12 @@ export default function SamplesPage() {
       if (response.ok) {
         const data = await response.json();
         setSamplesInCart(data.count || 0);
-        const ids = new Set(data.items?.map((item: any) => item.sample_color_id) || []);
+        const items = data.items || [];
+        const ids = new Set(items.map((item: any) => item.sample_color_id));
         setSamplesInCartIds(ids);
+        
+        const freeCount = items.filter((item: any) => (item.unit_price ?? 0) <= 0).length;
+        setFreeSamplesInCart(freeCount);
       }
     } catch (error) {
       console.error('Erreur chargement panier échantillons:', error);
@@ -80,10 +85,16 @@ export default function SamplesPage() {
   }, [materials, selectedMaterial]);
 
   const colorsForMaterial = useMemo(() => {
-    const list = typesForSelected.flatMap((t) => t.colors || []);
+    const list = typesForSelected.flatMap((t) => 
+      (t.colors || []).map(c => ({
+        ...c,
+        price_per_m2: c.price_per_m2 ?? 0,
+        unit_price: c.unit_price ?? 0
+      }))
+    );
     const map = new Map<string, typeof list[number]>();
     for (const c of list) {
-      const key = `${(c.name || '').toLowerCase()}|${c.image_url || c.hex || ''}`;
+      const key = `${c.id}`;
       if (!map.has(key)) map.set(key, c);
     }
     return Array.from(map.values());
@@ -109,8 +120,7 @@ export default function SamplesPage() {
         throw new Error(data.error || 'Erreur lors de l\'ajout au panier');
       }
 
-      setSamplesInCart(data.samples_count || samplesInCart + 1);
-      setSamplesInCartIds(prev => new Set(prev).add(colorId));
+      await loadSamplesCart();
     } catch (error) {
       console.error('Erreur ajout panier:', error);
       throw error;
@@ -126,7 +136,7 @@ export default function SamplesPage() {
     <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
       <Head>
         <title>Échantillons — ArchiMeuble</title>
-        <meta name="description" content="Commandez gratuitement jusqu'à 3 échantillons de nos matériaux pour découvrir nos finitions." />
+        <meta name="description" content="Commandez vos échantillons de nos matériaux pour découvrir nos finitions." />
       </Head>
       <Header />
 
@@ -167,12 +177,13 @@ export default function SamplesPage() {
                 transition={{ delay: 0.2 }}
                 className="mt-6 max-w-xl text-lg leading-relaxed text-white/70"
               >
-                Recevez gratuitement jusqu'à 3 échantillons de nos matériaux.
+                Recevez nos échantillons de matériaux.
                 Découvrez les textures, les couleurs et la qualité de nos finitions.
+                Certains coloris premium peuvent être payants.
               </motion.p>
 
               {/* Progress indicator */}
-              {isAuthenticated && (
+              {isAuthenticated && samplesInCart > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -180,18 +191,8 @@ export default function SamplesPage() {
                   className="mt-10"
                 >
                   <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-sm">
-                    <div className="flex gap-1.5">
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className={`h-2 w-8 rounded-full transition-colors ${
-                            i < samplesInCart ? 'bg-[#8B7355]' : 'bg-white/20'
-                          }`}
-                        />
-                      ))}
-                    </div>
                     <span className="text-sm text-white/80">
-                      {samplesInCart}/3 sélectionnés
+                      {samplesInCart} échantillon{samplesInCart > 1 ? 's' : ''} dans votre sélection
                     </span>
                   </div>
                 </motion.div>
@@ -205,7 +206,7 @@ export default function SamplesPage() {
           <div className="mx-auto max-w-7xl px-6">
             <div className="grid gap-8 sm:grid-cols-3">
               {[
-                { icon: Package, title: "3 échantillons", desc: "Offerts pour votre projet" },
+                { icon: Package, title: "Échantillons", desc: "Offerts pour votre projet" },
                 { icon: Truck, title: "Livraison gratuite", desc: "Sous 3-5 jours ouvrés" },
                 { icon: CheckCircle, title: "Qualité garantie", desc: "Matériaux de nos ateliers" },
               ].map((feature, i) => (
@@ -324,9 +325,11 @@ export default function SamplesPage() {
                         key={c.id}
                         color={c}
                         material={selectedMaterial || ''}
+                        pricePerM2={c.price_per_m2}
+                        unitPrice={c.unit_price}
                         onAddToCart={handleAddToCart}
                         isInCart={samplesInCartIds.has(c.id)}
-                        isLimitReached={samplesInCart >= 3 && !samplesInCartIds.has(c.id)}
+                        isLimitReached={false}
                         index={i}
                       />
                     ))}

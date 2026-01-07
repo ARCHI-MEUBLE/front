@@ -32,6 +32,8 @@ interface SampleCartItem {
   type_name: string;
   material: string;
   type_description: string | null;
+  price_per_m2: number;
+  unit_price: number;
 }
 
 interface CartData {
@@ -248,8 +250,8 @@ export default function CheckoutStripe() {
       const result = await response.json();
       setOrderId(result.order.id);
 
-      // Si le total est 0€ (seulement échantillons), valider directement
-      if (cart && cart.total === 0) {
+      // Si le total est 0€ (seulement échantillons gratuits), valider directement
+      if (grandTotal === 0) {
         // Marquer comme payé et rediriger
         await fetch('/backend/api/orders/validate.php', {
           method: 'POST',
@@ -293,6 +295,9 @@ export default function CheckoutStripe() {
   }
 
   if (!cart) return null;
+
+  const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
+  const grandTotal = (cart?.total || 0) + samplesTotal;
 
   return (
     <>
@@ -532,7 +537,7 @@ export default function CheckoutStripe() {
                   >
                     {isSubmitting
                       ? 'Création de la commande...'
-                      : cart && cart.total === 0
+                      : grandTotal === 0
                       ? 'Valider la commande d\'échantillons'
                       : 'Continuer vers le paiement'
                     }
@@ -568,7 +573,7 @@ export default function CheckoutStripe() {
                         <div className="flex-1">
                           <div className="font-medium text-[#1A1917]">Paiement en 1 fois</div>
                           <div className="mt-1 text-sm text-[#706F6C]">
-                            Payez {cart.total.toLocaleString('fr-FR')} € maintenant
+                            Payez {grandTotal.toLocaleString('fr-FR')} € maintenant
                           </div>
                         </div>
                       </label>
@@ -591,7 +596,7 @@ export default function CheckoutStripe() {
                         <div className="flex-1">
                           <div className="font-medium text-[#1A1917]">Paiement en 3 fois</div>
                           <div className="mt-1 text-sm text-[#706F6C]">
-                            3 × {(cart.total / 3).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € par mois
+                            3 × {(grandTotal / 3).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € par mois
                           </div>
                         </div>
                         <span className="text-xs font-medium uppercase tracking-wider text-[#8B7355]">Sans frais</span>
@@ -604,7 +609,7 @@ export default function CheckoutStripe() {
                     <div className="border border-[#E8E6E3] bg-white p-6">
                       <StripeCheckoutWrapper
                         orderId={orderId}
-                        amount={cart.total}
+                        amount={grandTotal}
                         installments={installments}
                         onSuccess={() => console.log('Payment success!')}
                         onError={(error) => setError(error)}
@@ -686,7 +691,9 @@ export default function CheckoutStripe() {
                               <p className="text-xs text-[#706F6C]">{sample.material}</p>
                             </div>
                           </div>
-                          <span className="flex-shrink-0 text-xs font-medium text-[#8B7355]">Offert</span>
+                          <span className={`flex-shrink-0 text-xs font-medium ${sample.unit_price > 0 ? 'text-[#1A1917]' : 'text-[#8B7355]'}`}>
+                            {sample.unit_price > 0 ? `${sample.unit_price} €` : 'Offert'}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -694,17 +701,23 @@ export default function CheckoutStripe() {
 
                   {/* Total */}
                   <div className="mt-6 border-t border-[#E8E6E3] pt-6">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#706F6C]">Sous-total</span>
-                      <span className="font-mono text-[#1A1917]">{cart.total.toLocaleString('fr-FR')} €</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#706F6C]">Sous-total</span>
+                      <span className="font-mono text-[#1A1917]">{(cart?.total || 0).toLocaleString('fr-FR')} €</span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm text-[#706F6C]">Livraison</span>
+                    {samplesTotal > 0 && (
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-[#706F6C]">Échantillons</span>
+                        <span className="font-mono text-[#1A1917]">{samplesTotal.toLocaleString('fr-FR')} €</span>
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <span className="text-[#706F6C]">Livraison</span>
                       <span className="text-sm font-medium text-[#8B7355]">Offerte</span>
                     </div>
                     <div className="mt-4 flex items-center justify-between border-t border-[#E8E6E3] pt-4">
                       <span className="text-[#1A1917]">Total</span>
-                      <span className="font-mono text-2xl text-[#1A1917]">{cart.total.toLocaleString('fr-FR')} €</span>
+                      <span className="font-mono text-2xl text-[#1A1917]">{grandTotal.toLocaleString('fr-FR')} €</span>
                     </div>
                     <p className="mt-1 text-right text-xs text-[#706F6C]">TVA incluse</p>
                   </div>

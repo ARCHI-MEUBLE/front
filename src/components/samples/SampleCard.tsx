@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 interface SampleCardProps {
   color: SampleColor;
   material: string;
+  pricePerM2?: number;
+  unitPrice?: number;
   onAddToCart: (colorId: number) => Promise<void>;
   isInCart?: boolean;
   isLimitReached?: boolean;
@@ -16,6 +18,8 @@ interface SampleCardProps {
 export function SampleCard({
   color,
   material,
+  pricePerM2,
+  unitPrice,
   onAddToCart,
   isInCart = false,
   isLimitReached = false,
@@ -139,11 +143,24 @@ export function SampleCard({
             )}
           </div>
 
-          {/* Free badge */}
+          {/* Price information */}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-[#8B7355]">
-              Échantillon gratuit
-            </span>
+            <div className="flex flex-col">
+              {unitPrice !== undefined && unitPrice > 0 ? (
+                <span className="text-sm font-bold text-[#1A1917]">
+                  {unitPrice} €
+                </span>
+              ) : (
+                <span className="text-xs font-medium text-[#8B7355]">
+                  Échantillon gratuit
+                </span>
+              )}
+              {pricePerM2 !== undefined && pricePerM2 > 0 && (
+                <span className="text-[10px] text-[#6B6560]">
+                  {pricePerM2} € / m²
+                </span>
+              )}
+            </div>
 
             {/* Mobile add button */}
             <button

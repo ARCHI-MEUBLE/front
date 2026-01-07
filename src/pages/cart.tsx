@@ -39,6 +39,8 @@ interface SampleCartItem {
   type_name: string;
   material: string;
   type_description: string | null;
+  price_per_m2: number;
+  unit_price: number;
 }
 
 interface CartData {
@@ -201,6 +203,10 @@ export default function Cart() {
   const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0);
   const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0);
 
+  const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
+  const grandTotal = (cart?.total || 0) + samplesTotal;
+  const hasPaidSamples = samplesCart?.items.some(item => item.unit_price > 0);
+
   return (
     <>
       <Head>
@@ -222,7 +228,7 @@ export default function Cart() {
                     {totalItems} article{totalItems > 1 ? 's' : ''} dans votre panier
                     {samplesCart && samplesCart.count > 0 && (
                       <span className="ml-2 text-[#8B7355]">
-                        · {samplesCart.count} échantillon{samplesCart.count > 1 ? 's' : ''} offert{samplesCart.count > 1 ? 's' : ''}
+                        · {samplesCart.count} échantillon{samplesCart.count > 1 ? 's' : ''}
                       </span>
                     )}
                   </p>
@@ -280,7 +286,7 @@ export default function Cart() {
                     <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
                       <Package className="h-5 w-5 text-[#8B7355]" />
                       <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
-                        Échantillons offerts
+                        Échantillons
                       </h2>
                       <span className="ml-auto text-sm text-[#706F6C]">
                         {samplesCart.count} article{samplesCart.count > 1 ? 's' : ''}
@@ -314,8 +320,13 @@ export default function Cart() {
                               {sample.material}
                             </p>
                             <p className="mt-2 text-xs font-medium text-[#8B7355]">
-                              Gratuit
+                              {sample.unit_price > 0 ? `${sample.unit_price} €` : 'Gratuit'}
                             </p>
+                            {sample.price_per_m2 > 0 && (
+                              <p className="mt-1 text-[10px] text-[#706F6C]">
+                                {sample.price_per_m2} € / m²
+                              </p>
+                            )}
                           </div>
                           <button
                             onClick={async () => {
@@ -564,7 +575,9 @@ export default function Cart() {
                       {samplesCart && samplesCart.count > 0 && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-[#706F6C]">Échantillons</span>
-                          <span className="font-medium text-[#8B7355]">Offerts</span>
+                          <span className={`font-medium ${samplesTotal > 0 ? 'font-mono text-[#1A1917]' : 'text-[#8B7355]'}`}>
+                            {samplesTotal > 0 ? `${samplesTotal.toLocaleString('fr-FR')} €` : 'Offerts'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -572,7 +585,7 @@ export default function Cart() {
                     <div className="mt-6 border-t border-[#E8E6E3] pt-6">
                       <div className="flex items-center justify-between">
                         <span className="text-[#1A1917]">Total</span>
-                        <span className="font-mono text-2xl text-[#1A1917]">{cart?.total?.toLocaleString('fr-FR') || 0} €</span>
+                        <span className="font-mono text-2xl text-[#1A1917]">{grandTotal.toLocaleString('fr-FR')} €</span>
                       </div>
                       <p className="mt-1 text-right text-xs text-[#706F6C]">
                         TVA incluse

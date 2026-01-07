@@ -254,6 +254,8 @@ export interface SampleColor {
   image_url: string | null;
   active: number;
   position: number;
+  price_per_m2: number;
+  unit_price: number;
 }
 
 export interface SampleType {
@@ -263,6 +265,8 @@ export interface SampleType {
   description: string | null;
   active: number;
   position: number;
+  price_per_m2?: number; // Optionnel maintenant
+  unit_price?: number;  // Optionnel maintenant
   colors: SampleColor[];
 }
 
@@ -282,14 +286,21 @@ export const samplesApi = {
     return res.data;
   },
 
-  async createType(payload: { name: string; material: string; description?: string; position?: number }): Promise<{ success: boolean; id: number }> {
+  async createType(payload: { 
+    name: string; 
+    material: string; 
+    description?: string; 
+    position?: number;
+    price_per_m2?: number;
+    unit_price?: number;
+  }): Promise<{ success: boolean; id: number }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'create_type', ...payload }),
     });
   },
 
-  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'>>): Promise<{ success: boolean }> {
+  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'|'price_per_m2'|'unit_price'>>): Promise<{ success: boolean }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_type', id, ...payload }),
@@ -303,14 +314,22 @@ export const samplesApi = {
     });
   },
 
-  async createColor(payload: { type_id: number; name: string; hex?: string; image_url?: string; position?: number }): Promise<{ success: boolean; id: number }> {
+  async createColor(payload: { 
+    type_id: number; 
+    name: string; 
+    hex?: string; 
+    image_url?: string; 
+    position?: number;
+    price_per_m2?: number;
+    unit_price?: number;
+  }): Promise<{ success: boolean; id: number }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'create_color', ...payload }),
     });
   },
 
-  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'>>): Promise<{ success: boolean }> {
+  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'|'price_per_m2'|'unit_price'>>): Promise<{ success: boolean }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_color', id, ...payload }),

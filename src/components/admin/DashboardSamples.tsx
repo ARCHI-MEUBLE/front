@@ -16,6 +16,7 @@ import { Plus, Trash2, ChevronLeft, ChevronRight, ImageIcon, Hash, Loader2, X } 
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function DashboardSamples() {
   const [items, setItems] = useState<SampleType[]>([]);
@@ -220,7 +221,7 @@ function CreateTypeCard({ onCreated, existingMaterials }: { onCreated: () => voi
       const res = await apiClient.samples.createType({ 
         name: name.trim(), 
         material: finalMaterial, 
-        description: description.trim() 
+        description: description.trim()
       });
       
       console.log('[DEBUG] Creation success:', res);
@@ -333,6 +334,8 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
   const [hex, setHex] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [newColorPriceM2, setNewColorPriceM2] = useState('0');
+  const [newColorUnitPrice, setNewColorUnitPrice] = useState('0');
 
   const addColor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,13 +347,27 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
       const derivedName = (type.name || 'Couleur').trim();
       if (mode === 'image') {
         const image_url = await uploadImage(file as File);
-        await apiClient.samples.createColor({ type_id: type.id, name: derivedName, image_url });
+        await apiClient.samples.createColor({ 
+          type_id: type.id, 
+          name: derivedName, 
+          image_url,
+          price_per_m2: parseFloat(newColorPriceM2) || 0,
+          unit_price: parseFloat(newColorUnitPrice) || 0
+        });
         setFile(null);
       } else {
         const normalized = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
-        await apiClient.samples.createColor({ type_id: type.id, name: derivedName, hex: normalized });
+        await apiClient.samples.createColor({ 
+          type_id: type.id, 
+          name: derivedName, 
+          hex: normalized,
+          price_per_m2: parseFloat(newColorPriceM2) || 0,
+          unit_price: parseFloat(newColorUnitPrice) || 0
+        });
         setHex('');
       }
+      setNewColorPriceM2('0');
+      setNewColorUnitPrice('0');
       onChanged();
     } finally {
       setSaving(false);
@@ -386,30 +403,14 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
             {type.colors?.map((c) => (
-              <div key={c.id} className="group relative">
-                <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform group-hover:scale-105">
-                  {c.image_url ? (
-                    <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full" style={{ backgroundColor: c.hex || '#EEE' }} />
-                  )}
-                </div>
-                <button
-                  onClick={async () => { await apiClient.samples.deleteColor(c.id); onChanged(); }}
-                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm group-hover:flex"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                <div className="mt-1 max-w-[56px] truncate text-[10px] font-medium text-center uppercase text-muted-foreground">
-                  {c.name}
-                </div>
-              </div>
+              <VariantCard key={c.id} variant={c} onChanged={onChanged} />
             ))}
           </div>
 
           <Separator />
 
           <form onSubmit={addColor} className="space-y-3 pt-1">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">Nouvelle variante</p>
             <Tabs value={mode} onValueChange={(val) => setMode(val as any)} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="image" className="text-xs">
@@ -447,13 +448,116 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
               </TabsContent>
             </Tabs>
             
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px]">Prix m²</Label>
+                <Input 
+                  className="h-7 text-xs px-2" 
+                  type="number" 
+                  value={newColorPriceM2} 
+                  onChange={e => setNewColorPriceM2(e.target.value)} 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Prix Echant.</Label>
+                <Input 
+                  className="h-7 text-xs px-2" 
+                  type="number" 
+                  value={newColorUnitPrice} 
+                  onChange={e => setNewColorUnitPrice(e.target.value)} 
+                />
+              </div>
+            </div>
+
             <Button size="sm" className="w-full h-8 text-xs" disabled={saving || (mode === 'image' ? !file : !hex)}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="mr-2 h-3 w-3" />}
-              {saving ? 'Ajout...' : 'Ajouter une variante'}
+              {saving ? 'Ajout...' : 'Ajouter la variante'}
             </Button>
           </form>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+import { type SampleColor } from '@/lib/apiClient';
+
+function VariantCard({ variant, onChanged }: { variant: SampleColor, onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [priceM2, setPriceM2] = useState((variant.price_per_m2 ?? 0).toString());
+  const [unitPrice, setUnitPrice] = useState((variant.unit_price ?? 0).toString());
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiClient.samples.updateColor(variant.id, {
+        price_per_m2: parseFloat(priceM2) || 0,
+        unit_price: parseFloat(unitPrice) || 0
+      });
+      setEditing(false);
+      onChanged();
+    } catch (e) {
+      alert("Erreur lors de la mise à jour");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="group relative">
+      <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform group-hover:scale-105">
+        {variant.image_url ? (
+          <img src={variant.image_url} alt={variant.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full" style={{ backgroundColor: variant.hex || '#EEE' }} />
+        )}
+      </div>
+
+      {/* Boutons d'action rapides */}
+      <div className="absolute -right-1 -top-1 hidden gap-1 group-hover:flex">
+         <button
+          onClick={() => setEditing(true)}
+          className="h-5 w-5 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-sm"
+          title="Modifier les prix"
+        >
+          <Hash className="h-3 w-3" />
+        </button>
+        <button
+          onClick={async () => { if(confirm("Supprimer cette variante ?")) { await apiClient.samples.deleteColor(variant.id); onChanged(); } }}
+          className="h-5 w-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      
+      <div className="mt-1 max-w-[56px] truncate text-[9px] font-bold text-center uppercase text-zinc-600">
+        {variant.unit_price > 0 ? `${variant.unit_price}€` : 'OFFERT'}
+      </div>
+
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier les prix : {variant.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priceM2" className="text-right text-xs">Prix m² (€)</Label>
+              <Input id="priceM2" type="number" value={priceM2} onChange={e => setPriceM2(e.target.value)} className="col-span-3 h-8" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="unitPrice" className="text-right text-xs">Prix Unit. (€)</Label>
+              <Input id="unitPrice" type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="col-span-3 h-8" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button size="sm" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
