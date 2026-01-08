@@ -15,7 +15,7 @@ interface ZoneControlsProps {
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
   onToggleDressing?: (zoneId: string) => void;
-  onGroupZones?: (zoneIds: string[]) => void;
+  onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
 }
 
@@ -126,22 +126,42 @@ export default function ZoneControls({
         {renderBreadcrumbs()}
 
         {selectedZoneIds.length > 1 && (
-          <div className="border-2 border-dashed border-[#3B82F6] bg-[#3B82F6]/5 p-4" style={{ borderRadius: '4px' }}>
-            <div className="flex items-center gap-3 mb-3">
-              <BoxSelect className="h-6 w-6 text-[#3B82F6]" />
+          <div className="border-2 border-[#FF9800] bg-[#FF9800]/5 p-6 shadow-lg" style={{ borderRadius: '8px' }}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex h-12 w-12 items-center justify-center bg-[#FF9800] text-white" style={{ borderRadius: '50%' }}>
+                <DoorClosed className="h-7 w-7" />
+              </div>
               <div>
-                <span className="block text-base font-semibold text-[#1A1917]">{selectedZoneIds.length} zones sélectionnées</span>
-                <p className="text-sm text-[#706F6C]">Regroupez-les pour y appliquer une porte commune.</p>
+                <span className="block text-xl font-bold text-[#1A1917]">{selectedZoneIds.length} zones sélectionnées</span>
+                <p className="text-sm text-[#706F6C]">Voulez-vous ajouter une porte sur cet ensemble ?</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => onGroupZones?.(selectedZoneIds)}
-              className="w-full bg-[#3B82F6] text-white py-2 px-4 font-medium transition-colors hover:bg-[#2563EB]"
-              style={{ borderRadius: '4px' }}
-            >
-              Grouper ces zones
-            </button>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                type="button"
+                onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
+                className="flex items-center justify-center gap-3 w-full bg-[#1A1917] text-white py-4 px-6 text-lg font-bold transition-all hover:bg-[#2A2927] hover:scale-[1.02] active:scale-[0.98]"
+                style={{ borderRadius: '8px' }}
+              >
+                <DoorClosed className="h-6 w-6" />
+                🚪 Ajouter porte sur cette zone
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
+                className="flex items-center justify-center gap-3 w-full bg-white border-2 border-[#1A1917] text-[#1A1917] py-3 px-6 text-base font-semibold transition-all hover:bg-[#F5F5F4]"
+                style={{ borderRadius: '8px' }}
+              >
+                <DoorClosed className="h-5 w-5" />
+                Double porte
+              </button>
+            </div>
+            
+            <p className="mt-4 text-center text-xs text-[#706F6C]">
+              Ceci créera une porte unique qui couvrira toutes les zones oranges.
+            </p>
           </div>
         )}
 

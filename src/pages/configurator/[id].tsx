@@ -600,6 +600,69 @@ export default function ConfiguratorPage() {
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
   const [doors, setDoors] = useState(0);
+
+  // Gérer la sélection intelligente (clic 1 -> clic 2)
+  const handleZoneSelect = useCallback(
+    (zoneId: string | null) => {
+      if (!zoneId) {
+        setSelectedZoneIds([]);
+        return;
+      }
+
+      // Si aucune zone n'est sélectionnée, on sélectionne la première
+      if (selectedZoneIds.length === 0) {
+        setSelectedZoneIds([zoneId]);
+        return;
+      }
+
+      // Si on clique sur une zone déjà sélectionnée
+      if (selectedZoneIds.includes(zoneId)) {
+        // Si c'est la racine et qu'elle est seule, on ne désélectionne pas
+        if (zoneId === 'root' && selectedZoneIds.length === 1) return;
+        
+        // Sinon on désélectionne tout (comportement intuitif pour "éteindre" ce qui est orange)
+        setSelectedZoneIds([]);
+        return;
+      }
+
+      // Logique de sélection de plage (entre le premier sélectionné et le nouveau clic)
+      const firstId = selectedZoneIds[0];
+      const secondId = zoneId;
+
+      // Fonction utilitaire pour trouver une zone et son parent
+      const findZoneWithParent = (current: Zone, targetId: string, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
+        if (current.id === targetId) return { zone: current, parent };
+        if (!current.children) return null;
+        for (const child of current.children) {
+          const result = findZoneWithParent(child, targetId, current);
+          if (result) return result;
+        }
+        return null;
+      };
+
+      const firstInfo = findZoneWithParent(rootZone, firstId);
+      const secondInfo = findZoneWithParent(rootZone, secondId);
+
+      if (firstInfo && secondInfo && firstInfo.parent === secondInfo.parent && firstInfo.parent !== null) {
+        const parent = firstInfo.parent;
+        const children = parent.children || [];
+        const firstIndex = children.findIndex(c => c.id === firstId);
+        const secondIndex = children.findIndex(c => c.id === secondId);
+
+        if (firstIndex !== -1 && secondIndex !== -1) {
+          const start = Math.min(firstIndex, secondIndex);
+          const end = Math.max(firstIndex, secondIndex);
+          const rangeIds = children.slice(start, end + 1).map(c => c.id);
+          setSelectedZoneIds(rangeIds);
+          return;
+        }
+      }
+
+      // Si pas le même parent ou autre cas, on remplace la sélection
+      setSelectedZoneIds([zoneId]);
+    },
+    [selectedZoneIds, rootZone]
+  );
   
   // Vérifier s'il y a des portes spécifiques dans les zones
   const hasZoneSpecificDoors = useMemo(() => {
@@ -706,7 +769,7 @@ export default function ConfiguratorPage() {
     setRootZone(updateZone(rootZone));
   }, [rootZone]);
 
-  const groupZones = useCallback((zoneIds: string[]) => {
+  const groupZones = useCallback((zoneIds: string[], forceContent?: ZoneContent) => {
     if (zoneIds.length <= 1) return;
 
     // Trouver le parent commun et les index des zones
@@ -742,6 +805,8 @@ export default function ConfiguratorPage() {
       }
     }
 
+    let createdGroupId = "";
+
     const updateZoneTree = (z: Zone): Zone => {
       if (z.id === parent.id) {
         const newChildren: Zone[] = [];
@@ -761,6 +826,7 @@ export default function ConfiguratorPage() {
             if (groupedChildren.length > 0 && newChildren.every(c => !c.id.startsWith('group-'))) {
               // Créer le groupe
               const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
+              createdGroupId = groupId;
               const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
               
               newChildren.push({
@@ -769,6 +835,7 @@ export default function ConfiguratorPage() {
                 children: groupedChildren.map(c => ({...c})),
                 splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
                 splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
+                doorContent: forceContent || undefined,
               });
               groupedChildren.length = 0; // Clear
             }
@@ -779,6 +846,7 @@ export default function ConfiguratorPage() {
         // Si le groupe est à la fin
         if (groupedChildren.length > 0) {
           const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
+          createdGroupId = groupId;
           const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
           
           newChildren.push({
@@ -787,6 +855,7 @@ export default function ConfiguratorPage() {
             children: groupedChildren.map(c => ({...c})),
             splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
             splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
+            doorContent: forceContent || undefined,
           });
         }
 
@@ -818,9 +887,20 @@ export default function ConfiguratorPage() {
       return z;
     };
 
-    setRootZone(updateZoneTree(rootZone));
-    setSelectedZoneIds([]); // Désélectionner après regroupement
-    toast.success("Zones groupées avec succès");
+    const newRoot = updateZoneTree(rootZone);
+    setRootZone(newRoot);
+    
+    if (createdGroupId) {
+      setSelectedZoneIds([createdGroupId]);
+    } else {
+      setSelectedZoneIds([]);
+    }
+    
+    if (forceContent) {
+      toast.success("Porte ajoutée sur l'ensemble sélectionné");
+    } else {
+      toast.success("Zones groupées avec succès");
+    }
   }, [rootZone]);
 
   const setZoneDoorContent = useCallback((zoneId: string, content: ZoneContent) => {
@@ -2368,7 +2448,7 @@ export default function ConfiguratorPage() {
                   socle={socle}
                   rootZone={rootZone}
                   selectedZoneIds={selectedZoneIds}
-                  onSelectZone={(id) => setSelectedZoneIds(id ? [id] : [])}
+                  onSelectZone={handleZoneSelect}
                   isBuffet={furnitureStructure?.isBuffet}
                   doorsOpen={doorsOpen}
                   showDecorations={showDecorations}
@@ -2560,6 +2640,7 @@ export default function ConfiguratorPage() {
                         onSetHandleType={setZoneHandleType}
                         width={width}
                         height={height}
+                        onSelectZone={handleZoneSelect}
                       />
                       <DimensionsPanel
                         width={width}

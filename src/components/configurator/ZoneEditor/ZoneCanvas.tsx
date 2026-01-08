@@ -31,9 +31,7 @@ function ZoneNode({
 
     const handleClick = (event: SyntheticEvent) => {
         event.stopPropagation();
-        const nativeEvent = event.nativeEvent as any;
-        const isMulti = nativeEvent.shiftKey || nativeEvent.ctrlKey || nativeEvent.metaKey;
-        onSelect(zone.id, isMulti);
+        onSelect(zone.id, false);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement | HTMLButtonElement>) => {
@@ -173,7 +171,7 @@ function ZoneNode({
                 onKeyDown={handleKeyDown}
                 className={`relative flex h-full w-full flex-col items-center justify-center border-2 transition-all duration-200 ${
                     isSelected
-                        ? 'border-[#FF9800] bg-[#FF9800]/10 text-[#FF9800] z-10'
+                        ? 'border-[#FF9800] bg-[#FF9800]/20 text-[#E65100] z-10 shadow-[0_0_8px_rgba(255,152,0,0.3)]'
                         : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#FF9800]/50 hover:bg-[#F5F5F4] hover:text-[#1A1917]'
                 }`}
                 style={{ borderRadius: '4px' }}

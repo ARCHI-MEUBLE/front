@@ -686,12 +686,11 @@ function Furniture({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              const isMulti = e.shiftKey || e.ctrlKey || e.metaKey;
-              // Pour l'instant on garde onSelectZone tel quel si on ne veut pas tout casser
-              // mais on pourrait passer un deuxième argument isMulti
-              onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
-              // Si c'est un tiroir ou une porte, on bascule aussi l'ouverture
-              if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door') {
+              // On appelle onSelectZone avec l'id de la zone.
+              onSelectZone?.(zone.id);
+              
+              // On bascule l'ouverture si c'est un compartiment mobile
+              if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'mirror_door') {
                 toggleCompartment(zone.id);
               }
             }}
@@ -751,9 +750,10 @@ function Furniture({
               imageUrl={drawerImageUrl}
               handleType={zone.handleType}
               isOpen={openCompartments[zone.id]}
-              onClick={() => {
+              onClick={(e: any) => {
+                e.stopPropagation();
+                onSelectZone?.(zone.id);
                 toggleCompartment(zone.id);
-                onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
               }}
             />
           );
@@ -771,9 +771,10 @@ function Furniture({
               hexColor={drawerHexColor}
               imageUrl={drawerImageUrl}
               isOpen={openCompartments[zone.id]}
-              onClick={() => {
+              onClick={(e: any) => {
+                e.stopPropagation();
+                onSelectZone?.(zone.id);
                 toggleCompartment(zone.id);
-                onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
               }}
             />
           );
@@ -829,9 +830,10 @@ function Furniture({
                   hexColor={doorHexColor}
                   imageUrl={doorImageUrl}
                   isOpen={openCompartments[zone.id]}
-                  onClick={() => {
+                  onClick={(e: any) => {
+                    e.stopPropagation();
+                    onSelectZone?.(zone.id);
                     toggleCompartment(zone.id);
-                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                   }}
                 />
               </group>
@@ -849,9 +851,9 @@ function Furniture({
                     imageUrl={doorImageUrl}
                     handleType={zone.handleType}
                     isOpen={openCompartments[zone.id]}
-                    onClick={() => {
-                      toggleCompartment(zone.id);
-                      onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      onSelectZone?.(zone.id);
                     }}
                   />
                 )}
@@ -865,9 +867,9 @@ function Furniture({
                     imageUrl={doorImageUrl}
                     handleType={zone.handleType}
                     isOpen={openCompartments[zone.id]}
-                    onClick={() => {
-                      toggleCompartment(zone.id);
-                      onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      onSelectZone?.(zone.id);
                     }}
                   />
                 )}
@@ -903,9 +905,10 @@ function Furniture({
                 height={height - compartmentGap}
                 handleType={zone.handleType}
                 isOpen={openCompartments[zone.id]}
-                onClick={() => {
+                onClick={(e: any) => {
+                  e.stopPropagation();
+                  onSelectZone?.(zone.id);
                   toggleCompartment(zone.id);
-                  onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                 }}
               />
             </group>
@@ -945,9 +948,10 @@ function Furniture({
                 height={height - compartmentGap}
                 handleType={zone.handleType}
                 isOpen={openCompartments[zone.id]}
-                onClick={() => {
+                onClick={(e: any) => {
+                  e.stopPropagation();
+                  onSelectZone?.(zone.id);
                   toggleCompartment(zone.id);
-                  onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                 }}
               />
             </group>
@@ -963,9 +967,10 @@ function Furniture({
                 hexColor={doorHexColor}
                 imageUrl={doorImageUrl}
                 isOpen={openCompartments[zone.id]}
-                onClick={() => {
+                onClick={(e: any) => {
+                  e.stopPropagation();
+                  onSelectZone?.(zone.id);
                   toggleCompartment(zone.id);
-                  onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                 }}
               />
             </group>
@@ -983,9 +988,10 @@ function Furniture({
                   imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
-                  onClick={() => {
+                  onClick={(e: any) => {
+                    e.stopPropagation();
+                    onSelectZone?.(zone.id);
                     toggleCompartment(zone.id);
-                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                   }}
                 />
               )}
@@ -999,9 +1005,10 @@ function Furniture({
                   imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
-                  onClick={() => {
+                  onClick={(e: any) => {
+                    e.stopPropagation();
+                    onSelectZone?.(zone.id);
                     toggleCompartment(zone.id);
-                    onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                   }}
                 />
               )}

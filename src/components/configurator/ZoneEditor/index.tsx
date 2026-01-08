@@ -22,7 +22,7 @@ interface ZoneEditorProps {
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
   onToggleDressing?: (zoneId: string) => void;
-  onGroupZones?: (zoneIds: string[]) => void;
+  onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   exposeActions?: (actions: {
     splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
@@ -32,7 +32,7 @@ interface ZoneEditorProps {
     toggleLight: (zoneId: string) => void;
     toggleCableHole: (zoneId: string) => void;
     toggleDressing: (zoneId: string) => void;
-    groupZones: (zoneIds: string[]) => void;
+    groupZones: (zoneIds: string[], forceContent?: ZoneContent) => void;
     selectedZoneInfo: { zone: Zone; parent: Zone | null } | null;
   }) => void;
 }
@@ -53,7 +53,8 @@ export default function ZoneEditor({
   onSetHandleType,
   onSetDoorContent,
   exposeActions,
-}: ZoneEditorProps) {
+  onSelectZone,
+}: ZoneEditorProps & { onSelectZone?: (id: string | null) => void }) {
   // Trouver une zone avec son parent
   const findZoneWithParent = useCallback(
     (current: Zone, targetId: string | null, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
@@ -320,13 +321,14 @@ export default function ZoneEditor({
 
   // Grouper des zones
   const groupZones = useCallback(
-    (zoneIds: string[]) => {
+    (zoneIds: string[], forceContent?: ZoneContent) => {
       if (onGroupZones) {
-        onGroupZones(zoneIds);
+        onGroupZones(zoneIds, forceContent);
       }
     },
     [onGroupZones]
   );
+
 
   useEffect(() => {
     if (exposeActions) {
@@ -350,21 +352,7 @@ export default function ZoneEditor({
       <ZoneCanvas
         zone={rootZone}
         selectedZoneIds={selectedZoneIds}
-        onSelect={(id, multi) => {
-          if (!id) {
-            onSelectedZoneIdsChange([]);
-            return;
-          }
-          if (multi) {
-            if (selectedZoneIds.includes(id)) {
-              onSelectedZoneIdsChange(selectedZoneIds.filter((sid) => sid !== id));
-            } else {
-              onSelectedZoneIdsChange([...selectedZoneIds, id]);
-            }
-          } else {
-            onSelectedZoneIdsChange([id]);
-          }
-        }}
+        onSelect={onSelectZone}
         onRatioChange={handleRatioChange}
         width={width}
         height={height}
