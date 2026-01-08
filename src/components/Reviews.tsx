@@ -425,7 +425,7 @@ export function Reviews() {
               <CheckCircle className="h-4 w-4 text-[#059669]" />
               <span>Avis vérifiés</span>
             </div>
-            <div>Garantie 10 ans</div>
+            <div>Atelier Lillois</div>
             <div>100% sur mesure</div>
           </div>
         </div>

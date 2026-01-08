@@ -119,8 +119,8 @@ export function HeroSection() {
               <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">français</span>
             </div>
             <div className="text-center">
-              <span className="block font-sans font-bold text-lg text-[#1A1917]">10 ans</span>
-              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">garantie</span>
+              <span className="block font-sans font-bold text-lg text-[#1A1917]">Atelier</span>
+              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">Lillois</span>
             </div>
           </div>
         </div>
@@ -192,8 +192,8 @@ export function HeroSection() {
               </div>
               <div className="h-4 w-px bg-[#E8E6E3]" />
               <div className="flex items-center gap-2">
-                <span className="font-sans font-bold text-base text-[#8B7355]">10 ans</span>
-                <span className="font-medium uppercase tracking-wider text-[10px]">garantie</span>
+                <span className="font-sans font-bold text-base text-[#8B7355]">Atelier</span>
+                <span className="font-medium uppercase tracking-wider text-[10px]">Lillois</span>
               </div>
             </div>
           </div>

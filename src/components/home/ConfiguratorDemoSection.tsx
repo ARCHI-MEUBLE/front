@@ -176,9 +176,9 @@ export function ConfiguratorDemoSection() {
               desc: "Soutenir l'artisanat local avec des matériaux sourcés en France."
             },
             {
-              icon: <div className="text-3xl font-sans font-bold text-[#8B7355]">10 ans</div>,
-              title: "Garantie",
-              desc: "La sérénité d'un meuble conçu pour traverser les générations."
+              icon: <div className="text-3xl font-sans font-bold text-[#8B7355]">Atelier</div>,
+              title: "Lillois",
+              desc: "Un savoir-faire local au cœur de la métropole lilloise."
             }
           ].map((item, i) => (
             <div key={i} data-animate className="flex flex-row items-center text-left gap-6 opacity-0 transition-all duration-700 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 group">

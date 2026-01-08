@@ -1,118 +1,86 @@
-import Head from "next/head";
-import Image from "next/image";
+"use client"
+
+import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import Link from "next/link";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, MapPin, Ruler, Calendar } from "lucide-react";
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
+import { 
+  ArrowRight, 
+  MapPin, 
+  Ruler, 
+  Calendar,
+  Camera
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-type Realisation = {
-  id: string;
-  title: string;
-  category: string;
-  location: string;
-  year: string;
-  dimensions?: string;
+interface Realisation {
+  id: number;
+  titre: string;
   description: string;
-  images: string[];
-  featured?: boolean;
-};
+  image_url: string | null;
+  date_projet: string;
+  categorie: string;
+  lieu: string;
+  dimensions: string;
+  created_at: string;
+  featured?: boolean; // Optionnel si on l'ajoute plus tard en DB
+}
 
-const CATEGORIES = [
-  { id: "all", label: "Toutes" },
-  { id: "dressing", label: "Dressings" },
-  { id: "bibliotheque", label: "Bibliothèques" },
-  { id: "meuble-tv", label: "Meubles TV" },
-  { id: "bureau", label: "Bureaux" },
-  { id: "rangement", label: "Rangements" },
-];
-
-const REALISATIONS: Realisation[] = [
-  {
-    id: "dressing-lille-centre",
-    title: "Dressing sur mesure",
-    category: "dressing",
-    location: "Lille Centre",
-    year: "2024",
-    dimensions: "3.2m x 2.8m",
-    description: "Dressing en chêne naturel avec éclairage LED intégré et tiroirs à fermeture douce.",
-    images: ["/images/accueil image/dressing.jpg"],
-    featured: true,
-  },
-  {
-    id: "bibliotheque-roubaix",
-    title: "Bibliothèque murale",
-    category: "bibliotheque",
-    location: "Roubaix",
-    year: "2024",
-    dimensions: "4.5m x 3m",
-    description: "Bibliothèque du sol au plafond en MDF laqué blanc avec échelle coulissante.",
-    images: ["/images/accueil image/biblio.jpg"],
-    featured: true,
-  },
-  {
-    id: "meuble-tv-tourcoing",
-    title: "Meuble TV suspendu",
-    category: "meuble-tv",
-    location: "Tourcoing",
-    year: "2024",
-    dimensions: "2.4m x 0.45m",
-    description: "Meuble TV flottant avec panneau arrière en tasseaux et rangements cachés.",
-    images: ["/images/accueil image/meubletv.jpg"],
-  },
-  {
-    id: "bureau-marcq",
-    title: "Bureau d'angle",
-    category: "bureau",
-    location: "Marcq-en-Baroeul",
-    year: "2023",
-    dimensions: "2.2m x 1.8m",
-    description: "Bureau d'angle avec caissons intégrés et plan de travail en chêne massif.",
-    images: ["/images/accueil image/bureau.jpg"],
-  },
-  {
-    id: "rangement-lambersart",
-    title: "Placard sous escalier",
-    category: "rangement",
-    location: "Lambersart",
-    year: "2023",
-    dimensions: "Sur mesure",
-    description: "Optimisation de l'espace sous escalier avec portes coulissantes et étagères modulables.",
-    images: ["/images/accueil image/meublesousescalier.jpg"],
-  },
-  {
-    id: "buffet-wasquehal",
-    title: "Buffet contemporain",
-    category: "rangement",
-    location: "Wasquehal",
-    year: "2023",
-    dimensions: "2.4m x 0.9m",
-    description: "Buffet sur mesure avec façades en placage chêne et poignées intégrées.",
-    images: ["/images/accueil image/buffet.jpg"],
-    featured: true,
-  },
-  {
-    id: "tete-lit-villeneuve",
-    title: "Tête de lit avec rangements",
-    category: "rangement",
-    location: "Villeneuve d'Ascq",
-    year: "2024",
-    dimensions: "3m x 1.2m",
-    description: "Tête de lit panoramique avec niches éclairées et tables de chevet intégrées.",
-    images: ["/images/accueil image/tetedelit.jpg"],
-  },
-];
+interface Category {
+  id: string | number;
+  slug: string;
+  name: string;
+}
 
 export default function RealisationsPage() {
+  const [realisations, setRealisations] = useState<Realisation[]>([]);
+  const [categories, setCategories] = useState<Category[]>([
+    { id: "all", slug: "all", name: "Toutes" }
+  ]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/backend/api/categories.php?active=true');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.categories) {
+            setCategories([
+              { id: "all", slug: "all", name: "Toutes" },
+              ...data.categories
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error("Erreur chargement catégories:", error);
+      }
+    };
+
+    const fetchRealisations = async () => {
+      try {
+        const response = await fetch('/backend/api/realisations.php');
+        if (response.ok) {
+          const data = await response.json();
+          setRealisations(data.realisations || []);
+        }
+      } catch (error) {
+        console.error("Erreur chargement réalisations:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+    fetchRealisations();
+  }, []);
 
   const filteredRealisations = selectedCategory === "all"
-    ? REALISATIONS
-    : REALISATIONS.filter(r => r.category === selectedCategory);
-
-  const featuredRealisations = REALISATIONS.filter(r => r.featured);
+    ? realisations
+    : realisations.filter(r => r.categorie === selectedCategory);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
@@ -191,7 +159,7 @@ export default function RealisationsPage() {
                   {[
                     { value: "150+", label: "Projets livrés" },
                     { value: "100%", label: "Sur mesure" },
-                    { value: "10 ans", label: "Garantie" },
+                    { value: "Atelier", label: "Lillois" },
                   ].map((stat) => (
                     <div key={stat.label}>
                       <div className="font-serif text-3xl text-white">{stat.value}</div>
@@ -290,17 +258,17 @@ export default function RealisationsPage() {
 
               {/* Filter buttons */}
               <div className="mt-10 flex flex-wrap justify-center gap-3">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    key={cat.slug}
+                    onClick={() => setSelectedCategory(cat.slug)}
                     className={`rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 ${
-                      selectedCategory === cat.id
+                      selectedCategory === cat.slug
                         ? 'bg-[#1A1917] text-white'
                         : 'bg-white text-[#1A1917] hover:bg-[#F5F3F0] border border-[#E8E4DE]'
                     }`}
                   >
-                    {cat.label}
+                    {cat.name}
                   </button>
                 ))}
               </div>
@@ -312,7 +280,11 @@ export default function RealisationsPage() {
               className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
             >
               <AnimatePresence mode="popLayout">
-                {filteredRealisations.map((realisation, i) => (
+                {isLoading ? (
+                  <div className="col-span-full flex justify-center py-20">
+                    <div className="w-12 h-12 border-4 border-[#1A1917] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : filteredRealisations.map((realisation, i) => (
                   <motion.article
                     key={realisation.id}
                     layout
@@ -326,15 +298,21 @@ export default function RealisationsPage() {
                   >
                     {/* Image */}
                     <div className="relative aspect-[4/3] overflow-hidden bg-[#E8E4DE]">
-                      <motion.img
-                        src={realisation.images[0]}
-                        alt={realisation.title}
-                        className="h-full w-full object-cover"
-                        animate={{
-                          scale: hoveredId === realisation.id ? 1.05 : 1
-                        }}
-                        transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-                      />
+                      {realisation.image_url ? (
+                        <motion.img
+                          src={realisation.image_url}
+                          alt={realisation.titre}
+                          className="h-full w-full object-cover"
+                          animate={{
+                            scale: hoveredId === realisation.id ? 1.05 : 1
+                          }}
+                          transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[#706F6C]">
+                          <Camera className="h-12 w-12" strokeWidth={1} />
+                        </div>
+                      )}
 
                       {/* Overlay on hover */}
                       <motion.div
@@ -362,7 +340,7 @@ export default function RealisationsPage() {
                         transition={{ duration: 0.2 }}
                       >
                         <Link
-                          href={`/contact-request?projet=${encodeURIComponent(realisation.title)}`}
+                          href={`/contact-request?projet=${encodeURIComponent(realisation.titre)}`}
                           className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-[#1A1917] transition-transform active:scale-95"
                         >
                           Projet similaire
@@ -375,8 +353,8 @@ export default function RealisationsPage() {
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="font-medium text-[#1A1917]">{realisation.title}</h3>
-                          <p className="mt-1 text-sm text-[#6B6560]">{realisation.description}</p>
+                          <h3 className="font-medium text-[#1A1917]">{realisation.titre}</h3>
+                          <p className="mt-1 text-sm text-[#6B6560] line-clamp-2">{realisation.description}</p>
                         </div>
                       </div>
 
@@ -384,7 +362,7 @@ export default function RealisationsPage() {
                       <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[#6B6560]">
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5" />
-                          {realisation.location}
+                          {realisation.lieu}
                         </span>
                         {realisation.dimensions && (
                           <span className="flex items-center gap-1.5">
@@ -394,7 +372,7 @@ export default function RealisationsPage() {
                         )}
                         <span className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
-                          {realisation.year}
+                          {realisation.date_projet}
                         </span>
                       </div>
                     </div>
@@ -403,7 +381,7 @@ export default function RealisationsPage() {
               </AnimatePresence>
             </motion.div>
 
-            {filteredRealisations.length === 0 && (
+            {!isLoading && filteredRealisations.length === 0 && (
               <div className="mt-12 text-center text-[#6B6560]">
                 Aucune réalisation dans cette catégorie pour le moment.
               </div>
@@ -453,7 +431,6 @@ export default function RealisationsPage() {
                   </div>
                   Fabriqué en France
                 </div>
-                <div>Garantie 10 ans</div>
                 <div>Devis gratuit</div>
               </div>
             </motion.div>

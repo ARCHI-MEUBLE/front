@@ -9,7 +9,7 @@ import { useCustomer } from "@/context/CustomerContext";
 const navLinks = [
   { href: "/models", label: "Nos modèles" },
   { href: "/samples", label: "Échantillons" },
-  { href: "/showrooms", label: "Réalisations" },
+  { href: "/realisations", label: "Réalisations" },
   { href: "/avis", label: "Avis clients" },
   { href: "/contact-request", label: "Contact" },
 ];

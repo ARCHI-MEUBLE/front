@@ -327,7 +327,6 @@ export default function ModelsPage() {
                       </div>
                       Made in France
                     </div>
-                    <div>Garantie 10 ans</div>
                     <div>Devis gratuit</div>
                   </div>
                 </div>

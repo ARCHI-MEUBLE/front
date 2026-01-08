@@ -17,6 +17,7 @@ import {
   IconCurrencyEuro,
   IconColorSwatch,
   IconCategory,
+  IconCamera,
 } from "@tabler/icons-react"
 
 import {
@@ -52,6 +53,7 @@ export type DashboardSection =
   | 'avis'
   | 'pricing'
   | 'samples'
+  | 'realisations'
   | 'password'
 
 interface AdminSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -110,6 +112,11 @@ const navSecondary = [
     id: "avis" as DashboardSection,
     title: "Avis clients",
     icon: IconStar,
+  },
+  {
+    id: "realisations" as DashboardSection,
+    title: "Réalisations",
+    icon: IconCamera,
   },
   {
     id: "password" as DashboardSection,

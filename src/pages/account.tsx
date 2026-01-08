@@ -811,7 +811,7 @@ export default function Account() {
                       },
                       {
                         q: 'Quelles garanties proposez-vous ?',
-                        a: 'Tous nos meubles sont garantis 2 ans contre les défauts de fabrication. Cette garantie couvre les pièces et la main d\'œuvre.'
+                        a: 'Tous nos meubles sont garantis contre les défauts de fabrication. Cette garantie couvre les pièces et la main d\'œuvre.'
                       }
                     ].map((item, i) => (
                       <div key={i} className="p-6 transition-colors hover:bg-[#FAFAF9]">

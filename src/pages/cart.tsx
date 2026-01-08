@@ -629,8 +629,8 @@ export default function Cart() {
                       <div className="flex items-start gap-3">
                         <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
                         <div>
-                          <p className="text-sm font-medium text-[#1A1917]">Garantie 10 ans</p>
-                          <p className="text-xs text-[#706F6C]">Qualité artisanale certifiée</p>
+                          <p className="text-sm font-medium text-[#1A1917]">Qualité artisanale</p>
+                          <p className="text-xs text-[#706F6C]">Conçu pour durer</p>
                         </div>
                       </div>
                     </div>
