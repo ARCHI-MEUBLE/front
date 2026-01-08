@@ -1154,13 +1154,17 @@ export default function ConfiguratorPage() {
     const parseZones = (str: string, idPrefix: string): Zone => {
       const hMatch = str.match(/^H(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
       const vMatch = str.match(/^V(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
+      const gMatch = str.match(/^(G|P|P2|Pm|Po|Pd|Pg)(?:\[([^\]]+)\])?\((.*)\)$/);
       
-      if (hMatch || vMatch) {
+      if (hMatch || vMatch || gMatch) {
         const isH = !!hMatch;
-        const match = hMatch || vMatch;
-        const ratiosStr = match![1];
-        const count = ratiosStr ? ratiosStr.split(',').length : parseInt(match![2]);
-        const inner = match![3];
+        const isV = !!vMatch;
+        const isG = !!gMatch && !isH && !isV;
+        
+        const match = hMatch || vMatch || gMatch;
+        const ratiosStr = match![1] && (isH || isV) ? match![1] : (isG ? match![2] : undefined);
+        const countValue = match![2] && (isH || isV) ? parseInt(match![2]) : undefined;
+        const inner = isG ? match![3] : match![3];
         
         // Splitting inner content while respecting parentheses
         const parts: string[] = [];
@@ -1183,9 +1187,27 @@ export default function ConfiguratorPage() {
         const orderedParts = isH ? [...parts].reverse() : parts;
         const orderedRatios = isH && ratios ? [...ratios].reverse() : ratios;
 
+        const zoneType = isH ? 'horizontal' : (isV ? 'vertical' : 'leaf');
+        
+        // Pour un groupe (G, P2, etc.), on détecte si c'est horizontal ou vertical à partir du premier enfant
+        let detectedType: 'horizontal' | 'vertical' | 'leaf' = zoneType;
+        if (isG) {
+          if (inner.startsWith('H')) detectedType = 'horizontal';
+          else if (inner.startsWith('V')) detectedType = 'vertical';
+          else detectedType = 'leaf';
+        }
+
         return {
           id: idPrefix,
-          type: isH ? 'horizontal' : 'vertical',
+          type: detectedType,
+          doorContent: isG ? (
+            str.startsWith('P2') ? 'door_double' : 
+            str.startsWith('Pm') ? 'mirror_door' :
+            str.startsWith('Po') ? 'push_door' :
+            str.startsWith('Pd') ? 'door_right' : 
+            (str.startsWith('P') || str.startsWith('Pg')) ? 'door' : 
+            undefined
+          ) : undefined,
           children: orderedParts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
           splitRatio: (orderedRatios && orderedRatios.length === 2) ? orderedRatios[0] : undefined,
           splitRatios: (orderedRatios && orderedRatios.length > 2) ? orderedRatios : undefined,
@@ -2641,6 +2663,7 @@ export default function ConfiguratorPage() {
                         width={width}
                         height={height}
                         onSelectZone={handleZoneSelect}
+                        isAdminCreateModel={isAdminCreateModel}
                       />
                       <DimensionsPanel
                         width={width}

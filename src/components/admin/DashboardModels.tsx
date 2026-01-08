@@ -76,6 +76,10 @@ const PromptGuideContent = () => (
             <code className="min-w-[60px] text-xs font-bold text-primary bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">[x,y]</code>
             <span className="text-sm text-zinc-600 dark:text-zinc-400 ml-4 group-hover:text-primary transition-colors">Ratios des divisions</span>
           </div>
+          <div className="flex items-center group">
+            <code className="min-w-[60px] text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-2 py-1 rounded">G[x,y]</code>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400 ml-4 group-hover:text-primary transition-colors">Grouper zones (ex: G[1,2])</span>
+          </div>
         </div>
       </div>
 

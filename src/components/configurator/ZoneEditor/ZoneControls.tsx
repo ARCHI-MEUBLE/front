@@ -17,6 +17,7 @@ interface ZoneControlsProps {
   onToggleDressing?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
+  isAdminCreateModel?: boolean;
 }
 
 export default function ZoneControls({
@@ -35,6 +36,7 @@ export default function ZoneControls({
                                        onToggleDressing,
                                        onGroupZones,
                                        onSetHandleType,
+                                       isAdminCreateModel,
                                      }: ZoneControlsProps) {
   const isLeaf = selectedZone.type === 'leaf';
 

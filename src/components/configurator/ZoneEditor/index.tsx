@@ -24,6 +24,7 @@ interface ZoneEditorProps {
   onToggleDressing?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
+  isAdminCreateModel?: boolean;
   exposeActions?: (actions: {
     splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
     setZoneContent: (zoneId: string, content: ZoneContent) => void;
@@ -52,6 +53,7 @@ export default function ZoneEditor({
   onGroupZones,
   onSetHandleType,
   onSetDoorContent,
+  isAdminCreateModel,
   exposeActions,
   onSelectZone,
 }: ZoneEditorProps & { onSelectZone?: (id: string | null) => void }) {
