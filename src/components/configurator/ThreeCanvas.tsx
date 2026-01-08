@@ -196,7 +196,8 @@ function Handle({ type = 'vertical_bar', position, side, height, width }: { type
 
 function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
-  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
+  // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
+  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
 
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
@@ -250,7 +251,8 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
 
 function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
-  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
+  // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
+  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
 
   useEffect(() => {
     let animationFrameId: number;
@@ -307,7 +309,8 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
 
 function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick }: any) {
   const groupRef = useRef<THREE.Group>(null);
-  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.7 : Math.PI * 0.7) : 0;
+  // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
+  const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
 
   // S'assurer que la couleur est valide
   const safeHexColor = getSafeColor(hexColor);
@@ -526,14 +529,16 @@ function Furniture({
       [id]: !prev[id]
     }));
   }, []);
-  const { w, h, d, sideHeight, yOffset, thickness } = useMemo(() => {
+  const { w, h, d, sideHeight, yOffset, thickness, compartmentGap } = useMemo(() => {
     const w = (width || 1500) / 1000;
     const h = (height || 730) / 1000;
     const d = (depth || 500) / 1000;
     const thickness = 0.019;
     const sideHeight = hasSocle ? h - 0.1 : h;
     const yOffset = hasSocle ? 0.1 : 0;
-    return { w, h, d, sideHeight, yOffset, thickness };
+    // Gap pour éviter les collisions entre compartiments adjacents
+    const compartmentGap = 0.020; // 20mm d'espace entre les éléments mobiles (portes, tiroirs)
+    return { w, h, d, sideHeight, yOffset, thickness, compartmentGap };
   }, [width, height, depth, hasSocle]);
 
   // Couleur par défaut
@@ -739,8 +744,8 @@ function Furniture({
             <AnimatedDrawer
               key={zone.id}
               position={[x, y, d / 2]}
-              width={width}
-              height={height}
+              width={width - compartmentGap}
+              height={height - compartmentGap}
               depth={d}
               hexColor={drawerHexColor}
               imageUrl={drawerImageUrl}
@@ -760,8 +765,8 @@ function Furniture({
             <AnimatedPushDrawer
               key={zone.id}
               position={[x, y, d / 2]}
-              width={width}
-              height={height}
+              width={width - compartmentGap}
+              height={height - compartmentGap}
               depth={d}
               hexColor={drawerHexColor}
               imageUrl={drawerImageUrl}
@@ -801,9 +806,9 @@ function Furniture({
               <group key={`${zone.id}-door`} position={[x, y, d/2]}>
                 <AnimatedMirrorDoor
                   side="left"
-                  position={[-width/2, 0, 0]}
-                  width={width}
-                  height={height}
+                  position={[-width/2 + compartmentGap/2, 0, 0]}
+                  width={width - compartmentGap}
+                  height={height - compartmentGap}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
@@ -818,9 +823,9 @@ function Furniture({
               <group key={`${zone.id}-door`} position={[x, y, d/2]}>
                 <AnimatedPushDoor
                   side="left"
-                  position={[-width/2, 0, 0]}
-                  width={width}
-                  height={height}
+                  position={[-width/2 + compartmentGap/2, 0, 0]}
+                  width={width - compartmentGap}
+                  height={height - compartmentGap}
                   hexColor={doorHexColor}
                   imageUrl={doorImageUrl}
                   isOpen={openCompartments[zone.id]}
@@ -837,9 +842,9 @@ function Furniture({
                 {(isDouble || !isRight) && (
                   <AnimatedDoor
                     side="left"
-                    position={[-width/2, 0, 0]}
-                    width={isDouble ? width/2 : width}
-                    height={height}
+                    position={[-width/2 + compartmentGap/2, 0, 0]}
+                    width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                    height={height - compartmentGap}
                     hexColor={doorHexColor}
                     imageUrl={doorImageUrl}
                     handleType={zone.handleType}
@@ -853,9 +858,9 @@ function Furniture({
                 {(isDouble || isRight) && (
                   <AnimatedDoor
                     side="right"
-                    position={[width/2, 0, 0]}
-                    width={isDouble ? width/2 : width}
-                    height={height}
+                    position={[width/2 - compartmentGap/2, 0, 0]}
+                    width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                    height={height - compartmentGap}
                     hexColor={doorHexColor}
                     imageUrl={doorImageUrl}
                     handleType={zone.handleType}
@@ -893,9 +898,9 @@ function Furniture({
             <group key={zone.id} position={[x, y, d/2]}>
               <AnimatedMirrorDoor
                 side="left"
-                position={[-width/2, 0, 0]}
-                width={width}
-                height={height}
+                position={[-width/2 + compartmentGap/2, 0, 0]}
+                width={width - compartmentGap}
+                height={height - compartmentGap}
                 handleType={zone.handleType}
                 isOpen={openCompartments[zone.id]}
                 onClick={() => {
@@ -935,9 +940,9 @@ function Furniture({
             <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
               <AnimatedMirrorDoor
                 side="left"
-                position={[-width/2, 0, 0]}
-                width={width}
-                height={height}
+                position={[-width/2 + compartmentGap/2, 0, 0]}
+                width={width - compartmentGap}
+                height={height - compartmentGap}
                 handleType={zone.handleType}
                 isOpen={openCompartments[zone.id]}
                 onClick={() => {
@@ -952,9 +957,9 @@ function Furniture({
             <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
               <AnimatedPushDoor
                 side="left"
-                position={[-width/2, 0, 0]}
-                width={width}
-                height={height}
+                position={[-width/2 + compartmentGap/2, 0, 0]}
+                width={width - compartmentGap}
+                height={height - compartmentGap}
                 hexColor={doorHexColor}
                 imageUrl={doorImageUrl}
                 isOpen={openCompartments[zone.id]}
@@ -971,9 +976,9 @@ function Furniture({
               {(isDouble || !isRight) && (
                 <AnimatedDoor
                   side="left"
-                  position={[-width/2, 0, 0]}
-                  width={isDouble ? width/2 : width}
-                  height={height}
+                  position={[-width/2 + compartmentGap/2, 0, 0]}
+                  width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                  height={height - compartmentGap}
                   hexColor={doorHexColor}
                   imageUrl={doorImageUrl}
                   handleType={zone.handleType}
@@ -987,9 +992,9 @@ function Furniture({
               {(isDouble || isRight) && (
                 <AnimatedDoor
                   side="right"
-                  position={[width/2, 0, 0]}
-                  width={isDouble ? width/2 : width}
-                  height={height}
+                  position={[width/2 - compartmentGap/2, 0, 0]}
+                  width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                  height={height - compartmentGap}
                   hexColor={doorHexColor}
                   imageUrl={doorImageUrl}
                   handleType={zone.handleType}
@@ -1056,7 +1061,7 @@ function Furniture({
     parseZone(rootZone, 0, sideHeight/2 + yOffset, 0, w - (thickness * 2), sideHeight - (thickness * 2));
     return items;
   }, [
-    rootZone, w, sideHeight, yOffset, thickness, d,
+    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d,
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
