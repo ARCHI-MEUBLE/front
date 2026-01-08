@@ -7,6 +7,8 @@ interface PaymentLink {
   token: string;
   url: string;
   status: string;
+  payment_type?: string;
+  amount?: number;
   expires_at: string;
   created_at: string;
   created_by: string;
@@ -18,6 +20,10 @@ interface PaymentLinkModalProps {
   orderId: number;
   orderNumber: string;
   totalAmount: number;
+  paymentStrategy?: 'full' | 'deposit';
+  depositAmount?: number;
+  remainingAmount?: number;
+  depositPaymentStatus?: string;
 }
 
 export default function PaymentLinkModal({
@@ -25,7 +31,11 @@ export default function PaymentLinkModal({
   onClose,
   orderId,
   orderNumber,
-  totalAmount
+  totalAmount,
+  paymentStrategy = 'full',
+  depositAmount = 0,
+  remainingAmount = 0,
+  depositPaymentStatus = 'pending'
 }: PaymentLinkModalProps) {
   const [existingLinks, setExistingLinks] = useState<PaymentLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,17 +43,11 @@ export default function PaymentLinkModal({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expiryDays, setExpiryDays] = useState(30);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'balance'>('full');
 
-  const amount = typeof totalAmount === 'number' ? totalAmount : parseFloat(totalAmount) || 0;
-
-  // Charger les liens existants quand le modal s'ouvre
   useEffect(() => {
     if (isOpen) {
       loadExistingLinks();
-    } else {
-      // Reset quand on ferme
-      setShowCreateForm(false);
-      setExistingLinks([]);
     }
   }, [isOpen, orderId]);
 
@@ -53,14 +57,11 @@ export default function PaymentLinkModal({
       const response = await fetch(`/api/admin/payment-links?order_id=${orderId}`, {
         credentials: 'include',
       });
-
       const data = await response.json();
-
       if (response.ok && data.success) {
-        setExistingLinks(data.data || []);
-        // Si aucun lien actif, afficher directement le formulaire
-        const hasActiveLink = data.data?.some((link: PaymentLink) => link.status === 'active');
-        if (!hasActiveLink) {
+        setExistingLinks(data.links || []);
+        // Si aucun lien actif, montrer le formulaire de création
+        if (!(data.links || []).some((l: any) => l.status === 'active')) {
           setShowCreateForm(true);
         }
       }
@@ -69,6 +70,27 @@ export default function PaymentLinkModal({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (paymentStrategy === 'deposit') {
+      if (depositPaymentStatus === 'paid') {
+        setPaymentType('balance');
+      } else {
+        setPaymentType('deposit');
+      }
+    } else {
+      setPaymentType('full');
+    }
+  }, [paymentStrategy, depositPaymentStatus]);
+
+  const amount = typeof totalAmount === 'number' ? totalAmount : parseFloat(totalAmount) || 0;
+
+  const getTargetAmount = () => {
+    console.log('Calculating target amount:', { paymentType, depositAmount, remainingAmount, amount });
+    if (paymentType === 'deposit') return depositAmount;
+    if (paymentType === 'balance') return remainingAmount;
+    return amount;
   };
 
   const handleGenerate = async () => {
@@ -80,7 +102,9 @@ export default function PaymentLinkModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           order_id: orderId,
-          expiry_days: expiryDays
+          expiry_days: expiryDays,
+          payment_type: paymentType,
+          amount: getTargetAmount()
         }),
       });
 
@@ -168,10 +192,10 @@ export default function PaymentLinkModal({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="relative w-full max-w-3xl bg-[#FAFAF9] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-3xl bg-[#FAFAF9] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="border-b border-[#1A1917]/10 px-8 py-6">
+          <div className="border-b border-[#1A1917]/10 px-8 py-6 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -198,8 +222,8 @@ export default function PaymentLinkModal({
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-8">
+          {/* Content - Scrollable area */}
+          <div className="p-8 overflow-y-auto flex-1">
             {isLoading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#8B7355] border-t-transparent mx-auto"></div>
@@ -269,6 +293,47 @@ export default function PaymentLinkModal({
                       Créer un nouveau lien
                     </h3>
 
+                    {/* Type de paiement */}
+                    {paymentStrategy === 'deposit' && (
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-[#1A1917] mb-3 uppercase tracking-wider">
+                          Type de paiement
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {depositPaymentStatus !== 'paid' ? (
+                            <button
+                              onClick={() => setPaymentType('deposit')}
+                              className={`py-3 px-4 text-sm font-medium border transition-colors col-span-2 ${
+                                paymentType === 'deposit'
+                                  ? 'bg-[#1A1917] text-white border-[#1A1917]'
+                                  : 'bg-white border-[#1A1917]/20 text-[#1A1917] hover:border-[#1A1917]'
+                              }`}
+                            >
+                              Acompte ({depositAmount}€)
+                            </button>
+                          ) : (
+                            remainingAmount > 0 && (
+                              <button
+                                onClick={() => setPaymentType('balance')}
+                                className={`py-3 px-4 text-sm font-medium border transition-colors col-span-2 ${
+                                  paymentType === 'balance'
+                                    ? 'bg-[#1A1917] text-white border-[#1A1917]'
+                                    : 'bg-white border-[#1A1917]/20 text-[#1A1917] hover:border-[#1A1917]'
+                                }`}
+                              >
+                                Solde ({remainingAmount}€)
+                              </button>
+                            )
+                          )}
+                        </div>
+                        {depositPaymentStatus !== 'paid' && (
+                          <p className="mt-2 text-xs text-[#706F6C] italic">
+                            L'acompte doit être réglé avant de pouvoir générer le lien pour le solde.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Info commande */}
                     <div className="bg-[#FAFAF9] border border-[#1A1917]/5 p-4 mb-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -277,12 +342,12 @@ export default function PaymentLinkModal({
                           <p className="font-medium text-[#1A1917]">#{orderNumber}</p>
                         </div>
                         <div>
-                          <p className="text-[#706F6C] mb-1">Montant</p>
+                          <p className="text-[#706F6C] mb-1">Montant du lien</p>
                           <p className="font-medium text-[#1A1917]">
                             {new Intl.NumberFormat('fr-FR', {
                               style: 'currency',
                               currency: 'EUR'
-                            }).format(amount)}
+                            }).format(getTargetAmount())}
                           </p>
                         </div>
                       </div>

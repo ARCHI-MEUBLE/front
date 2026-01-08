@@ -60,6 +60,8 @@ export default function CheckoutStripe() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [installments, setInstallments] = useState<1 | 3>(1);
+  const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'balance'>('full');
+  const [orderData, setOrderData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     shipping_address: '',
@@ -118,8 +120,22 @@ export default function CheckoutStripe() {
         throw new Error('Commande introuvable');
       }
 
+      setOrderData(order);
+
+      // Déterminer le montant à payer
+      let amountToPay = order.total || 0;
+      if (order.payment_strategy === 'deposit') {
+        if (order.deposit_payment_status !== 'paid') {
+          setPaymentType('deposit');
+          amountToPay = order.deposit_amount;
+        } else if (order.balance_payment_status !== 'paid') {
+          setPaymentType('balance');
+          amountToPay = order.remaining_amount;
+        }
+      }
+
       // Vérifier que la commande n'est pas déjà payée
-      if (order.payment_status === 'paid') {
+      if (order.payment_status === 'paid' || (order.payment_strategy === 'deposit' && order.balance_payment_status === 'paid')) {
         router.push('/my-orders');
         return;
       }
@@ -135,7 +151,7 @@ export default function CheckoutStripe() {
           },
           quantity: item.quantity
         })) || [],
-        total: order.total || 0
+        total: amountToPay
       });
 
       // Pré-remplir les adresses depuis la commande
@@ -607,9 +623,21 @@ export default function CheckoutStripe() {
                   {/* Stripe Checkout */}
                   {orderId && (
                     <div className="border border-[#E8E6E3] bg-white p-6">
+                      {paymentType !== 'full' && (
+                        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <p className="text-amber-800 font-medium">
+                            {paymentType === 'deposit' 
+                              ? `Paiement de l'acompte (${orderData?.deposit_percentage}%)` 
+                              : `Paiement du solde restant`}
+                          </p>
+                          <p className="text-sm text-amber-700 mt-1">
+                            Montant à régler : {cart?.total?.toLocaleString('fr-FR')} €
+                          </p>
+                        </div>
+                      )}
                       <StripeCheckoutWrapper
                         orderId={orderId}
-                        amount={grandTotal}
+                        amount={cart?.total || 0}
                         installments={installments}
                         onSuccess={() => console.log('Payment success!')}
                         onError={(error) => setError(error)}

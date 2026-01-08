@@ -21,6 +21,8 @@ interface CustomerContextType {
   logout: () => Promise<void>;
   checkSession: () => Promise<void>;
   updateProfile: (data: Partial<Customer>) => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string }>;
 }
 
 interface RegisterData {
@@ -100,6 +102,34 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     setCustomer(result.customer);
   };
 
+  const forgotPassword = async (email: string) => {
+    const res = await fetch(`${API_BASE_URL}/customers/forgot-password.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Une erreur est survenue');
+    }
+    return data;
+  };
+
+  const resetPassword = async (token: string, password: string) => {
+    const res = await fetch(`${API_BASE_URL}/customers/reset-password.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Une erreur est survenue');
+    }
+    return data;
+  };
+
   const logout = async () => {
     try {
       await fetch(`${API_BASE_URL}/customers/session.php`, {
@@ -141,6 +171,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         logout,
         checkSession,
         updateProfile,
+        forgotPassword,
+        resetPassword,
       }}
     >
       {children}

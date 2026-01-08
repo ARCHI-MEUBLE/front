@@ -55,22 +55,35 @@ export default function Register() {
       return;
     }
 
+    // Validation du téléphone
+    const cleanPhone = formData.phone.replace(/\s/g, '');
+    const phoneRegex = /^(\+33|0)[1-9](\d{2}){4}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setError('Format de téléphone invalide (ex: 0612345678 ou +33612345678)');
+      return;
+    }
+
+    // Validation du code postal (France)
+    if (formData.country === 'France' && !/^\d{5}$/.test(formData.postal_code)) {
+      setError('Le code postal doit contenir exactement 5 chiffres');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Envoyer uniquement les champs non vides
-      const dataToSend: any = {
+      // Envoyer tous les champs (maintenant obligatoires)
+      const dataToSend = {
         email: formData.email,
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        postal_code: formData.postal_code,
+        country: formData.country,
       };
-
-      if (formData.phone) dataToSend.phone = formData.phone;
-      if (formData.address) dataToSend.address = formData.address;
-      if (formData.city) dataToSend.city = formData.city;
-      if (formData.postal_code) dataToSend.postal_code = formData.postal_code;
-      if (formData.country) dataToSend.country = formData.country;
 
       await register(dataToSend);
 
@@ -232,27 +245,29 @@ export default function Register() {
 
                 <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
-                    Coordonnées (optionnel)
+                    Coordonnées
                   </h3>
                   <div className="grid gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="phone" className="text-sm font-medium">Téléphone</Label>
+                      <Label htmlFor="phone" className="text-sm font-medium">Téléphone *</Label>
                       <Input
                         id="phone"
                         name="phone"
                         type="tel"
                         placeholder="+33 6 12 34 56 78"
+                        required
                         value={formData.phone}
                         onChange={handleChange}
                         className="bg-white dark:bg-zinc-800"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="address" className="text-sm font-medium">Adresse</Label>
+                      <Label htmlFor="address" className="text-sm font-medium">Adresse *</Label>
                       <Input
                         id="address"
                         name="address"
                         placeholder="123 Rue Example"
+                        required
                         value={formData.address}
                         onChange={handleChange}
                         className="bg-white dark:bg-zinc-800"
@@ -260,33 +275,36 @@ export default function Register() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="postal_code" className="text-sm font-medium">Code postal</Label>
+                        <Label htmlFor="postal_code" className="text-sm font-medium">Code postal *</Label>
                         <Input
                           id="postal_code"
                           name="postal_code"
                           placeholder="75001"
+                          required
                           value={formData.postal_code}
                           onChange={handleChange}
                           className="bg-white dark:bg-zinc-800"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="city" className="text-sm font-medium">Ville</Label>
+                        <Label htmlFor="city" className="text-sm font-medium">Ville *</Label>
                         <Input
                           id="city"
                           name="city"
                           placeholder="Paris"
+                          required
                           value={formData.city}
                           onChange={handleChange}
                           className="bg-white dark:bg-zinc-800"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="country" className="text-sm font-medium">Pays</Label>
+                        <Label htmlFor="country" className="text-sm font-medium">Pays *</Label>
                         <Input
                           id="country"
                           name="country"
                           placeholder="France"
+                          required
                           value={formData.country}
                           onChange={handleChange}
                           className="bg-white dark:bg-zinc-800"

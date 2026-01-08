@@ -210,6 +210,26 @@ export const authApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   },
+
+  /**
+   * Demande de réinitialisation de mot de passe
+   */
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /**
+   * Réinitialisation du mot de passe
+   */
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
 };
 
 /**

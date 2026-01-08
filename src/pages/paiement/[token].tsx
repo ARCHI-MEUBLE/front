@@ -25,6 +25,9 @@ interface OrderData {
   order: {
     order_number: string;
     total_amount: number;
+    amount: number;
+    payment_type?: string;
+    deposit_percentage?: number;
     status: string;
     payment_status: string;
     created_at: string;
@@ -115,9 +118,10 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
     }
   };
 
+  const baseAmount = orderData.order.amount || orderData.order.total_amount;
   const amountToPay = installments === 3
-    ? Math.ceil(orderData.order.total_amount / 3)
-    : orderData.order.total_amount;
+    ? Math.ceil(baseAmount / 3)
+    : baseAmount;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
@@ -151,7 +155,7 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
                   )}
                 </div>
               </div>
-              <p className="text-2xl font-bold">{formatCurrency(orderData.order.total_amount)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(baseAmount)}</p>
               <p className="text-sm text-muted-foreground mt-1">Sans frais</p>
             </div>
 
@@ -419,11 +423,23 @@ export default function PaymentLinkPage() {
                   <Separator />
 
                   {/* Total */}
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-lg font-semibold">Total</span>
-                    <span className="text-2xl font-bold">
-                      {formatCurrency(orderData.order.total_amount)}
-                    </span>
+                  <div className="space-y-2 pt-2">
+                    <div className="flex justify-between items-center text-sm text-muted-foreground">
+                      <span>Total commande</span>
+                      <span>{formatCurrency(orderData.order.total_amount)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-primary">
+                        {orderData.order.payment_type === 'deposit' 
+                          ? `Acompte (${orderData.order.deposit_percentage}%)` 
+                          : orderData.order.payment_type === 'balance' 
+                            ? 'Solde restant' 
+                            : 'Total à régler'}
+                      </span>
+                      <span className="text-2xl font-bold text-primary">
+                        {formatCurrency(orderData.order.amount || orderData.order.total_amount)}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Expiration */}

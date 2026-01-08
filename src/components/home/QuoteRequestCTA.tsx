@@ -24,7 +24,7 @@ export function QuoteRequestCTA() {
                 </h2>
 
                 <p className="text-lg text-muted-foreground mb-6">
-                  Vous avez vu un meuble dans la rue ou ailleurs qui vous inspire ?
+                  Vous avez vu un meuble en magasin ou ailleurs qui vous inspire ?
                   Envoyez-nous une <strong>photo ou vidéo</strong> et nous vous ferons
                   un <strong>devis personnalisé</strong> pour le reproduire sur mesure.
                 </p>

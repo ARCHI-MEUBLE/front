@@ -148,6 +148,12 @@ export default function Login() {
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password" title="Mot de passe" className="text-sm font-medium text-[#1A1917] dark:text-zinc-200">Mot de passe</Label>
+                    <Link 
+                      href="/auth/forgot-password" 
+                      className="text-xs text-[#8B7355] hover:underline"
+                    >
+                      Mot de passe oublié ?
+                    </Link>
                   </div>
                   <Input
                     id="password"

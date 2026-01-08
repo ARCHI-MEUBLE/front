@@ -52,6 +52,12 @@ interface Order {
   shipping_address: string;
   payment_method: string;
   payment_status: string;
+  payment_strategy?: 'full' | 'deposit';
+  deposit_percentage?: number;
+  deposit_amount?: number;
+  remaining_amount?: number;
+  deposit_payment_status?: string;
+  balance_payment_status?: string;
   created_at: string;
   items?: OrderItem[];
 }
@@ -143,6 +149,33 @@ export function DashboardOrders() {
       toast.success('Statut mis à jour');
       await loadOrders();
 
+      if (selectedOrder && selectedOrder.id === orderId) {
+        await loadOrderDetails(orderId);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const updatePaymentStrategy = async (orderId: string, strategy: 'full' | 'deposit', percentage: number = 0) => {
+    try {
+      const response = await fetch('/backend/api/admin/orders/payment-strategy.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          order_id: orderId,
+          strategy: strategy,
+          deposit_percentage: percentage
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la mise à jour de la stratégie de paiement');
+      }
+
+      toast.success('Stratégie de paiement mise à jour');
+      await loadOrders();
       if (selectedOrder && selectedOrder.id === orderId) {
         await loadOrderDetails(orderId);
       }
@@ -350,7 +383,7 @@ export function DashboardOrders() {
                             <IconEye className="w-4 h-4 mr-1" />
                             Détails
                           </Button>
-                          {order.payment_status !== 'paid' && (
+                          {(order.payment_status !== 'paid' || (order.payment_strategy === 'deposit' && order.balance_payment_status !== 'paid')) && (
                             <Button
                               onClick={() => {
                                 setSelectedOrderForPaymentLink(order);
@@ -400,6 +433,56 @@ export function DashboardOrders() {
                     <p>
                       <span className="font-medium">Téléphone:</span> {getCustomerPhone(selectedOrder)}
                     </p>
+                  </CardContent>
+                </Card>
+
+                {/* Payment Strategy */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <IconTrendingUp className="w-4 h-4 text-amber-600" />
+                      Stratégie de paiement
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => updatePaymentStrategy(selectedOrder.id, 'full')}
+                          variant={selectedOrder.payment_strategy === 'full' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          disabled={selectedOrder.deposit_payment_status === 'paid' || selectedOrder.payment_status === 'paid'}
+                        >
+                          Paiement 100% direct
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const p = prompt('Pourcentage de l\'acompte (ex: 30) :', '30');
+                            if (p) updatePaymentStrategy(selectedOrder.id, 'deposit', parseFloat(p));
+                          }}
+                          variant={selectedOrder.payment_strategy === 'deposit' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          disabled={selectedOrder.deposit_payment_status === 'paid' || selectedOrder.payment_status === 'paid'}
+                        >
+                          Acompte + Reste
+                        </Button>
+                      </div>
+
+                      {(selectedOrder.deposit_payment_status === 'paid' || selectedOrder.payment_status === 'paid') && (
+                        <p className="text-xs text-muted-foreground italic">
+                          La stratégie ne peut plus être modifiée car un paiement a été effectué.
+                        </p>
+                      )}
+
+                      {selectedOrder.payment_strategy === 'deposit' && (
+                        <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm space-y-1">
+                          <p><span className="font-medium">Acompte ({selectedOrder.deposit_percentage}%):</span> {selectedOrder.deposit_amount}€ ({selectedOrder.deposit_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
+                          <p><span className="font-medium">Solde restant:</span> {selectedOrder.remaining_amount}€ ({selectedOrder.balance_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -484,10 +567,22 @@ export function DashboardOrders() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="flex justify-between items-center text-lg font-semibold">
-                      <span>Total à facturer</span>
-                      <span>{getOrderTotal(selectedOrder)}€</span>
-                    </div>
-                  </CardContent>
+                        <span>Total à facturer</span>
+                        <span>{getOrderTotal(selectedOrder)}€</span>
+                      </div>
+                      <div className="mt-4">
+                        <Button
+                          onClick={() => {
+                            setSelectedOrderForPaymentLink(selectedOrder);
+                            setPaymentLinkModalOpen(true);
+                          }}
+                          className="w-full gap-2"
+                        >
+                          <IconLink className="w-4 h-4" />
+                          Générer un lien de paiement
+                        </Button>
+                      </div>
+                    </CardContent>
                 </Card>
               </div>
             </>
@@ -502,10 +597,15 @@ export function DashboardOrders() {
           onClose={() => {
             setPaymentLinkModalOpen(false);
             setSelectedOrderForPaymentLink(null);
+            loadOrders(); // Rafraîchir les données
           }}
           orderId={parseInt(selectedOrderForPaymentLink.id)}
           orderNumber={selectedOrderForPaymentLink.order_number}
           totalAmount={getOrderTotal(selectedOrderForPaymentLink)}
+          paymentStrategy={selectedOrderForPaymentLink.payment_strategy}
+          depositAmount={selectedOrderForPaymentLink.deposit_amount}
+          remainingAmount={selectedOrderForPaymentLink.remaining_amount}
+          depositPaymentStatus={selectedOrderForPaymentLink.deposit_payment_status}
         />
       )}
     </>

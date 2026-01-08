@@ -36,10 +36,10 @@ export default function PaymentConfirmation() {
 
       if (response.ok && data.success) {
         setPaymentStatus('success');
-        setOrderNumber(data.order_number || null);
+        setOrderNumber(data.order?.order_number || null);
 
         // Afficher un toast de succès
-        if (!data.already_paid) {
+        if (!data.already_processed) {
           toast.success('Paiement confirmé avec succès !');
         }
       } else {
