@@ -698,7 +698,7 @@ function Furniture({
             <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
             <meshBasicMaterial 
               transparent 
-              opacity={selectedZoneIds.includes(zone.id) ? 0.5 : 0} 
+              opacity={selectedZoneIds.includes(zone.id) ? 0.5 : 0.01} 
               color="#FF9800"
               depthWrite={false}
               toneMapped={false}
