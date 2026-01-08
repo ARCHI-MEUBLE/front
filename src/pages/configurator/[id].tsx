@@ -395,6 +395,30 @@ export default function ConfiguratorPage() {
   const [showModelCreatedModal, setShowModelCreatedModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingModel, setIsSavingModel] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+
+  // Charger les catégories dynamiques
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/backend/api/categories.php?active=true');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.categories) {
+            setAvailableCategories(data.categories);
+            // Si on est en mode création, on peut présélectionner la première catégorie
+            if (isAdminCreateModel && data.categories.length > 0) {
+              setModelForm(prev => ({ ...prev, category: data.categories[0].slug }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erreur chargement categories configurateur:", error);
+      }
+    };
+    fetchCategories();
+  }, [isAdminCreateModel]);
+
   const [modelForm, setModelForm] = useState({
     name: '',
     description: '',
@@ -2055,15 +2079,17 @@ export default function ConfiguratorPage() {
     );
   }
 
-  const modelCategories = [
-    { id: "dressing", label: "Dressings" },
-    { id: "bibliotheque", label: "Bibliothèques" },
-    { id: "buffet", label: "Buffets" },
-    { id: "bureau", label: "Bureaux" },
-    { id: "meuble-tv", label: "Meubles TV" },
-    { id: "sous-escalier", label: "Sous-escaliers" },
-    { id: "tete-de-lit", label: "Têtes de lit" },
-  ];
+  const modelCategories = availableCategories.length > 0 
+    ? availableCategories.map(cat => ({ id: cat.slug, label: cat.name }))
+    : [
+        { id: "dressing", label: "Dressings" },
+        { id: "bibliotheque", label: "Bibliothèques" },
+        { id: "buffet", label: "Buffets" },
+        { id: "bureau", label: "Bureaux" },
+        { id: "meuble-tv", label: "Meubles TV" },
+        { id: "sous-escalier", label: "Sous-escaliers" },
+        { id: "tete-de-lit", label: "Têtes de lit" },
+      ];
 
   // Message si le modèle ou la configuration n'existe pas
   if (!model) {

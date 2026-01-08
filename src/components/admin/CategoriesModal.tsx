@@ -28,12 +28,19 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
         credentials: 'include'
       });
       
+      console.log('--- DIAGNOSTIC CATEGORIES ---');
+      console.log('Status:', response.status);
+      
+      const text = await response.text();
+      console.log('Raw response:', text);
+
       if (response.status === 401 || response.status === 403) {
         toast.error("Accès non autorisé aux catégories");
         return;
       }
 
-      const data = await response.json();
+      const data = JSON.parse(text);
+      console.log('Parsed data:', data);
       setCategories(data.categories || []);
     } catch (error) {
       console.error("Erreur lors du chargement des catégories:", error);
