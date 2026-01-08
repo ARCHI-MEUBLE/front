@@ -51,12 +51,6 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     icon: 'P',
     description: 'Ajoute une tringle de penderie',
   },
-  shelf: {
-    label: 'Étagère',
-    shortLabel: 'Étagère',
-    icon: 'E',
-    description: 'Zone dédiée aux étagères fixes',
-  },
   door: {
     label: 'Porte Gauche',
     shortLabel: 'Porte G',

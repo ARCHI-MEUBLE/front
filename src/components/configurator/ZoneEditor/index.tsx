@@ -229,7 +229,7 @@ export default function ZoneEditor({
         onSetHandleType(zoneId, handleType);
       } else {
         const updateZone = (z: Zone): Zone => {
-          if (z.id === zoneId && z.type === 'leaf') {
+          if (z.id === zoneId) {
             return { ...z, handleType };
           }
           if (z.children) {
@@ -382,11 +382,11 @@ export default function ZoneEditor({
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center bg-white shadow-sm" style={{ borderRadius: '50%' }}>
+              <div className="mb-3 flex h-12 w-12 items-center justify-center bg-white shadow-sm" style={{ borderRadius: '2px' }}>
                 <span className="text-2xl">☝️</span>
               </div>
               <p className="text-base font-medium text-[#1A1917]">Aucune zone sélectionnée</p>
-              <p className="text-sm text-[#706F6C]">Cliquez sur un compartiment du meuble pour le modifier</p>
+              <p className="text-sm text-[#706F6C]">Cliquez sur une partie du meuble pour la personnaliser</p>
             </div>
           )}
         </div>

@@ -918,7 +918,7 @@ export default function ConfiguratorPage() {
 
   const setZoneHandleType = useCallback((zoneId: string, handleType: 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed') => {
     const updateZone = (z: Zone): Zone => {
-      if (z.id === zoneId && z.type === 'leaf') {
+      if (z.id === zoneId) {
         return { ...z, handleType };
       }
       if (z.children) {
