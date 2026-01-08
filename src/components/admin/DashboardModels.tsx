@@ -344,7 +344,7 @@ export function DashboardModels() {
         imagePath = uploadData.imagePath;
       }
 
-      const payload = {
+      const payload: any = {
         name: formState.name,
         description: formState.description,
         prompt: formState.prompt,
@@ -352,6 +352,10 @@ export function DashboardModels() {
         price: parseFloat(formState.price) || null,
         imagePath,
       };
+
+      if (editingId) {
+        payload.id = editingId;
+      }
 
       if (!payload.name || !payload.description || !payload.prompt || !payload.imagePath || !payload.category) {
         throw new Error('Tous les champs sont requis (y compris la catégorie)');
