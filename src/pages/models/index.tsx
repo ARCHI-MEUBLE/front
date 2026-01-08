@@ -3,24 +3,14 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCallback, useEffect, useState } from "react";
-import { apiClient, FurnitureModel } from "@/lib/apiClient";
+import { apiClient, FurnitureModel, Category } from "@/lib/apiClient";
 import { ProductCard, ProductModel } from "@/components/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Ruler, Palette, Truck } from "lucide-react";
 
-const categories = [
-  { id: "all", label: "Tous les modèles" },
-  { id: "dressing", label: "Dressings" },
-  { id: "bibliotheque", label: "Bibliothèques" },
-  { id: "buffet", label: "Buffets" },
-  { id: "bureau", label: "Bureaux" },
-  { id: "meuble-tv", label: "Meubles TV" },
-  { id: "sous-escalier", label: "Sous-escaliers" },
-  { id: "tete-de-lit", label: "Têtes de lit" },
-];
-
 export default function ModelsPage() {
   const [models, setModels] = useState<ProductModel[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -56,6 +46,17 @@ export default function ModelsPage() {
 
   useEffect(() => {
     void loadModels();
+
+    // Charger les catégories
+    const loadCategories = async () => {
+      try {
+        const data = await apiClient.categories.getAll(true); // Seulement actives
+        setCategories(data);
+      } catch (err) {
+        console.error("Erreur lors du chargement des catégories:", err);
+      }
+    };
+    loadCategories();
   }, [loadModels]);
 
   const filteredModels = activeCategory === "all"
@@ -172,17 +173,28 @@ export default function ModelsPage() {
 
               {/* Filter buttons */}
               <div className="mt-8 flex flex-wrap justify-center gap-2">
+                <button
+                  key="all"
+                  onClick={() => setActiveCategory("all")}
+                  className={`rounded-full px-5 py-2.5 text-sm font-medium transition-all ${
+                    activeCategory === "all"
+                      ? 'bg-[#1A1917] text-white'
+                      : 'border border-[#E8E4DE] bg-white text-[#1A1917] hover:border-[#1A1917]/20 hover:bg-[#F5F3F0]'
+                  }`}
+                >
+                  Tous les modèles
+                </button>
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
+                    onClick={() => setActiveCategory(cat.slug)}
                     className={`rounded-full px-5 py-2.5 text-sm font-medium transition-all ${
-                      activeCategory === cat.id
+                      activeCategory === cat.slug
                         ? 'bg-[#1A1917] text-white'
                         : 'border border-[#E8E4DE] bg-white text-[#1A1917] hover:border-[#1A1917]/20 hover:bg-[#F5F3F0]'
                     }`}
                   >
-                    {cat.label}
+                    {cat.name}
                   </button>
                 ))}
               </div>

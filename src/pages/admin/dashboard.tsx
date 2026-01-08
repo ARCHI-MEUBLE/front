@@ -6,7 +6,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import { AdminSidebar, type DashboardSection } from '@/components/admin/AdminSidebar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DashboardModels } from '@/components/admin/DashboardModels';
-import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import DashboardPayments from '@/components/admin/DashboardPayments';
@@ -35,7 +34,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 
 const sectionTitles: Record<DashboardSection, { title: string; description: string }> = {
   models: { title: 'Modèles de meubles', description: 'Gérer le catalogue de modèles' },
-  catalogue: { title: 'Configurateur', description: 'Options et personnalisations' },
   configs: { title: 'Configurations clients', description: 'Configurations enregistrées par les clients' },
   orders: { title: 'Gestion des commandes', description: 'Toutes les commandes et leur statut' },
   payments: { title: 'Paiements', description: 'Historique et gestion des paiements' },
@@ -213,7 +211,6 @@ export default function AdminDashboardPage() {
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
                 {selectedSection === 'models' && <DashboardModels />}
-                {selectedSection === 'catalogue' && <DashboardCatalogue />}
                 {selectedSection === 'configs' && <DashboardConfigs />}
                 {selectedSection === 'orders' && <DashboardOrders />}
                 {selectedSection === 'payments' && <DashboardPayments />}

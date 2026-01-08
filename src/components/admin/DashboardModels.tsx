@@ -13,6 +13,7 @@ import {
   IconExternalLink,
   IconTrendingUp,
   IconHelpCircle,
+  IconCategory,
 } from '@tabler/icons-react';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CategoriesModal } from './CategoriesModal';
 
 export interface AdminModel {
   id: number;
@@ -175,6 +177,7 @@ export function DashboardModels() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
 
   const fetchModels = async () => {
     try {
@@ -496,10 +499,16 @@ export function DashboardModels() {
             <h3 className="text-lg font-semibold">Modèles enregistrés</h3>
             <p className="text-sm text-muted-foreground">Gérez votre catalogue de meubles</p>
           </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <IconPlus className="w-4 h-4 mr-2" />
-            Ajouter un modèle
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsCategoriesModalOpen(true)}>
+              <IconCategory className="w-4 h-4 mr-2" />
+              Gérer les catégories
+            </Button>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <IconPlus className="w-4 h-4 mr-2" />
+              Ajouter un modèle
+            </Button>
+          </div>
         </div>
 
         {/* Error */}
@@ -681,6 +690,12 @@ export function DashboardModels() {
           <PromptGuideContent />
         </DialogContent>
       </Dialog>
+
+      {/* Categories Modal */}
+      <CategoriesModal
+        isOpen={isCategoriesModalOpen}
+        onClose={() => setIsCategoriesModalOpen(false)}
+      />
     </>
   );
 }

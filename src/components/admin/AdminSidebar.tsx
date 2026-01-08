@@ -16,6 +16,7 @@ import {
   IconDotsVertical,
   IconCurrencyEuro,
   IconColorSwatch,
+  IconCategory,
 } from "@tabler/icons-react"
 
 import {
@@ -43,7 +44,6 @@ import {
 
 export type DashboardSection =
   | 'models'
-  | 'catalogue'
   | 'configs'
   | 'orders'
   | 'payments'
@@ -67,11 +67,6 @@ const navMain = [
     id: "models" as DashboardSection,
     title: "Modèles de meubles",
     icon: IconPackage,
-  },
-  {
-    id: "catalogue" as DashboardSection,
-    title: "Configurateur",
-    icon: IconFileDescription,
   },
   {
     id: "configs" as DashboardSection,

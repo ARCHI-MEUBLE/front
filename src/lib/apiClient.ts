@@ -264,6 +264,89 @@ export const adminAuthApi = {
 };
 
 /**
+ * API Client - Catégories
+ */
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  display_order: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const categoriesApi = {
+  /**
+   * Récupérer toutes les catégories
+   */
+  async getAll(onlyActive: boolean = false): Promise<Category[]> {
+    const url = onlyActive ? '/api/categories?active=true' : '/api/categories';
+    const response = await request<{ categories: Category[] }>(url);
+    return response.categories;
+  },
+
+  /**
+   * Récupérer une catégorie par son ID
+   */
+  async getById(id: number): Promise<Category> {
+    return request<Category>(`/api/categories?id=${id}`);
+  },
+
+  /**
+   * Créer une nouvelle catégorie (admin uniquement)
+   */
+  async create(category: {
+    name: string;
+    slug?: string;
+    description?: string;
+    image_url?: string;
+    display_order?: number;
+    is_active?: boolean;
+  }): Promise<{ success: boolean; category: Category }> {
+    return request<{ success: boolean; category: Category }>('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    });
+  },
+
+  /**
+   * Mettre à jour une catégorie (admin uniquement)
+   */
+  async update(
+    id: number,
+    data: Partial<Omit<Category, 'id' | 'created_at' | 'updated_at'>>
+  ): Promise<{ success: boolean; category: Category }> {
+    return request<{ success: boolean; category: Category }>('/api/categories', {
+      method: 'PUT',
+      body: JSON.stringify({ id, ...data }),
+    });
+  },
+
+  /**
+   * Supprimer une catégorie (admin uniquement)
+   */
+  async delete(id: number): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>('/api/categories', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
+  },
+
+  /**
+   * Réorganiser l'ordre des catégories (admin uniquement)
+   */
+  async reorder(categoryIds: number[]): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>('/api/categories', {
+      method: 'PUT',
+      body: JSON.stringify({ action: 'reorder', categoryIds }),
+    });
+  },
+};
+
+/**
  * API Client - Échantillons
  */
 export interface SampleColor {
@@ -550,6 +633,7 @@ export const generateApi = {
 export const apiClient = {
   auth: authApi,
   adminAuth: adminAuthApi,
+  categories: categoriesApi,
   models: modelsApi,
   configurations: configurationsApi,
   generate: generateApi,
