@@ -24,8 +24,17 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
   const loadCategories = async () => {
     try {
       setIsLoading(true);
-      const data = await apiClient.categories.getAll(false);
-      setCategories(data);
+      const response = await fetch('/backend/api/categories.php', {
+        credentials: 'include'
+      });
+      
+      if (response.status === 401 || response.status === 403) {
+        toast.error("Accès non autorisé aux catégories");
+        return;
+      }
+
+      const data = await response.json();
+      setCategories(data.categories || []);
     } catch (error) {
       console.error("Erreur lors du chargement des catégories:", error);
       toast.error("Impossible de charger les catégories");
@@ -45,10 +54,20 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
     setIsCreating(true);
 
     try {
-      await apiClient.categories.create({
-        name: newCategoryName.trim(),
-        description: newCategoryDescription.trim() || undefined,
+      const response = await fetch('/backend/api/categories.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          description: newCategoryDescription.trim() || undefined,
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        throw new Error(errorData.error || "Erreur lors de la création");
+      }
 
       toast.success("Catégorie créée avec succès");
       setNewCategoryName("");
@@ -68,7 +87,15 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
     }
 
     try {
-      await apiClient.categories.delete(category.id);
+      const response = await fetch(`/backend/api/categories.php?id=${category.id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error("Impossible de supprimer");
+      }
+
       toast.success("Catégorie supprimée");
       await loadCategories();
     } catch (error: any) {

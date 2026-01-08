@@ -38,6 +38,8 @@ type FormState = {
   description: string;
   prompt: string;
   imagePath: string;
+  category: string;
+  price: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -45,6 +47,8 @@ const EMPTY_FORM: FormState = {
   description: '',
   prompt: '',
   imagePath: '',
+  category: '',
+  price: '',
 };
 
 const PromptGuideContent = () => (
@@ -178,6 +182,21 @@ export function DashboardModels() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/backend/api/categories.php?active=true', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error("Erreur chargement categories:", error);
+    }
+  };
 
   const fetchModels = async () => {
     try {
@@ -205,6 +224,7 @@ export function DashboardModels() {
 
   useEffect(() => {
     void fetchModels();
+    void fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -320,11 +340,13 @@ export function DashboardModels() {
         name: formState.name,
         description: formState.description,
         prompt: formState.prompt,
+        category: formState.category,
+        price: parseFloat(formState.price) || null,
         imagePath,
       };
 
-      if (!payload.name || !payload.description || !payload.prompt || !payload.imagePath) {
-        throw new Error('Tous les champs sont requis');
+      if (!payload.name || !payload.description || !payload.prompt || !payload.imagePath || !payload.category) {
+        throw new Error('Tous les champs sont requis (y compris la catégorie)');
       }
 
       const endpoint = editingId ? `/backend/api/models.php?id=${editingId}` : '/backend/api/models.php';
@@ -366,13 +388,15 @@ export function DashboardModels() {
     }
   };
 
-  const handleEdit = (model: AdminModel) => {
+  const handleEdit = (model: AdminModel & { category?: string; price?: number }) => {
     setEditingId(model.id);
     setFormState({
       name: model.name,
       description: model.description,
       prompt: model.prompt,
       imagePath: model.image_url ?? '',
+      category: model.category ?? '',
+      price: model.price?.toString() ?? '',
     });
     setFile(null);
     if (preview) {
@@ -631,6 +655,35 @@ export function DashboardModels() {
                 placeholder="Le prompt doit contenir 'b' (planche de base)"
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Catégorie</Label>
+                <select
+                  id="category"
+                  name="category"
+                  value={formState.category}
+                  onChange={(e) => setFormState(prev => ({ ...prev, category: e.target.value }))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Sélectionner une catégorie</option>
+                  {availableCategories.map(cat => (
+                    <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Prix estimé (€)</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="0.01"
+                  value={formState.price}
+                  onChange={handleInputChange}
+                  placeholder="Ex: 1200"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="image">Image du modèle</Label>
