@@ -54,16 +54,22 @@ export default function PaymentLinkModal({
   const loadExistingLinks = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/payment-links?order_id=${orderId}`, {
+      const response = await fetch(`/backend/api/admin/payment-links.php?order_id=${orderId}`, {
         credentials: 'include',
       });
       const data = await response.json();
+      console.log('--- DIAGNOSTIC PAYMENT LINKS ---');
+      console.log('Status:', response.status);
+      console.log('Data:', data);
+
       if (response.ok && data.success) {
         setExistingLinks(data.links || []);
         // Si aucun lien actif, montrer le formulaire de création
         if (!(data.links || []).some((l: any) => l.status === 'active')) {
           setShowCreateForm(true);
         }
+      } else {
+        console.error('Erreur API Liens:', data.error);
       }
     } catch (err) {
       console.error('Erreur chargement liens:', err);
@@ -96,7 +102,7 @@ export default function PaymentLinkModal({
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/admin/generate-payment-link', {
+      const response = await fetch('/backend/api/admin/generate-payment-link.php', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -130,7 +136,7 @@ export default function PaymentLinkModal({
     }
 
     try {
-      const response = await fetch('/api/admin/payment-links', {
+      const response = await fetch('/backend/api/admin/payment-links.php', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
