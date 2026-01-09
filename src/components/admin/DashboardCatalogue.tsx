@@ -410,7 +410,7 @@ export function DashboardCatalogue() {
             <DialogTitle>{editingId ? "Modifier l'article" : "Ajouter un article"}</DialogTitle>
             <DialogDescription>Remplissez les caractéristiques techniques de la pièce</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 px-6 py-2">
+          <ScrollArea className="flex-1 px-6 py-2 max-h-[60vh] overflow-y-auto">
             <form id="catalogue-form" onSubmit={handleSubmit} className="space-y-4 pb-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">

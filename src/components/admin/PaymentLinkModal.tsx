@@ -101,6 +101,16 @@ export default function PaymentLinkModal({
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    const targetAmount = getTargetAmount();
+    console.log('[DEBUG] Generating payment link with:', {
+      orderId,
+      expiryDays,
+      paymentType,
+      targetAmount,
+      orderNumber,
+      totalAmount
+    });
+
     try {
       const response = await fetch('/backend/api/admin/generate-payment-link.php', {
         method: 'POST',
@@ -110,7 +120,7 @@ export default function PaymentLinkModal({
           order_id: orderId,
           expiry_days: expiryDays,
           payment_type: paymentType,
-          amount: getTargetAmount()
+          amount: targetAmount
         }),
       });
 
