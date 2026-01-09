@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import formidable from 'formidable';
 import fs from 'fs';
-import path from 'path';
+import FormData from 'form-data';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://localhost:8000';
 
 export const config = {
   api: {
@@ -16,19 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'catalogue');
-      if (!fs.existsSync(uploadDir)) {
-        try {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        } catch (mkdirError: any) {
-          console.error('Erreur mkdirSync:', mkdirError);
-          // Si on ne peut pas créer le dossier, c'est peut-être un problème de permissions
-        }
-      }
-
-      const form = formidable({
-      uploadDir,
-      keepExtensions: true,
+    // Parser le fichier uploadé
+    const form = formidable({
       maxFileSize: 50 * 1024 * 1024,
       filter: (part) => part.mimetype?.startsWith('image/') || false,
     });
@@ -44,43 +35,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rawFile = Array.isArray(files.image) ? files.image[0] : files.image;
 
     if (!rawFile || !rawFile.filepath) {
-      return res.status(400).json({ success: false, error: 'Aucun fichier image fourni ou chemin invalide' });
+      return res.status(400).json({ success: false, error: 'Aucun fichier image fourni' });
     }
 
-    // Vérifier si le fichier source existe avant le renommage
-    if (!fs.existsSync(rawFile.filepath)) {
-      console.error('Fichier temporaire introuvable:', rawFile.filepath);
-      return res.status(500).json({ success: false, error: 'Erreur lors de la réception du fichier' });
-    }
-
-    const extension = path.extname(rawFile.originalFilename || 'image.jpg');
-    const filename = `catalogue_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${extension}`;
-    const filepath = path.join(uploadDir, filename);
-
-    try {
-      fs.renameSync(rawFile.filepath, filepath);
-    } catch (renameError: any) {
-      console.error('Erreur renameSync:', renameError);
-      // Tentative de copie si le renommage échoue (problème possible entre partitions / volumes)
-      try {
-        fs.copyFileSync(rawFile.filepath, filepath);
-        fs.unlinkSync(rawFile.filepath);
-      } catch (copyError: any) {
-        console.error('Erreur copyFileSync:', copyError);
-        return res.status(500).json({ success: false, error: 'Échec de l\'enregistrement final de l\'image: ' + copyError.message });
-      }
-    }
-
-    const relativeUrl = `/uploads/catalogue/${filename}`;
-
-    return res.status(201).json({
-      success: true,
-      message: 'Image uploadée avec succès',
-      url: relativeUrl,
-      filename,
+    // Créer FormData pour envoyer au backend
+    const formData = new FormData();
+    const fileStream = fs.createReadStream(rawFile.filepath);
+    formData.append('image', fileStream, {
+      filename: rawFile.originalFilename || 'image.jpg',
+      contentType: rawFile.mimetype || 'image/jpeg',
     });
+
+    // Envoyer au backend Railway
+    const backendResponse = await fetch(`${BACKEND_URL}/backend/api/admin/upload-image.php`, {
+      method: 'POST',
+      headers: {
+        ...formData.getHeaders(),
+        'Cookie': req.headers.cookie || '',
+      },
+      body: formData,
+    });
+
+    const responseText = await backendResponse.text();
+
+    // Nettoyer le fichier temporaire
+    try {
+      fs.unlinkSync(rawFile.filepath);
+    } catch (e) {
+      console.warn('Could not delete temp file:', e);
+    }
+
+    // Parser la réponse JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Backend response not JSON:', responseText.substring(0, 500));
+      return res.status(500).json({
+        success: false,
+        error: 'Réponse backend invalide',
+        details: responseText.substring(0, 200)
+      });
+    }
+
+    if (!backendResponse.ok) {
+      return res.status(backendResponse.status).json(data);
+    }
+
+    return res.status(200).json(data);
   } catch (error: any) {
-    console.error('Erreur upload image catalogue:', error);
-    return res.status(500).json({ success: false, error: error.message || 'Erreur interne du serveur' });
+    console.error('Erreur upload image:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur interne du serveur'
+    });
   }
 }
