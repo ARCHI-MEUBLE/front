@@ -33,30 +33,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers.Cookie = req.headers.cookie;
     }
 
+    console.log('[CATALOGUE PROXY] Calling backend:', backendUrl);
+
     const response = await fetch(backendUrl, {
       method: req.method,
       headers,
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
     });
 
+    console.log('[CATALOGUE PROXY] Backend response status:', response.status);
     const text = await response.text();
-    
+    console.log('[CATALOGUE PROXY] Backend response:', text.substring(0, 500));
+
     // Vérifier si la réponse est du JSON valide
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
-      console.error('Erreur parsing JSON. Réponse reçue:', text.substring(0, 500));
-      return res.status(500).json({ 
-        success: false, 
+      console.error('[CATALOGUE PROXY] Erreur parsing JSON. Réponse reçue:', text.substring(0, 500));
+      return res.status(500).json({
+        success: false,
         error: 'Erreur serveur backend - Réponse invalide',
-        details: text.substring(0, 200)
+        details: text.substring(0, 500)
       });
     }
 
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('Erreur proxy catalogue admin:', error);
-    res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+    console.error('[CATALOGUE PROXY] Erreur proxy catalogue admin:', error);
+    res.status(500).json({ success: false, error: 'Erreur interne du serveur', details: String(error) });
   }
 }
