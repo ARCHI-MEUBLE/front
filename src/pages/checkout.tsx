@@ -5,7 +5,8 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
-import { MapPin, CreditCard, Package, Truck, Shield, Check, ChevronLeft } from 'lucide-react';
+import { Footer } from '@/components/Footer';
+import { MapPin, CreditCard, Package, Truck, Shield, Check, ChevronLeft, AlertTriangle } from 'lucide-react';
 
 // Import dynamique pour éviter les problèmes SSR avec Stripe
 const StripeCheckoutWrapper = dynamic(
@@ -46,6 +47,23 @@ interface SamplesCartData {
   count: number;
 }
 
+interface CatalogueCartItem {
+  id: number;
+  catalogue_item_id: number;
+  variation_id: number | null;
+  quantity: number;
+  name: string;
+  unit_price: number;
+  unit: string;
+  item_image: string | null;
+  variation_name: string | null;
+  variation_image: string | null;
+}
+
+interface CatalogueCartData {
+  items: CatalogueCartItem[];
+}
+
 type CheckoutStep = 'shipping' | 'payment';
 
 export default function CheckoutStripe() {
@@ -53,8 +71,9 @@ export default function CheckoutStripe() {
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
 
   const [step, setStep] = useState<CheckoutStep>('shipping');
-  const [cart, setCart] = useState<CartData | null>(null);
+  const [cart, setCart] = useState<CartData | null>({ items: [], total: 0 });
   const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
+  const [catalogueCart, setCatalogueCart] = useState<CatalogueCartData | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,7 +99,7 @@ export default function CheckoutStripe() {
     if (authLoading) return;
 
     if (!isAuthenticated) {
-      router.push('/auth/login?redirect=/checkout-stripe');
+      router.push('/auth/login?redirect=/checkout');
       return;
     }
 
@@ -195,13 +214,25 @@ export default function CheckoutStripe() {
         setSamplesCart(samplesData);
       }
 
-      // Vérifier que le panier n'est pas vide (configs OU échantillons)
-      const hasConfigs = configData.items && configData.items.length > 0;
-      const hasSamples = samplesData && samplesData.items && samplesData.items.length > 0;
+      // Charger les articles du catalogue
+      const catalogueResponse = await fetch('/api/cart/catalogue', {
+        credentials: 'include',
+      });
 
-      if (!hasConfigs && !hasSamples) {
-        router.push('/cart');
-        return;
+      let catalogueData = null;
+      if (catalogueResponse.ok) {
+        catalogueData = await catalogueResponse.json();
+        setCatalogueCart(catalogueData);
+      }
+
+      // Vérifier que le panier n'est pas vide (configs OU échantillons OU catalogue)
+      const hasConfigs = configData && configData.items && configData.items.length > 0;
+      const hasSamples = samplesData && samplesData.items && samplesData.items.length > 0;
+      const hasCatalogue = catalogueData && catalogueData.items && catalogueData.items.length > 0;
+
+      if (!hasConfigs && !hasSamples && !hasCatalogue) {
+        console.log('Panier vide, mais on reste sur la page pour débug');
+        // router.push('/cart');
       }
 
       setCart(configData);
@@ -291,7 +322,7 @@ export default function CheckoutStripe() {
   };
 
   // Loading state
-  if (authLoading || isLoading) {
+  if (authLoading || (isLoading && !orderId)) {
     return (
       <>
         <Head>
@@ -306,14 +337,43 @@ export default function CheckoutStripe() {
             </div>
           </div>
         </div>
+        <Footer />
       </>
     );
   }
 
-  if (!cart) return null;
+  if ((!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0)) {
+    return (
+      <>
+        <Head>
+          <title>Paiement - ArchiMeuble</title>
+        </Head>
+        <UserNavigation />
+        <div className="min-h-screen bg-surface flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-serif text-ink mb-4">Chargement de votre panier...</h2>
+            <p className="text-stone">Si ce message persiste, votre panier est peut-être vide.</p>
+            <Link href="/cart" className="mt-6 inline-block text-ink underline">Retour au panier</Link>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const grandTotal = (cart?.total || 0) + samplesTotal;
+  const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
+  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal;
+
+  // Stripe Public Key Check
+  const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (!stripeKey && process.env.NODE_ENV === 'development') {
+    console.warn('Stripe Public Key is missing (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)');
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Checkout data:', { cart, samplesCart, catalogueCart, grandTotal, orderId });
+  }
 
   return (
     <>
@@ -637,7 +697,7 @@ export default function CheckoutStripe() {
                       )}
                       <StripeCheckoutWrapper
                         orderId={orderId}
-                        amount={cart?.total || 0}
+                        amount={grandTotal}
                         installments={installments}
                         onSuccess={() => console.log('Payment success!')}
                         onError={(error) => setError(error)}
@@ -727,6 +787,43 @@ export default function CheckoutStripe() {
                     </div>
                   )}
 
+                  {/* Catalogue Items */}
+                  {catalogueCart && catalogueCart.items && catalogueCart.items.length > 0 && (
+                    <div className={`space-y-4 ${ (cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
+                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                        Catalogue ({catalogueCart.items.length})
+                      </p>
+                      {catalogueCart.items.map((item) => (
+                        <div key={item.id} className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-8 w-8 flex-shrink-0 border border-[#E8E6E3] bg-[#F5F5F4]">
+                              {(item.variation_image || item.item_image) ? (
+                                <img
+                                  src={item.variation_image || (item.item_image as string)}
+                                  alt={item.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center">
+                                  <Package className="h-4 w-4 text-[#C4C2BF]" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm text-[#1A1917]">{item.name}</p>
+                              <p className="text-xs text-[#706F6C]">
+                                Qté: {item.quantity} {item.variation_name ? `| ${item.variation_name}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="flex-shrink-0 font-mono text-xs text-[#1A1917]">
+                            {(item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Total */}
                   <div className="mt-6 border-t border-[#E8E6E3] pt-6">
                     <div className="flex items-center justify-between text-sm">
@@ -783,6 +880,8 @@ export default function CheckoutStripe() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </>
   );
 }

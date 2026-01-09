@@ -54,12 +54,30 @@ interface SamplesCartData {
   count: number;
 }
 
+interface CatalogueCartItem {
+  id: number;
+  catalogue_item_id: number;
+  variation_id: number | null;
+  quantity: number;
+  name: string;
+  unit_price: number;
+  unit: string;
+  item_image: string | null;
+  variation_name: string | null;
+  variation_image: string | null;
+}
+
+interface CatalogueCartData {
+  items: CatalogueCartItem[];
+}
+
 export default function Cart() {
   const router = useRouter();
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
 
   const [cart, setCart] = useState<CartData | null>(null);
   const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
+  const [catalogueCart, setCatalogueCart] = useState<CatalogueCartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
@@ -97,6 +115,16 @@ export default function Cart() {
       if (samplesResponse.ok) {
         const samplesData = await samplesResponse.json();
         setSamplesCart(samplesData);
+      }
+
+      // Charger les articles du catalogue
+      const catalogueResponse = await fetch('/api/cart/catalogue', {
+        credentials: 'include',
+      });
+
+      if (catalogueResponse.ok) {
+        const catalogueData = await catalogueResponse.json();
+        setCatalogueCart(catalogueData);
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
@@ -159,6 +187,36 @@ export default function Cart() {
     }
   };
 
+  const updateCatalogueQuantity = async (id: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    try {
+      const res = await fetch('/api/cart/catalogue', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, quantity: newQuantity }),
+      });
+      if (res.ok) {
+        loadCart();
+      }
+    } catch (e) {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const removeCatalogueItem = async (id: number) => {
+    try {
+      const res = await fetch(`/api/cart/catalogue?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast.success("Article retiré");
+        loadCart();
+      }
+    } catch (e) {
+      toast.error("Erreur lors de la suppression");
+    }
+  };
+
   const clearCart = async () => {
     if (!confirm('Vider tout le panier ?')) return;
 
@@ -200,11 +258,12 @@ export default function Cart() {
     );
   }
 
-  const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0);
-  const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0);
+  const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0);
+  const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0) + (catalogueCart?.items?.reduce((acc, i) => acc + i.quantity, 0) || 0);
 
   const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const grandTotal = (cart?.total || 0) + samplesTotal;
+  const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
+  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal;
   const hasPaidSamples = samplesCart?.items.some(item => item.unit_price > 0);
 
   return (
@@ -280,6 +339,87 @@ export default function Cart() {
             <div className="lg:grid lg:grid-cols-12 lg:gap-12">
               {/* Items List */}
               <div className="lg:col-span-7 xl:col-span-8">
+                {/* Catalogue Items Section */}
+                {catalogueCart && catalogueCart.items.length > 0 && (
+                  <div className="mb-10">
+                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
+                      <ShoppingBag className="h-5 w-5 text-[#8B7355]" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                        Articles du catalogue
+                      </h2>
+                      <span className="ml-auto text-sm text-[#706F6C]">
+                        {catalogueCart.items.length} produit{catalogueCart.items.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                      {catalogueCart.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="group relative flex items-center gap-6 border border-[#E8E6E3] bg-white p-5 transition-colors hover:border-[#1A1917]/20"
+                        >
+                          {/* Image */}
+                          <div className="h-20 w-20 flex-shrink-0 border border-[#E8E6E3] overflow-hidden bg-[#F5F5F4]">
+                            {item.variation_image || item.item_image ? (
+                              <img
+                                src={item.variation_image || (item.item_image as string)}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center">
+                                <Package className="h-8 w-8 text-[#C4C2BF]" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium text-[#1A1917]">
+                              {item.name}
+                            </h3>
+                            {item.variation_name && (
+                              <p className="mt-1 text-xs text-[#706F6C]">
+                                Finition: {item.variation_name}
+                              </p>
+                            )}
+                            <p className="mt-2 text-sm font-bold text-[#8B7355]">
+                              {item.unit_price} €
+                            </p>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center border border-[#E8E6E3] rounded h-9 bg-white">
+                              <button
+                                onClick={() => updateCatalogueQuantity(item.id, item.quantity - 1)}
+                                className="px-2 text-[#706F6C] hover:text-[#1A1917]"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-8 text-center text-sm font-medium">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() => updateCatalogueQuantity(item.id, item.quantity + 1)}
+                                className="px-2 text-[#706F6C] hover:text-[#1A1917]"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeCatalogueItem(item.id)}
+                              className="text-[#706F6C] hover:text-[#1A1917]"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Samples Section */}
                 {samplesCart && samplesCart.items.length > 0 && (
                   <div className="mb-10">

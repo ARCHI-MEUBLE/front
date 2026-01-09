@@ -45,6 +45,7 @@ import {
 
 export type DashboardSection =
   | 'models'
+  | 'catalogue'
   | 'configs'
   | 'orders'
   | 'payments'
@@ -69,6 +70,11 @@ const navMain = [
     id: "models" as DashboardSection,
     title: "Modèles de meubles",
     icon: IconPackage,
+  },
+  {
+    id: "catalogue" as DashboardSection,
+    title: "Catalogue & Pièces",
+    icon: IconFileDescription,
   },
   {
     id: "configs" as DashboardSection,

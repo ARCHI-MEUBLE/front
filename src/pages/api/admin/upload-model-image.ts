@@ -3,7 +3,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasAdminSession } from '@/lib/adminAuth';
-import formidable from 'immer-formidable'; // Utilisation de formidable pour gérer les fichiers multi-part
+import formidable from 'formidable'; // Utilisation de formidable pour gérer les fichiers multi-part
 import fs from 'fs';
 
 export const config = {

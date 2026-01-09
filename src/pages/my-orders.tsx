@@ -38,6 +38,16 @@ interface OrderSampleItem {
   price: number;
 }
 
+interface OrderCatalogueItem {
+  id: number;
+  name: string;
+  variation_name: string | null;
+  image_url: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 interface Order {
   id: number;
   order_number: string;
@@ -49,6 +59,7 @@ interface Order {
   created_at: string;
   items?: OrderItem[];
   samples?: OrderSampleItem[];
+  catalogue_items?: OrderCatalogueItem[];
   samples_count?: number;
 }
 

@@ -6,6 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { AdminSidebar, type DashboardSection } from '@/components/admin/AdminSidebar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DashboardModels } from '@/components/admin/DashboardModels';
+import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import DashboardPayments from '@/components/admin/DashboardPayments';
@@ -42,6 +43,7 @@ const sectionTitles: Record<DashboardSection, { title: string; description: stri
   calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
   avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
   pricing: { title: 'Gestion des prix', description: 'Configurez les prix au mètre cube' },
+  catalogue: { title: 'Catalogue & Pièces', description: 'Gérez les articles et accessoires' },
   samples: { title: 'Gestion des échantillons', description: 'Catalogue des finitions et matériaux' },
   realisations: { title: 'Réalisations', description: 'Gérer les photos et détails des projets réels' },
   password: { title: 'Paramètres', description: 'Modifier le mot de passe' },
@@ -213,6 +215,7 @@ export default function AdminDashboardPage() {
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
                 {selectedSection === 'models' && <DashboardModels />}
+                {selectedSection === 'catalogue' && <DashboardCatalogue />}
                 {selectedSection === 'configs' && <DashboardConfigs />}
                 {selectedSection === 'orders' && <DashboardOrders />}
                 {selectedSection === 'payments' && <DashboardPayments />}

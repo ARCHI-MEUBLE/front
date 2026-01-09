@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategoriesModal } from './CategoriesModal';
+import { DashboardCatalogue } from './DashboardCatalogue';
 
 export interface AdminModel {
   id: number;

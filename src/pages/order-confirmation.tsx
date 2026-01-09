@@ -21,6 +21,13 @@ interface OrderSample {
   image_url: string | null;
 }
 
+interface OrderCatalogueItem {
+  id: number;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: number;
   order_number: string;
@@ -32,6 +39,7 @@ interface Order {
   created_at: string;
   items: OrderItem[];
   samples: OrderSample[];
+  catalogue_items: OrderCatalogueItem[];
 }
 
 export default function OrderConfirmation() {
@@ -100,6 +108,9 @@ export default function OrderConfirmation() {
   }
 
   const isSamplesOnly = order.total === 0 && order.samples && order.samples.length > 0;
+  const hasConfigurations = order.items && order.items.length > 0;
+  const hasCatalogueItems = order.catalogue_items && order.catalogue_items.length > 0;
+  const hasSamples = order.samples && order.samples.length > 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
@@ -124,7 +135,9 @@ export default function OrderConfirmation() {
             <p className="mt-2 text-sm text-[#6B6560]">
               {isSamplesOnly
                 ? 'Vos échantillons gratuits vont être préparés et expédiés.'
-                : 'Merci pour votre commande ! Vous recevrez un email de confirmation.'}
+                : hasConfigurations
+                ? 'Merci pour votre commande. Nous avons bien reçu votre demande et nous allons commencer la production de vos meubles sur mesure.'
+                : 'Merci pour votre commande ! Nous préparons vos articles pour l\'expédition.'}
             </p>
           </div>
 
@@ -169,7 +182,7 @@ export default function OrderConfirmation() {
           </div>
 
           {/* Order Items */}
-          {order.items && order.items.length > 0 && (
+          {(hasConfigurations || hasCatalogueItems) && (
             <div className="mb-8 bg-white p-5 sm:p-6">
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center bg-[#F5F3F0]">
@@ -178,11 +191,26 @@ export default function OrderConfirmation() {
                 <h2 className="font-medium text-[#1A1917]">Articles</h2>
               </div>
               <div className="divide-y divide-[#E8E4DE]">
+                {/* Configurations */}
                 {order.items.map((item, index) => (
-                  <div key={index} className="flex items-start justify-between py-4 first:pt-0 last:pb-0">
+                  <div key={`config-${index}`} className="flex items-start justify-between py-4 first:pt-0 last:pb-0">
                     <div>
                       <h3 className="font-medium text-[#1A1917]">{item.name}</h3>
-                      <p className="mt-1 text-sm text-[#6B6560]">Quantité: {item.quantity}</p>
+                      <p className="mt-1 text-sm text-[#6B6560]">Meuble sur mesure • Qté: {item.quantity}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-[#1A1917]">{item.price * item.quantity}€</p>
+                      <p className="text-sm text-[#6B6560]">{item.price}€ × {item.quantity}</p>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Catalogue Items */}
+                {order.catalogue_items && order.catalogue_items.map((item, index) => (
+                  <div key={`catalogue-${index}`} className="flex items-start justify-between py-4 first:pt-0 last:pb-0">
+                    <div>
+                      <h3 className="font-medium text-[#1A1917]">{item.name}</h3>
+                      <p className="mt-1 text-sm text-[#6B6560]">Article catalogue • Qté: {item.quantity}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-[#1A1917]">{item.price * item.quantity}€</p>
@@ -266,29 +294,40 @@ export default function OrderConfirmation() {
                 <span className="mt-0.5 text-[#059669]">✓</span>
                 <span>Email de confirmation envoyé à votre adresse</span>
               </li>
-              {isSamplesOnly ? (
-                <>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 text-[#059669]">✓</span>
-                    <span>Préparation sous 24-48h</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 text-[#059669]">✓</span>
-                    <span>Livraison gratuite sous 3-5 jours ouvrés</span>
-                  </li>
-                </>
-              ) : (
-                <>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 text-[#059669]">✓</span>
-                    <span>Mise en production de votre commande</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 text-[#059669]">✓</span>
-                    <span>Notifications à chaque étape</span>
-                  </li>
-                </>
-              )}
+                  {isSamplesOnly ? (
+                    <>
+                      <li className="flex items-start gap-3">
+                        <span className="mt-0.5 text-[#059669]">✓</span>
+                        <span>Préparation sous 24-48h</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="mt-0.5 text-[#059669]">✓</span>
+                        <span>Livraison gratuite sous 3-5 jours ouvrés</span>
+                      </li>
+                    </>
+                  ) : hasConfigurations ? (
+                    <>
+                      <li className="flex items-start gap-3">
+                        <span className="mt-0.5 text-[#059669]">✓</span>
+                        <span>Mise en production de votre commande</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="mt-0.5 text-[#059669]">✓</span>
+                        <span>Notifications à chaque étape de fabrication</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="flex items-start gap-3">
+                        <span className="mt-0.5 text-[#059669]">✓</span>
+                        <span>Préparation de vos articles pour l'expédition</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="mt-0.5 text-[#059669]">✓</span>
+                        <span>Notification lors de l'envoi de votre colis</span>
+                      </li>
+                    </>
+                  )}
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 text-[#059669]">✓</span>
                 <span>Suivi disponible dans "Mes commandes"</span>

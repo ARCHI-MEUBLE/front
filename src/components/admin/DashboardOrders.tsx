@@ -30,6 +30,16 @@ interface OrderItem {
   name: string;
 }
 
+interface CatalogueOrderItem {
+  id: number;
+  name: string;
+  variation_name: string | null;
+  image_url: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 interface Customer {
   id: number;
   email: string;
@@ -60,6 +70,7 @@ interface Order {
   balance_payment_status?: string;
   created_at: string;
   items?: OrderItem[];
+  catalogue_items?: CatalogueOrderItem[];
 }
 
 const STATUS_CONFIG: {
@@ -511,6 +522,39 @@ export function DashboardOrders() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Catalogue Items */}
+                {selectedOrder.catalogue_items && selectedOrder.catalogue_items.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Articles du catalogue</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedOrder.catalogue_items.map((item, index) => (
+                        <div key={index} className="flex items-center gap-4 p-3 border rounded-lg bg-white shadow-sm">
+                          <div className="h-14 w-14 flex-shrink-0 border rounded overflow-hidden bg-muted/20">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <IconPackage className="w-6 h-6 text-muted-foreground/30" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm truncate">{item.name}</h4>
+                            {item.variation_name && (
+                              <p className="text-xs text-muted-foreground">Finition: {item.variation_name}</p>
+                            )}
+                            <p className="text-xs font-semibold text-primary mt-1">
+                              {item.quantity} × {item.unit_price}€ = {item.total_price}€
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Order Items */}
                 <Card>
