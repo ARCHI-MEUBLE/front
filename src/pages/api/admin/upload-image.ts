@@ -16,12 +16,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'catalogue');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'catalogue');
+      if (!fs.existsSync(uploadDir)) {
+        try {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        } catch (mkdirError: any) {
+          console.error('Erreur mkdirSync:', mkdirError);
+          // Si on ne peut pas créer le dossier, c'est peut-être un problème de permissions
+        }
+      }
 
-    const form = formidable({
+      const form = formidable({
       uploadDir,
       keepExtensions: true,
       maxFileSize: 50 * 1024 * 1024,
