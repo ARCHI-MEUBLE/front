@@ -43,15 +43,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { files } = await parseForm();
     const rawFile = Array.isArray(files.image) ? files.image[0] : files.image;
 
-    if (!rawFile) {
-      return res.status(400).json({ success: false, error: 'Aucun fichier image fourni' });
+    if (!rawFile || !rawFile.filepath) {
+      return res.status(400).json({ success: false, error: 'Aucun fichier image fourni ou chemin invalide' });
+    }
+
+    // Vérifier si le fichier source existe avant le renommage
+    if (!fs.existsSync(rawFile.filepath)) {
+      console.error('Fichier temporaire introuvable:', rawFile.filepath);
+      return res.status(500).json({ success: false, error: 'Erreur lors de la réception du fichier' });
     }
 
     const extension = path.extname(rawFile.originalFilename || 'image.jpg');
     const filename = `catalogue_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${extension}`;
     const filepath = path.join(uploadDir, filename);
 
-    fs.renameSync(rawFile.filepath, filepath);
+    try {
+      fs.renameSync(rawFile.filepath, filepath);
+    } catch (renameError: any) {
+      console.error('Erreur renameSync:', renameError);
+      // Tentative de copie si le renommage échoue (problème possible entre partitions / volumes)
+      try {
+        fs.copyFileSync(rawFile.filepath, filepath);
+        fs.unlinkSync(rawFile.filepath);
+      } catch (copyError: any) {
+        console.error('Erreur copyFileSync:', copyError);
+        return res.status(500).json({ success: false, error: 'Échec de l\'enregistrement final de l\'image: ' + copyError.message });
+      }
+    }
 
     const relativeUrl = `/uploads/catalogue/${filename}`;
 
