@@ -591,7 +591,7 @@ export function DashboardModels() {
                 {model.image_url && (
                   <div className="aspect-square w-full overflow-hidden bg-muted">
                     <img
-                      src={model.image_url.startsWith('http') ? model.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${model.image_url}`}
+                      src={model.image_url.startsWith('http') ? model.image_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}${model.image_url}`}
                       alt={model.name}
                       className="h-full w-full object-cover"
                     />

@@ -75,11 +75,14 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
     }
 
     currentImageUrlRef.current = imageUrl;
+    console.log('[TexturedMaterial] Loading texture:', imageUrl);
 
     const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
     loader.load(
       imageUrl,
       (loadedTexture) => {
+        console.log('[TexturedMaterial] Texture loaded successfully:', imageUrl);
         // Vérifier que l'URL n'a pas changé pendant le chargement
         if (currentImageUrlRef.current !== imageUrl) {
           loadedTexture.dispose();
@@ -92,7 +95,8 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
         }
 
         loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
-        loadedTexture.repeat.set(2, 2);
+        loadedTexture.repeat.set(4, 4); // Augmenter la répétition pour mieux voir la texture
+        loadedTexture.needsUpdate = true;
         textureRef.current = loadedTexture;
         setTexture(loadedTexture);
       },
