@@ -206,14 +206,14 @@ export function DashboardRealisations() {
   };
 
   return (
-    <div className="p-4 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="px-4 lg:px-6 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Réalisations</h2>
-          <p className="text-muted-foreground">Gérez les projets réels affichés sur le site</p>
+          <h3 className="text-xl font-serif font-semibold tracking-tight">Réalisations</h3>
+          <p className="text-sm text-muted-foreground">Gérer les photos et détails des projets réels</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
-          <IconPlus size={18} />
+        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="flex-1 sm:flex-none">
+          <IconPlus className="w-4 h-4 mr-2" />
           Ajouter une réalisation
         </Button>
       </div>

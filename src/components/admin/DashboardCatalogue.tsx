@@ -341,13 +341,13 @@ export function DashboardCatalogue() {
 
   return (
     <div className="px-4 lg:px-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Catalogue & Pièces</h2>
-          <p className="text-muted-foreground">Gérez les articles, portes et accessoires disponibles à la vente</p>
+          <h3 className="text-xl font-serif font-semibold tracking-tight text-[#1A1917]">Articles & Accessoires</h3>
+          <p className="text-sm text-muted-foreground">Gérez les articles, portes et accessoires disponibles à la vente</p>
         </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2 bg-primary">
-          <IconPlus size={18} />
+        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="flex-1 sm:flex-none">
+          <IconPlus className="w-4 h-4 mr-2" />
           Ajouter un article
         </Button>
       </div>

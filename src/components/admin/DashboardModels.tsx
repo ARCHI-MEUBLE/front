@@ -14,6 +14,7 @@ import {
   IconTrendingUp,
   IconHelpCircle,
   IconCategory,
+  IconBox,
 } from '@tabler/icons-react';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -535,17 +536,24 @@ export function DashboardModels() {
         </Card>
 
         {/* Add Button */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg font-semibold">Modèles enregistrés</h3>
+            <h3 className="text-xl font-serif font-semibold tracking-tight text-[#1A1917]">Modèles enregistrés</h3>
             <p className="text-sm text-muted-foreground">Gérez votre catalogue de meubles</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setIsCategoriesModalOpen(true)}>
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCategoriesModalOpen(true)}
+              className="flex-1 sm:flex-none"
+            >
               <IconCategory className="w-4 h-4 mr-2" />
               Gérer les catégories
             </Button>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button 
+              onClick={() => setIsDialogOpen(true)}
+              className="flex-1 sm:flex-none"
+            >
               <IconPlus className="w-4 h-4 mr-2" />
               Ajouter un modèle
             </Button>
@@ -593,23 +601,37 @@ export function DashboardModels() {
                   <CardTitle className="text-base">{model.name}</CardTitle>
                   <CardDescription className="line-clamp-2">{model.description}</CardDescription>
                 </CardHeader>
-                <CardFooter className="flex gap-2">
-                  <Button
-                    onClick={() => handleEdit(model)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <IconEdit className="w-4 h-4 mr-1" />
-                    Modifier
-                  </Button>
+                <CardFooter className="flex flex-col gap-2 p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 w-full gap-2">
+                    <Button
+                      onClick={() => handleEdit(model)}
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-9"
+                    >
+                      <IconEdit className="w-4 h-4 mr-1.5" />
+                      Modifier
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        window.open(`/configurator/M1?adminMode=editModel&modelId=${model.id}`, '_blank');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-9 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 font-medium"
+                    >
+                      <IconBox className="w-4 h-4 mr-1.5" />
+                      Modifier 3D
+                    </Button>
+                  </div>
                   <Button
                     onClick={() => handleDelete(model.id, model.name)}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="text-destructive hover:text-destructive"
+                    className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
-                    <IconTrash className="w-4 h-4" />
+                    <IconTrash className="w-4 h-4 mr-1.5" />
+                    Supprimer le modèle
                   </Button>
                 </CardFooter>
               </Card>

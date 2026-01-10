@@ -8,6 +8,7 @@ interface PriceDisplayProps {
   isAuthenticated?: boolean;
   isAdmin?: boolean;
   isAdminCreateModel?: boolean;
+  isAdminEditModel?: boolean;
 }
 
 export default function PriceDisplay({
@@ -17,6 +18,7 @@ export default function PriceDisplay({
   isAuthenticated = false,
   isAdmin = false,
   isAdminCreateModel = false,
+  isAdminEditModel = false,
 }: PriceDisplayProps) {
   const formattedPrice = useMemo(() => {
     return new Intl.NumberFormat('fr-FR', {
@@ -40,7 +42,7 @@ export default function PriceDisplay({
       </div>
 
       {/* Bouton principal */}
-      {!isAdminCreateModel && (
+      {(!isAdminCreateModel && !isAdminEditModel) ? (
         <button
           type="button"
           onClick={onAddToCart}
@@ -58,6 +60,28 @@ export default function PriceDisplay({
               <Box className="h-4 w-4" />
               <span>
                 {isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider avec un menuisier' : 'Enregistrer mon projet')}
+              </span>
+            </>
+          )}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onAddToCart}
+          disabled={loading}
+          className="flex h-12 items-center justify-center gap-2 bg-[#8B7355] px-6 text-sm font-medium text-white transition-colors hover:bg-[#705D45] disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ borderRadius: '2px' }}
+        >
+          {loading ? (
+            <>
+              <div className="h-4 w-4 animate-spin border-2 border-white border-t-transparent" style={{ borderRadius: '50%' }} />
+              <span>Chargement...</span>
+            </>
+          ) : (
+            <>
+              <Box className="h-4 w-4" />
+              <span>
+                {isAdminEditModel ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}
               </span>
             </>
           )}

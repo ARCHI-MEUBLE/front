@@ -181,25 +181,22 @@ export function DashboardPricing() {
   };
 
   return (
-    <div className="space-y-6 px-4 lg:px-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="px-4 lg:px-6 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Gestion des prix</h2>
-          <p className="text-muted-foreground">
-            Configurez les prix au mètre cube pour le calcul automatique
-          </p>
+          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des prix</h3>
+          <p className="text-sm text-muted-foreground">Configurez les prix au mètre cube pour le calcul automatique</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={loadPricings} variant="outline" size="sm">
+        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+          <Button onClick={loadPricings} variant="outline" className="flex-1 sm:flex-none">
             <IconRefresh className="w-4 h-4 mr-2" />
             Actualiser
           </Button>
-          <Button onClick={() => setIsInfoDialogOpen(true)} variant="outline" size="sm">
+          <Button onClick={() => setIsInfoDialogOpen(true)} variant="outline" className="flex-1 sm:flex-none">
             <IconInfoCircle className="w-4 h-4 mr-2" />
             Comment ça marche ?
           </Button>
-          <Button onClick={handleCreate} size="sm">
+          <Button onClick={handleCreate} className="flex-1 sm:flex-none">
             <IconPlus className="w-4 h-4 mr-2" />
             Nouveau tarif
           </Button>

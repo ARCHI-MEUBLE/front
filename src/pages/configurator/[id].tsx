@@ -383,10 +383,11 @@ type ConfigTab = 'dimensions' | 'materials';
 
 export default function ConfiguratorPage() {
   const router = useRouter();
-  const { id, mode, configId: queryConfigId, adminMode } = router.query;
+  const { id, mode, configId: queryConfigId, adminMode, modelId } = router.query;
   const { customer, isAuthenticated } = useCustomer();
   const [isAdmin, setIsAdmin] = useState(false);
   const isAdminCreateModel = adminMode === 'createModel';
+  const isAdminEditModel = adminMode === 'editModel';
   const isMobile = useIsMobile();
   const [showMobileWarning, setShowMobileWarning] = useState(true);
 
@@ -396,6 +397,7 @@ export default function ConfiguratorPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingModel, setIsSavingModel] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+
 
   // Charger les catégories dynamiques
   useEffect(() => {
@@ -407,7 +409,7 @@ export default function ConfiguratorPage() {
           if (data.categories) {
             setAvailableCategories(data.categories);
             // Si on est en mode création, on peut présélectionner la première catégorie
-            if (isAdminCreateModel && data.categories.length > 0) {
+            if (isAdminCreateModel && data.categories.length > 0 && !modelForm.category) {
               setModelForm(prev => ({ ...prev, category: data.categories[0].slug }));
             }
           }
@@ -990,6 +992,8 @@ export default function ConfiguratorPage() {
   const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Derived state
   const selectedMaterialKey = useMemo(() => normalizeMaterialKey(finish), [finish]);
@@ -1104,26 +1108,31 @@ export default function ConfiguratorPage() {
 
   // Synchroniser la couleur sélectionnée
   useEffect(() => {
-    if (!colorsForMaterial.length) {
-      if (selectedColorId !== null) setSelectedColorId(null);
+    if (!colorsForMaterial.length || !initialConfigApplied) {
+      // Ne pas réinitialiser si on est en train de charger
       return;
     }
     if (selectedColorId !== null && colorsForMaterial.some((o) => o.id === selectedColorId)) return;
     const fallback = colorsForMaterial.find((o) => o.name?.toLowerCase() === colorLabel.toLowerCase());
     const nextColor = fallback || colorsForMaterial[0];
     setSelectedColorId(nextColor.id);
-  }, [colorsForMaterial, selectedColorId, colorLabel]);
+  }, [colorsForMaterial, selectedColorId, colorLabel, initialConfigApplied]);
 
   useEffect(() => {
+    if (!initialConfigApplied || !colorsForMaterial.length) return;
+    
     if (selectedColorOption) {
       setColor(selectedColorOption.hex || DEFAULT_COLOR_HEX);
       setColorLabel(selectedColorOption.name || selectedMaterialLabel);
       setSelectedColorImage(selectedColorOption.image_url || null);
     } else {
-      setColor(DEFAULT_COLOR_HEX);
-      setColorLabel(selectedMaterialLabel);
+      // Seulement si on a vraiment aucune option sélectionnée alors qu'on devrait
+      if (selectedColorId === null && !useMultiColor) {
+        setColor(DEFAULT_COLOR_HEX);
+        setColorLabel(selectedMaterialLabel);
+      }
     }
-  }, [selectedColorOption, selectedMaterialLabel]);
+  }, [selectedColorOption, selectedMaterialLabel, initialConfigApplied, colorsForMaterial.length, selectedColorId, useMultiColor]);
 
   // Parse du prompt
   const parsePromptToConfig = useCallback((prompt: string) => {
@@ -1337,9 +1346,27 @@ export default function ConfiguratorPage() {
       }
 
       // 2. Initialiser le modèle (soit via ID numérique, soit via Template key)
-      if (id && !isNaN(Number(id))) {
-        const modelData = await apiClient.models.getById(Number(id));
+      let modelData = null;
+      if (isAdminEditModel && modelId) {
+        console.log(`🛠️ Mode édition de modèle détecté, chargement du modèle #${modelId}`);
+        modelData = await apiClient.models.getById(Number(modelId));
+      } else if (id && !isNaN(Number(id))) {
+        modelData = await apiClient.models.getById(Number(id));
+      }
+
+      if (modelData) {
         setModel(modelData);
+        
+        // Mettre à jour le formulaire pour l'édition admin
+        if (isAdminEditModel) {
+          setModelForm({
+            name: modelData.name || '',
+            description: modelData.description || '',
+            category: modelData.category || 'dressing',
+            price: modelData.price || 890,
+            imageUrl: modelData.image_url || ''
+          });
+        }
 
         // Si le modèle a des données de config riches, les utiliser en priorité pour la restauration
         if (modelData.config_data && !configToRestore) {
@@ -1543,6 +1570,7 @@ export default function ConfiguratorPage() {
         if (configToRestore.rootZone) setRootZone(configToRestore.rootZone);
         if (configToRestore.finish) setFinish(configToRestore.finish);
         if (configToRestore.color) setColor(configToRestore.color);
+        if (configToRestore.colorLabel) setColorLabel(configToRestore.colorLabel);
         if (configToRestore.colorImage !== undefined) setSelectedColorImage(configToRestore.colorImage);
         if (configToRestore.selectedColorId !== undefined) setSelectedColorId(configToRestore.selectedColorId);
         if (configToRestore.useMultiColor !== undefined) setUseMultiColor(configToRestore.useMultiColor);
@@ -1581,7 +1609,7 @@ export default function ConfiguratorPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey, isEditMode, isViewMode, configIdToEdit]);
+  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey, isEditMode, isViewMode, configIdToEdit, isAdminEditModel, modelId]);
 
   useEffect(() => {
     // Attendre que le router soit prêt (important pour les query params)
@@ -1963,10 +1991,11 @@ export default function ConfiguratorPage() {
     console.log('🔵 FONCTION saveAsModel APPELEE !');
     console.log('🔵 isAdmin:', isAdmin);
     console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
+    console.log('🔵 isAdminEditModel:', isAdminEditModel);
     console.log('🔵 modelForm:', modelForm);
 
-    if (!isAdminCreateModel) {
-      toast.error("Vous devez être en mode création de modèle pour effectuer cette action.");
+    if (!isAdminCreateModel && !isAdminEditModel) {
+      toast.error("Vous devez être en mode administration pour effectuer cette action.");
       return;
     }
 
@@ -1981,7 +2010,7 @@ export default function ConfiguratorPage() {
       // 2. Préparation du prompt
       const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
       const match = templatePrompt?.match(regex);
-      const meubleType = match?.[1] || 'M1';
+      const meubleType = match?.[1] || (id as string)?.split('(')[0] || 'M1';
 
       let fullPrompt = `${meubleType}(${width},${depth},${height})bF`;
       if (socle === 'metal') fullPrompt += 'S';
@@ -2027,9 +2056,12 @@ export default function ConfiguratorPage() {
       console.log('Payload prêt pour envoi:', payload);
 
       // 5. Envoi final au backend
-      console.log('Appel API /backend/api/models.php...');
-      const response = await fetch('/backend/api/models.php', {
-        method: 'POST',
+      const url = isAdminEditModel ? `/backend/api/models.php?id=${modelId}` : '/backend/api/models.php';
+      const method = isAdminEditModel ? 'PUT' : 'POST';
+
+      console.log(`Appel API ${method} ${url}...`);
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
@@ -2060,7 +2092,7 @@ export default function ConfiguratorPage() {
       const result = await response.json();
       console.log('Résultat final API:', result);
 
-      toast.success('Le modèle a été ajouté au catalogue avec succès !');
+      toast.success(isAdminEditModel ? 'Le modèle a été mis à jour avec succès !' : 'Le modèle a été ajouté au catalogue avec succès !');
       setIsCreateModelDialogOpen(false);
       setShowModelCreatedModal(true);
       console.log('--- FIN SAUVEGARDE MODELE (SUCCES) ---');
@@ -2087,7 +2119,8 @@ export default function ConfiguratorPage() {
       const promptedName = prompt('Nom de cette configuration :', editingConfigName || '');
       if (promptedName === null) return; // Annulation
       if (!promptedName.trim()) {
-        alert('Veuillez donner un nom à la configuration');
+        setErrorMessage('Veuillez donner un nom à la configuration');
+        setShowErrorModal(true);
         return;
       }
       configNameInput = promptedName;
@@ -2142,7 +2175,21 @@ export default function ConfiguratorPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Erreur lors de la sauvegarde');
+      if (!response.ok) {
+        // Récupérer le message d'erreur du backend
+        const errorData = await response.json().catch(() => ({}));
+        const backendError = errorData.error || 'Erreur lors de la sauvegarde';
+
+        // Si c'est un admin qui essaie de sauvegarder sans compte client
+        if (response.status === 401 && isAdmin) {
+          setErrorMessage('Un administrateur ne peut pas créer de configuration.\n\nPour créer une configuration, vous devez :\n1. Vous déconnecter du panel admin\n2. Vous connecter en tant que client\n3. Puis créer votre configuration');
+          setShowErrorModal(true);
+        } else {
+          setErrorMessage(backendError);
+          setShowErrorModal(true);
+        }
+        throw new Error(backendError);
+      }
 
       const result = await response.json();
       
@@ -2157,7 +2204,7 @@ export default function ConfiguratorPage() {
       }
     } catch (err: unknown) {
       console.error('Erreur saveConfiguration:', err);
-      alert('Erreur lors de l\'enregistrement');
+      // Ne rien faire ici car l'erreur a déjà été affichée dans le modal
     }
   };
 
@@ -2289,9 +2336,13 @@ export default function ConfiguratorPage() {
       <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Enregistrer comme modèle de catalogue</DialogTitle>
+            <DialogTitle>
+              {isAdminEditModel ? 'Mettre à jour le modèle' : 'Enregistrer comme modèle de catalogue'}
+            </DialogTitle>
             <DialogDescription>
-              Ce meuble sera ajouté à la liste des modèles disponibles pour tous les clients.
+              {isAdminEditModel 
+                ? 'Les modifications seront appliquées à ce modèle dans le catalogue.'
+                : 'Ce meuble sera ajouté à la liste des modèles disponibles pour tous les clients.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -2390,7 +2441,7 @@ export default function ConfiguratorPage() {
               disabled={!modelForm.name}
               className="bg-[#1A1917] text-white"
             >
-              Enregistrer le modèle
+              {isAdminEditModel ? 'Mettre à jour' : 'Enregistrer le modèle'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2425,20 +2476,7 @@ export default function ConfiguratorPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {isAdminCreateModel && (
-                <Button
-                  onClick={() => {
-                    console.log('🔴 CLICK SUR BOUTON HEADER (ouverture dialog)');
-                    setIsCreateModelDialogOpen(true);
-                  }}
-                  className="bg-[#8B7355] hover:bg-[#705D45] text-white h-9 lg:h-10 px-4 lg:px-6 rounded-[2px]"
-                >
-                  <IconPlus className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Enregistrer le modèle</span>
-                  <span className="sm:hidden">Enregistrer</span>
-                </Button>
-              )}
-              {!isAdminCreateModel && isAuthenticated && customer && (
+              {!isAdminCreateModel && !isAdminEditModel && isAuthenticated && customer && (
                 <span className="hidden text-xs text-[#706F6C] md:block">
                   {customer.first_name} {customer.last_name}
                 </span>
@@ -2703,10 +2741,11 @@ export default function ConfiguratorPage() {
                 <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
                   <PriceDisplay
                     price={price}
-                    onAddToCart={saveConfiguration}
+                    onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
                     isAuthenticated={isAuthenticated}
                     isAdmin={isAdmin}
                     isAdminCreateModel={isAdminCreateModel}
+                    isAdminEditModel={isAdminEditModel}
                   />
                 </div>
               </>
@@ -2780,7 +2819,7 @@ export default function ConfiguratorPage() {
                 <span className="hidden sm:inline">Déco</span>
               </button>
               {/* CTA */}
-              {!isAdminCreateModel && (
+              {(!isAdminCreateModel && !isAdminEditModel) ? (
                 <button
                   type="button"
                   onClick={saveConfiguration}
@@ -2791,6 +2830,16 @@ export default function ConfiguratorPage() {
                   <span>
                     {isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider' : 'Enregistrer')}
                   </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModelDialogOpen(true)}
+                  className="flex h-11 flex-1 max-w-[200px] items-center justify-center gap-2 bg-[#8B7355] text-sm font-medium text-white transition-colors hover:bg-[#705D45]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <IconPlus className="h-4 w-4" />
+                  <span>{isAdminEditModel ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}</span>
                 </button>
               )}
             </div>
@@ -2840,43 +2889,48 @@ export default function ConfiguratorPage() {
           <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
             <div className="p-6 sm:p-8">
               <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-amber-100" style={{ borderRadius: '50%' }}>
-                <IconPlus className="h-8 w-8 text-amber-600" />
+                {isAdminEditModel ? <IconEdit className="h-8 w-8 text-amber-600" /> : <IconPlus className="h-8 w-8 text-amber-600" />}
               </div>
 
               <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
-                Modèle créé avec succès !
+                {isAdminEditModel ? 'Modèle mis à jour !' : 'Modèle créé avec succès !'}
               </h2>
               <p className="mb-6 text-center text-base text-[#706F6C]">
-                Votre nouveau modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été ajouté au catalogue et est désormais visible par tous les clients.
+                {isAdminEditModel 
+                  ? <>Le modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été mis à jour avec succès dans le catalogue.</>
+                  : <>Votre nouveau modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
+                }
               </p>
 
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => router.push('/models')}
+                  onClick={() => router.push('/admin/dashboard?section=models')}
                   className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
                   style={{ borderRadius: '2px' }}
                 >
-                  Voir dans le catalogue
+                  Retour au catalogue
                 </button>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => {
                       setShowModelCreatedModal(false);
-                      setModelForm({
-                        name: '',
-                        description: '',
-                        category: 'dressing',
-                        price: 890,
-                        imageUrl: ''
-                      });
-                      resetConfiguration();
+                      if (!isAdminEditModel) {
+                        setModelForm({
+                          name: '',
+                          description: '',
+                          category: 'dressing',
+                          price: 890,
+                          imageUrl: ''
+                        });
+                        resetConfiguration();
+                      }
                     }}
                     className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
                     style={{ borderRadius: '2px' }}
                   >
-                    Créer un autre
+                    {isAdminEditModel ? 'Continuer à modifier' : 'Créer un autre'}
                   </button>
                   <button
                     type="button"
@@ -2960,6 +3014,42 @@ export default function ConfiguratorPage() {
                   style={{ borderRadius: '2px' }}
                 >
                   Retour à l'accueil
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'erreur */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
+            <div className="p-6 sm:p-8">
+              {/* Icône d'erreur */}
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-red-100" style={{ borderRadius: '50%' }}>
+                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+
+              {/* Message d'erreur */}
+              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                Erreur
+              </h2>
+              <div className="mb-6 text-center text-base text-[#706F6C] whitespace-pre-line">
+                {errorMessage}
+              </div>
+
+              {/* Bouton */}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowErrorModal(false)}
+                  className="bg-[#1A1917] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  Fermer
                 </button>
               </div>
             </div>
