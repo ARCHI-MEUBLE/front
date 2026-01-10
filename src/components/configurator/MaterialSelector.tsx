@@ -62,13 +62,6 @@ function MiniSwatch({ hex, imageUrl }: { hex?: string | null; imageUrl?: string 
   );
 }
 
-// Mapping pour les anciens matériaux uniquement (backward compatibility)
-export const MATERIAL_KEY_MAP: Record<string, string> = {
-  agglomere: 'Aggloméré',
-  mdf_melamine: 'MDF + revêtement (mélaminé)',
-  plaque_bois: 'Plaqué bois',
-};
-
 export type ComponentColors = {
   structure: { colorId: number | null; hex: string | null; imageUrl?: string | null };
   drawers: { colorId: number | null; hex: string | null; imageUrl?: string | null };
@@ -127,37 +120,26 @@ export default function MaterialSelector({
 
   // Retrouver le label correct
   const selectedMaterialLabel = useMemo(() => {
-    console.log('[DEBUG] selectedMaterialKey:', selectedMaterialKey);
-    console.log('[DEBUG] materialsMap keys:', Object.keys(materialsMap));
-    
     // Essai 1: Correspondance exacte (priorité)
     if (materialsMap[selectedMaterialKey]) {
-      console.log('[DEBUG] Found exact match in map');
       return selectedMaterialKey;
     }
     
-    // Essai 2: Mapping statique (pour les anciens matériaux)
-    const mapped = MATERIAL_KEY_MAP[selectedMaterialKey];
-    if (mapped && materialsMap[mapped]) {
-      console.log('[DEBUG] Found mapped match in map:', mapped);
-      return mapped;
-    }
-
-    // Essai 3: Recherche insensible à la casse
+    // Essai 2: Recherche insensible à la casse et aux accents
     const keys = Object.keys(materialsMap);
-    const caseInsensitiveKey = keys.find(k => k.toLowerCase() === selectedMaterialKey.toLowerCase());
-    if (caseInsensitiveKey) {
-      console.log('[DEBUG] Found case-insensitive match:', caseInsensitiveKey);
-      return caseInsensitiveKey;
+    const normalizedKey = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const targetNormalized = normalizedKey(selectedMaterialKey);
+
+    const match = keys.find(k => normalizedKey(k) === targetNormalized);
+    if (match) {
+      return match;
     }
 
-    console.log('[DEBUG] No match found in map for:', selectedMaterialKey);
     return selectedMaterialKey;
   }, [selectedMaterialKey, materialsMap]);
   const materialTypesForSelection = materialsMap[selectedMaterialLabel] || [];
 
   const colorsForMaterial = useMemo<SampleColor[]>(() => {
-    console.log('[DEBUG] Extracting colors for materialTypes:', materialTypesForSelection);
     const list: SampleColor[] = [];
     const seen = new Set<string>(); // Utiliser une clé combinée pour l'unicité
     
@@ -177,7 +159,6 @@ export default function MaterialSelector({
     // Trier par nom pour la cohérence
     list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
     
-    console.log('[DEBUG] Total unique colors found:', list.length);
     return list;
   }, [materialTypesForSelection]);
 

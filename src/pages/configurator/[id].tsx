@@ -24,7 +24,7 @@ import ZoneEditor, { Zone, ZoneContent, ZoneColor } from '@/components/configura
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
-import MaterialSelector, { ComponentColors, MATERIAL_KEY_MAP } from '@/components/configurator/MaterialSelector';
+import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
@@ -106,21 +106,22 @@ const HANDLE_TYPE_CODE: Record<string, string> = {
 // Normalise une clé de matériau - garde la valeur telle quelle pour les nouveaux matériaux
 function normalizeMaterialKey(value: string | null | undefined): string {
   if (!value) return 'agglomere';
-  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  // Matériaux connus (anciens)
-  if (normalized.includes('agglom')) return 'agglomere';
-  if (normalized.includes('mdf') || normalized.includes('melamine')) return 'mdf_melamine';
-  if (normalized.includes('plaque') || normalized.includes('bois')) return 'plaque_bois';
-  // Pour les nouveaux matériaux, retourner la valeur originale
+  
+  // Normalisation pour comparaison
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  
+  // Mapping strict pour la rétrocompatibilité uniquement
+  // On ne cherche plus de correspondances partielles comme "bois" qui polluent les nouvelles catégories
+  if (normalized === 'agglomere') return 'agglomere';
+  if (normalized === 'mdf + revetement (melamine)' || normalized === 'mdf_melamine') return 'mdf_melamine';
+  if (normalized === 'plaque bois' || normalized === 'plaque_bois') return 'plaque_bois';
+  
+  // Pour tout le reste (nouvelles catégories admin), retourner la valeur originale sans transformation
   return value;
 }
 
 function materialLabelFromKey(key: string): string {
-  // Si c'est un ancien matériau connu, retourner son label
-  if (MATERIAL_LABEL_BY_KEY[key]) {
-    return MATERIAL_LABEL_BY_KEY[key];
-  }
-  // Sinon retourner la clé telle quelle (pour les nouveaux matériaux)
+  // Les matériaux sont maintenant gérés dynamiquement via l'API
   return key;
 }
 
@@ -1076,13 +1077,26 @@ export default function ConfiguratorPage() {
     const materialKeys = Object.keys(materialsMap);
     if (materialKeys.length === 0) return; // Pas encore chargé
 
-    // Vérifier si le matériau actuel existe dans la map
-    const currentMaterialLabel = materialLabelFromKey(normalizeMaterialKey(finish));
-    if (!materialsMap[currentMaterialLabel]) {
-      // Le matériau actuel n'existe pas, sélectionner le premier disponible
+    // Vérifier si le matériau actuel existe dans la map (insensible à la casse)
+    const currentFinish = finish || '';
+    const normalizedCurrent = currentFinish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    
+    const exactMatch = materialKeys.find(k => k === currentFinish);
+    const caseMatch = materialKeys.find(k => k.toLowerCase() === currentFinish.toLowerCase());
+    const normalizedMatch = materialKeys.find(k => k.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() === normalizedCurrent);
+    
+    const bestMatch = exactMatch || caseMatch || normalizedMatch;
+
+    if (!bestMatch) {
+      // Le matériau actuel n'existe vraiment pas dans les données de l'API
       const firstMaterial = materialKeys[0];
-      console.log('[DEBUG] Matériau actuel non trouvé, sélection de:', firstMaterial);
+      console.log('[DEBUG] Matériau actuel non trouvé, sélection du premier disponible:', firstMaterial);
       setFinish(firstMaterial);
+    } else if (bestMatch !== finish) {
+      // Si on a trouvé une correspondance mais avec une casse/accentuation différente
+      // on met à jour pour s'aligner sur la clé exacte de l'API
+      console.log('[DEBUG] Alignement du matériau sur la clé API:', bestMatch);
+      setFinish(bestMatch);
     }
   }, [materialsMap, finish]);
 
@@ -1944,9 +1958,8 @@ export default function ConfiguratorPage() {
   }, []);
 
   const handleMaterialChange = (key: string) => {
-    // Si la clé est dans le mapping, on prend le label, sinon on garde la clé (nouveaux matériaux)
-    const label = MATERIAL_KEY_MAP[key] || key;
-    setFinish(label);
+    // On utilise directement la clé (qui est le label du matériau venant de l'API)
+    setFinish(key);
     setSelectedColorId(null);
     setSelectedColorImage(null);
   };
