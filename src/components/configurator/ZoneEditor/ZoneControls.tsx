@@ -1,5 +1,13 @@
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Grid, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Grid, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Zone, ZoneContent, HandleType, ZONE_CONTENT_META } from './types';
+
+interface ColumnPositionInfo {
+  isEdge: boolean;
+  isMiddle: boolean;
+  canDelete: boolean;
+  parentType: 'vertical' | 'horizontal' | null;
+}
 
 interface ZoneControlsProps {
   selectedZone: Zone;
@@ -17,6 +25,8 @@ interface ZoneControlsProps {
   onToggleDressing?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
+  onDeleteColumn?: (zoneId: string) => void;
+  getColumnPositionInfo?: (zoneId: string) => ColumnPositionInfo | null;
   isAdminCreateModel?: boolean;
 }
 
@@ -36,9 +46,21 @@ export default function ZoneControls({
                                        onToggleDressing,
                                        onGroupZones,
                                        onSetHandleType,
+                                       onDeleteColumn,
+                                       getColumnPositionInfo,
                                        isAdminCreateModel,
                                      }: ZoneControlsProps) {
   const isLeaf = selectedZone.type === 'leaf';
+
+  // State pour le dialogue de choix de côté d'ouverture
+  const [doorSideDialog, setDoorSideDialog] = useState<{
+    isOpen: boolean;
+    doorType: 'push' | 'mirror' | null;
+  }>({ isOpen: false, doorType: null });
+
+  // Informations sur la position de la colonne (pour le bouton supprimer)
+  const columnPositionInfo = getColumnPositionInfo?.(selectedZone.id);
+  const canDeleteColumn = columnPositionInfo?.canDelete ?? false;
 
   const canAdjustRatio = selectedZone.type !== 'leaf' &&
       selectedZone.children?.length === 2;
@@ -89,9 +111,36 @@ export default function ZoneControls({
     { id: 'door' as ZoneContent, icon: DoorClosed, label: 'Porte gauche', desc: 'Une seule porte' },
     { id: 'door_right' as ZoneContent, icon: DoorClosed, label: 'Porte droite', desc: 'Une seule porte' },
     { id: 'door_double' as ZoneContent, icon: DoorClosed, label: 'Double porte', desc: 'Deux portes' },
-    { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée' },
-    { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Porte vitrée', desc: 'Porte vitrée' },
+    { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
+    { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Porte vitrée', desc: 'Porte vitrée', needsSideChoice: true, dialogType: 'mirror' as const },
   ];
+
+  // Fonction pour gérer le clic sur une option de porte
+  const handleDoorOptionClick = (option: typeof DOOR_OPTIONS[0]) => {
+    if (option.needsSideChoice) {
+      setDoorSideDialog({ isOpen: true, doorType: option.dialogType! });
+    } else {
+      if (isLeaf) {
+        onSetContent(selectedZone.id, option.id);
+      } else {
+        onSetDoorContent?.(selectedZone.id, option.id);
+      }
+    }
+  };
+
+  // Fonction pour appliquer le choix de côté
+  const handleDoorSideChoice = (side: 'left' | 'right') => {
+    const contentId = doorSideDialog.doorType === 'push' 
+      ? (side === 'left' ? 'push_door' : 'push_door_right')
+      : (side === 'left' ? 'mirror_door' : 'mirror_door_right');
+    
+    if (isLeaf) {
+      onSetContent(selectedZone.id, contentId as ZoneContent);
+    } else {
+      onSetDoorContent?.(selectedZone.id, contentId as ZoneContent);
+    }
+    setDoorSideDialog({ isOpen: false, doorType: null });
+  };
 
   // Calculer le fil d'Ariane (Breadcrumbs)
   const renderBreadcrumbs = () => {
@@ -194,13 +243,18 @@ export default function ZoneControls({
                     </div>
                   </button>
 
-                  {DOOR_OPTIONS.map(({ id, icon: Icon, label, desc }) => {
-                    const isActive = (isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty')) === id;
+                  {DOOR_OPTIONS.map((option) => {
+                    const { id, icon: Icon, label, desc, needsSideChoice } = option;
+                    const currentContent = isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty');
+                    // Pour push_door et mirror_door, vérifier aussi les variantes _right
+                    const isActive = needsSideChoice
+                      ? (currentContent === id || currentContent === `${id}_right`)
+                      : currentContent === id;
                     return (
                         <button
                             key={id}
                             type="button"
-                            onClick={() => isLeaf ? onSetContent(selectedZone.id, id) : onSetDoorContent?.(selectedZone.id, id)}
+                            onClick={() => handleDoorOptionClick(option)}
                             className={`flex flex-col items-center justify-center gap-2 border-2 p-4 transition-all ${
                                 isActive
                                     ? 'border-[#1A1917] bg-[#1A1917] text-white'
@@ -217,6 +271,47 @@ export default function ZoneControls({
                     );
                   })}
                 </div>
+
+                {/* Dialogue de choix de côté pour porte Push ou Vitrée */}
+                {doorSideDialog.isOpen && (
+                  <div className="mt-4 border-2 border-[#3B82F6] bg-[#EFF6FF] p-4" style={{ borderRadius: '4px' }}>
+                    <p className="mb-3 text-base font-semibold text-[#1A1917]">
+                      Choisir le côté d'ouverture
+                    </p>
+                    <p className="mb-4 text-sm text-[#706F6C]">
+                      {doorSideDialog.doorType === 'push' 
+                        ? 'De quel côté voulez-vous que la porte Push s\'ouvre ?' 
+                        : 'De quel côté voulez-vous que la porte vitrée s\'ouvre ?'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleDoorSideChoice('left')}
+                        className="flex flex-col items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white p-4 text-[#1A1917] transition-all hover:border-[#3B82F6] hover:bg-[#3B82F6]/5"
+                        style={{ borderRadius: '4px' }}
+                      >
+                        <ChevronLeft className="h-8 w-8" />
+                        <span className="text-sm font-semibold">Ouverture gauche</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDoorSideChoice('right')}
+                        className="flex flex-col items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white p-4 text-[#1A1917] transition-all hover:border-[#3B82F6] hover:bg-[#3B82F6]/5"
+                        style={{ borderRadius: '4px' }}
+                      >
+                        <ChevronRight className="h-8 w-8" />
+                        <span className="text-sm font-semibold">Ouverture droite</span>
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
+                      className="mt-3 w-full text-center text-sm text-[#706F6C] hover:text-[#1A1917]"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Sélecteur de poignée (pour leaf et parent) */}
@@ -532,8 +627,53 @@ export default function ZoneControls({
             {/* ═══════════════════════════════════════════════════════════
               ACTIONS SECONDAIRES - Boutons clairs
           ═══════════════════════════════════════════════════════════ */}
-            {(!isLeaf || (parentZone && parentZone.type !== 'leaf')) && (
+            {(!isLeaf || (parentZone && parentZone.type !== 'leaf') || canDeleteColumn || selectedZone.isOpenSpace) && (
                 <div className="flex flex-col gap-3 border-t border-[#E8E6E3] pt-5">
+                  {/* Afficher info espace ouvert */}
+                  {selectedZone.isOpenSpace && (
+                    <div className="bg-green-50 border-2 border-green-200 p-4" style={{ borderRadius: '4px' }}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex h-10 w-10 items-center justify-center bg-green-100" style={{ borderRadius: '4px' }}>
+                          <span className="text-xl">🖼️</span>
+                        </div>
+                        <div>
+                          <span className="block text-base font-semibold text-green-800">Espace ouvert</span>
+                          <p className="text-sm text-green-600">Pas de fond ni de plafond - idéal pour un tableau</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onSetContent(selectedZone.id, 'empty')}
+                        className="w-full flex items-center justify-center gap-2 border-2 border-green-300 bg-white py-2 text-sm font-medium text-green-700 transition-all hover:border-green-500 hover:bg-green-50"
+                        style={{ borderRadius: '4px' }}
+                      >
+                        <span>Restaurer en compartiment normal</span>
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Supprimer la colonne/zone */}
+                  {canDeleteColumn && onDeleteColumn && !selectedZone.isOpenSpace && (
+                      <button
+                          type="button"
+                          onClick={() => onDeleteColumn(selectedZone.id)}
+                          className="flex items-center justify-center gap-3 border-2 border-red-300 bg-red-50 py-3 text-base font-medium text-red-600 transition-all hover:border-red-500 hover:bg-red-100"
+                          style={{ borderRadius: '4px' }}
+                      >
+                        <X className="h-5 w-5" />
+                        <span>
+                          {columnPositionInfo?.parentType === 'vertical' 
+                            ? (columnPositionInfo?.isEdge 
+                                ? 'Supprimer cette colonne' 
+                                : 'Créer un espace ouvert (pour tableau)')
+                            : columnPositionInfo?.parentType === 'horizontal'
+                              ? 'Supprimer ce niveau'
+                              : 'Supprimer cette zone'
+                          }
+                        </span>
+                      </button>
+                  )}
+                  
                   {/* Supprimer la division actuelle */}
                   {!isLeaf && (
                       <button

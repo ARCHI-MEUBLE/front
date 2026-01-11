@@ -163,6 +163,7 @@ function ZoneNode({
     if (zone.type === 'leaf') {
         const meta = ZONE_CONTENT_META[zone.content ?? 'empty'] || ZONE_CONTENT_META['empty'];
         const zoneNumber = leafNumbers?.[zone.id];
+        const isOpenSpace = zone.isOpenSpace;
 
         return (
             <button
@@ -170,21 +171,35 @@ function ZoneNode({
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
                 className={`relative flex h-full w-full flex-col items-center justify-center border-2 transition-all duration-200 ${
-                    isSelected
-                        ? 'border-[#FF9800] bg-[#FF9800]/20 text-[#E65100] z-10 shadow-[0_0_8px_rgba(255,152,0,0.3)]'
-                        : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#FF9800]/50 hover:bg-[#F5F5F4] hover:text-[#1A1917]'
+                    isOpenSpace
+                        ? isSelected
+                            ? 'border-[#4CAF50] bg-[#4CAF50]/20 text-[#2E7D32] z-10 shadow-[0_0_8px_rgba(76,175,80,0.3)]'
+                            : 'border-[#4CAF50] border-dashed bg-[#E8F5E9] text-[#4CAF50] hover:bg-[#C8E6C9]'
+                        : isSelected
+                            ? 'border-[#FF9800] bg-[#FF9800]/20 text-[#E65100] z-10 shadow-[0_0_8px_rgba(255,152,0,0.3)]'
+                            : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#FF9800]/50 hover:bg-[#F5F5F4] hover:text-[#1A1917]'
                 }`}
                 style={{ borderRadius: '4px' }}
             >
                 {showNumbers && zoneNumber && (
-                    <div className="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#1A1917] text-[10px] font-bold text-white shadow-sm">
+                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm ${isOpenSpace ? 'bg-[#4CAF50]' : 'bg-[#1A1917]'}`}>
                         {zoneNumber}
                     </div>
                 )}
-                <span className="text-lg font-semibold">{meta.shortLabel}</span>
-                <span className="mt-2 font-mono text-base text-[#706F6C]">
-          {Math.round(realWidth)} × {Math.round(realHeight)} mm
-        </span>
+                {isOpenSpace ? (
+                    <>
+                        <span className="text-2xl mb-1">🖼️</span>
+                        <span className="text-sm font-semibold">Espace ouvert</span>
+                        <span className="text-xs text-[#4CAF50]">Pas de fond</span>
+                    </>
+                ) : (
+                    <>
+                        <span className="text-lg font-semibold">{meta.shortLabel}</span>
+                        <span className="mt-2 font-mono text-base text-[#706F6C]">
+                            {Math.round(realWidth)} × {Math.round(realHeight)} mm
+                        </span>
+                    </>
+                )}
             </button>
         );
     }

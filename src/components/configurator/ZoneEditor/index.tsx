@@ -127,7 +127,8 @@ export default function ZoneEditor({
     (zoneId: string, content: ZoneContent) => {
       const updateZone = (z: Zone): Zone => {
         if (z.id === zoneId && z.type === 'leaf') {
-          return { ...z, content };
+          // Si on restaure un espace ouvert, supprimer le flag isOpenSpace
+          return { ...z, content, isOpenSpace: undefined };
         }
         if (z.children) {
           return { ...z, children: z.children.map(updateZone) };
@@ -273,6 +274,163 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
   );
 
+  // Supprimer une colonne/rangée
+  // Si c'est une colonne aux extrémités : supprime tout (avec les séparateurs)
+  // Si c'est une colonne au milieu : garde le bas pour connecter les colonnes adjacentes
+  const deleteColumn = useCallback(
+    (zoneId: string) => {
+      // Trouver le parent et l'index de la zone à supprimer
+      const findParentAndIndex = (current: Zone, targetId: string, parent: Zone | null = null): { parent: Zone; index: number } | null => {
+        if (current.children) {
+          const index = current.children.findIndex(child => child.id === targetId);
+          if (index !== -1) {
+            return { parent: current, index };
+          }
+          for (const child of current.children) {
+            const result = findParentAndIndex(child, targetId, current);
+            if (result) return result;
+          }
+        }
+        return null;
+      };
+
+      const parentInfo = findParentAndIndex(rootZone, zoneId);
+      
+      if (!parentInfo) {
+        // La zone est la racine, on ne peut pas la supprimer
+        return;
+      }
+
+      const { parent, index } = parentInfo;
+      const siblings = parent.children || [];
+      const isVerticalSplit = parent.type === 'vertical'; // colonnes côte à côte
+      const isHorizontalSplit = parent.type === 'horizontal'; // niveaux superposés
+      
+      // Déterminer si c'est une position aux extrémités
+      const isFirstChild = index === 0;
+      const isLastChild = index === siblings.length - 1;
+      const isEdgePosition = isFirstChild || isLastChild;
+      const isMiddlePosition = !isEdgePosition;
+
+      const updateZone = (z: Zone): Zone => {
+        if (z.id === parent.id) {
+          const newChildren = [...siblings];
+          
+          if (siblings.length <= 2) {
+            // S'il ne reste que 2 enfants et on en supprime un, 
+            // on remplace le parent par l'enfant restant
+            const remainingChild = newChildren.filter((_, i) => i !== index)[0];
+            return {
+              ...remainingChild,
+              id: parent.id, // Garder l'ID du parent
+            };
+          }
+
+          if (isMiddlePosition && isVerticalSplit) {
+            // Colonne au milieu : transformer en espace ouvert
+            // Garde la même taille mais marque comme "open space" (pas de fond, pas de haut)
+            const targetZone = newChildren[index];
+            newChildren[index] = {
+              ...targetZone,
+              type: 'leaf',
+              content: 'empty',
+              children: undefined,
+              doorContent: undefined,
+              hasLight: false,
+              hasCableHole: false,
+              hasDressing: false,
+              isOpenSpace: true, // Marquer comme espace ouvert
+            };
+
+            // Garder les ratios tels quels (pas de redistribution)
+            return {
+              ...z,
+              children: newChildren,
+            };
+          } else {
+            // Position aux extrémités ou division horizontale : suppression complète
+            newChildren.splice(index, 1);
+
+            // Recalculer les ratios
+            const currentRatios = z.splitRatios || siblings.map(() => 100 / siblings.length);
+            const removedRatio = currentRatios[index];
+            const newRatios = currentRatios
+              .filter((_, i) => i !== index)
+              .map(ratio => ratio + (removedRatio / (siblings.length - 1)));
+
+            // Normaliser les ratios pour qu'ils totalisent 100
+            const total = newRatios.reduce((sum, r) => sum + r, 0);
+            const normalizedRatios = newRatios.map(r => (r / total) * 100);
+
+            return {
+              ...z,
+              children: newChildren,
+              splitRatios: normalizedRatios.length > 2 ? normalizedRatios : undefined,
+              splitRatio: normalizedRatios.length === 2 ? normalizedRatios[0] : undefined,
+            };
+          }
+        }
+
+        if (z.children) {
+          return { ...z, children: z.children.map(updateZone) };
+        }
+        return z;
+      };
+
+      const newRootZone = updateZone(rootZone);
+      onRootZoneChange(newRootZone);
+      
+      // Sélectionner une zone adjacente après suppression
+      if (siblings.length > 1) {
+        const newIndex = isLastChild ? index - 1 : index;
+        const adjacentZoneId = siblings[newIndex === index ? index + 1 : newIndex]?.id;
+        if (adjacentZoneId) {
+          onSelectedZoneIdsChange([adjacentZoneId]);
+        } else {
+          onSelectedZoneIdsChange([parent.id]);
+        }
+      } else {
+        onSelectedZoneIdsChange([parent.id]);
+      }
+    },
+    [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
+  );
+
+  // Obtenir les infos de position d'une zone enfant (pour le bouton supprimer)
+  const getColumnPositionInfo = useCallback(
+    (zoneId: string): { isEdge: boolean; isMiddle: boolean; canDelete: boolean; parentType: 'vertical' | 'horizontal' | null } | null => {
+      const findParentAndIndex = (current: Zone, targetId: string): { parent: Zone; index: number } | null => {
+        if (current.children) {
+          const index = current.children.findIndex(child => child.id === targetId);
+          if (index !== -1) {
+            return { parent: current, index };
+          }
+          for (const child of current.children) {
+            const result = findParentAndIndex(child, targetId);
+            if (result) return result;
+          }
+        }
+        return null;
+      };
+
+      const parentInfo = findParentAndIndex(rootZone, zoneId);
+      if (!parentInfo) return null;
+
+      const { parent, index } = parentInfo;
+      const siblings = parent.children || [];
+      const isFirst = index === 0;
+      const isLast = index === siblings.length - 1;
+
+      return {
+        isEdge: isFirst || isLast,
+        isMiddle: !isFirst && !isLast,
+        canDelete: siblings.length > 1,
+        parentType: parent.type === 'vertical' ? 'vertical' : parent.type === 'horizontal' ? 'horizontal' : null,
+      };
+    },
+    [rootZone]
+  );
+
   // Modifier le ratio
   const setSplitRatio = useCallback(
     (zoneId: string, ratio: number) => {
@@ -381,6 +539,8 @@ export default function ZoneEditor({
               onGroupZones={groupZones}
               onSetHandleType={onSetHandleType || setHandleType}
               onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
+              onDeleteColumn={deleteColumn}
+              getColumnPositionInfo={getColumnPositionInfo}
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-10 text-center">

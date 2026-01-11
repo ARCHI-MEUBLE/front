@@ -1,4 +1,4 @@
-export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'push_door' | 'push_drawer';
+export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer';
 
 export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
@@ -23,6 +23,7 @@ export type Zone = {
   hasDressing?: boolean;
   handleType?: HandleType; // Type de poignée pour portes/tiroirs
   zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
+  isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
 };
 
 export interface ZoneContentMeta {
@@ -76,16 +77,28 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     description: 'Étagère transparente moderne',
   },
   mirror_door: {
-    label: 'Porte vitrée',
-    shortLabel: 'Vitrée',
+    label: 'Porte vitrée gauche',
+    shortLabel: 'Vitrée G',
     icon: 'V',
-    description: 'Porte avec façade vitrée',
+    description: 'Porte avec façade vitrée, ouverture gauche',
+  },
+  mirror_door_right: {
+    label: 'Porte vitrée droite',
+    shortLabel: 'Vitrée D',
+    icon: 'V',
+    description: 'Porte avec façade vitrée, ouverture droite',
   },
   push_door: {
-    label: 'Porte Push-to-Open',
-    shortLabel: 'Push Door',
+    label: 'Porte Push gauche',
+    shortLabel: 'Push G',
     icon: 'PTO',
-    description: 'Porte sans poignée, ouverture par pression',
+    description: 'Porte sans poignée, ouverture gauche',
+  },
+  push_door_right: {
+    label: 'Porte Push droite',
+    shortLabel: 'Push D',
+    icon: 'PTO',
+    description: 'Porte sans poignée, ouverture droite',
   },
   push_drawer: {
     label: 'Tiroir Push-to-Open',
