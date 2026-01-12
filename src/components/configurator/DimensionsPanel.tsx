@@ -172,7 +172,7 @@ export default function DimensionsPanel({
         label="Hauteur"
         value={height}
         onChange={onHeightChange}
-        min={300}
+        min={100}
         max={2500}
         step={10}
         unit="mm"

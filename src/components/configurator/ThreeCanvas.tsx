@@ -253,13 +253,10 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
   );
 }
 
-function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType, hexColor, imageUrl }: any) {
+function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
   const groupRef = useRef<THREE.Group>(null);
   // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
-
-  // S'assurer que la couleur est valide
-  const safeHexColor = getSafeColor(hexColor);
 
   useEffect(() => {
     let animationFrameId: number;
@@ -291,15 +288,9 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
         document.body.style.cursor = 'default';
       }}
     >
-      {/* Arrière de la porte (couleur choisie) */}
-      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.005]} castShadow>
-        <boxGeometry args={[width - 0.005, height - 0.01, 0.01]} />
-        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-      </mesh>
-      
-      {/* Face miroir/vitrée */}
-      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.015]} castShadow>
-        <boxGeometry args={[width - 0.01, height - 0.02, 0.005]} />
+      {/* Porte avec effet vitré */}
+      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
+        <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
         <meshStandardMaterial
           color="#A5D8FF"
           transparent={true}
@@ -910,21 +901,42 @@ function Furniture({
         }
 
         if (zone.content === 'glass_shelf') {
-          // Étagère en verre transparente
-          items.push(
-            <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
-              <boxGeometry args={[width, thickness, d]} />
-              <meshPhysicalMaterial
-                color="#ffffff"
-                transparent
-                opacity={0.3}
-                roughness={0.1}
-                metalness={0.1}
-                transmission={0.9}
-                thickness={0.5}
-              />
-            </mesh>
-          );
+          // Étagères en verre transparentes (1 à 5)
+          const shelfCount = zone.glassShelfCount || 1;
+
+          // Utiliser les positions personnalisées ou calculer un espacement uniforme
+          const getShelfPositions = () => {
+            if (zone.glassShelfPositions && zone.glassShelfPositions.length === shelfCount) {
+              return zone.glassShelfPositions;
+            }
+            // Positions par défaut (uniformément réparties)
+            return Array.from({ length: shelfCount }, (_, i) =>
+              ((i + 1) / (shelfCount + 1)) * 100
+            );
+          };
+
+          const positions = getShelfPositions();
+
+          for (let i = 0; i < shelfCount; i++) {
+            // Position Y de chaque étagère (en % depuis le bas)
+            const positionPercent = positions[i] / 100;
+            const shelfY = y - height / 2 + height * positionPercent;
+
+            items.push(
+              <mesh key={`${zone.id}-shelf-${i}`} position={[x, shelfY, z]} castShadow receiveShadow>
+                <boxGeometry args={[width - 0.004, thickness, d - 0.004]} />
+                <meshPhysicalMaterial
+                  color="#ffffff"
+                  transparent
+                  opacity={0.3}
+                  roughness={0.1}
+                  metalness={0.1}
+                  transmission={0.9}
+                  thickness={0.5}
+                />
+              </mesh>
+            );
+          }
         } else if (zone.content === 'mirror_door') {
           // Porte avec miroir
           items.push(

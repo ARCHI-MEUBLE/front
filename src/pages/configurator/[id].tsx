@@ -1323,19 +1323,23 @@ export default function ConfiguratorPage() {
       }
 
       // Leaf node
+      const isGlassShelf = str.includes('v');
+      const glassShelfMatch = str.match(/v(\d+)/);
+      const glassShelfCount = glassShelfMatch ? parseInt(glassShelfMatch[1]) : (isGlassShelf ? 1 : undefined);
+
       return {
         id: idPrefix,
         type: 'leaf',
         content: (
           str.includes('To') ? 'push_drawer' :
-          str.includes('T') ? 'drawer' : 
-          str.includes('D') ? 'dressing' : 
-          str.includes('P2') ? 'door_double' : 
+          str.includes('T') ? 'drawer' :
+          str.includes('D') ? 'dressing' :
+          str.includes('P2') ? 'door_double' :
           str.includes('Pm') ? 'mirror_door' :
           str.includes('Po') ? 'push_door' :
-          str.includes('Pd') ? 'door_right' : 
-          (str.includes('P') || str.includes('Pg')) ? 'door' : 
-          str.includes('v') ? 'glass_shelf' :
+          str.includes('Pd') ? 'door_right' :
+          (str.includes('P') || str.includes('Pg')) ? 'door' :
+          isGlassShelf ? 'glass_shelf' :
           str.includes('p') ? 'pegboard' :
           'empty'
         ) as ZoneContent,
@@ -1344,6 +1348,7 @@ export default function ConfiguratorPage() {
           if (!m) return undefined;
           return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
         })(),
+        glassShelfCount,
       };
     };
 
@@ -1818,7 +1823,11 @@ export default function ConfiguratorPage() {
         case 'drawer': leafChar = 'T'; break;
         case 'push_drawer': leafChar = 'To'; break;
         case 'dressing': leafChar = 'D'; break;
-        case 'glass_shelf': leafChar = 'v'; break;
+        case 'glass_shelf':
+          // Inclure le nombre d'étagères (v2, v3, etc.) si > 1
+          const shelfCount = zone.glassShelfCount || 1;
+          leafChar = shelfCount > 1 ? `v${shelfCount}` : 'v';
+          break;
         case 'shelf': leafChar = ''; break; // étagère standard
         default: leafChar = '';
       }
@@ -2136,20 +2145,24 @@ export default function ConfiguratorPage() {
             extra += zone.content === 'drawer' ? 35 : 45;
           }
         } else if (zone.content === 'glass_shelf' && pricingParams?.shelves?.glass) {
-          // Prix étagère verre: prix_m² × surface
+          // Prix étagère verre: prix_m² × surface × nombre d'étagères
           const pricePerM2 = Number(pricingParams.shelves.glass.price_per_m2) || 250;
           const shelfSurfaceM2 = (zoneWidth * config.depth) / 1000000;
-          const shelfPrice = pricePerM2 * shelfSurfaceM2;
-          
+          const shelfCount = zone.glassShelfCount || 1;
+          const shelfPrice = pricePerM2 * shelfSurfaceM2 * shelfCount;
+
           console.log('💎 [ETAGERE VERRE] Calcul détaillée:', {
             dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
             surface: `${shelfSurfaceM2.toFixed(3)} m²`,
+            nombre: shelfCount,
+            prixUnitaire: `${(pricePerM2 * shelfSurfaceM2).toFixed(2)}€`,
             total: `${shelfPrice.toFixed(2)}€`
           });
-          
+
           extra += shelfPrice;
         } else if (zone.content === 'glass_shelf') {
-          extra += 25; // Fallback
+          const shelfCount = zone.glassShelfCount || 1;
+          extra += 25 * shelfCount; // Fallback
         } else if (zone.content === 'dressing') {
           // Prix penderie = prix par mètre × largeur de la zone
           if (pricingParams?.wardrobe?.rod) {
