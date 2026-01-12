@@ -127,7 +127,7 @@ function materialLabelFromKey(key: string): string {
 
 function ConfigurationSummary({ 
   width, height, depth, finish, color, socle, rootZone, price, modelName,
-  isAdmin, onEdit 
+  isAdmin, onEdit, priceDisplaySettings
 }: any) {
   const analyzeConfiguration = (zone: Zone) => {
     const handleTypes = new Set<string>();
@@ -346,14 +346,25 @@ function ConfigurationSummary({
           </div>
         </section>
 
-        {/* Prix style PriceDisplay */}
         <div className="pt-4 border-t border-[#E8E6E3]">
           <div className="flex items-center justify-between bg-[#1A1917] p-6 rounded-[2px] text-white">
             <div>
               <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1 block">Estimation brute</span>
               <div className="flex items-baseline gap-1 font-serif text-4xl">
-                <span>{price}</span>
-                <span className="text-xl">€</span>
+                {priceDisplaySettings?.mode === 1 && priceDisplaySettings?.range > 0 ? (
+                  <>
+                    <span>{Math.max(0, price - priceDisplaySettings.range)}</span>
+                    <span className="text-xl">€</span>
+                    <span className="text-2xl mx-2 opacity-40">-</span>
+                    <span>{price + priceDisplaySettings.range}</span>
+                    <span className="text-xl">€</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{price}</span>
+                    <span className="text-xl">€</span>
+                  </>
+                )}
               </div>
             </div>
             {isAdmin && (
@@ -1047,6 +1058,15 @@ export default function ConfiguratorPage() {
     if (selectedColorId == null) return null;
     return colorsForMaterial.find((option) => option.id === selectedColorId) || null;
   }, [colorsForMaterial, selectedColorId]);
+
+  // Options d'affichage du prix depuis les paramètres de pricing
+  const priceDisplaySettings = useMemo(() => {
+    const displayConfig = pricingParams?.display?.price;
+    return {
+      mode: Number(displayConfig?.display_mode) || 0,
+      range: Number(displayConfig?.deviation_range) || 0
+    };
+  }, [pricingParams]);
 
   // Sauvegarder automatiquement dans localStorage
   useEffect(() => {
@@ -3057,6 +3077,7 @@ export default function ConfiguratorPage() {
                 modelName={model?.name}
                 isAdmin={isAdmin}
                 onEdit={handleAdminEdit}
+                priceDisplaySettings={priceDisplaySettings}
               />
             ) : (
               <>
@@ -3156,6 +3177,8 @@ export default function ConfiguratorPage() {
                     isAdmin={isAdmin}
                     isAdminCreateModel={isAdminCreateModel}
                     isAdminEditModel={isAdminEditModel}
+                    displayMode={priceDisplaySettings.mode}
+                    deviationRange={priceDisplaySettings.range}
                   />
                 </div>
               </>
@@ -3171,12 +3194,26 @@ export default function ConfiguratorPage() {
               <div className="flex-shrink-0">
                 <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
                 <div className="font-serif text-xl text-[#1A1917]">
-                  {new Intl.NumberFormat('fr-FR', {
-                    style: 'currency',
-                    currency: 'EUR',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  }).format(price)}
+                  {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
+                    `${new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(Math.max(0, price - priceDisplaySettings.range))} - ${new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(price + priceDisplaySettings.range)}`
+                  ) : (
+                    new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(price)
+                  )}
                 </div>
               </div>
               {/* Undo/Redo mobile */}

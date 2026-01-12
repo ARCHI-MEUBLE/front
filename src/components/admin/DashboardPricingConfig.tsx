@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
   IconCurrencyEuro,
@@ -332,6 +332,51 @@ export function DashboardPricingConfig() {
     );
   };
 
+  const renderDisplayTable = () => {
+    const data = getParamsByCategory('display');
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Élément</TableHead>
+            <TableHead className="text-right">Valeur</TableHead>
+            <TableHead className="text-right">Description</TableHead>
+            <TableHead className="text-right">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Object.entries(data).map(([type, params]) => (
+            <React.Fragment key={type}>
+              {Object.entries(params).map(([paramName, param]) => (
+                <TableRow key={param.id}>
+                  <TableCell className="font-medium">
+                    {paramName === 'display_mode' ? 'Mode d\'affichage' : 
+                     paramName === 'deviation_range' ? 'Écart type' : paramName}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {paramName === 'display_mode' ? (
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${param.param_value === 1 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                        {param.param_value === 1 ? 'INTERVALLE' : 'DIRECT'}
+                      </span>
+                    ) : formatValue(param.param_value, param.unit)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {param.description}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button onClick={() => handleEdit(param)} variant="ghost" size="sm">
+                      <IconEdit className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </React.Fragment>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <div className="px-4 lg:px-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -371,10 +416,14 @@ export function DashboardPricingConfig() {
                 <TabsTrigger value="wardrobe" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Penderie</TabsTrigger>
                 <TabsTrigger value="handles" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Poignées</TabsTrigger>
                 <TabsTrigger value="casing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Caisson</TabsTrigger>
+                <TabsTrigger value="display" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Affichage Prix</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="materials" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="materials" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Matériaux de construction</h4>
+                  </div>
                   {renderMaterialsTable()}
 
                   {/* Explication simple */}
@@ -404,8 +453,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="drawers" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="drawers" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Tiroirs</h4>
+                  </div>
                   {renderDrawersTable()}
 
                   {/* Formule */}
@@ -421,8 +473,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="shelves" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="shelves" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Étagères</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -476,8 +531,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="lighting" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="lighting" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Éclairage LED</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -520,8 +578,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="cables" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="cables" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Gestion des Câbles</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -564,8 +625,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="bases" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="bases" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Socles</h4>
+                  </div>
                   {renderBasesTable()}
 
                   {/* Formule */}
@@ -622,8 +686,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="hinges" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="hinges" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Charnières</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -666,8 +733,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="doors" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="doors" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Portes</h4>
+                  </div>
                   {renderDoorsTable()}
 
                   {/* Formule */}
@@ -683,8 +753,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="columns" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="columns" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Colonnes</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -727,8 +800,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="wardrobe" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="wardrobe" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration de la Penderie</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -780,8 +856,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="handles" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="handles" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration des Poignées</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -842,8 +921,11 @@ export function DashboardPricingConfig() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="casing" className="mt-4">
-                <div className="space-y-4">
+              <TabsContent value="casing" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Configuration du Caisson</h4>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -932,6 +1014,29 @@ export function DashboardPricingConfig() {
                       </ul>
 
                       <p className="mt-2 italic">Ensuite on ajoute : tiroirs, portes, socle, étagères, LED, etc.</p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="display" className="mt-10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
+                    <h4 className="text-lg font-bold tracking-tight">Paramètres d'affichage du prix</h4>
+                  </div>
+                  {renderDisplayTable()}
+
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <h5 className="text-sm font-semibold mb-2">Options d'affichage</h5>
+                    <div className="text-xs text-muted-foreground space-y-2">
+                      <p>
+                        <strong>Mode d'affichage :</strong> Définit si le prix est affiché de manière exacte (DIRECT) ou sous forme de fourchette (INTERVALLE).
+                        <br /><em>Note: Utilisez 0 pour DIRECT et 1 pour INTERVALLE.</em>
+                      </p>
+                      <p>
+                        <strong>Écart type :</strong> La valeur à ajouter et soustraire du prix calculé pour créer l'intervalle.
+                        <br /><em>Exemple: Si le prix est de 2000€ et l'écart est de 100€, l'affichage sera "1 900€ - 2 100€".</em>
+                      </p>
                     </div>
                   </div>
                 </div>
