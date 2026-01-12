@@ -34,6 +34,7 @@ interface ThreeViewerProps {
   doorType?: 'none' | 'single' | 'double';
   doorSide?: 'left' | 'right';
   useMultiColor?: boolean;
+  mountingStyle?: 'applique' | 'encastre';
 }
 
 // Couleur par défaut (beige/bois naturel)
@@ -499,12 +500,13 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, is
   );
 }
 
-function Furniture({ 
-  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet, 
+function Furniture({
+  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
   doorsOpen, showDecorations, onToggleDoors, componentColors,
   doorType = 'none',
   doorSide = 'left',
   useMultiColor = false,
+  mountingStyle = 'applique',
   selectedZoneIds = [],
   onSelectZone
 }: ThreeViewerProps) {
@@ -540,10 +542,12 @@ function Furniture({
     const thickness = 0.019;
     const sideHeight = hasSocle ? h - 0.1 : h;
     const yOffset = hasSocle ? 0.1 : 0;
-    // Gap pour éviter les collisions entre compartiments adjacents
-    const compartmentGap = 0.020; // 20mm d'espace entre les éléments mobiles (portes, tiroirs)
+    // Gap selon le style de montage :
+    // - Applique : petit gap (3mm) entre portes adjacentes, les portes couvrent le cadre car positionnées devant
+    // - Encastré : gap visible (6mm = 3mm par côté) - on voit le cadre autour des portes
+    const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
     return { w, h, d, sideHeight, yOffset, thickness, compartmentGap };
-  }, [width, height, depth, hasSocle]);
+  }, [width, height, depth, hasSocle, mountingStyle]);
 
   // Couleur par défaut
   const DEFAULT_COLOR = '#D8C7A1';
@@ -621,6 +625,13 @@ function Furniture({
 
   const separatorColor = finalStructureColor;
   const separatorImageUrl = finalStructureImageUrl;
+
+  // Décalage Z pour portes/tiroirs selon le style de montage
+  // Le mesh de la porte est à z=0.01 relatif au groupe, épaisseur 0.018m
+  // Face arrière = groupe_z + 0.001, Face avant = groupe_z + 0.019
+  // Applique: dos de la porte touche le cadre (d/2) → offset = -0.001
+  // Encastré: face avant à fleur avec le cadre (d/2) → offset = -0.019
+  const mountingOffset = mountingStyle === 'applique' ? -0.001 : -0.019;
 
   // Check if any zone has a zone-specific door
   const hasZoneSpecificDoors = useMemo(() => {
@@ -751,7 +762,7 @@ function Furniture({
           items.push(
             <AnimatedDrawer
               key={zone.id}
-              position={[x, y, d / 2]}
+              position={[x, y, d / 2 + mountingOffset]}
               width={width - compartmentGap}
               height={height - compartmentGap}
               depth={d}
@@ -770,7 +781,7 @@ function Furniture({
           // Tiroir push-to-open sans poignée - utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
-          
+
           if (zone.zoneColor?.hex) {
             console.log(`🎨 [3D] Tiroir Push ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
           }
@@ -778,7 +789,7 @@ function Furniture({
           items.push(
             <AnimatedPushDrawer
               key={zone.id}
-              position={[x, y, d / 2]}
+              position={[x, y, d / 2 + mountingOffset]}
               width={width - compartmentGap}
               height={height - compartmentGap}
               depth={d}
@@ -822,7 +833,7 @@ function Furniture({
 
           if (isMirror) {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 <AnimatedMirrorDoor
                   side="left"
                   position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -841,7 +852,7 @@ function Furniture({
             );
           } else if (isPush) {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 <AnimatedPushDoor
                   side="left"
                   position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -860,7 +871,7 @@ function Furniture({
             );
           } else {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 {(isDouble || !isRight) && (
                   <AnimatedDoor
                     side="left"

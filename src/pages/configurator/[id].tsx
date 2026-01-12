@@ -558,6 +558,7 @@ export default function ConfiguratorPage() {
   // const viewerRef = useRef<ThreeCanvasHandle>(null); // TODO: Implémenter la capture d'écran
   const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
   const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
+  const [mountingStyle, setMountingStyle] = useState<'applique' | 'encastre'>('applique');
 
   useEffect(() => {
     doorsOpenRef.current = doorsOpen;
@@ -1087,6 +1088,7 @@ export default function ConfiguratorPage() {
       componentColors,
       doorType,
       doorSide,
+      mountingStyle,
       doorsOpen,
       showDecorations,
       timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
@@ -1098,7 +1100,7 @@ export default function ConfiguratorPage() {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations]);
 
   // Charger les matériaux
   useEffect(() => {
@@ -1681,6 +1683,7 @@ export default function ConfiguratorPage() {
         if (configToRestore.componentColors) setComponentColors(configToRestore.componentColors);
         if (configToRestore.doorType) setDoorType(configToRestore.doorType);
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
+        if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
         console.log('✅ Configuration restaurée avec succès');
         setInitialConfigApplied(true);
       } else {
@@ -1777,6 +1780,7 @@ export default function ConfiguratorPage() {
     if (c.componentColors) setComponentColors(JSON.parse(JSON.stringify(c.componentColors)));
     if (c.doorType) setDoorType(c.doorType);
     if (c.doorSide) setDoorSide(c.doorSide);
+    if (c.mountingStyle) setMountingStyle(c.mountingStyle);
     if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
     if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
     
@@ -2479,7 +2483,7 @@ export default function ConfiguratorPage() {
           selectedColorId,
           socle,
         },
-        features: { doorsOpen, doorType, doorSide },
+        features: { doorsOpen, doorType, doorSide, mountingStyle },
         advancedZones: JSON.parse(JSON.stringify(rootZone)),
         useMultiColor,
         componentColors,
@@ -2592,7 +2596,7 @@ export default function ConfiguratorPage() {
           selectedColorId,
           socle,
         },
-        features: { doorsOpen, doorType, doorSide },
+        features: { doorsOpen, doorType, doorSide, mountingStyle },
         advancedZones: rootZone,
         useMultiColor,
         componentColors,
@@ -2960,6 +2964,7 @@ export default function ConfiguratorPage() {
                   useMultiColor={useMultiColor}
                   doorType={doorType}
                   doorSide={doorSide}
+                  mountingStyle={mountingStyle}
                 />
 
                 {/* Sélecteur de couleur pour la zone (tiroir/porte) - apparaît quand une zone colorisable est sélectionnée */}
@@ -3160,6 +3165,54 @@ export default function ConfiguratorPage() {
                         value={socle}
                         onChange={setSocle}
                       />
+
+                      {/* Sélecteur du style de montage portes/tiroirs */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
+                          <h3 className="font-serif text-xs text-[#1A1917]">Montage façades</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setMountingStyle('applique')}
+                            className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
+                              mountingStyle === 'applique'
+                                ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                            }`}
+                            style={{ borderRadius: '4px' }}
+                          >
+                            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" className="opacity-80">
+                              <rect x="2" y="4" width="28" height="16" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                              <rect x="0" y="2" width="12" height="20" fill="currentColor" opacity="0.3"/>
+                              <rect x="0" y="2" width="12" height="20" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                            </svg>
+                            <span className="text-[11px] font-medium">Applique</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMountingStyle('encastre')}
+                            className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
+                              mountingStyle === 'encastre'
+                                ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                            }`}
+                            style={{ borderRadius: '4px' }}
+                          >
+                            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" className="opacity-80">
+                              <rect x="2" y="4" width="28" height="16" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                              <rect x="4" y="6" width="10" height="12" fill="currentColor" opacity="0.3"/>
+                              <rect x="4" y="6" width="10" height="12" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                            </svg>
+                            <span className="text-[11px] font-medium">Encastré</span>
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-[#706F6C]">
+                          {mountingStyle === 'applique'
+                            ? 'Portes et tiroirs en saillie sur le cadre'
+                            : 'Portes et tiroirs affleurant avec le cadre'}
+                        </p>
+                      </div>
                     </div>
                   )}
 
