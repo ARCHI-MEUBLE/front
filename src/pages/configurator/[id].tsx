@@ -1836,11 +1836,17 @@ export default function ConfiguratorPage() {
   }): number => {
     let p = 0;
 
-    // 1. Calculer le prix de la structure (caisson principal)
-    // IMPORTANT: On utilise TOUJOURS le matériau "base" (même prix pour tous les meubles)
-    // La finition (Aggloméré, MDF, etc.) détermine seulement quels échantillons sont disponibles
+    // Normalisation du nom du matériau pour correspondre aux clés API (ex: "Aggloméré" -> "agglomere")
+    const normalizedFinish = config.finish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    
+    // On essaie d'abord d'utiliser le matériau "base", sinon on cherche le matériau actuel (normalisé), 
+    // sinon on cherche le matériau actuel tel quel, sinon on prend le premier disponible.
+    const materialConfig = pricingParams?.materials?.base || 
+                          pricingParams?.materials?.[normalizedFinish] || 
+                          pricingParams?.materials?.[config.finish.toLowerCase()] || 
+                          (pricingParams?.materials ? Object.values(pricingParams.materials)[0] : null);
 
-    if (pricingParams?.materials?.base && pricingParams?.casing?.full) {
+    if (materialConfig && pricingParams?.casing?.full) {
       // Calcul de la surface totale du caisson en m²
       // IMPORTANT: Un caisson vide a 5 faces (pas de devant - c'est ouvert !)
       // Surface = arrière + 2×côtés + dessus + dessous
@@ -1853,100 +1859,135 @@ export default function ConfiguratorPage() {
       const topBottom = (w * d) * 2; // Dessus + Dessous
       const totalSurface = back + sides + topBottom;
 
-      // Prix = (Prix matériau de base + Prix échantillon) × surface × coefficient
-      // IMPORTANT: Les deux prix s'ADDITIONNENT (le revêtement s'ajoute au bois de base)
-
-      // 1. Prix du matériau de base (bois brut) - TOUJOURS présent et identique pour tous
-      const baseMaterialPrice = pricingParams.materials.base.price_per_m2 || 50;
+      // Prix = (Prix matériau + Prix échantillon) × surface × coefficient
+      
+      // 1. Prix du matériau (bois brut)
+      const baseMaterialPrice = (materialConfig as any).price_per_m2 || 50;
 
       // 2. Prix du revêtement (échantillon) - OPTIONNEL, s'ajoute au matériau
       const samplePrice = (config.selectedSample && config.selectedSample.price_per_m2 > 0)
         ? config.selectedSample.price_per_m2
         : 0;
 
-      // 3. Prix total au m² = matériau de base + revêtement
+      // 3. Prix total au m² = matériau + revêtement
       const totalPricePerM2 = baseMaterialPrice + samplePrice;
 
       const casingCoefficient = pricingParams.casing.full.coefficient || 1.2;
       p = totalPricePerM2 * totalSurface * casingCoefficient;
 
-      console.log('💰 Prix structure:', {
-        dimensions: `${config.width}×${config.height}×${config.depth}mm`,
-        surface: `${totalSurface.toFixed(2)}m²`,
-        baseMaterialPrice: `${baseMaterialPrice}€/m² (matériau de base)`,
-        samplePrice: samplePrice > 0 ? `${samplePrice}€/m² (${config.selectedSample?.name})` : '0€ (aucun revêtement)',
-        totalPricePerM2: `${totalPricePerM2}€/m²`,
-        coefficient: casingCoefficient,
-        structurePrice: `${p.toFixed(2)}€`
+      console.log('💰 [STRUCTURE] Calcul détaillée:', {
+        materiau: normalizedFinish,
+        surface: `${totalSurface.toFixed(3)} m²`,
+        formule: `(${baseMaterialPrice} + ${samplePrice}) × ${totalSurface.toFixed(3)} × ${casingCoefficient}`,
+        total: `${p.toFixed(2)}€`
       });
     } else {
       // Fallback : utiliser une estimation basée sur le volume si params pas chargés
       const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
       p = volumeM3 * 1500; // Prix par défaut
+      console.log('⚠️ Fallback prix structure (Volume):', p);
     }
 
-    // 2. Ajouter le supplément matériau (depuis pricingParams - normalement 0€)
-    if (pricingParams?.materials?.base?.supplement !== undefined) {
-      p += pricingParams.materials.base.supplement;
-    }
+    // 2. Ajouter le supplément matériau
+    const materialSupplement = (materialConfig as any)?.supplement || 0;
+    p += materialSupplement;
 
-    // 3. Ajouter le prix du socle (depuis pricingParams ou valeurs par défaut)
+    // 3. Ajouter le prix du socle
     if (pricingParams?.bases) {
       if (config.socle === 'none') {
-        p += pricingParams.bases.none?.fixed_price || 0;
+        const nonePrice = pricingParams.bases.none?.fixed_price || 0;
+        p += nonePrice;
+        if (nonePrice > 0) console.log('👞 [SOCLE] Aucun:', nonePrice + '€');
       } else if (config.socle === 'metal') {
-        // Pour metal: 2 pieds tous les 2 mètres
         const pricePerFoot = pricingParams.bases.metal?.price_per_foot || 20;
-        const footInterval = pricingParams.bases.metal?.foot_interval || 2000; // mm (2 mètres)
-        // Nombre de tranches de 2m (arrondi au supérieur) × 2 pieds
+        const footInterval = pricingParams.bases.metal?.foot_interval || 2000;
         const totalFeet = Math.ceil(config.width / footInterval) * 2;
-        p += pricePerFoot * totalFeet;
+        const metalPrice = pricePerFoot * totalFeet;
+        p += metalPrice;
+        console.log('👞 [SOCLE] Métal:', {
+          pieds: totalFeet,
+          prixParPied: pricePerFoot,
+          total: metalPrice + '€'
+        });
       } else if (config.socle === 'wood') {
-        // Pour wood: prix au m³ × volume (L × P × hauteur)
-        const height = pricingParams.bases.wood?.height || 80; // mm
-        const pricePerM3 = pricingParams.bases.wood?.price_per_m3 || 800; // €/m³
-
-        const volumeMm3 = config.width * config.depth * height;
-        const volumeM3 = volumeMm3 / 1_000_000_000; // mm³ → m³
-
-        p += pricePerM3 * volumeM3;
+        const woodParams = pricingParams.bases.wood;
+        if (woodParams?.price_per_m3 && woodParams?.height) {
+          // Nouvelle formule : Volume × Prix/m³
+          const h = woodParams.height;
+          const volumeM3 = (config.width * config.depth * h) / 1_000_000_000;
+          const woodPrice = woodParams.price_per_m3 * volumeM3;
+          p += woodPrice;
+          console.log('👞 [SOCLE] Bois:', {
+            volume: volumeM3.toFixed(4) + ' m³',
+            prixM3: woodParams.price_per_m3 + '€/m³',
+            total: woodPrice.toFixed(2) + '€'
+          });
+        } else if (woodParams?.coefficient) {
+          // Ancienne formule (fallback) : Coef × L × P
+          const woodPrice = woodParams.coefficient * config.width * config.depth;
+          p += woodPrice;
+          console.log('👞 [SOCLE] Bois (Coef):', woodPrice.toFixed(2) + '€');
+        } else {
+          p += 60; // Fallback hardcodé
+        }
       }
     } else {
-      // Fallback sur les valeurs hardcodées
       const soclePrices: Record<string, number> = { none: 0, metal: 40, wood: 60 };
       p += soclePrices[config.socle] || 0;
     }
 
     // 4. Compter tiroirs et penderies dans les zones
-    const countExtraPrice = (zone: Zone): number => {
+    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number): number => {
       let extra = 0;
 
       // Prix de la porte sur cette zone (feuille ou parent)
       const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
       if (door && pricingParams?.doors) {
         // Utiliser les prix configurables pour les portes
-        const getDoorPrice = (doorType: string) => {
+        const getDoorPrice = (doorType: string, w: number, h: number) => {
+          // Vérifier si le contenu est bien une porte
+          const isDoor = [
+            'door', 'door_right', 'door_double', 'mirror_door', 'glass_door', 'push_door'
+          ].includes(doorType);
+          
+          if (!isDoor) return 0;
+
+          // Mapping vers les clés de configuration admin
           let typeKey = 'simple';
-          if (doorType === 'door_double') typeKey = 'double';
-          else if (doorType === 'mirror_door') typeKey = 'glass';
-          else if (doorType === 'push_door') typeKey = 'push';
+          if (pricingParams.doors[doorType]) {
+            // Si une clé exacte existe dans l'admin (ex: "door_right"), on l'utilise
+            typeKey = doorType;
+          } else if (doorType === 'door_double') {
+            typeKey = 'double';
+          } else if (doorType === 'mirror_door' || doorType === 'glass_door') {
+            typeKey = 'glass';
+          } else if (doorType === 'push_door') {
+            typeKey = 'push';
+          } else {
+            // Par défaut pour door, door_right, etc.
+            typeKey = 'simple';
+          }
 
           const doorConfig = pricingParams.doors[typeKey];
           if (!doorConfig) return 0;
 
-          // Pour les portes, il faudrait avoir les dimensions de la zone
-          // Pour l'instant, on utilise une estimation basée sur la zone
           const coefficient = doorConfig.coefficient || 0.00004;
           const hingeCount = doorConfig.hinge_count || 2;
           const hingePrice = pricingParams.hinges?.standard?.price_per_unit || 5;
 
-          // Estimation: utiliser les dimensions du meuble pour la porte
-          // (dans une vraie implémentation, il faudrait les dimensions de la zone)
-          const doorPrice = coefficient * config.width * config.height;
-          return doorPrice + (hingePrice * hingeCount);
+          // Calcul : Coef × Largeur × Hauteur + (Prix Charnière × Nombre)
+          const doorPrice = (coefficient * w * h) + (hingePrice * hingeCount);
+          
+          console.log(`🚪 [PORTE] Calcul détaillée (${doorType} -> ${typeKey}):`, {
+            dimensions: `${w.toFixed(0)}x${h.toFixed(0)}mm`,
+            formule: `(${coefficient} × ${w.toFixed(0)} × ${h.toFixed(0)}) + (${hingePrice} × ${hingeCount})`,
+            total: `${doorPrice.toFixed(2)}€`
+          });
+          
+          return doorPrice;
         };
 
-        extra += getDoorPrice(door);
+        extra += getDoorPrice(door, zoneWidth, zoneHeight);
       } else if (door) {
         // Fallback sur valeurs hardcodées
         switch (door) {
@@ -1974,26 +2015,37 @@ export default function ConfiguratorPage() {
           if (drawerConfig) {
             const basePrice = drawerConfig.base_price || 35;
             const coefficient = drawerConfig.coefficient || 0.0001;
-            // Estimation des dimensions du tiroir (à affiner selon les vraies dimensions de la zone)
-            const drawerWidth = config.width / 2; // Estimation
-            const drawerDepth = config.depth;
-            extra += basePrice + (coefficient * drawerWidth * drawerDepth);
+            const drawerPrice = basePrice + (coefficient * zoneWidth * config.depth);
+            extra += drawerPrice;
+            
+            console.log(`📥 [TIROIR] Calcul détaillée (${drawerType}):`, {
+              dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
+              formule: `${basePrice} + (${coefficient} × ${zoneWidth.toFixed(0)} × ${config.depth.toFixed(0)})`,
+              total: `${drawerPrice.toFixed(2)}€`
+            });
           } else {
             extra += zone.content === 'drawer' ? 35 : 45;
           }
         } else if (zone.content === 'glass_shelf' && pricingParams?.shelves?.glass) {
           // Prix étagère verre: prix_m² × surface
           const pricePerM2 = pricingParams.shelves.glass.price_per_m2 || 250;
-          const shelfWidth = config.width / 1000; // Conversion mm -> m
-          const shelfDepth = config.depth / 1000;
-          extra += pricePerM2 * shelfWidth * shelfDepth;
+          const shelfSurfaceM2 = (zoneWidth * config.depth) / 1000000;
+          const shelfPrice = pricePerM2 * shelfSurfaceM2;
+          
+          console.log('💎 [ETAGERE VERRE] Calcul détaillée:', {
+            dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
+            surface: `${shelfSurfaceM2.toFixed(3)} m²`,
+            total: `${shelfPrice.toFixed(2)}€`
+          });
+          
+          extra += shelfPrice;
         } else if (zone.content === 'glass_shelf') {
           extra += 25; // Fallback
         } else if (zone.content === 'dressing') {
-          // Prix penderie = prix par mètre × largeur du meuble
+          // Prix penderie = prix par mètre × largeur de la zone
           if (pricingParams?.wardrobe?.rod) {
             const pricePerMeter = pricingParams.wardrobe.rod.price_per_linear_meter || 20;
-            const widthInMeters = config.width / 1000;
+            const widthInMeters = zoneWidth / 1000;
             extra += pricePerMeter * widthInMeters;
           } else {
             extra += 20; // Fallback
@@ -2004,7 +2056,7 @@ export default function ConfiguratorPage() {
         if (zone.hasDressing && zone.content !== 'dressing') {
           if (pricingParams?.wardrobe?.rod) {
             const pricePerMeter = pricingParams.wardrobe.rod.price_per_linear_meter || 20;
-            const widthInMeters = config.width / 1000;
+            const widthInMeters = zoneWidth / 1000;
             extra += pricePerMeter * widthInMeters;
           } else {
             extra += 20; // Fallback
@@ -2025,20 +2077,44 @@ export default function ConfiguratorPage() {
           if (pricingParams?.lighting?.led) {
             // Prix LED = prix par mètre linéaire × largeur (en mètres)
             const pricePerMeter = pricingParams.lighting.led.price_per_linear_meter || 15;
-            const widthInMeters = config.width / 1000;
+            const widthInMeters = zoneWidth / 1000;
             extra += pricePerMeter * widthInMeters;
           } else {
             // Fallback: estimation basée sur la largeur
-            extra += (config.width / 1000) * 15;
+            extra += (zoneWidth / 1000) * 15;
           }
         }
       } else if (zone.children) {
-        extra += zone.children.reduce((sum, child) => sum + countExtraPrice(child), 0);
+        // Calculer les dimensions des enfants
+        zone.children.forEach((child, index) => {
+          let childWidth = zoneWidth;
+          let childHeight = zoneHeight;
+
+          // Calcul du ratio pour chaque enfant (aligné sur ThreeCanvas.tsx)
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[index] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (index === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+
+          if (zone.type === 'horizontal') {
+            // Les enfants partagent la hauteur
+            childHeight = zoneHeight * ratio;
+          } else if (zone.type === 'vertical') {
+            // Les enfants partagent la largeur
+            childWidth = zoneWidth * ratio;
+          }
+
+          extra += countExtraPrice(child, childWidth, childHeight);
+        });
       }
 
       return extra;
     };
-    p += countExtraPrice(config.rootZone);
+    p += countExtraPrice(config.rootZone, config.width, config.height);
 
     // 5. Ajouter le prix des portes globales (si configuré)
     if (pricingParams?.doors && config.doorType && config.doorType !== 'none') {
@@ -2048,18 +2124,23 @@ export default function ConfiguratorPage() {
         const coefficient = doorConfig.coefficient || 0.00004;
         const hingeCount = doorConfig.hinge_count || 2;
         const hingePrice = pricingParams.hinges?.standard?.price_per_unit || 5;
-        p += (coefficient * config.width * config.height) + (hingePrice * hingeCount);
+        const globalDoorPrice = (coefficient * config.width * config.height) + (hingePrice * hingeCount);
+        p += globalDoorPrice;
+        console.log(`🚪 Prix porte globale (${config.doorType}):`, globalDoorPrice.toFixed(2) + '€');
       } else {
         // Fallback
-        if (config.doorType === 'single') p += 40;
-        else if (config.doorType === 'double') p += 80;
+        const fallbackPrice = config.doorType === 'single' ? 40 : 80;
+        p += fallbackPrice;
+        console.log(`🚪 Prix porte globale (Fallback ${config.doorType}):`, fallbackPrice + '€');
       }
-    } else if (config.doorType && config.doorType !== 'none') {
-      // Fallback sur valeurs hardcodées
-      if (config.doorType === 'single') p += 40;
-      else if (config.doorType === 'double') p += 80;
     }
 
+    if (isNaN(p)) {
+      console.warn('⚠️ Le calcul du prix a retourné NaN, retour à 0');
+      p = 0;
+    }
+
+    console.log('💰 PRIX TOTAL CALCULÉ:', Math.round(p) + '€');
     return Math.round(p);
   }, [pricingParams]);
 
