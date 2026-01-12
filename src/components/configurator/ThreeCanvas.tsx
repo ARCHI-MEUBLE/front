@@ -126,7 +126,7 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
 
   // Utiliser une clé unique pour forcer React à recréer le matériau proprement
   // quand la couleur ou la texture change
-  const materialKey = texture ? `tex-${currentImageUrlRef.current}` : `col-${safeColor}`;
+  const materialKey = texture ? `tex-${currentImageUrlRef.current}-${safeColor}` : `col-${safeColor}`;
 
   // Si on a une texture chargée, l'utiliser
   if (texture) {
@@ -135,7 +135,7 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
         key={materialKey}
         attach="material"
         map={texture}
-        color="#ffffff"
+        color={safeColor || "#ffffff"}
         roughness={0.7}
         metalness={0.1}
       />
@@ -253,10 +253,13 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
   );
 }
 
-function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
+function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType, hexColor, imageUrl }: any) {
   const groupRef = useRef<THREE.Group>(null);
   // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
   const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
+
+  // S'assurer que la couleur est valide
+  const safeHexColor = getSafeColor(hexColor);
 
   useEffect(() => {
     let animationFrameId: number;
@@ -288,9 +291,15 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
         document.body.style.cursor = 'default';
       }}
     >
-      {/* Porte avec effet vitré */}
-      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
-        <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
+      {/* Arrière de la porte (couleur choisie) */}
+      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.005]} castShadow>
+        <boxGeometry args={[width - 0.005, height - 0.01, 0.01]} />
+        <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
+      </mesh>
+      
+      {/* Face miroir/vitrée */}
+      <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.015]} castShadow>
+        <boxGeometry args={[width - 0.01, height - 0.02, 0.005]} />
         <meshStandardMaterial
           color="#A5D8FF"
           transparent={true}
@@ -743,6 +752,11 @@ function Furniture({
           // Utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
+          
+          if (zone.zoneColor?.hex) {
+            console.log(`🎨 [3D] Tiroir ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
+          }
+
           items.push(
             <AnimatedDrawer
               key={zone.id}
@@ -765,6 +779,11 @@ function Furniture({
           // Tiroir push-to-open sans poignée - utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
+          
+          if (zone.zoneColor?.hex) {
+            console.log(`🎨 [3D] Tiroir Push ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
+          }
+
           items.push(
             <AnimatedPushDrawer
               key={zone.id}
@@ -806,6 +825,10 @@ function Furniture({
           const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
           const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
+          if (zone.zoneColor?.hex) {
+            console.log(`🎨 [3D] Porte ${zone.id} - Couleur spécifique: ${doorHexColor}`);
+          }
+
           if (isMirror) {
             items.push(
               <group key={`${zone.id}-door`} position={[x, y, d/2]}>
@@ -814,6 +837,8 @@ function Furniture({
                   position={[-width/2 + compartmentGap/2, 0, 0]}
                   width={width - compartmentGap}
                   height={height - compartmentGap}
+                  hexColor={doorHexColor}
+                  imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
@@ -858,6 +883,7 @@ function Furniture({
                     onClick={(e: any) => {
                       e.stopPropagation();
                       onSelectZone?.(zone.id);
+                      toggleCompartment(zone.id);
                     }}
                   />
                 )}
@@ -874,6 +900,7 @@ function Furniture({
                     onClick={(e: any) => {
                       e.stopPropagation();
                       onSelectZone?.(zone.id);
+                      toggleCompartment(zone.id);
                     }}
                   />
                 )}
@@ -1076,7 +1103,8 @@ function Furniture({
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
-    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment
+    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment,
+    useMultiColor
   ]);
 
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
