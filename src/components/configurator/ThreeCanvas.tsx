@@ -951,7 +951,7 @@ function Furniture({
         } else if (zone.content === 'mirror_door') {
           // Porte avec miroir
           items.push(
-            <group key={zone.id} position={[x, y, d/2]}>
+            <group key={zone.id} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedMirrorDoor
                 side="left"
                 position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -994,7 +994,7 @@ function Furniture({
 
         if (isMirror) {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedMirrorDoor
                 side="left"
                 position={[-width/2 + compartmentGap/2, 0, 0]}
