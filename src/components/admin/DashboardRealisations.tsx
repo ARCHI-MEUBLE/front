@@ -12,6 +12,7 @@ import {
   IconCalendar,
   IconMapPin,
   IconRuler2,
+  IconPhoto,
 } from '@tabler/icons-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RealisationImagesDialog } from './RealisationImagesDialog';
 
 export interface Realisation {
   id: number;
@@ -62,6 +64,7 @@ export function DashboardRealisations() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+  const [imagesDialogRealisationId, setImagesDialogRealisationId] = useState<number | null>(null);
 
   const fetchCategories = async () => {
     try {
@@ -235,6 +238,9 @@ export function DashboardRealisations() {
                   </div>
                 )}
                 <div className="absolute top-2 right-2 flex gap-2">
+                  <Button size="icon" variant="secondary" onClick={() => setImagesDialogRealisationId(real.id)} title="Gérer les images">
+                    <IconPhoto size={16} />
+                  </Button>
                   <Button size="icon" variant="secondary" onClick={() => handleEdit(real)}>
                     <IconEdit size={16} />
                   </Button>
@@ -340,6 +346,12 @@ export function DashboardRealisations() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <RealisationImagesDialog
+        realisationId={imagesDialogRealisationId || 0}
+        isOpen={imagesDialogRealisationId !== null}
+        onClose={() => setImagesDialogRealisationId(null)}
+      />
     </div>
   );
 }

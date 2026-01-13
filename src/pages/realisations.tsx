@@ -13,18 +13,25 @@ import {
   Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RealisationCarousel, ImageLightbox } from '@/components/facades/RealisationCarousel';
 
 interface Realisation {
   id: number;
   titre: string;
   description: string;
   image_url: string | null;
+  images?: Array<{
+    id: number;
+    image_url: string;
+    legende?: string;
+    ordre: number;
+  }>;
   date_projet: string;
   categorie: string;
   lieu: string;
   dimensions: string;
   created_at: string;
-  featured?: boolean; // Optionnel si on l'ajoute plus tard en DB
+  featured?: boolean;
 }
 
 interface Category {
@@ -41,6 +48,7 @@ export default function RealisationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -296,27 +304,16 @@ export default function RealisationsPage() {
                     onMouseLeave={() => setHoveredId(null)}
                     className="group relative overflow-hidden rounded-2xl bg-white"
                   >
-                    {/* Image */}
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#E8E4DE]">
-                      {realisation.image_url ? (
-                        <motion.img
-                          src={realisation.image_url}
-                          alt={realisation.titre}
-                          className="h-full w-full object-cover"
-                          animate={{
-                            scale: hoveredId === realisation.id ? 1.05 : 1
-                          }}
-                          transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[#706F6C]">
-                          <Camera className="h-12 w-12" strokeWidth={1} />
-                        </div>
-                      )}
+                    <div className="relative">
+                      {/* Image avec carousel */}
+                      <RealisationCarousel
+                        images={realisation.images || []}
+                        onImageClick={setLightboxImage}
+                      />
 
                       {/* Overlay on hover */}
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-t from-[#1A1917]/80 via-[#1A1917]/20 to-transparent"
+                        className="absolute inset-0 bg-gradient-to-t from-[#1A1917]/80 via-[#1A1917]/20 to-transparent pointer-events-none"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: hoveredId === realisation.id ? 1 : 0 }}
                         transition={{ duration: 0.3 }}
@@ -324,29 +321,10 @@ export default function RealisationsPage() {
 
                       {/* Featured badge */}
                       {realisation.featured && (
-                        <div className="absolute left-4 top-4 rounded-full bg-[#8B7355] px-3 py-1 text-xs font-medium text-white">
+                        <div className="absolute left-4 top-4 rounded-full bg-[#8B7355] px-3 py-1 text-xs font-medium text-white z-10 pointer-events-none">
                           Coup de coeur
                         </div>
                       )}
-
-                      {/* View button on hover */}
-                      <motion.div
-                        className="absolute inset-x-4 bottom-4 flex items-center justify-center"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{
-                          opacity: hoveredId === realisation.id ? 1 : 0,
-                          y: hoveredId === realisation.id ? 0 : 10
-                        }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Link
-                          href={`/contact-request?projet=${encodeURIComponent(realisation.titre)}`}
-                          className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-[#1A1917] transition-transform active:scale-95"
-                        >
-                          Projet similaire
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </motion.div>
                     </div>
 
                     {/* Content */}
@@ -439,6 +417,16 @@ export default function RealisationsPage() {
       </main>
 
       <Footer />
+
+      {/* Lightbox pour afficher les images en grand */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <ImageLightbox
+            imageUrl={lightboxImage}
+            onClose={() => setLightboxImage(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

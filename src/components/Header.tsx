@@ -8,6 +8,7 @@ import { useCustomer } from "@/context/CustomerContext";
 
 const navLinks = [
   { href: "/models", label: "Nos modèles" },
+  { href: "/facades", label: "Façades" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/samples", label: "Échantillons" },
   { href: "/realisations", label: "Réalisations" },
