@@ -3151,14 +3151,16 @@ export default function ConfiguratorPage() {
                         height={height}
                         onSelectZone={handleZoneSelect}
                         isAdminCreateModel={isAdminCreateModel}
-                      />
-                      <DimensionsPanel
-                        width={width}
-                        depth={depth}
-                        height={height}
-                        onWidthChange={setWidth}
-                        onDepthChange={setDepth}
-                        onHeightChange={setHeight}
+                        renderAfterCanvas={
+                          <DimensionsPanel
+                            width={width}
+                            depth={depth}
+                            height={height}
+                            onWidthChange={setWidth}
+                            onDepthChange={setDepth}
+                            onHeightChange={setHeight}
+                          />
+                        }
                       />
                       {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
                       <SocleSelector

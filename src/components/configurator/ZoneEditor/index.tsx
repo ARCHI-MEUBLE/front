@@ -14,6 +14,8 @@ interface ZoneEditorProps {
   height: number;
   hideControls?: boolean;
   showNumbers?: boolean;
+  // Contenu à afficher entre le canvas et les contrôles
+  renderAfterCanvas?: React.ReactNode;
   // Expose les actions pour une utilisation externe (ActionBar)
   onSplitZone?: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
   onSetZoneContent?: (zoneId: string, content: ZoneContent) => void;
@@ -47,6 +49,7 @@ export default function ZoneEditor({
   height,
   hideControls,
   showNumbers,
+  renderAfterCanvas,
   onToggleLight,
   onToggleCableHole,
   onToggleDressing,
@@ -438,6 +441,9 @@ export default function ZoneEditor({
         height={height}
         showNumbers={showNumbers}
       />
+
+      {/* Contenu personnalisé après le canvas (ex: dimensions) */}
+      {renderAfterCanvas}
 
       {/* Contrôles dans une card - masqués en mode hideControls */}
       {!hideControls && (
