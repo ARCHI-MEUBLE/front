@@ -14,7 +14,7 @@ import { DashboardAppointments } from '@/components/admin/DashboardAppointments'
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
-import { DashboardPricing } from '@/components/admin/DashboardPricing';
+import { DashboardPricingCombined } from '@/components/admin/DashboardPricingCombined';
 import { DashboardSamples } from '@/components/admin/DashboardSamples';
 import { DashboardRealisations } from '@/components/admin/DashboardRealisations';
 import { DashboardFacades } from '@/components/admin/DashboardFacades';
@@ -43,7 +43,7 @@ const sectionTitles: Record<DashboardSection, { title: string; description: stri
   appointments: { title: 'Demandes de rendez-vous', description: 'Nouvelles demandes de rendez-vous' },
   calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
   avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
-  pricing: { title: 'Gestion des prix', description: 'Configurez les prix au mètre cube' },
+  pricing: { title: 'Gestion des prix', description: 'Configurez tous les paramètres de tarification' },
   catalogue: { title: 'Catalogue & Pièces', description: 'Gérez les articles et accessoires' },
   facades: { title: 'Façades', description: 'Gérer les matériaux et types de perçages' },
   samples: { title: 'Gestion des échantillons', description: 'Catalogue des finitions et matériaux' },
@@ -225,7 +225,7 @@ export default function AdminDashboardPage() {
                 {selectedSection === 'appointments' && <DashboardAppointments />}
                 {selectedSection === 'calendar' && <DashboardCalendar />}
                 {selectedSection === 'avis' && <DashboardAvis />}
-                {selectedSection === 'pricing' && <DashboardPricing />}
+                {selectedSection === 'pricing' && <DashboardPricingCombined />}
                 {selectedSection === 'samples' && <DashboardSamples />}
                 {selectedSection === 'realisations' && <DashboardRealisations />}
                 {selectedSection === 'password' && <DashboardPassword />}

@@ -14,6 +14,8 @@ interface ZoneEditorProps {
   height: number;
   hideControls?: boolean;
   showNumbers?: boolean;
+  // Contenu à afficher entre le canvas et les contrôles
+  renderAfterCanvas?: React.ReactNode;
   // Expose les actions pour une utilisation externe (ActionBar)
   onSplitZone?: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
   onSetZoneContent?: (zoneId: string, content: ZoneContent) => void;
@@ -47,6 +49,7 @@ export default function ZoneEditor({
   height,
   hideControls,
   showNumbers,
+  renderAfterCanvas,
   onToggleLight,
   onToggleCableHole,
   onToggleDressing,
@@ -88,6 +91,46 @@ export default function ZoneEditor({
 
   const selectedZone = selectedZoneInfo?.zone ?? rootZone;
   const parentZone = selectedZoneInfo?.parent ?? null;
+
+  // Calculer la hauteur d'une zone en mm (parcours récursif)
+  const calculateZoneHeight = useCallback(
+    (targetId: string, zone: Zone = rootZone, availableHeight: number = height): number => {
+      if (zone.id === targetId) {
+        return availableHeight;
+      }
+
+      if (!zone.children || zone.children.length === 0) {
+        return 0;
+      }
+
+      // Pour les divisions horizontales, la hauteur est partagée entre les enfants
+      if (zone.type === 'horizontal') {
+        const ratios = zone.children.length === 2 && zone.splitRatio !== undefined
+          ? [zone.splitRatio, 100 - zone.splitRatio]
+          : zone.splitRatios || zone.children.map(() => 100 / zone.children!.length);
+
+        for (let i = 0; i < zone.children.length; i++) {
+          const childHeight = availableHeight * (ratios[i] / 100);
+          const result = calculateZoneHeight(targetId, zone.children[i], childHeight);
+          if (result > 0) return result;
+        }
+      } else {
+        // Pour les divisions verticales, la hauteur reste la même
+        for (const child of zone.children) {
+          const result = calculateZoneHeight(targetId, child, availableHeight);
+          if (result > 0) return result;
+        }
+      }
+
+      return 0;
+    },
+    [rootZone, height]
+  );
+
+  const selectedZoneHeightMm = useMemo(
+    () => Math.round(calculateZoneHeight(selectedZone.id)),
+    [calculateZoneHeight, selectedZone.id]
+  );
 
   // Diviser une zone
   const splitZone = useCallback(
@@ -245,6 +288,44 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onSetHandleType]
   );
 
+  // Définir le nombre d'étagères en verre
+  const setGlassShelfCount = useCallback(
+    (zoneId: string, count: number) => {
+      const updateZone = (z: Zone): Zone => {
+        if (z.id === zoneId && z.type === 'leaf') {
+          // Réinitialiser les positions quand le nombre change
+          const defaultPositions = Array.from({ length: count }, (_, i) =>
+            Math.round(((i + 1) / (count + 1)) * 100)
+          );
+          return { ...z, glassShelfCount: count, glassShelfPositions: defaultPositions };
+        }
+        if (z.children) {
+          return { ...z, children: z.children.map(updateZone) };
+        }
+        return z;
+      };
+      onRootZoneChange(updateZone(rootZone));
+    },
+    [rootZone, onRootZoneChange]
+  );
+
+  // Définir les positions des étagères en verre
+  const setGlassShelfPositions = useCallback(
+    (zoneId: string, positions: number[]) => {
+      const updateZone = (z: Zone): Zone => {
+        if (z.id === zoneId && z.type === 'leaf') {
+          return { ...z, glassShelfPositions: positions };
+        }
+        if (z.children) {
+          return { ...z, children: z.children.map(updateZone) };
+        }
+        return z;
+      };
+      onRootZoneChange(updateZone(rootZone));
+    },
+    [rootZone, onRootZoneChange]
+  );
+
   // Réinitialiser une zone
   const resetZone = useCallback(
     (zoneId: string) => {
@@ -361,6 +442,9 @@ export default function ZoneEditor({
         showNumbers={showNumbers}
       />
 
+      {/* Contenu personnalisé après le canvas (ex: dimensions) */}
+      {renderAfterCanvas}
+
       {/* Contrôles dans une card - masqués en mode hideControls */}
       {!hideControls && (
         <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
@@ -380,6 +464,9 @@ export default function ZoneEditor({
               onToggleDressing={onToggleDressing || toggleDressing}
               onGroupZones={groupZones}
               onSetHandleType={onSetHandleType || setHandleType}
+              onSetGlassShelfCount={setGlassShelfCount}
+              onSetGlassShelfPositions={setGlassShelfPositions}
+              zoneHeightMm={selectedZoneHeightMm}
               onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
             />
           ) : (

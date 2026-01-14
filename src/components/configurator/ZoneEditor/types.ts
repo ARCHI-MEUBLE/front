@@ -23,6 +23,8 @@ export type Zone = {
   hasDressing?: boolean;
   handleType?: HandleType; // Type de poignée pour portes/tiroirs
   zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
+  glassShelfCount?: number; // Nombre d'étagères en verre (1-5, défaut: 1)
+  glassShelfPositions?: number[]; // Positions des étagères en % depuis le bas (0-100)
 };
 
 export interface ZoneContentMeta {

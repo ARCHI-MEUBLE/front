@@ -21,12 +21,13 @@ const CONTENT_LABELS: Record<string, string> = {
   door_right: 'Porte',
   door_double: 'Portes',
   push_door: 'Porte',
+  mirror_door: 'Porte vitrée',
 };
 
 export default function ZoneColorPicker({
   zone,
   materialsMap,
-  selectedMaterialKey,
+  selectedMaterialKey: initialMaterialKey,
   defaultColor,
   defaultImageUrl,
   onColorChange,
@@ -34,9 +35,17 @@ export default function ZoneColorPicker({
 }: ZoneColorPickerProps) {
   // Récupérer les couleurs disponibles pour le matériau sélectionné
   const colorsForMaterial = useMemo<SampleColor[]>(() => {
-    console.log('🎨 ZoneColorPicker - selectedMaterialKey:', selectedMaterialKey);
-    console.log('🎨 ZoneColorPicker - materialsMap keys:', Object.keys(materialsMap));
-    const materialTypes = materialsMap[selectedMaterialKey] || [];
+    // Résolution robuste du matériau dans la map
+    let materialKey = initialMaterialKey;
+    if (!materialsMap[materialKey]) {
+      const keys = Object.keys(materialsMap);
+      const normalizedTarget = materialKey.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const match = keys.find(k => k.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() === normalizedTarget);
+      if (match) materialKey = match;
+    }
+
+    console.log('🎨 ZoneColorPicker - materialKey résolu:', materialKey);
+    const materialTypes = materialsMap[materialKey] || [];
     console.log('🎨 ZoneColorPicker - materialTypes trouvés:', materialTypes.length);
     const list: SampleColor[] = [];
     const seen = new Set<number>();
@@ -49,7 +58,7 @@ export default function ZoneColorPicker({
       }
     }
     return list;
-  }, [materialsMap, selectedMaterialKey]);
+  }, [materialsMap, initialMaterialKey]);
 
   const contentLabel = zone.content ? CONTENT_LABELS[zone.content] || 'Élément' : 'Élément';
   const currentColor = zone.zoneColor?.hex || defaultColor;
