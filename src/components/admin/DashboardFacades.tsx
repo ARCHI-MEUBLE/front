@@ -3,14 +3,12 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
-  IconSettings,
   IconRefresh,
   IconEdit,
   IconTrash,
   IconPlus,
   IconCurrencyEuro,
   IconRuler,
-  IconInfoCircle,
   IconCheck,
 } from '@tabler/icons-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -525,13 +523,6 @@ function SettingsPanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-        <IconInfoCircle className="w-5 h-5 text-blue-600" />
-        <p className="text-sm text-blue-900 dark:text-blue-100">
-          Ces paramètres définissent les limites maximales que les utilisateurs peuvent configurer pour leurs façades.
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <SettingCard
@@ -681,18 +672,6 @@ function PricingPanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-        <IconCurrencyEuro className="w-5 h-5 text-amber-600" />
-        <div>
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-            Configuration de la tarification
-          </p>
-          <p className="text-xs text-amber-800 dark:text-amber-200">
-            Ces paramètres définissent comment le prix des façades est calculé
-          </p>
-        </div>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <PricingCard
