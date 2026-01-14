@@ -633,9 +633,6 @@ function Furniture({
   // Encastré: face avant à fleur avec le cadre (d/2) → offset = -0.019
   const mountingOffset = mountingStyle === 'encastre' ? -0.019 : -0.001;
 
-  // Debug log
-  console.log('🔧 [3D] mountingStyle:', mountingStyle, '| mountingOffset:', mountingOffset, '| compartmentGap:', compartmentGap);
-
   // Check if any zone has a zone-specific door
   const hasZoneSpecificDoors = useMemo(() => {
     if (!rootZone) return false;
@@ -1015,7 +1012,7 @@ function Furniture({
           );
         } else if (isPush) {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedPushDoor
                 side="left"
                 position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -1034,7 +1031,7 @@ function Furniture({
           );
         } else {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               {(isDouble || !isRight) && (
                 <AnimatedDoor
                   side="left"
