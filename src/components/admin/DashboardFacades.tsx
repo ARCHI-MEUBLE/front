@@ -1,4 +1,41 @@
+"use client"
+
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import {
+  IconSettings,
+  IconRefresh,
+  IconEdit,
+  IconTrash,
+  IconPlus,
+  IconCurrencyEuro,
+  IconRuler,
+  IconInfoCircle,
+  IconCheck,
+} from '@tabler/icons-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 
 interface FacadeMaterial {
   id: number;
@@ -7,16 +44,6 @@ interface FacadeMaterial {
   texture_url: string;
   price_modifier: number;
   price_per_m2: number;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface DrillingType {
-  id: number;
-  name: string;
-  description: string;
-  icon_svg: string;
-  price: number;
   is_active: boolean;
   created_at: string;
 }
@@ -31,44 +58,50 @@ interface FacadeSetting {
 
 export function DashboardFacades() {
   const [materials, setMaterials] = useState<FacadeMaterial[]>([]);
-  const [drillingTypes, setDrillingTypes] = useState<DrillingType[]>([]);
   const [settings, setSettings] = useState<FacadeSetting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'materials' | 'settings' | 'pricing'>('materials');
   const [showMaterialModal, setShowMaterialModal] = useState(false);
-  const [showDrillingModal, setShowDrillingModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<FacadeMaterial | null>(null);
-  const [editingDrilling, setEditingDrilling] = useState<DrillingType | null>(null);
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const [materialsRes, drillingsRes, settingsRes] = await Promise.all([
-        fetch(`${apiUrl}/backend/api/facade-materials.php`),
-        fetch(`${apiUrl}/backend/api/facade-drilling-types.php`),
-        fetch(`${apiUrl}/backend/api/facade-settings.php`),
+      const [materialsRes, settingsRes] = await Promise.all([
+        fetch('/backend/api/facade-materials.php'),
+        fetch('/backend/api/facade-settings.php'),
       ]);
 
-      const materialsData = await materialsRes.json();
-      const drillingsData = await drillingsRes.json();
-      const settingsData = await settingsRes.json();
+      // Vérifier si les réponses sont OK avant de parser le JSON
+      if (materialsRes.ok) {
+        const text = await materialsRes.text();
+        try {
+          const materialsData = JSON.parse(text);
+          if (materialsData.success) {
+            setMaterials(materialsData.data || []);
+          }
+        } catch {
+          console.error('Erreur parsing materials:', text.substring(0, 100));
+        }
+      }
 
-      if (materialsData.success) {
-        setMaterials(materialsData.data);
-      }
-      if (drillingsData.success) {
-        setDrillingTypes(drillingsData.data);
-      }
-      if (settingsData.success) {
-        setSettings(settingsData.data);
+      if (settingsRes.ok) {
+        const text = await settingsRes.text();
+        try {
+          const settingsData = JSON.parse(text);
+          if (settingsData.success) {
+            setSettings(settingsData.data || []);
+          }
+        } catch {
+          console.error('Erreur parsing settings:', text.substring(0, 100));
+        }
       }
     } catch (error) {
-      console.error('Erreur lors du chargement:', error);
+      console.error('Erreur:', error);
+      toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -78,220 +111,198 @@ export function DashboardFacades() {
     if (!confirm('Voulez-vous vraiment supprimer ce matériau ?')) return;
 
     try {
-      const response = await fetch(`${apiUrl}/backend/api/facade-materials/${id}`, {
+      const response = await fetch(`/backend/api/facade-materials.php?id=${id}`, {
         method: 'DELETE',
       });
       const data = await response.json();
 
       if (data.success) {
         setMaterials(materials.filter((m) => m.id !== id));
+        toast.success('Matériau supprimé');
       } else {
-        alert('Erreur lors de la suppression');
+        toast.error('Erreur lors de la suppression');
       }
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la suppression');
+      toast.error('Erreur lors de la suppression');
     }
   };
-
-  const handleDeleteDrilling = async (id: number) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce type de perçage ?')) return;
-
-    try {
-      const response = await fetch(`${apiUrl}/backend/api/facade-drilling-types/${id}`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        setDrillingTypes(drillingTypes.filter((d) => d.id !== id));
-      } else {
-        alert('Erreur lors de la suppression');
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur lors de la suppression');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto px-4">
-      {/* Tabs */}
-      <div className="mb-6 flex gap-4 border-b border-[#E8E6E3]">
-        <button
-          onClick={() => setActiveTab('materials')}
-          className={`px-6 py-3 font-medium transition-colors ${
-            activeTab === 'materials'
-              ? 'border-b-2 border-[#1A1917] text-[#1A1917]'
-              : 'text-[#706F6C] hover:text-[#1A1917]'
-          }`}
-        >
-          Matériaux ({materials.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-6 py-3 font-medium transition-colors ${
-            activeTab === 'settings'
-              ? 'border-b-2 border-[#1A1917] text-[#1A1917]'
-              : 'text-[#706F6C] hover:text-[#1A1917]'
-          }`}
-        >
-          Paramètres
-        </button>
-        <button
-          onClick={() => setActiveTab('pricing')}
-          className={`px-6 py-3 font-medium transition-colors ${
-            activeTab === 'pricing'
-              ? 'border-b-2 border-[#1A1917] text-[#1A1917]'
-              : 'text-[#706F6C] hover:text-[#1A1917]'
-          }`}
-        >
-          Tarification
-        </button>
+    <div className="px-4 lg:px-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des Façades</h3>
+          <p className="text-sm text-muted-foreground">
+            Configurez les matériaux, paramètres et tarification des façades
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+          <Button onClick={fetchData} variant="outline" className="flex-1 sm:flex-none">
+            <IconRefresh className="w-4 h-4 mr-2" />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
-      {/* Materials Tab */}
-      {activeTab === 'materials' && (
-        <div>
-          <div className="mb-6 flex justify-end">
-            <button
-              onClick={() => {
-                setEditingMaterial(null);
-                setShowMaterialModal(true);
-              }}
-              className="px-6 py-2.5 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium"
-            >
-              + Ajouter un matériau
-            </button>
-          </div>
+      {/* Tabs */}
+      <Card>
+        <CardContent className="pt-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <IconRefresh className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Tabs defaultValue="materials" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 bg-muted/50 p-2">
+                <TabsTrigger value="materials" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                  Matériaux ({materials.length})
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                  Paramètres
+                </TabsTrigger>
+                <TabsTrigger value="pricing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                  Tarification
+                </TabsTrigger>
+              </TabsList>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {materials.map((material) => (
-              <div
-                key={material.id}
-                className="rounded-lg border border-[#E8E6E3] bg-white p-6"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div
-                    className="w-16 h-16 rounded-lg shadow-sm"
-                    style={{ backgroundColor: material.color_hex }}
-                  />
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      material.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {material.is_active ? 'Actif' : 'Inactif'}
-                  </span>
+              {/* Materials Tab */}
+              <TabsContent value="materials" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-lg font-semibold">Matériaux disponibles</h4>
+                  <Button onClick={() => { setEditingMaterial(null); setShowMaterialModal(true); }}>
+                    <IconPlus className="w-4 h-4 mr-2" />
+                    Ajouter un matériau
+                  </Button>
                 </div>
 
-                <h3 className="text-lg font-semibold text-[#1A1917] mb-2">
-                  {material.name}
-                </h3>
-                <p className="text-sm text-[#706F6C] mb-4">
-                  Couleur: {material.color_hex}
-                </p>
-                <p className="text-sm text-[#706F6C] mb-4">
-                  Prix: {material.price_per_m2?.toFixed(2) || '150.00'} €/m²
-                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Couleur</TableHead>
+                      <TableHead>Nom</TableHead>
+                      <TableHead className="text-right">Prix/m²</TableHead>
+                      <TableHead className="text-center">Statut</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {materials.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Aucun matériau configuré
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      materials.map((material) => (
+                        <TableRow key={material.id}>
+                          <TableCell>
+                            <div
+                              className="w-10 h-10 rounded-lg border shadow-sm"
+                              style={{ backgroundColor: material.color_hex }}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{material.name}</TableCell>
+                          <TableCell className="text-right">
+                            {(material.price_per_m2 || 150).toFixed(2)} €
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={material.is_active ? 'default' : 'secondary'}>
+                              {material.is_active ? 'Actif' : 'Inactif'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setEditingMaterial(material); setShowMaterialModal(true); }}
+                              >
+                                <IconEdit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteMaterial(material.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <IconTrash className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setEditingMaterial(material);
-                      setShowMaterialModal(true);
-                    }}
-                    className="flex-1 px-3 py-2 text-sm border border-[#E8E6E3] rounded hover:bg-[#FAFAF9] transition-colors"
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMaterial(material.id)}
-                    className="flex-1 px-3 py-2 text-sm border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              {/* Settings Tab */}
+              <TabsContent value="settings" className="space-y-6">
+                <SettingsPanel settings={settings} onUpdate={fetchData} />
+              </TabsContent>
 
-      {/* Settings Tab */}
-      {activeTab === 'settings' && (
-        <SettingsPanel settings={settings} onUpdate={fetchData} />
-      )}
+              {/* Pricing Tab */}
+              <TabsContent value="pricing" className="space-y-6">
+                <PricingPanel settings={settings} onUpdate={fetchData} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Pricing Tab */}
-      {activeTab === 'pricing' && (
-        <PricingPanel settings={settings} onUpdate={fetchData} />
-      )}
-
-      {/* Modals */}
-      {showMaterialModal && (
-        <MaterialModal
-          material={editingMaterial}
-          onClose={() => {
-            setShowMaterialModal(false);
-            setEditingMaterial(null);
-          }}
-          onSuccess={() => {
-            setShowMaterialModal(false);
-            setEditingMaterial(null);
-            fetchData();
-          }}
-        />
-      )}
-
-      {showDrillingModal && (
-        <DrillingModal
-          drilling={editingDrilling}
-          onClose={() => {
-            setShowDrillingModal(false);
-            setEditingDrilling(null);
-          }}
-          onSuccess={() => {
-            setShowDrillingModal(false);
-            setEditingDrilling(null);
-            fetchData();
-          }}
-        />
-      )}
+      {/* Material Modal */}
+      <MaterialModal
+        open={showMaterialModal}
+        material={editingMaterial}
+        onClose={() => { setShowMaterialModal(false); setEditingMaterial(null); }}
+        onSuccess={() => { setShowMaterialModal(false); setEditingMaterial(null); fetchData(); }}
+      />
     </div>
   );
 }
 
 // Modal pour matériaux
 function MaterialModal({
+  open,
   material,
   onClose,
   onSuccess,
 }: {
+  open: boolean;
   material: FacadeMaterial | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [formData, setFormData] = useState({
-    name: material?.name || '',
-    color_hex: material?.color_hex || '#D8C7A1',
-    texture_url: material?.texture_url || '',
-    price_per_m2: material?.price_per_m2 || 150,
-    is_active: material?.is_active !== false,
+    name: '',
+    color_hex: '#D8C7A1',
+    texture_url: '',
+    price_per_m2: 150,
+    is_active: true,
   });
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  useEffect(() => {
+    if (material) {
+      setFormData({
+        name: material.name || '',
+        color_hex: material.color_hex || '#D8C7A1',
+        texture_url: material.texture_url || '',
+        price_per_m2: material.price_per_m2 || 150,
+        is_active: material.is_active !== false,
+      });
+    } else {
+      setFormData({
+        name: '',
+        color_hex: '#D8C7A1',
+        texture_url: '',
+        price_per_m2: 150,
+        is_active: true,
+      });
+    }
+  }, [material, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,8 +310,8 @@ function MaterialModal({
 
     try {
       const url = material
-        ? `${apiUrl}/backend/api/facade-materials/${material.id}`
-        : `${apiUrl}/backend/api/facade-materials`;
+        ? `/backend/api/facade-materials.php?id=${material.id}`
+        : '/backend/api/facade-materials.php';
 
       const response = await fetch(url, {
         method: material ? 'PUT' : 'POST',
@@ -311,286 +322,102 @@ function MaterialModal({
       const data = await response.json();
 
       if (data.success) {
+        toast.success(material ? 'Matériau modifié' : 'Matériau ajouté');
         onSuccess();
       } else {
-        alert('Erreur lors de la sauvegarde');
+        toast.error(data.error || 'Erreur lors de la sauvegarde');
       }
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la sauvegarde');
+      toast.error('Erreur lors de la sauvegarde');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-6 text-2xl font-bold text-[#1A1917]">
-          {material ? 'Modifier' : 'Ajouter'} un matériau
-        </h2>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{material ? 'Modifier' : 'Ajouter'} un matériau</DialogTitle>
+          <DialogDescription>
+            Configurez les propriétés du matériau de façade
+          </DialogDescription>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Nom
-            </label>
-            <input
-              type="text"
+          <div className="space-y-2">
+            <Label htmlFor="name">Nom</Label>
+            <Input
+              id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Couleur (Hex)
-            </label>
+          <div className="space-y-2">
+            <Label>Couleur</Label>
             <div className="flex gap-2">
               <input
                 type="color"
                 value={formData.color_hex}
-                onChange={(e) =>
-                  setFormData({ ...formData, color_hex: e.target.value })
-                }
-                className="h-10 w-20 rounded border border-[#E8E6E3]"
+                onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
+                className="h-10 w-20 rounded border cursor-pointer"
               />
-              <input
-                type="text"
+              <Input
                 value={formData.color_hex}
-                onChange={(e) =>
-                  setFormData({ ...formData, color_hex: e.target.value })
-                }
-                className="flex-1 px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-                required
+                onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
+                className="flex-1"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              URL de texture (optionnel)
-            </label>
-            <input
-              type="text"
+          <div className="space-y-2">
+            <Label htmlFor="texture">URL de texture (optionnel)</Label>
+            <Input
+              id="texture"
               value={formData.texture_url}
-              onChange={(e) =>
-                setFormData({ ...formData, texture_url: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
+              onChange={(e) => setFormData({ ...formData, texture_url: e.target.value })}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Prix au m² (€)
-            </label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="price">Prix au m² (€)</Label>
+            <Input
+              id="price"
               type="number"
               step="0.01"
               min="0"
               value={formData.price_per_m2}
-              onChange={(e) =>
-                setFormData({ ...formData, price_per_m2: Number(e.target.value) })
-              }
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
+              onChange={(e) => setFormData({ ...formData, price_per_m2: Number(e.target.value) })}
             />
-            <p className="text-xs text-[#706F6C] mt-1">
-              Prix du matériau par mètre carré (utilisé dans les calculs)
-            </p>
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_active"
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="active"
               checked={formData.is_active}
-              onChange={(e) =>
-                setFormData({ ...formData, is_active: e.target.checked })
-              }
-              className="mr-2"
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
             />
-            <label htmlFor="is_active" className="text-sm text-[#1A1917]">
-              Actif
-            </label>
+            <Label htmlFor="active">Actif</Label>
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors"
-            >
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
               Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" disabled={loading}>
               {loading ? 'En cours...' : 'Enregistrer'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// Modal pour perçages
-function DrillingModal({
-  drilling,
-  onClose,
-  onSuccess,
-}: {
-  drilling: DrillingType | null;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    name: drilling?.name || '',
-    description: drilling?.description || '',
-    icon_svg: drilling?.icon_svg || '<circle cx="12" cy="12" r="5"/>',
-    price: drilling?.price || 0,
-    is_active: drilling?.is_active !== false,
-  });
-  const [loading, setLoading] = useState(false);
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const url = drilling
-        ? `${apiUrl}/backend/api/facade-drilling-types/${drilling.id}`
-        : `${apiUrl}/backend/api/facade-drilling-types`;
-
-      const response = await fetch(url, {
-        method: drilling ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        onSuccess();
-      } else {
-        alert('Erreur lors de la sauvegarde');
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur lors de la sauvegarde');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-6 text-2xl font-bold text-[#1A1917]">
-          {drilling ? 'Modifier' : 'Ajouter'} un type de perçage
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Nom
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Icône SVG (path)
-            </label>
-            <input
-              type="text"
-              value={formData.icon_svg}
-              onChange={(e) =>
-                setFormData({ ...formData, icon_svg: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1A1917] mb-2">
-              Prix (€)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) =>
-                setFormData({ ...formData, price: Number(e.target.value) })
-              }
-              className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-            />
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_active_drilling"
-              checked={formData.is_active}
-              onChange={(e) =>
-                setFormData({ ...formData, is_active: e.target.checked })
-              }
-              className="mr-2"
-            />
-            <label htmlFor="is_active_drilling" className="text-sm text-[#1A1917]">
-              Actif
-            </label>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors disabled:opacity-50"
-            >
-              {loading ? 'En cours...' : 'Enregistrer'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-// Composant pour les paramtres
+// Composant pour les paramètres
 function SettingsPanel({
   settings,
   onUpdate,
@@ -600,8 +427,6 @@ function SettingsPanel({
 }) {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     const data: Record<string, string> = {};
@@ -617,190 +442,143 @@ function SettingsPanel({
 
     try {
       for (const [key, value] of Object.entries(formData)) {
-        const response = await fetch('/backend/api/facade-settings.php', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ setting_key: key, setting_value: value }),
-        });
+        if (['max_width', 'max_height', 'fixed_depth', 'hinge_edge_margin', 'hinge_hole_diameter'].includes(key)) {
+          const response = await fetch('/backend/api/facade-settings.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ setting_key: key, setting_value: value }),
+          });
 
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error('Erreur lors de la mise  jour de ' + key);
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error('Erreur lors de la mise à jour de ' + key);
+          }
         }
       }
 
-      alert('Paramtres mis  jour avec succs !');
+      toast.success('Paramètres mis à jour');
       onUpdate();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la mise  jour des paramtres');
+      toast.error('Erreur lors de la mise à jour');
     } finally {
       setLoading(false);
     }
   };
 
+  const SettingCard = ({
+    title,
+    settingKey,
+    unit = 'mm',
+    showCm = true,
+    defaultValue,
+    description,
+    min,
+    max,
+  }: {
+    title: string;
+    settingKey: string;
+    unit?: string;
+    showCm?: boolean;
+    defaultValue: string;
+    description?: string;
+    min?: number;
+    max?: number;
+  }) => (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <IconRuler className="w-4 h-4" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-end gap-4">
+          <div className="flex-1 space-y-2">
+            <Label>Valeur ({unit})</Label>
+            <Input
+              type="number"
+              min={min}
+              max={max}
+              value={formData[settingKey] || ''}
+              onChange={(e) => setFormData({ ...formData, [settingKey]: e.target.value })}
+            />
+          </div>
+          {showCm && (
+            <div className="text-sm text-muted-foreground pb-2">
+              = {Math.round((parseInt(formData[settingKey] || '0')) / 10)} cm
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Valeur par défaut : {defaultValue}
+        </p>
+        {description && (
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-900">
-          ? Ces paramtres dfinissent les limites maximales que les utilisateurs peuvent configurer pour leurs faades.
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <IconInfoCircle className="w-5 h-5 text-blue-600" />
+        <p className="text-sm text-blue-900 dark:text-blue-100">
+          Ces paramètres définissent les limites maximales que les utilisateurs peuvent configurer pour leurs façades.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Largeur maximale
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Valeur (mm)
-              </label>
-              <input
-                type="number"
-                min="100"
-                max="1000"
-                step="10"
-                value={formData.max_width || ''}
-                onChange={(e) => setFormData({ ...formData, max_width: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              = {Math.round((parseInt(formData.max_width || '0')) / 10)} cm
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par dfaut : 600 mm (60 cm)
-          </p>
-        </div>
-
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Hauteur maximale
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Valeur (mm)
-              </label>
-              <input
-                type="number"
-                min="500"
-                max="3000"
-                step="10"
-                value={formData.max_height || ''}
-                onChange={(e) => setFormData({ ...formData, max_height: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              = {Math.round((parseInt(formData.max_height || '0')) / 10)} cm
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par dfaut : 2300 mm (230 cm)
-          </p>
-        </div>
-
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            paisseur fixe
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Valeur (mm)
-              </label>
-              <input
-                type="number"
-                min="10"
-                max="50"
-                step="1"
-                value={formData.fixed_depth || ''}
-                onChange={(e) => setFormData({ ...formData, fixed_depth: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par dfaut : 19 mm
-          </p>
-        </div>
-
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Marge des charnières
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Distance des bords (mm)
-              </label>
-              <input
-                type="number"
-                step="1"
-                value={formData.hinge_edge_margin || ''}
-                onChange={(e) => setFormData({ ...formData, hinge_edge_margin: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              = {Math.round((parseInt(formData.hinge_edge_margin || '0')) / 10)} cm
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par défaut : 20 mm (2 cm)
-          </p>
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <p className="text-xs text-gray-600">
-              <strong>Description :</strong> Distance minimale entre les premiers/derniers trous de charnières et les bords haut/bas de la façade.<br/>
-              <strong>Exemple :</strong> Avec une marge de 20mm sur une façade de 2000mm de hauteur, les trous seront positionnés à 20mm du haut et 20mm du bas.
-            </p>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Diamètre des trous de charnières
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Diamètre (mm)
-              </label>
-              <input
-                type="number"
-                step="1"
-                value={formData.hinge_hole_diameter || ''}
-                onChange={(e) => setFormData({ ...formData, hinge_hole_diameter: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              mm
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par défaut : 26 mm (standard pour charnières de meuble)
-          </p>
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <p className="text-xs text-gray-600">
-              <strong>Info :</strong> Diamètre standard pour charnières de cuisine/meubles : 26mm ou 35mm.<br/>
-              Charnières piano ou invisibles : peuvent nécessiter des diamètres différents.
-            </p>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <SettingCard
+            title="Largeur maximale"
+            settingKey="max_width"
+            defaultValue="600 mm (60 cm)"
+            min={100}
+            max={1000}
+          />
+          <SettingCard
+            title="Hauteur maximale"
+            settingKey="max_height"
+            defaultValue="2300 mm (230 cm)"
+            min={500}
+            max={3000}
+          />
+          <SettingCard
+            title="Épaisseur fixe"
+            settingKey="fixed_depth"
+            defaultValue="19 mm"
+            showCm={false}
+            min={10}
+            max={50}
+          />
+          <SettingCard
+            title="Marge des charnières"
+            settingKey="hinge_edge_margin"
+            defaultValue="20 mm (2 cm)"
+            description="Distance minimale entre les premiers/derniers trous de charnières et les bords haut/bas de la façade."
+            min={10}
+            max={100}
+          />
+          <SettingCard
+            title="Diamètre des trous"
+            settingKey="hinge_hole_diameter"
+            defaultValue="26 mm (standard)"
+            showCm={false}
+            description="Diamètre standard pour charnières de cuisine/meubles : 26mm ou 35mm."
+            min={20}
+            max={50}
+          />
         </div>
 
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium disabled:opacity-50"
-          >
-            {loading ? 'Enregistrement...' : 'Enregistrer les paramtres'}
-          </button>
+          <Button type="submit" disabled={loading}>
+            <IconCheck className="w-4 h-4 mr-2" />
+            {loading ? 'Enregistrement...' : 'Enregistrer les paramètres'}
+          </Button>
         </div>
       </form>
     </div>
@@ -818,8 +596,6 @@ function PricingPanel({
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
   useEffect(() => {
     const data: Record<string, string> = {};
     settings.forEach(s => {
@@ -835,7 +611,7 @@ function PricingPanel({
     try {
       for (const [key, value] of Object.entries(formData)) {
         if (['hinge_base_price', 'hinge_coefficient', 'material_price_per_m2'].includes(key)) {
-          const response = await fetch(`${apiUrl}/backend/api/facade-settings.php`, {
+          const response = await fetch('/backend/api/facade-settings.php', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ setting_key: key, setting_value: value }),
@@ -848,152 +624,104 @@ function PricingPanel({
         }
       }
 
-      alert('Paramètres de tarification mis à jour avec succès !');
+      toast.success('Tarification mise à jour');
       onUpdate();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la mise à jour des paramètres');
+      toast.error('Erreur lors de la mise à jour');
     } finally {
       setLoading(false);
     }
   };
 
+  const PricingCard = ({
+    title,
+    settingKey,
+    unit,
+    defaultValue,
+    example,
+  }: {
+    title: string;
+    settingKey: string;
+    unit: string;
+    defaultValue: string;
+    example: string;
+  }) => (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <IconCurrencyEuro className="w-4 h-4" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-end gap-4">
+          <div className="flex-1 space-y-2">
+            <Label>Montant</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData[settingKey] || ''}
+              onChange={(e) => setFormData({ ...formData, [settingKey]: e.target.value })}
+            />
+          </div>
+          <div className="text-sm text-muted-foreground pb-2">{unit}</div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Valeur par défaut : {defaultValue}
+        </p>
+        <div className="p-3 bg-muted/50 rounded-lg">
+          <p className="text-xs text-muted-foreground">{example}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-900 mb-2">
-          💡 <strong>Configuration de la tarification</strong>
-        </p>
-        <p className="text-xs text-blue-800">
-          Ces paramètres définissent comment le prix des façades est calculé :
-        </p>
-        <ul className="text-xs text-blue-800 mt-2 ml-4 list-disc space-y-1">
-          <li>Prix de base d'une charnière (€ par unité)</li>
-          <li>Coefficient multiplicateur : augmente le prix total selon le nombre de charnières</li>
-          <li>Prix du matériau au m² (base de calcul selon la surface)</li>
-        </ul>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <IconCurrencyEuro className="w-5 h-5 text-amber-600" />
+        <div>
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+            Configuration de la tarification
+          </p>
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            Ces paramètres définissent comment le prix des façades est calculé
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Prix de base des charnières */}
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Prix de base d'une charnière
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Montant (€)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="1000"
-                step="0.01"
-                value={formData.hinge_base_price || ''}
-                onChange={(e) => setFormData({ ...formData, hinge_base_price: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              € TTC
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par défaut : 34.20 €
-          </p>
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <p className="text-xs text-gray-600">
-              <strong>Exemple :</strong> Si une charnière coûte 34.20 € et que le client choisit 3 charnières,
-              le coût des charnières sera de 3 × 34.20 € = 102.60 €
-            </p>
-          </div>
-        </div>
-
-        {/* Coefficient par nombre de charnières */}
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Coefficient multiplicateur par charnière
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Coefficient (décimal)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="1"
-                step="0.01"
-                value={formData.hinge_coefficient || ''}
-                onChange={(e) => setFormData({ ...formData, hinge_coefficient: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              = {((parseFloat(formData.hinge_coefficient || '0')) * 100).toFixed(0)}% par charnière
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par défaut : 0.05 (5% par charnière)
-          </p>
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <p className="text-xs text-gray-600 mb-2">
-              <strong>Formule :</strong> Prix total × (coefficient × nb_charnières)
-            </p>
-            <p className="text-xs text-gray-600">
-              <strong>Exemple :</strong> Avec 3 charnières et un coefficient de 0.05 :<br/>
-              Si le prix de base (matériau + charnières) = 500 €<br/>
-              Supplément = 500 € × (0.05 × 3) = 500 € × 0.15 = 75 €<br/>
-              <strong>Prix final = 500 € + 75 € = 575 €</strong>
-            </p>
-          </div>
-        </div>
-
-        {/* Prix du matériau au m² */}
-        <div className="p-6 bg-white border border-[#E8E6E3] rounded-lg">
-          <h3 className="text-lg font-semibold text-[#1A1917] mb-4">
-            Prix du matériau au m²
-          </h3>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1A1917] mb-2">
-                Montant (€/m²)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="10000"
-                step="0.01"
-                value={formData.material_price_per_m2 || ''}
-                onChange={(e) => setFormData({ ...formData, material_price_per_m2: e.target.value })}
-                className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
-              />
-            </div>
-            <div className="text-sm text-[#706F6C] pb-2">
-              € / m²
-            </div>
-          </div>
-          <p className="text-xs text-[#706F6C] mt-2">
-            Valeur par défaut : 150.00 €/m²
-          </p>
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <p className="text-xs text-gray-600">
-              <strong>Exemple :</strong> Une façade de 60 cm × 200 cm = 1.2 m²<br/>
-              Prix matériau = 1.2 m² × 150 €/m² = 180 €<br/>
-              (Les modificateurs de prix des matériaux s'ajoutent ensuite)
-            </p>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <PricingCard
+            title="Prix de base charnière"
+            settingKey="hinge_base_price"
+            unit="€ TTC"
+            defaultValue="34.20 €"
+            example="Si 3 charnières à 34.20 € = 102.60 €"
+          />
+          <PricingCard
+            title="Coefficient multiplicateur"
+            settingKey="hinge_coefficient"
+            unit={`= ${((parseFloat(formData.hinge_coefficient || '0')) * 100).toFixed(0)}%`}
+            defaultValue="0.05 (5%)"
+            example="Prix × (coef × nb_charnières)"
+          />
+          <PricingCard
+            title="Prix matériau au m²"
+            settingKey="material_price_per_m2"
+            unit="€/m²"
+            defaultValue="150.00 €/m²"
+            example="Façade 60×200cm = 1.2m² × 150€ = 180€"
+          />
         </div>
 
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium disabled:opacity-50"
-          >
+          <Button type="submit" disabled={loading}>
+            <IconCheck className="w-4 h-4 mr-2" />
             {loading ? 'Enregistrement...' : 'Enregistrer la tarification'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
