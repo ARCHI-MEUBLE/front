@@ -35,7 +35,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
 
 interface FacadeMaterial {
   id: number;
@@ -395,10 +394,12 @@ function MaterialModal({
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch
+            <input
+              type="checkbox"
               id="active"
               checked={formData.is_active}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300"
             />
             <Label htmlFor="active">Actif</Label>
           </div>
