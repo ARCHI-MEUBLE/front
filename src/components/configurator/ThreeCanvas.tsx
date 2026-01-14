@@ -631,7 +631,10 @@ function Furniture({
   // Face arrière = groupe_z + 0.001, Face avant = groupe_z + 0.019
   // Applique: dos de la porte touche le cadre (d/2) → offset = -0.001
   // Encastré: face avant à fleur avec le cadre (d/2) → offset = -0.019
-  const mountingOffset = mountingStyle === 'applique' ? -0.001 : -0.019;
+  const mountingOffset = mountingStyle === 'encastre' ? -0.019 : -0.001;
+
+  // Debug log
+  console.log('🔧 [3D] mountingStyle:', mountingStyle, '| mountingOffset:', mountingOffset, '| compartmentGap:', compartmentGap);
 
   // Check if any zone has a zone-specific door
   const hasZoneSpecificDoors = useMemo(() => {
