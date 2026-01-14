@@ -1122,7 +1122,7 @@ function Furniture({
     parseZone(rootZone, 0, sideHeight/2 + yOffset, 0, w - (thickness * 2), sideHeight - (thickness * 2));
     return items;
   }, [
-    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d,
+    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d, mountingOffset,
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
