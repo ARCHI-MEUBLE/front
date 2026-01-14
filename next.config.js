@@ -43,6 +43,11 @@ const nextConfig = {
         source: '/uploads/:path*',
         destination: `${backendUrl}/uploads/:path*`
       },
+      // Proxy pour les uploads locaux (via /backend/uploads)
+      {
+        source: '/backend/uploads/:path*',
+        destination: `${backendUrl}/uploads/:path*`
+      },
       // Proxy pour les modèles 3D générés du backend
       {
         source: '/models/:path*',

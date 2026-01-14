@@ -13,7 +13,14 @@ import {
   Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RealisationCarousel, ImageLightbox } from '@/components/facades/RealisationCarousel';
+import { RealisationCarousel, ImageGalleryLightbox } from '@/components/facades/RealisationCarousel';
+
+interface RealisationImage {
+  id: number;
+  image_url: string;
+  legende?: string;
+  ordre: number;
+}
 
 interface Realisation {
   id: number;
@@ -48,7 +55,11 @@ export default function RealisationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [galleryData, setGalleryData] = useState<{ images: RealisationImage[]; startIndex: number } | null>(null);
+
+  const handleOpenGallery = (images: RealisationImage[], startIndex: number) => {
+    setGalleryData({ images, startIndex });
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -308,7 +319,7 @@ export default function RealisationsPage() {
                       {/* Image avec carousel */}
                       <RealisationCarousel
                         images={realisation.images || []}
-                        onImageClick={setLightboxImage}
+                        onGalleryOpen={handleOpenGallery}
                       />
 
                       {/* Overlay on hover */}
@@ -418,12 +429,13 @@ export default function RealisationsPage() {
 
       <Footer />
 
-      {/* Lightbox pour afficher les images en grand */}
+      {/* Lightbox galerie pour afficher les images */}
       <AnimatePresence>
-        {lightboxImage && (
-          <ImageLightbox
-            imageUrl={lightboxImage}
-            onClose={() => setLightboxImage(null)}
+        {galleryData && (
+          <ImageGalleryLightbox
+            images={galleryData.images}
+            startIndex={galleryData.startIndex}
+            onClose={() => setGalleryData(null)}
           />
         )}
       </AnimatePresence>

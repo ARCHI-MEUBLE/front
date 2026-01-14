@@ -64,6 +64,27 @@ interface CatalogueCartData {
   items: CatalogueCartItem[];
 }
 
+interface FacadeCartItem {
+  id: number;
+  config: {
+    width: number;
+    height: number;
+    material: string;
+    materialName?: string;
+    hingeType: string;
+    hingeSide: string;
+    hingeCount: number;
+  };
+  quantity: number;
+  unit_price: number;
+}
+
+interface FacadeCartData {
+  items: FacadeCartItem[];
+  total: number;
+  count: number;
+}
+
 type CheckoutStep = 'shipping' | 'payment';
 
 export default function CheckoutStripe() {
@@ -74,6 +95,7 @@ export default function CheckoutStripe() {
   const [cart, setCart] = useState<CartData | null>({ items: [], total: 0 });
   const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
   const [catalogueCart, setCatalogueCart] = useState<CatalogueCartData | null>(null);
+  const [facadeCart, setFacadeCart] = useState<FacadeCartData | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -225,12 +247,24 @@ export default function CheckoutStripe() {
         setCatalogueCart(catalogueData);
       }
 
-      // Vérifier que le panier n'est pas vide (configs OU échantillons OU catalogue)
+      // Charger les façades
+      const facadeResponse = await fetch('/backend/api/cart/facades.php', {
+        credentials: 'include',
+      });
+
+      let facadeData = null;
+      if (facadeResponse.ok) {
+        facadeData = await facadeResponse.json();
+        setFacadeCart(facadeData);
+      }
+
+      // Vérifier que le panier n'est pas vide (configs OU échantillons OU catalogue OU façades)
       const hasConfigs = configData && configData.items && configData.items.length > 0;
       const hasSamples = samplesData && samplesData.items && samplesData.items.length > 0;
       const hasCatalogue = catalogueData && catalogueData.items && catalogueData.items.length > 0;
+      const hasFacades = facadeData && facadeData.items && facadeData.items.length > 0;
 
-      if (!hasConfigs && !hasSamples && !hasCatalogue) {
+      if (!hasConfigs && !hasSamples && !hasCatalogue && !hasFacades) {
         console.log('Panier vide, mais on reste sur la page pour débug');
         // router.push('/cart');
       }
@@ -342,7 +376,7 @@ export default function CheckoutStripe() {
     );
   }
 
-  if ((!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0)) {
+  if ((!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0) && (!facadeCart || facadeCart.items.length === 0)) {
     return (
       <>
         <Head>
@@ -363,7 +397,8 @@ export default function CheckoutStripe() {
 
   const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
   const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal;
+  const facadeTotal = facadeCart?.total || 0;
+  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal + facadeTotal;
 
   // Stripe Public Key Check
   const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -372,7 +407,7 @@ export default function CheckoutStripe() {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    console.log('Checkout data:', { cart, samplesCart, catalogueCart, grandTotal, orderId });
+    console.log('Checkout data:', { cart, samplesCart, catalogueCart, facadeCart, grandTotal, orderId });
   }
 
   return (
@@ -824,6 +859,35 @@ export default function CheckoutStripe() {
                     </div>
                   )}
 
+                  {/* Façades */}
+                  {facadeCart && facadeCart.items && facadeCart.items.length > 0 && (
+                    <div className={`space-y-4 ${ (cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) || (catalogueCart && catalogueCart.items && catalogueCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
+                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                        Façades sur mesure ({facadeCart.count})
+                      </p>
+                      {facadeCart.items.map((item) => {
+                        const materialName = typeof item.config.material === 'object'
+                          ? (item.config.material as any)?.name || 'Matériau'
+                          : (item.config.materialName || item.config.material || 'Matériau');
+                        return (
+                          <div key={item.id} className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm text-[#1A1917]">
+                                Façade {item.config.width} × {item.config.height} cm
+                              </p>
+                              <p className="text-xs text-[#706F6C]">
+                                {materialName} | Qté: {item.quantity}
+                              </p>
+                            </div>
+                            <p className="flex-shrink-0 font-mono text-xs text-[#1A1917]">
+                              {(item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Total */}
                   <div className="mt-6 border-t border-[#E8E6E3] pt-6">
                     <div className="flex items-center justify-between text-sm">
@@ -834,6 +898,12 @@ export default function CheckoutStripe() {
                       <div className="mt-2 flex items-center justify-between text-sm">
                         <span className="text-[#706F6C]">Échantillons</span>
                         <span className="font-mono text-[#1A1917]">{samplesTotal.toLocaleString('fr-FR')} €</span>
+                      </div>
+                    )}
+                    {facadeTotal > 0 && (
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-[#706F6C]">Façades</span>
+                        <span className="font-mono text-[#1A1917]">{facadeTotal.toLocaleString('fr-FR')} €</span>
                       </div>
                     )}
                     <div className="mt-2 flex items-center justify-between text-sm">

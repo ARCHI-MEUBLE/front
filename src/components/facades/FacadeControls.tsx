@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useCustomer } from '@/context/CustomerContext';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 
 interface FacadeControlsProps {
@@ -9,7 +10,7 @@ interface FacadeControlsProps {
   onRemoveDrilling: (id: string) => void;
 }
 
-type Step = 'dimensions' | 'material' | 'hinges';
+type Step = 'dimensions' | 'material' | 'hinges' | 'summary';
 
 export default function FacadeControls({
   config,
@@ -18,7 +19,11 @@ export default function FacadeControls({
   onAddDrilling,
   onRemoveDrilling,
 }: FacadeControlsProps) {
+  const { isAuthenticated } = useCustomer();
   const [currentStep, setCurrentStep] = useState<Step>('dimensions');
+  const [quantity, setQuantity] = useState(1);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [pricingSettings, setPricingSettings] = useState({
     material_price_per_m2: 150,
     hinge_base_price: 34.20,
@@ -89,6 +94,7 @@ export default function FacadeControls({
     { id: 'dimensions', label: 'Dimensions', number: 1 },
     { id: 'material', label: 'Matériau', number: 2 },
     { id: 'hinges', label: 'Charnières', number: 3 },
+    { id: 'summary', label: 'Récapitulatif', number: 4 },
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
@@ -106,13 +112,44 @@ export default function FacadeControls({
     }
   };
 
+  const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
+    const unitPrice = calculateTotalPrice();
+
+    try {
+      const response = await fetch('/backend/api/cart/facades.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          config: config,
+          price: unitPrice,
+          quantity: quantity,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'ajout au panier');
+      }
+
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur lors de l\'ajout au panier');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-white border-l border-[#E8E6E3]">
       {/* Header with step indicator */}
       <div className="border-b border-[#E8E6E3] p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-[#706F6C]">
-            ÉTAPE {currentStepData.number}/3
+            ÉTAPE {currentStepData.number}/{steps.length}
           </span>
           <span className="text-xs text-[#706F6C]">
             {currentStepIndex + 1} sur {steps.length}
@@ -144,12 +181,20 @@ export default function FacadeControls({
           />
         )}
         {currentStep === 'hinges' && (
-          <HingesPanel 
-            config={config} 
+          <HingesPanel
+            config={config}
             onUpdateConfig={onUpdateConfig}
             onAddDrilling={onAddDrilling}
             onRemoveDrilling={onRemoveDrilling}
             pricingSettings={pricingSettings}
+          />
+        )}
+        {currentStep === 'summary' && (
+          <SummaryPanel
+            config={config}
+            pricingSettings={pricingSettings}
+            quantity={quantity}
+            onQuantityChange={setQuantity}
           />
         )}
       </div>
@@ -164,13 +209,21 @@ export default function FacadeControls({
           >
             ← Précédent
           </button>
-          <button
-            onClick={handleNext}
-            disabled={currentStepIndex === steps.length - 1}
-            className="flex-1 px-4 py-3 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant →
-          </button>
+          {currentStep === 'summary' ? (
+            <button
+              onClick={handleAddToCart}
+              className="flex-1 px-4 py-3 bg-[#16a34a] text-white rounded-lg hover:bg-[#15803d] transition-colors font-medium"
+            >
+              Ajouter au panier
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              className="flex-1 px-4 py-3 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium"
+            >
+              Suivant →
+            </button>
+          )}
         </div>
       </div>
 
@@ -213,10 +266,90 @@ export default function FacadeControls({
         <div className="flex justify-between items-center pt-4 border-t border-[#E8E6E3]">
           <span className="text-lg font-semibold text-[#1A1917]">Total</span>
           <span className="text-2xl font-bold text-[#1A1917]">
-            {calculateTotalPrice().toFixed(2)} € TTC
+            {(calculateTotalPrice() * quantity).toFixed(2)} € TTC
           </span>
         </div>
       </div>
+
+      {/* Modal de connexion requise */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-[#FAFAF9] rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-[#1A1917]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-[#1A1917] text-center mb-2">
+              Connexion requise
+            </h3>
+            <p className="text-sm text-[#706F6C] text-center mb-4">
+              Connectez-vous pour ajouter cette façade à votre panier
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => window.location.href = '/auth/login?redirect=/facades'}
+                className="w-full px-4 py-2.5 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors text-sm font-medium"
+              >
+                Se connecter
+              </button>
+              <button
+                onClick={() => window.location.href = '/auth/register?redirect=/facades'}
+                className="w-full px-4 py-2.5 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-sm font-medium"
+              >
+                Créer un compte
+              </button>
+              <button
+                onClick={() => setShowLoginPrompt(false)}
+                className="w-full px-4 py-2.5 text-[#706F6C] hover:text-[#1A1917] transition-colors text-sm"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-[#1A1917] text-center mb-2">
+              Ajouté au panier
+            </h3>
+            <p className="text-sm text-[#706F6C] text-center mb-4">
+              {quantity} façade{quantity > 1 ? 's' : ''} · {(calculateTotalPrice() * quantity).toFixed(2)} €
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowConfirmation(false);
+                  setCurrentStep('dimensions');
+                  setQuantity(1);
+                }}
+                className="flex-1 px-4 py-2.5 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-sm font-medium"
+              >
+                Nouvelle façade
+              </button>
+              <button
+                onClick={() => window.location.href = '/cart'}
+                className="flex-1 px-4 py-2.5 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors text-sm font-medium"
+              >
+                Voir le panier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -786,6 +919,185 @@ function DrillingPanel({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Composant pour le récapitulatif
+function SummaryPanel({
+  config,
+  pricingSettings,
+  quantity,
+  onQuantityChange,
+}: {
+  config: FacadeConfig;
+  pricingSettings: {
+    material_price_per_m2: number;
+  };
+  quantity: number;
+  onQuantityChange: (qty: number) => void;
+}) {
+  const surfaceM2 = (config.width / 1000) * (config.height / 1000);
+  const pricePerM2 = config.material.price_per_m2 || pricingSettings.material_price_per_m2;
+
+  const getHingeTypeLabel = (type: string) => {
+    switch (type) {
+      case 'no-hole-no-hinge':
+        return 'Sans charnière';
+      case 'hole-with-applied-hinge':
+        return 'Porte en applique';
+      case 'hole-with-twin-hinge':
+        return 'Porte jumelée';
+      case 'hole-with-integrated-hinge':
+        return 'Porte encastrée';
+      default:
+        return type;
+    }
+  };
+
+  const getHingeIcon = (id: string) => {
+    switch(id) {
+      case 'no-hole-no-hinge':
+        return (
+          <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+            <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
+            <circle cx="40" cy="32" r="2" fill="#6B7280"/>
+            <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
+            <line x1="52" y1="12" x2="12" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
+          </svg>
+        );
+      case 'hole-with-applied-hinge':
+        return (
+          <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+            <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <circle cx="22" cy="24" r="1.5" fill="#374151"/>
+            <circle cx="22" cy="29" r="1.5" fill="#374151"/>
+            <circle cx="17" cy="26" r="1.5" fill="#374151"/>
+            <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+          </svg>
+        );
+      case 'hole-with-twin-hinge':
+        return (
+          <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+            <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <circle cx="29" cy="24" r="1.2" fill="#374151"/>
+            <circle cx="35" cy="24" r="1.2" fill="#374151"/>
+            <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
+            <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
+          </svg>
+        );
+      case 'hole-with-integrated-hinge':
+        return (
+          <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+            <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+            <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+            <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+            <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+            <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+          </svg>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Dimensions */}
+      <div>
+        <p className="text-sm font-medium text-[#1A1917] mb-3">Dimensions</p>
+        <div className="flex gap-4">
+          <div>
+            <p className="text-2xl font-semibold text-[#1A1917]">{config.width / 10}</p>
+            <p className="text-xs text-[#706F6C]">Largeur (cm)</p>
+          </div>
+          <div className="text-2xl text-[#706F6C]">×</div>
+          <div>
+            <p className="text-2xl font-semibold text-[#1A1917]">{config.height / 10}</p>
+            <p className="text-xs text-[#706F6C]">Hauteur (cm)</p>
+          </div>
+          <div className="text-2xl text-[#706F6C]">×</div>
+          <div>
+            <p className="text-2xl font-semibold text-[#1A1917]">{config.depth}</p>
+            <p className="text-xs text-[#706F6C]">Ép. (mm)</p>
+          </div>
+        </div>
+        <p className="text-xs text-[#706F6C] mt-2">Surface : {surfaceM2.toFixed(2)} m²</p>
+      </div>
+
+      {/* Matériau */}
+      <div className="pt-4 border-t border-[#E8E6E3]">
+        <p className="text-sm font-medium text-[#1A1917] mb-3">Matériau</p>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded"
+            style={{ backgroundColor: config.material.color_hex }}
+          />
+          <div>
+            <p className="text-sm font-medium text-[#1A1917]">{config.material.name}</p>
+            <p className="text-xs text-[#706F6C]">{pricePerM2.toFixed(2)} €/m²</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Charnières */}
+      <div className="pt-4 border-t border-[#E8E6E3]">
+        <p className="text-sm font-medium text-[#1A1917] mb-3">Charnières</p>
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">{getHingeIcon(config.hinges.type)}</div>
+          {config.hinges.type === 'no-hole-no-hinge' ? (
+            <p className="text-sm text-[#706F6C]">Aucune charnière</p>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-sm text-[#1A1917]">{getHingeTypeLabel(config.hinges.type)}</p>
+              <p className="text-xs text-[#706F6C]">
+                {config.hinges.count} charnières · Ouverture {config.hinges.direction === 'left' ? 'gauche' : 'droite'}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quantité */}
+      <div className="pt-4 border-t border-[#E8E6E3]">
+        <p className="text-sm font-medium text-[#1A1917] mb-3">Quantité</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+            className="w-10 h-10 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-lg"
+          >
+            −
+          </button>
+          <span className="text-xl font-semibold text-[#1A1917] w-8 text-center">{quantity}</span>
+          <button
+            onClick={() => onQuantityChange(quantity + 1)}
+            className="w-10 h-10 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-lg"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* Info livraison */}
+      <div className="pt-4 border-t border-[#E8E6E3]">
+        <p className="text-xs text-[#706F6C]">
+          Délai de fabrication : 2-3 semaines
+        </p>
+      </div>
     </div>
   );
 }

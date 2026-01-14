@@ -32,8 +32,9 @@ interface Props {
 export function RealisationImagesDialog({ realisationId, isOpen, onClose }: Props) {
   const [images, setImages] = useState<RealisationImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (isOpen && realisationId) {
@@ -60,60 +61,80 @@ export function RealisationImagesDialog({ realisationId, isOpen, onClose }: Prop
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setUploadingFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      setUploadingFiles(fileArray);
+
+      // Générer les previews pour toutes les images
+      const previewPromises = fileArray.map(file => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(previewPromises).then(setPreviews);
     }
   };
 
   const handleUpload = async () => {
-    if (!uploadingFile) return;
+    if (uploadingFiles.length === 0) return;
+
+    setIsUploading(true);
+    let successCount = 0;
+    let currentOrder = images.length;
 
     try {
-      // Upload de l'image
-      const formData = new FormData();
-      formData.append('image', uploadingFile);
-      
-      const uploadRes = await fetch('/api/admin/upload-image', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
+      for (const file of uploadingFiles) {
+        // Upload de l'image
+        const formData = new FormData();
+        formData.append('image', file);
 
-      if (!uploadRes.ok) {
-        throw new Error('Erreur lors de l\'upload de l\'image');
+        const uploadRes = await fetch('/backend/api/admin/upload-image.php', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (!uploadRes.ok) {
+          console.error(`Erreur upload: ${file.name}`);
+          continue;
+        }
+
+        const uploadData = await uploadRes.json();
+
+        // Ajouter l'image à la réalisation
+        const response = await fetch('/backend/api/admin/realisation-images.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            realisation_id: realisationId,
+            image_url: uploadData.url,
+            ordre: currentOrder
+          }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          successCount++;
+          currentOrder++;
+        }
       }
 
-      const uploadData = await uploadRes.json();
-
-      // Ajouter l'image à la réalisation
-      const response = await fetch('/backend/api/admin/realisation-images.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          realisation_id: realisationId,
-          image_url: uploadData.url,
-          ordre: images.length
-        }),
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        toast.success('Image ajoutée avec succès');
+      if (successCount > 0) {
+        toast.success(`${successCount} image${successCount > 1 ? 's' : ''} ajoutée${successCount > 1 ? 's' : ''}`);
         fetchImages();
-        setUploadingFile(null);
-        setPreview(null);
-      } else {
-        throw new Error('Erreur lors de l\'ajout de l\'image');
       }
+
+      setUploadingFiles([]);
+      setPreviews([]);
     } catch (error) {
       console.error(error);
       toast.error('Erreur lors de l\'upload');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -222,29 +243,47 @@ export function RealisationImagesDialog({ realisationId, isOpen, onClose }: Prop
             <IconPhoto className="mx-auto mb-4 text-muted-foreground" size={48} />
             <Label htmlFor="upload-image" className="cursor-pointer">
               <div className="text-sm text-muted-foreground mb-2">
-                Cliquez pour sélectionner une image ou glissez-la ici
+                Cliquez pour sélectionner une ou plusieurs images
               </div>
               <Input
                 id="upload-image"
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleFileChange}
                 className="hidden"
               />
             </Label>
 
-            {preview && (
+            {previews.length > 0 && (
               <div className="mt-4 space-y-4">
-                <img src={preview} alt="Preview" className="mx-auto max-h-48 rounded-lg object-contain" />
+                <div className="grid grid-cols-4 gap-2">
+                  {previews.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                        {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {uploadingFiles.length} image{uploadingFiles.length > 1 ? 's' : ''} sélectionnée{uploadingFiles.length > 1 ? 's' : ''}
+                </p>
                 <div className="flex gap-2 justify-center">
-                  <Button onClick={handleUpload} size="sm">
+                  <Button onClick={handleUpload} size="sm" disabled={isUploading}>
                     <IconUpload className="mr-2" size={16} />
-                    Ajouter cette image
+                    {isUploading ? 'Upload en cours...' : `Ajouter ${uploadingFiles.length > 1 ? 'ces images' : 'cette image'}`}
                   </Button>
-                  <Button 
-                    onClick={() => { setUploadingFile(null); setPreview(null); }} 
-                    variant="outline" 
+                  <Button
+                    onClick={() => { setUploadingFiles([]); setPreviews([]); }}
+                    variant="outline"
                     size="sm"
+                    disabled={isUploading}
                   >
                     <IconX className="mr-2" size={16} />
                     Annuler
