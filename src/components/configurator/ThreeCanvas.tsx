@@ -34,6 +34,7 @@ interface ThreeViewerProps {
   doorType?: 'none' | 'single' | 'double';
   doorSide?: 'left' | 'right';
   useMultiColor?: boolean;
+  mountingStyle?: 'applique' | 'encastre';
 }
 
 // Couleur par défaut (beige/bois naturel)
@@ -126,7 +127,7 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
 
   // Utiliser une clé unique pour forcer React à recréer le matériau proprement
   // quand la couleur ou la texture change
-  const materialKey = texture ? `tex-${currentImageUrlRef.current}` : `col-${safeColor}`;
+  const materialKey = texture ? `tex-${currentImageUrlRef.current}-${safeColor}` : `col-${safeColor}`;
 
   // Si on a une texture chargée, l'utiliser
   if (texture) {
@@ -135,7 +136,7 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
         key={materialKey}
         attach="material"
         map={texture}
-        color="#ffffff"
+        color={safeColor || "#ffffff"}
         roughness={0.7}
         metalness={0.1}
       />
@@ -499,12 +500,13 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, is
   );
 }
 
-function Furniture({ 
-  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet, 
+function Furniture({
+  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
   doorsOpen, showDecorations, onToggleDoors, componentColors,
   doorType = 'none',
   doorSide = 'left',
   useMultiColor = false,
+  mountingStyle = 'applique',
   selectedZoneIds = [],
   onSelectZone
 }: ThreeViewerProps) {
@@ -540,10 +542,12 @@ function Furniture({
     const thickness = 0.019;
     const sideHeight = hasSocle ? h - 0.1 : h;
     const yOffset = hasSocle ? 0.1 : 0;
-    // Gap pour éviter les collisions entre compartiments adjacents
-    const compartmentGap = 0.020; // 20mm d'espace entre les éléments mobiles (portes, tiroirs)
+    // Gap selon le style de montage :
+    // - Applique : petit gap (3mm) entre portes adjacentes, les portes couvrent le cadre car positionnées devant
+    // - Encastré : gap visible (6mm = 3mm par côté) - on voit le cadre autour des portes
+    const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
     return { w, h, d, sideHeight, yOffset, thickness, compartmentGap };
-  }, [width, height, depth, hasSocle]);
+  }, [width, height, depth, hasSocle, mountingStyle]);
 
   // Couleur par défaut
   const DEFAULT_COLOR = '#D8C7A1';
@@ -621,6 +625,13 @@ function Furniture({
 
   const separatorColor = finalStructureColor;
   const separatorImageUrl = finalStructureImageUrl;
+
+  // Décalage Z pour portes/tiroirs selon le style de montage
+  // Le mesh de la porte est à z=0.01 relatif au groupe, épaisseur 0.018m
+  // Face arrière = groupe_z + 0.001, Face avant = groupe_z + 0.019
+  // Applique: dos de la porte touche le cadre (d/2) → offset = -0.001
+  // Encastré: face avant à fleur avec le cadre (d/2) → offset = -0.019
+  const mountingOffset = mountingStyle === 'encastre' ? -0.019 : -0.001;
 
   // Check if any zone has a zone-specific door
   const hasZoneSpecificDoors = useMemo(() => {
@@ -743,10 +754,15 @@ function Furniture({
           // Utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
+          
+          if (zone.zoneColor?.hex) {
+            console.log(`🎨 [3D] Tiroir ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
+          }
+
           items.push(
             <AnimatedDrawer
               key={zone.id}
-              position={[x, y, d / 2]}
+              position={[x, y, d / 2 + mountingOffset]}
               width={width - compartmentGap}
               height={height - compartmentGap}
               depth={d}
@@ -765,10 +781,15 @@ function Furniture({
           // Tiroir push-to-open sans poignée - utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
+
+          if (zone.zoneColor?.hex) {
+            console.log(`🎨 [3D] Tiroir Push ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
+          }
+
           items.push(
             <AnimatedPushDrawer
               key={zone.id}
-              position={[x, y, d / 2]}
+              position={[x, y, d / 2 + mountingOffset]}
               width={width - compartmentGap}
               height={height - compartmentGap}
               depth={d}
@@ -806,14 +827,20 @@ function Furniture({
           const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
           const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
+          if (zone.zoneColor?.hex) {
+            console.log(`🎨 [3D] Porte ${zone.id} - Couleur spécifique: ${doorHexColor}`);
+          }
+
           if (isMirror) {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 <AnimatedMirrorDoor
                   side="left"
                   position={[-width/2 + compartmentGap/2, 0, 0]}
                   width={width - compartmentGap}
                   height={height - compartmentGap}
+                  hexColor={doorHexColor}
+                  imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
@@ -825,7 +852,7 @@ function Furniture({
             );
           } else if (isPush) {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 <AnimatedPushDoor
                   side="left"
                   position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -844,7 +871,7 @@ function Furniture({
             );
           } else {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 {(isDouble || !isRight) && (
                   <AnimatedDoor
                     side="left"
@@ -858,6 +885,7 @@ function Furniture({
                     onClick={(e: any) => {
                       e.stopPropagation();
                       onSelectZone?.(zone.id);
+                      toggleCompartment(zone.id);
                     }}
                   />
                 )}
@@ -874,6 +902,7 @@ function Furniture({
                     onClick={(e: any) => {
                       e.stopPropagation();
                       onSelectZone?.(zone.id);
+                      toggleCompartment(zone.id);
                     }}
                   />
                 )}
@@ -883,25 +912,46 @@ function Furniture({
         }
 
         if (zone.content === 'glass_shelf') {
-          // Étagère en verre transparente
-          items.push(
-            <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
-              <boxGeometry args={[width, thickness, d]} />
-              <meshPhysicalMaterial
-                color="#ffffff"
-                transparent
-                opacity={0.3}
-                roughness={0.1}
-                metalness={0.1}
-                transmission={0.9}
-                thickness={0.5}
-              />
-            </mesh>
-          );
+          // Étagères en verre transparentes (1 à 5)
+          const shelfCount = zone.glassShelfCount || 1;
+
+          // Utiliser les positions personnalisées ou calculer un espacement uniforme
+          const getShelfPositions = () => {
+            if (zone.glassShelfPositions && zone.glassShelfPositions.length === shelfCount) {
+              return zone.glassShelfPositions;
+            }
+            // Positions par défaut (uniformément réparties)
+            return Array.from({ length: shelfCount }, (_, i) =>
+              ((i + 1) / (shelfCount + 1)) * 100
+            );
+          };
+
+          const positions = getShelfPositions();
+
+          for (let i = 0; i < shelfCount; i++) {
+            // Position Y de chaque étagère (en % depuis le bas)
+            const positionPercent = positions[i] / 100;
+            const shelfY = y - height / 2 + height * positionPercent;
+
+            items.push(
+              <mesh key={`${zone.id}-shelf-${i}`} position={[x, shelfY, z]} castShadow receiveShadow>
+                <boxGeometry args={[width - 0.004, thickness, d - 0.004]} />
+                <meshPhysicalMaterial
+                  color="#ffffff"
+                  transparent
+                  opacity={0.3}
+                  roughness={0.1}
+                  metalness={0.1}
+                  transmission={0.9}
+                  thickness={0.5}
+                />
+              </mesh>
+            );
+          }
         } else if (zone.content === 'mirror_door') {
           // Porte avec miroir
           items.push(
-            <group key={zone.id} position={[x, y, d/2]}>
+            <group key={zone.id} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedMirrorDoor
                 side="left"
                 position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -944,7 +994,7 @@ function Furniture({
 
         if (isMirror) {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedMirrorDoor
                 side="left"
                 position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -962,7 +1012,7 @@ function Furniture({
           );
         } else if (isPush) {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedPushDoor
                 side="left"
                 position={[-width/2 + compartmentGap/2, 0, 0]}
@@ -981,7 +1031,7 @@ function Furniture({
           );
         } else {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               {(isDouble || !isRight) && (
                 <AnimatedDoor
                   side="left"
@@ -1072,11 +1122,12 @@ function Furniture({
     parseZone(rootZone, 0, sideHeight/2 + yOffset, 0, w - (thickness * 2), sideHeight - (thickness * 2));
     return items;
   }, [
-    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d,
+    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d, mountingOffset,
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
-    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment
+    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment,
+    useMultiColor
   ]);
 
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages

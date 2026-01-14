@@ -1,4 +1,5 @@
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Grid, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Grid, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 import { Zone, ZoneContent, HandleType, ZONE_CONTENT_META } from './types';
 
 interface ZoneControlsProps {
@@ -17,7 +18,148 @@ interface ZoneControlsProps {
   onToggleDressing?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
+  onSetGlassShelfCount?: (zoneId: string, count: number) => void;
+  onSetGlassShelfPositions?: (zoneId: string, positions: number[]) => void;
+  zoneHeightMm?: number; // Hauteur de la zone en mm
   isAdminCreateModel?: boolean;
+}
+
+// Composant pour l'éditeur visuel de position des étagères
+function ShelfPositionEditor({
+  shelfCount,
+  positions,
+  zoneHeightMm,
+  onChange,
+  onReset,
+}: {
+  shelfCount: number;
+  positions: number[];
+  zoneHeightMm: number;
+  onChange: (index: number, position: number) => void;
+  onReset: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  // Convertir % en mm
+  const percentToMm = (percent: number) => Math.round((percent / 100) * zoneHeightMm);
+  // Convertir mm en %
+  const mmToPercent = (mm: number) => Math.round((mm / zoneHeightMm) * 100);
+
+  // Pas d'ajustement en mm (environ 10mm)
+  const stepMm = 10;
+  const stepPercent = mmToPercent(stepMm);
+
+  // Calculer la position depuis un événement souris/touch
+  const getPositionFromEvent = useCallback((clientY: number): number => {
+    if (!containerRef.current) return 50;
+    const rect = containerRef.current.getBoundingClientRect();
+    const relativeY = clientY - rect.top;
+    const percent = 100 - (relativeY / rect.height) * 100;
+    return Math.max(5, Math.min(95, percent));
+  }, []);
+
+  const handleMouseDown = (index: number) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setDraggingIndex(index);
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newPos = getPositionFromEvent(moveEvent.clientY);
+      onChange(index, Math.round(newPos));
+    };
+
+    const handleMouseUp = () => {
+      setDraggingIndex(null);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div className="mt-4 border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '4px' }}>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <span className="text-sm font-medium text-[#1A1917]">Position des étagères</span>
+          <span className="ml-2 text-[10px] text-[#706F6C]">(hauteur zone: {zoneHeightMm} mm)</span>
+        </div>
+        <button
+          type="button"
+          onClick={onReset}
+          className="flex items-center gap-1 text-xs text-[#706F6C] hover:text-[#1A1917] transition-colors"
+          title="Répartition uniforme"
+        >
+          <RotateCcw className="h-3 w-3" />
+          <span>Réinitialiser</span>
+        </button>
+      </div>
+
+      <div className="flex gap-4">
+        {/* Aperçu visuel */}
+        <div
+          ref={containerRef}
+          className="relative w-16 h-32 border-2 border-[#1A1917] bg-white cursor-crosshair"
+          style={{ borderRadius: '2px' }}
+        >
+          {/* Étagères */}
+          {positions.map((pos, index) => (
+            <div
+              key={index}
+              className={`absolute left-0 right-0 h-1 cursor-ns-resize transition-colors ${
+                draggingIndex === index ? 'bg-blue-500' : 'bg-[#1A1917]'
+              }`}
+              style={{ bottom: `${pos}%`, transform: 'translateY(50%)' }}
+              onMouseDown={handleMouseDown(index)}
+              title={`Étagère ${index + 1}: ${percentToMm(pos)} mm`}
+            >
+              {/* Poignée de glissement */}
+              <div className={`absolute -left-1 -right-1 -top-1 -bottom-1 ${
+                draggingIndex === index ? 'bg-blue-500/20' : ''
+              }`} />
+            </div>
+          ))}
+
+          {/* Labels haut/bas avec hauteur */}
+          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-[#706F6C]">{zoneHeightMm} mm</span>
+          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-[#706F6C]">0 mm</span>
+        </div>
+
+        {/* Contrôles par étagère */}
+        <div className="flex-1 space-y-2">
+          {positions.map((pos, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <span className="text-xs text-[#706F6C] w-6">É{index + 1}</span>
+              <button
+                type="button"
+                onClick={() => onChange(index, Math.min(95, pos + stepPercent))}
+                className="p-1 border border-[#E8E6E3] bg-white hover:border-[#1A1917] transition-colors"
+                style={{ borderRadius: '2px' }}
+                title={`+${stepMm} mm`}
+              >
+                <ChevronUp className="h-3 w-3" />
+              </button>
+              <span className="text-xs font-mono w-12 text-center font-semibold">{percentToMm(pos)} mm</span>
+              <button
+                type="button"
+                onClick={() => onChange(index, Math.max(5, pos - stepPercent))}
+                className="p-1 border border-[#E8E6E3] bg-white hover:border-[#1A1917] transition-colors"
+                style={{ borderRadius: '2px' }}
+                title={`-${stepMm} mm`}
+              >
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="mt-2 text-[10px] text-[#706F6C]">
+        Glissez les lignes ou utilisez ↑↓ (±{stepMm} mm)
+      </p>
+    </div>
+  );
 }
 
 export default function ZoneControls({
@@ -36,6 +178,9 @@ export default function ZoneControls({
                                        onToggleDressing,
                                        onGroupZones,
                                        onSetHandleType,
+                                       onSetGlassShelfCount,
+                                       onSetGlassShelfPositions,
+                                       zoneHeightMm,
                                        isAdminCreateModel,
                                      }: ZoneControlsProps) {
   const isLeaf = selectedZone.type === 'leaf';
@@ -299,6 +444,69 @@ export default function ZoneControls({
                           );
                         })}
                       </div>
+
+                      {/* Nombre d'étagères en verre */}
+                      {selectedZone.content === 'glass_shelf' && onSetGlassShelfCount && (
+                        <div className="mt-4 flex items-center justify-between border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '4px' }}>
+                          <div className="flex items-center gap-2">
+                            <Square className="h-4 w-4 text-[#706F6C]" />
+                            <span className="text-sm font-medium text-[#1A1917]">Nombre d'étagères</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => onSetGlassShelfCount(selectedZone.id, Math.max(1, (selectedZone.glassShelfCount || 1) - 1))}
+                              disabled={(selectedZone.glassShelfCount || 1) <= 1}
+                              className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:opacity-30 disabled:cursor-not-allowed"
+                              style={{ borderRadius: '4px' }}
+                            >
+                              −
+                            </button>
+                            <span className="w-8 text-center font-mono text-base font-bold text-[#1A1917]">
+                              {selectedZone.glassShelfCount || 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onSetGlassShelfCount(selectedZone.id, Math.min(5, (selectedZone.glassShelfCount || 1) + 1))}
+                              disabled={(selectedZone.glassShelfCount || 1) >= 5}
+                              className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:opacity-30 disabled:cursor-not-allowed"
+                              style={{ borderRadius: '4px' }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Éditeur de position des étagères (affiché si 2+ étagères) */}
+                      {selectedZone.content === 'glass_shelf' && onSetGlassShelfPositions && zoneHeightMm && (selectedZone.glassShelfCount || 1) >= 2 && (
+                        <ShelfPositionEditor
+                          shelfCount={selectedZone.glassShelfCount || 1}
+                          positions={
+                            selectedZone.glassShelfPositions?.length === (selectedZone.glassShelfCount || 1)
+                              ? selectedZone.glassShelfPositions
+                              : Array.from({ length: selectedZone.glassShelfCount || 1 }, (_, i) =>
+                                  Math.round(((i + 1) / ((selectedZone.glassShelfCount || 1) + 1)) * 100)
+                                )
+                          }
+                          zoneHeightMm={zoneHeightMm}
+                          onChange={(index, position) => {
+                            const currentPositions = selectedZone.glassShelfPositions?.length === (selectedZone.glassShelfCount || 1)
+                              ? [...selectedZone.glassShelfPositions]
+                              : Array.from({ length: selectedZone.glassShelfCount || 1 }, (_, i) =>
+                                  Math.round(((i + 1) / ((selectedZone.glassShelfCount || 1) + 1)) * 100)
+                                );
+                            currentPositions[index] = position;
+                            onSetGlassShelfPositions(selectedZone.id, currentPositions);
+                          }}
+                          onReset={() => {
+                            const defaultPositions = Array.from({ length: selectedZone.glassShelfCount || 1 }, (_, i) =>
+                              Math.round(((i + 1) / ((selectedZone.glassShelfCount || 1) + 1)) * 100)
+                            );
+                            onSetGlassShelfPositions(selectedZone.id, defaultPositions);
+                          }}
+                        />
+                      )}
                     </div>
 
                     {/* Catégorie: Accessoires */}
