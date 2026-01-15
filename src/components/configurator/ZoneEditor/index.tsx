@@ -3,8 +3,7 @@ import ZoneCanvas from './ZoneCanvas';
 import ZoneControls from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
 
-export { default as PanelPlanCanvas } from './PanelPlanCanvas';
-export { type Zone, type ZoneContent, type ZoneColor, type PanelId, type PanelType, PANEL_META, panelIdToString, stringToPanelId } from './types';
+export { type Zone, type ZoneContent, type ZoneColor } from './types';
 
 interface ZoneEditorProps {
   rootZone: Zone;

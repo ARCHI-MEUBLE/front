@@ -29,8 +29,6 @@ export interface ThreeViewerProps {
   rootZone: Zone | null;
   selectedZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
-  selectedPanelId?: string | null;
-  onSelectPanel?: (panelId: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;

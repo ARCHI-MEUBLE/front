@@ -26,8 +26,6 @@ interface ThreeViewerProps {
   rootZone: Zone | null;
   selectedZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
-  selectedPanelId?: string | null;
-  onSelectPanel?: (panelId: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
@@ -153,70 +151,6 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
       roughness={0.4}
       metalness={0.1}
     />
-  );
-}
-
-// Composant pour une hitbox de sélection de segment de panneau (invisible, uniquement pour la sélection)
-interface PanelSegmentHitboxProps {
-  panelId: string;
-  position: [number, number, number];
-  size: [number, number, number]; // width, height, depth
-  isSelected: boolean;
-  onSelect: (panelId: string | null) => void;
-}
-
-function PanelSegmentHitbox({ 
-  panelId, 
-  position, 
-  size, 
-  isSelected, 
-  onSelect
-}: PanelSegmentHitboxProps) {
-  return (
-    <group position={position}>
-      {/* Hitbox invisible pour la sélection */}
-      <mesh
-        visible={false}
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          document.body.style.cursor = 'pointer';
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'default';
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(isSelected ? null : panelId);
-        }}
-      >
-        <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.002]} />
-        <meshBasicMaterial transparent opacity={0} />
-      </mesh>
-      
-      {/* Effet de sélection visible uniquement quand sélectionné */}
-      {isSelected && (
-        <>
-          <mesh>
-            <boxGeometry args={[size[0] + 0.003, size[1] + 0.003, size[2] + 0.003]} />
-            <meshBasicMaterial 
-              transparent 
-              opacity={0.4}
-              color="#2196F3"
-              depthWrite={false}
-              toneMapped={false}
-            />
-          </mesh>
-          <mesh>
-            <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, size[2] + 0.004]} />
-            <meshBasicMaterial color="#2196F3" wireframe transparent opacity={0.5} toneMapped={false} />
-          </mesh>
-          <lineSegments>
-            <edgesGeometry args={[new THREE.BoxGeometry(size[0] + 0.005, size[1] + 0.005, size[2] + 0.005)]} />
-            <lineBasicMaterial color="#2196F3" linewidth={4} toneMapped={false} />
-          </lineSegments>
-        </>
-      )}
-    </group>
   );
 }
 
@@ -754,9 +688,7 @@ function Furniture({
   doorSide = 'left',
   useMultiColor = false,
   selectedZoneIds = [],
-  onSelectZone,
-  selectedPanelId = null,
-  onSelectPanel
+  onSelectZone
 }: ThreeViewerProps) {
   const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
 
@@ -2047,20 +1979,11 @@ function Furniture({
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
-    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment,
-    selectedPanelId, onSelectPanel
+    openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment
   ]);
 
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
   // et des flashs blancs lors des changements de couleur
-
-  // Callback pour la sélection de panneaux (désélectionne les zones si on sélectionne un panneau)
-  const handlePanelSelect = useCallback((panelId: string | null) => {
-    if (panelId && onSelectZone) {
-      onSelectZone(null); // Désélectionner les zones
-    }
-    onSelectPanel?.(panelId);
-  }, [onSelectPanel, onSelectZone]);
 
   return (
     <group>
@@ -2071,18 +1994,7 @@ function Furniture({
         hexColor={finalStructureColor}
         imageUrl={finalStructureImageUrl}
       />
-      {/* Hitbox de sélection par segment pour le panneau gauche */}
-      {panelSegments.leftSegments.map((segment) => (
-        <PanelSegmentHitbox
-          key={segment.id}
-          panelId={segment.id}
-          position={[segment.x, segment.y, 0]}
-          size={[segment.width, segment.height, d]}
-          isSelected={selectedPanelId === segment.id}
-          onSelect={handlePanelSelect}
-        />
-      ))}
-      
+
       {/* Panneau droit (visuel continu unique) */}
       <StructuralPanel
         position={[w/2 - thickness/2, sideHeight/2 + yOffset, 0]}
@@ -2090,18 +2002,7 @@ function Furniture({
         hexColor={finalStructureColor}
         imageUrl={finalStructureImageUrl}
       />
-      {/* Hitbox de sélection par segment pour le panneau droit */}
-      {panelSegments.rightSegments.map((segment) => (
-        <PanelSegmentHitbox
-          key={segment.id}
-          panelId={segment.id}
-          position={[segment.x, segment.y, 0]}
-          size={[segment.width, segment.height, d]}
-          isSelected={selectedPanelId === segment.id}
-          onSelect={handlePanelSelect}
-        />
-      ))}
-      
+
       {/* Panneau supérieur (visuel continu unique) */}
       <StructuralPanel
         position={[0, h - thickness/2, 0]}
@@ -2109,17 +2010,6 @@ function Furniture({
         hexColor={finalStructureColor}
         imageUrl={finalStructureImageUrl}
       />
-      {/* Hitbox de sélection par segment pour le panneau supérieur */}
-      {panelSegments.topSegments.map((segment) => (
-        <PanelSegmentHitbox
-          key={segment.id}
-          panelId={segment.id}
-          position={[segment.x, segment.y, 0]}
-          size={[segment.width, segment.height, d]}
-          isSelected={selectedPanelId === segment.id}
-          onSelect={handlePanelSelect}
-        />
-      ))}
 
       {/* Décorations sur le dessus */}
       {showDecorations && (
@@ -2146,29 +2036,6 @@ function Furniture({
         hexColor={finalStructureColor}
         imageUrl={finalStructureImageUrl}
       />
-      {/* Hitbox de sélection par segment pour le panneau inférieur */}
-      {panelSegments.bottomSegments.map((segment) => (
-        <PanelSegmentHitbox
-          key={segment.id}
-          panelId={segment.id}
-          position={[segment.x, segment.y, 0]}
-          size={[segment.width, segment.height, d]}
-          isSelected={selectedPanelId === segment.id}
-          onSelect={handlePanelSelect}
-        />
-      ))}
-
-      {/* Hitbox de sélection par segment pour les séparateurs */}
-      {panelSegments.separatorSegments.map((segment) => (
-        <PanelSegmentHitbox
-          key={segment.id}
-          panelId={segment.id}
-          position={[segment.x, segment.y, 0]}
-          size={[segment.width, segment.height, d]}
-          isSelected={selectedPanelId === segment.id}
-          onSelect={handlePanelSelect}
-        />
-      ))}
 
       {/* Dynamic Elements */}
       {elements}
@@ -2260,59 +2127,25 @@ function Furniture({
 
       {/* Back Panel - avec gestion des espaces ouverts */}
       {openSpaceInfo.length === 0 ? (
-        // Pas d'espaces ouverts : panneau visuel continu + hitbox segmentées
-        <>
-          <StructuralPanel
-            position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]}
-            size={[w - 0.01, sideHeight - 0.01, 0.004]}
-            hexColor={finalBackColor}
-            imageUrl={finalBackImageUrl}
-            castShadow={false}
-          />
-          {/* Hitbox de sélection par segment pour le panneau arrière */}
-          {panelSegments.backSegments.map((segment) => (
-            <PanelSegmentHitbox
-              key={segment.id}
-              panelId={segment.id}
-              position={[segment.x, segment.y, -d/2 + 0.002]}
-              size={[segment.width, segment.height, 0.004]}
-              isSelected={selectedPanelId === segment.id}
-              onSelect={handlePanelSelect}
-            />
-          ))}
-        </>
+        // Pas d'espaces ouverts : panneau visuel continu
+        <StructuralPanel
+          position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]}
+          size={[w - 0.01, sideHeight - 0.01, 0.004]}
+          hexColor={finalBackColor}
+          imageUrl={finalBackImageUrl}
+          castShadow={false}
+        />
       ) : (
         // Avec espaces ouverts : générer des panneaux qui évitent les zones ouvertes
-        // Note: Pour simplifier, le back panel avec ouvertures n'est pas sélectionnable pour l'instant
-        <group
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePanelSelect(selectedPanelId === 'panel-back' ? null : 'panel-back');
-          }}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = 'default';
-          }}
-        >
-          <BackPanelWithOpenings
-            totalWidth={w - 0.01}
-            totalHeight={sideHeight - 0.01}
-            yOffset={sideHeight/2 + yOffset}
-            zOffset={-d/2 + 0.002}
-            openSpaces={openSpaceInfo}
-            hexColor={finalBackColor}
-            imageUrl={finalBackImageUrl}
-          />
-          {selectedPanelId === 'panel-back' && (
-            <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
-              <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
-              <meshBasicMaterial color="#2196F3" wireframe transparent opacity={0.5} toneMapped={false} />
-            </mesh>
-          )}
-        </group>
+        <BackPanelWithOpenings
+          totalWidth={w - 0.01}
+          totalHeight={sideHeight - 0.01}
+          yOffset={sideHeight/2 + yOffset}
+          zOffset={-d/2 + 0.002}
+          openSpaces={openSpaceInfo}
+          hexColor={finalBackColor}
+          imageUrl={finalBackImageUrl}
+        />
       )}
     </group>
   );

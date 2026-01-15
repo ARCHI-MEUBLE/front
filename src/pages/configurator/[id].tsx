@@ -20,7 +20,7 @@ const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'
 });
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
-import ZoneEditor, { Zone, ZoneContent, ZoneColor, PANEL_META, stringToPanelId, PanelPlanCanvas } from '@/components/configurator/ZoneEditor';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
@@ -602,17 +602,7 @@ export default function ConfiguratorPage() {
   }, [canUndoZone, canRedoZone, undoZone, redoZone]);
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
-  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
   const [doors, setDoors] = useState(0);
-
-  // Gérer la sélection des panneaux (faces du meuble)
-  const handlePanelSelect = useCallback((panelId: string | null) => {
-    setSelectedPanelId(panelId);
-    // Désélectionner les zones quand on sélectionne un panneau
-    if (panelId) {
-      setSelectedZoneIds([]);
-    }
-  }, []);
 
   // Gérer la sélection intelligente (clic 1 -> clic 2)
   const handleZoneSelect = useCallback(
@@ -2535,8 +2525,6 @@ export default function ConfiguratorPage() {
                   rootZone={rootZone}
                   selectedZoneIds={selectedZoneIds}
                   onSelectZone={handleZoneSelect}
-                  selectedPanelId={selectedPanelId}
-                  onSelectPanel={handlePanelSelect}
                   isBuffet={furnitureStructure?.isBuffet}
                   doorsOpen={doorsOpen}
                   showDecorations={showDecorations}
@@ -2639,41 +2627,6 @@ export default function ConfiguratorPage() {
                   </div>
                 )}
 
-                {/* Indicateur de panneau sélectionné */}
-                {selectedPanelId && (
-                  <div className="absolute top-4 right-4 z-20 hidden lg:block">
-                    <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
-                      <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
-                      <span className="text-sm font-medium text-[#1A1917]">
-                        {(() => {
-                          const panelInfo = stringToPanelId(selectedPanelId);
-                          if (panelInfo) {
-                            if (panelInfo.type === 'separator') {
-                              const isHorizontal = selectedPanelId.includes('-h-');
-                              return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
-                            }
-                            // Afficher le numéro du segment si c'est un panneau segmenté
-                            const baseLabel = PANEL_META[panelInfo.type]?.label || selectedPanelId;
-                            if (panelInfo.index !== undefined) {
-                              return `${baseLabel} (segment ${panelInfo.index + 1})`;
-                            }
-                            return baseLabel;
-                          }
-                          return selectedPanelId;
-                        })()}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPanelId(null)}
-                        className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
-                        title="Désélectionner"
-                      >
-                        <IconTablerX className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {generating && (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/40 backdrop-blur-[1px] z-10">
                     <div className="flex flex-col items-center gap-3">
@@ -2765,15 +2718,6 @@ export default function ConfiguratorPage() {
                         height={height}
                         onSelectZone={handleZoneSelect}
                         isAdminCreateModel={isAdminCreateModel}
-                      />
-
-                      {/* Sélection des panneaux (nouveau composant séparé) */}
-                      <PanelPlanCanvas
-                        zone={rootZone}
-                        width={width}
-                        height={height}
-                        selectedPanelId={selectedPanelId}
-                        onSelectPanel={handlePanelSelect}
                       />
 
                       <DimensionsPanel
