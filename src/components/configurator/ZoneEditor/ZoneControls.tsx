@@ -507,14 +507,14 @@ export default function ZoneControls({
         </div>
       );
     }
-    
+
     return (
       <div className="flex items-center gap-2 mb-4 text-xs font-medium text-[#706F6C]">
-        <button 
+        <button
           onClick={() => onSelectParent()}
-          className="flex items-center gap-1 hover:text-[#3B82F6] transition-colors"
+          className="flex items-center gap-1 hover:text-[#1A1917] transition-colors"
         >
-          <BoxSelect className="h-3 w-3 text-[#3B82F6]" />
+          <BoxSelect className="h-3 w-3 text-[#706F6C]" />
           <span className="underline decoration-dotted underline-offset-2">Groupe parent</span>
         </button>
         <span className="text-[#E8E6E3]">/</span>
@@ -528,39 +528,39 @@ export default function ZoneControls({
         {renderBreadcrumbs()}
 
         {selectedZoneIds.length > 1 && (
-          <div className="border-2 border-[#FF9800] bg-[#FF9800]/5 p-6 shadow-md" style={{ borderRadius: '4px' }}>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center bg-[#FF9800] text-white" style={{ borderRadius: '2px' }}>
-                <DoorClosed className="h-7 w-7" />
+          <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-5" style={{ borderRadius: '2px' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-white" style={{ borderRadius: '2px' }}>
+                <DoorClosed className="h-5 w-5 text-[#1A1917]" />
               </div>
               <div>
-                <span className="block text-xl font-bold text-[#1A1917]">{selectedZoneIds.length} compartiments sélectionnés</span>
-                <p className="text-sm text-[#706F6C]">Souhaitez-vous poser une porte sur cet ensemble ?</p>
+                <span className="block text-base font-semibold text-[#1A1917]">{selectedZoneIds.length} compartiments sélectionnés</span>
+                <p className="text-xs text-[#706F6C]">Poser une porte sur cet ensemble</p>
               </div>
             </div>
-            
-            <div className="grid grid-cols-1 gap-3">
+
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
-                className="flex items-center justify-center gap-3 w-full bg-[#1A1917] text-white py-4 px-6 text-lg font-bold transition-all hover:bg-[#2A2927]"
+                className="flex items-center justify-center gap-2 w-full bg-[#1A1917] text-white py-3 px-4 text-sm font-medium transition-all hover:bg-[#2A2927]"
                 style={{ borderRadius: '2px' }}
               >
-                Poser une porte simple
+                Porte simple
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
-                className="flex items-center justify-center gap-3 w-full bg-white border-2 border-[#1A1917] text-[#1A1917] py-3 px-6 text-base font-semibold transition-all hover:bg-[#F5F5F4]"
+                className="flex items-center justify-center gap-2 w-full border border-[#E8E6E3] bg-white text-[#1A1917] py-3 px-4 text-sm font-medium transition-all hover:border-[#1A1917]"
                 style={{ borderRadius: '2px' }}
               >
-                Poser une double porte
+                Double porte
               </button>
             </div>
-            
-            <p className="mt-4 text-center text-xs text-[#706F6C]">
-              La porte recouvrira l'intégralité de la zone sélectionnée en orange.
+
+            <p className="mt-3 text-center text-[10px] text-[#706F6C]">
+              La porte recouvrira l'intégralité de la zone sélectionnée.
             </p>
           </div>
         )}
@@ -669,13 +669,15 @@ export default function ZoneControls({
               {/* Sélecteur de poignée (pour leaf et parent) */}
               {onSetHandleType && (
                 (isLeaf && (
-                  selectedZone.content === 'drawer' || 
-                  selectedZone.content === 'door' || 
-                  selectedZone.content === 'door_right' || 
-                  selectedZone.content === 'door_double' || 
+                  selectedZone.content === 'drawer' ||
+                  selectedZone.content === 'door' ||
+                  selectedZone.content === 'door_right' ||
+                  selectedZone.content === 'door_double' ||
                   selectedZone.content === 'mirror_door' ||
+                  selectedZone.content === 'mirror_door_right' ||
                   selectedZone.content === 'push_drawer' ||
-                  selectedZone.content === 'push_door'
+                  selectedZone.content === 'push_door' ||
+                  selectedZone.content === 'push_door_right'
                 )) ||
                 (!isLeaf && (selectedZone.doorContent && selectedZone.doorContent !== 'empty'))
               ) && (

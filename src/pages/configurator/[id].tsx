@@ -1931,6 +1931,12 @@ export default function ConfiguratorPage() {
       useMultiColor: config.useMultiColor
     });
 
+    // Déclarer les prix échantillon en dehors du bloc if pour qu'ils soient accessibles dans countExtraPrice
+    let samplePriceStructure = 0;
+    let samplePriceBack = 0;
+    let samplePriceDoors = 0;
+    let samplePriceDrawers = 0;
+
     if (pricingParams?.casing?.full) {
       const w = config.width / 1000;
       const h = config.height / 1000;
@@ -1945,11 +1951,6 @@ export default function ConfiguratorPage() {
       const casingCoefficient = Number(pricingParams.casing.full.coefficient) || 1.2;
 
       // Déterminer les prix du matériau (= prix échantillon) selon le mode
-      let samplePriceStructure = 0;
-      let samplePriceBack = 0;
-      let samplePriceDoors = 0;
-      let samplePriceDrawers = 0;
-
       if (config.useMultiColor && config.componentColors) {
         const structColorId = config.componentColors.structure.colorId;
         const backColorId = config.componentColors.back.colorId;
@@ -1984,6 +1985,11 @@ export default function ConfiguratorPage() {
     } else {
       const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
       p = volumeM3 * 1500;
+      // Initialiser les prix échantillon au prix unie pour le fallback
+      samplePriceStructure = samplePriceUnie;
+      samplePriceBack = samplePriceUnie;
+      samplePriceDoors = samplePriceUnie;
+      samplePriceDrawers = samplePriceUnie;
       console.log('⚠️ Fallback prix structure (Volume):', p);
     }
 
@@ -2046,9 +2052,9 @@ export default function ConfiguratorPage() {
         const getDoorPrice = (doorType: string, w: number, h: number) => {
           // Vérifier si le contenu est bien une porte
           const isDoor = [
-            'door', 'door_right', 'door_double', 'mirror_door', 'glass_door', 'push_door'
+            'door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right', 'glass_door', 'push_door', 'push_door_right'
           ].includes(doorType);
-          
+
           if (!isDoor) return 0;
 
           // Mapping vers les clés de configuration admin
@@ -2058,9 +2064,9 @@ export default function ConfiguratorPage() {
             typeKey = doorType;
           } else if (doorType === 'door_double') {
             typeKey = 'double';
-          } else if (doorType === 'mirror_door' || doorType === 'glass_door') {
+          } else if (doorType === 'mirror_door' || doorType === 'mirror_door_right' || doorType === 'glass_door') {
             typeKey = 'glass';
-          } else if (doorType === 'push_door') {
+          } else if (doorType === 'push_door' || doorType === 'push_door_right') {
             typeKey = 'push';
           } else {
             // Par défaut pour door, door_right, etc.

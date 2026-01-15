@@ -679,7 +679,12 @@ function Furniture({
     if (rootZone) {
       const newOpenStates: Record<string, boolean> = {};
       const applyOpenState = (zone: Zone) => {
-        if (zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door')) {
+        // Portes/tiroirs sur zones feuilles
+        if (zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right')) {
+          newOpenStates[zone.id] = doorsOpen || false;
+        }
+        // Portes sur zones groupes (parent avec enfants)
+        if (zone.doorContent && zone.doorContent !== 'empty') {
           newOpenStates[zone.id] = doorsOpen || false;
         }
         if (zone.children) {
@@ -800,7 +805,12 @@ function Furniture({
     if (!rootZone) return false;
 
     const checkZone = (zone: Zone): boolean => {
-      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door')) {
+      // Porte sur zone feuille
+      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right')) {
+        return true;
+      }
+      // Porte sur zone groupe (doorContent)
+      if (zone.doorContent && zone.doorContent !== 'empty') {
         return true;
       }
       if (zone.children) {
@@ -821,16 +831,16 @@ function Furniture({
     // console.log('🎨 ThreeCanvas - rootZone.type:', rootZone.type);
     // console.log('🎨 ThreeCanvas - rootZone.children:', rootZone.children?.length || 0, 'enfants');
 
-    const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number) => {
+    const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, parentHasDoorClosed: boolean = false) => {
       if (zone.type === 'leaf') {
         // Ajouter l'éclairage si activé
         if (zone.hasLight) {
           items.push(
-            <CompartmentLight 
-              key={`${zone.id}-light`} 
-              width={width} 
-              depth={d} 
-              position={[x, y + height/2, 0]} 
+            <CompartmentLight
+              key={`${zone.id}-light`}
+              width={width}
+              depth={d}
+              position={[x, y + height/2, 0]}
             />
           );
         }
@@ -848,30 +858,33 @@ function Furniture({
           );
         }
 
-        // Hitbox de sélection pour toutes les zones leaf
-        items.push(
-          <mesh
-            key={`${zone.id}-hitbox`}
-            position={[x, y, 0]}
-            visible={true}
-            onPointerOver={(e) => {
-              e.stopPropagation();
-              document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-              document.body.style.cursor = 'default';
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // On appelle onSelectZone avec l'id de la zone.
-              onSelectZone?.(zone.id);
-              
-              // On bascule l'ouverture si c'est un compartiment mobile
-              if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'mirror_door') {
-                toggleCompartment(zone.id);
-              }
-            }}
-          >
+        // Hitbox de sélection pour zones leaf (sauf si parent a une porte FERMÉE)
+        // Si le parent a une porte fermée, on ne rend pas la hitbox pour éviter d'intercepter les clics sur la porte
+        // Mais si la porte est ouverte, on permet la sélection des enfants
+        if (!parentHasDoorClosed) {
+          items.push(
+            <mesh
+              key={`${zone.id}-hitbox`}
+              position={[x, y, 0]}
+              visible={true}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                document.body.style.cursor = 'pointer';
+              }}
+              onPointerOut={() => {
+                document.body.style.cursor = 'default';
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                // On appelle onSelectZone avec l'id de la zone.
+                onSelectZone?.(zone.id);
+
+                // On bascule l'ouverture si c'est un compartiment mobile
+                if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
+                  toggleCompartment(zone.id);
+                }
+              }}
+            >
             <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
             <meshBasicMaterial 
               transparent 
@@ -895,7 +908,8 @@ function Furniture({
               </>
             )}
           </mesh>
-        );
+          );
+        }
 
         if (zone.content === 'shelf') {
           items.push(
@@ -978,13 +992,13 @@ function Furniture({
         }
 
         // Rendu des portes (Indépendant du type de zone : feuille ou parent)
-        const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'mirror_door') ? zone.content : null);
+        const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') ? zone.content : null);
 
         if (doorToRender) {
           const isDouble = doorToRender === 'door_double';
-          const isRight = doorToRender === 'door_right';
-          const isPush = doorToRender === 'push_door';
-          const isMirror = doorToRender === 'mirror_door';
+          const isRight = doorToRender === 'door_right' || doorToRender === 'push_door_right' || doorToRender === 'mirror_door_right';
+          const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
+          const isMirror = doorToRender === 'mirror_door' || doorToRender === 'mirror_door_right';
           
           const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
           const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
@@ -994,11 +1008,13 @@ function Furniture({
           }
 
           if (isMirror) {
+            const mirrorSide = isRight ? 'right' : 'left';
+            const mirrorPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
             items.push(
               <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 <AnimatedMirrorDoor
-                  side="left"
-                  position={[-width/2 + compartmentGap/2, 0, 0]}
+                  side={mirrorSide}
+                  position={[mirrorPosX, 0, 0]}
                   width={width - compartmentGap}
                   height={height - compartmentGap}
                   hexColor={doorHexColor}
@@ -1013,11 +1029,13 @@ function Furniture({
               </group>
             );
           } else if (isPush) {
+            const pushSide = isRight ? 'right' : 'left';
+            const pushPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
             items.push(
               <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
                 <AnimatedPushDoor
-                  side="left"
-                  position={[-width/2 + compartmentGap/2, 0, 0]}
+                  side={pushSide}
+                  position={[pushPosX, 0, 0]}
                   width={width - compartmentGap}
                   height={height - compartmentGap}
                   hexColor={doorHexColor}
@@ -1130,13 +1148,16 @@ function Furniture({
               </group>
             );
           }
-        } else if (zone.content === 'mirror_door') {
-          // Porte avec miroir
+        } else if (zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
+          // Porte avec miroir (gauche ou droite)
+          const mirrorIsRight = zone.content === 'mirror_door_right';
+          const mirrorSide = mirrorIsRight ? 'right' : 'left';
+          const mirrorPosX = mirrorIsRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
           items.push(
             <group key={zone.id} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedMirrorDoor
-                side="left"
-                position={[-width/2 + compartmentGap/2, 0, 0]}
+                side={mirrorSide}
+                position={[mirrorPosX, 0, 0]}
                 width={width - compartmentGap}
                 height={height - compartmentGap}
                 handleType={zone.handleType}
@@ -1167,19 +1188,21 @@ function Furniture({
       if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty') {
         const doorToRender = groupDoor;
         const isDouble = doorToRender === 'door_double';
-        const isRight = doorToRender === 'door_right';
-        const isPush = doorToRender === 'push_door';
-        const isMirror = doorToRender === 'mirror_door';
-        
+        const isRight = doorToRender === 'door_right' || doorToRender === 'push_door_right' || doorToRender === 'mirror_door_right';
+        const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
+        const isMirror = doorToRender === 'mirror_door' || doorToRender === 'mirror_door_right';
+
         const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
         const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
         if (isMirror) {
+          const mirrorSide = isRight ? 'right' : 'left';
+          const mirrorPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
           items.push(
             <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedMirrorDoor
-                side="left"
-                position={[-width/2 + compartmentGap/2, 0, 0]}
+                side={mirrorSide}
+                position={[mirrorPosX, 0, 0]}
                 width={width - compartmentGap}
                 height={height - compartmentGap}
                 handleType={zone.handleType}
@@ -1193,11 +1216,13 @@ function Furniture({
             </group>
           );
         } else if (isPush) {
+          const pushSide = isRight ? 'right' : 'left';
+          const pushPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
           items.push(
             <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
               <AnimatedPushDoor
-                side="left"
-                position={[-width/2 + compartmentGap/2, 0, 0]}
+                side={pushSide}
+                position={[pushPosX, 0, 0]}
                 width={width - compartmentGap}
                 height={height - compartmentGap}
                 hexColor={doorHexColor}
@@ -1271,14 +1296,24 @@ function Furniture({
           }
           console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
           
+          // Vérifier si cette zone a une porte (pour bloquer les hitboxes des enfants quand fermée)
+          const thisZoneHasDoor = !!(zone.doorContent && zone.doorContent !== 'empty');
+          // Vérifier si c'est une porte vitrée fermée (pour décaler les séparateurs en Z et éviter z-fighting)
+          const isGlassDoor = zone.doorContent === 'mirror_door' || zone.doorContent === 'mirror_door_right';
+          const isDoorClosed = thisZoneHasDoor && !openCompartments[zone.id];
+          const separatorZOffset = (isGlassDoor && isDoorClosed) ? -0.02 : 0; // Décaler en arrière si porte vitrée fermée
+          // Passer aux enfants si cette zone a une porte FERMÉE (ou si le parent en avait une fermée)
+          const childHasDoorClosed = isDoorClosed || parentHasDoorClosed;
+
           if (zone.type === 'horizontal') {
             const childHeight = height * ratio;
             // Rendu de haut en bas pour correspondre à l'UI 2D (index 0 = haut)
-            parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight);
+            parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childHasDoorClosed);
             currentPos += childHeight;
+            // Toujours rendre les séparateurs, mais décalés en Z si porte vitrée fermée
             if (i < zone.children!.length - 1) {
               items.push(
-                <mesh key={`${zone.id}-sep-${i}`} position={[x, (y + height/2) - currentPos, z]} castShadow receiveShadow>
+                <mesh key={`${zone.id}-sep-${i}`} position={[x, (y + height/2) - currentPos, z + separatorZOffset]} castShadow receiveShadow>
                   <boxGeometry args={[width, thickness, d]} />
                   <TexturedMaterial hexColor={finalShelfColor} imageUrl={finalShelfImageUrl} />
                 </mesh>
@@ -1286,11 +1321,12 @@ function Furniture({
             }
           } else {
             const childWidth = width * ratio;
-            parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height);
+            parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, childHasDoorClosed);
             currentPos += childWidth;
+            // Toujours rendre les séparateurs, mais décalés en Z si porte vitrée fermée
             if (i < zone.children!.length - 1) {
               items.push(
-                <mesh key={`${zone.id}-sep-${i}`} position={[x - width/2 + currentPos, y, z]} castShadow receiveShadow>
+                <mesh key={`${zone.id}-sep-${i}`} position={[x - width/2 + currentPos, y, z + separatorZOffset]} castShadow receiveShadow>
                   <boxGeometry args={[thickness, height, d]} />
                   <TexturedMaterial hexColor={separatorColor} imageUrl={separatorImageUrl} />
                 </mesh>
