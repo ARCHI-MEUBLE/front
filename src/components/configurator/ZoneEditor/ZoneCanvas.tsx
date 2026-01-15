@@ -120,7 +120,8 @@ function ZoneNode({
         const allValid = normalizedRatios.every(r => r >= minRatio - 0.1);
 
         if (allValid) {
-            onRatioChange(zone.id, normalizedRatios.map(r => Math.round(r * 10) / 10));
+            // Haute précision pour éviter les erreurs d'arrondi au mm
+            onRatioChange(zone.id, normalizedRatios.map(r => Math.round(r * 10000) / 10000));
         }
     }, [isDragging, dragIndex, zone, onRatioChange, getChildRatios]);
 

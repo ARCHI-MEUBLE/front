@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
-import ZoneControls from './ZoneControls';
+import ZoneControls, { DividerPositionEditor } from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
 
 export { type Zone, type ZoneContent, type ZoneColor } from './types';
@@ -130,6 +130,46 @@ export default function ZoneEditor({
   const selectedZoneHeightMm = useMemo(
     () => Math.round(calculateZoneHeight(selectedZone.id)),
     [calculateZoneHeight, selectedZone.id]
+  );
+
+  // Calculer la largeur d'une zone en mm (parcours récursif)
+  const calculateZoneWidth = useCallback(
+    (targetId: string, zone: Zone = rootZone, availableWidth: number = width): number => {
+      if (zone.id === targetId) {
+        return availableWidth;
+      }
+
+      if (!zone.children || zone.children.length === 0) {
+        return 0;
+      }
+
+      // Pour les divisions verticales, la largeur est partagée entre les enfants
+      if (zone.type === 'vertical') {
+        const ratios = zone.children.length === 2 && zone.splitRatio !== undefined
+          ? [zone.splitRatio, 100 - zone.splitRatio]
+          : zone.splitRatios || zone.children.map(() => 100 / zone.children!.length);
+
+        for (let i = 0; i < zone.children.length; i++) {
+          const childWidth = availableWidth * (ratios[i] / 100);
+          const result = calculateZoneWidth(targetId, zone.children[i], childWidth);
+          if (result > 0) return result;
+        }
+      } else {
+        // Pour les divisions horizontales, la largeur reste la même
+        for (const child of zone.children) {
+          const result = calculateZoneWidth(targetId, child, availableWidth);
+          if (result > 0) return result;
+        }
+      }
+
+      return 0;
+    },
+    [rootZone, width]
+  );
+
+  const selectedZoneWidthMm = useMemo(
+    () => Math.round(calculateZoneWidth(selectedZone.id)),
+    [calculateZoneWidth, selectedZone.id]
   );
 
   // Diviser une zone
@@ -442,42 +482,55 @@ export default function ZoneEditor({
         showNumbers={showNumbers}
       />
 
+      {/* Éditeur de positions exactes - affiché sous le plan 2D */}
+      {selectedZone && selectedZone.type !== 'leaf' && selectedZone.children && selectedZone.children.length >= 2 && (
+        <>
+          {selectedZone.type === 'horizontal' && selectedZoneHeightMm > 0 && (
+            <DividerPositionEditor
+              zone={selectedZone}
+              totalDimensionMm={selectedZoneHeightMm}
+              isHorizontal={true}
+              onRatiosChange={(ratios) => setSplitRatios(selectedZone.id, ratios)}
+            />
+          )}
+          {selectedZone.type === 'vertical' && selectedZoneWidthMm > 0 && (
+            <DividerPositionEditor
+              zone={selectedZone}
+              totalDimensionMm={selectedZoneWidthMm}
+              isHorizontal={false}
+              onRatiosChange={(ratios) => setSplitRatios(selectedZone.id, ratios)}
+            />
+          )}
+        </>
+      )}
+
       {/* Contenu personnalisé après le canvas (ex: dimensions) */}
       {renderAfterCanvas}
 
-      {/* Contrôles dans une card - masqués en mode hideControls */}
-      {!hideControls && (
+      {/* Contrôles dans une card - masqués en mode hideControls ou si aucune zone sélectionnée */}
+      {!hideControls && selectedZoneIds.length > 0 && (
         <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
-          {selectedZoneIds.length > 0 ? (
-            <ZoneControls
-              selectedZone={selectedZone}
-              selectedZoneIds={selectedZoneIds}
-              parentZone={parentZone}
-              onSplitZone={splitZone}
-              onSetContent={setZoneContent}
-              onSetDoorContent={onSetDoorContent || setDoorContent}
-              onResetZone={resetZone}
-              onSetSplitRatio={setSplitRatio}
-              onSetSplitRatios={setSplitRatios}
-              onToggleLight={onToggleLight || toggleLight}
-              onToggleCableHole={onToggleCableHole || toggleCableHole}
-              onToggleDressing={onToggleDressing || toggleDressing}
-              onGroupZones={groupZones}
-              onSetHandleType={onSetHandleType || setHandleType}
-              onSetGlassShelfCount={setGlassShelfCount}
-              onSetGlassShelfPositions={setGlassShelfPositions}
-              zoneHeightMm={selectedZoneHeightMm}
-              onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center bg-white shadow-sm" style={{ borderRadius: '2px' }}>
-                <span className="text-2xl">☝️</span>
-              </div>
-              <p className="text-base font-medium text-[#1A1917]">Aucune zone sélectionnée</p>
-              <p className="text-sm text-[#706F6C]">Cliquez sur une partie du meuble pour la personnaliser</p>
-            </div>
-          )}
+          <ZoneControls
+            selectedZone={selectedZone}
+            selectedZoneIds={selectedZoneIds}
+            parentZone={parentZone}
+            onSplitZone={splitZone}
+            onSetContent={setZoneContent}
+            onSetDoorContent={onSetDoorContent || setDoorContent}
+            onResetZone={resetZone}
+            onSetSplitRatio={setSplitRatio}
+            onSetSplitRatios={setSplitRatios}
+            onToggleLight={onToggleLight || toggleLight}
+            onToggleCableHole={onToggleCableHole || toggleCableHole}
+            onToggleDressing={onToggleDressing || toggleDressing}
+            onGroupZones={groupZones}
+            onSetHandleType={onSetHandleType || setHandleType}
+            onSetGlassShelfCount={setGlassShelfCount}
+            onSetGlassShelfPositions={setGlassShelfPositions}
+            zoneHeightMm={selectedZoneHeightMm}
+            zoneWidthMm={selectedZoneWidthMm}
+            onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
+          />
         </div>
       )}
     </div>
