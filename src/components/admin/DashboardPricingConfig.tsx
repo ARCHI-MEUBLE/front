@@ -162,49 +162,6 @@ export function DashboardPricingConfig() {
   };
 
   // Rendu des tableaux par catégorie
-  const renderMaterialsTable = () => {
-    const data = getParamsByCategory('materials');
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Matériau</TableHead>
-            <TableHead className="text-right">Supplément</TableHead>
-            <TableHead className="text-right">Prix au m²</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Object.entries(data).map(([type, params]) => (
-            <TableRow key={type}>
-              <TableCell className="font-medium capitalize">{type.replace(/_/g, ' ')}</TableCell>
-              <TableCell className="text-right">
-                {params.supplement && formatValue(params.supplement.param_value, params.supplement.unit)}
-              </TableCell>
-              <TableCell className="text-right">
-                {params.price_per_m2 && formatValue(params.price_per_m2.param_value, params.price_per_m2.unit)}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  {params.supplement && (
-                    <Button onClick={() => handleEdit(params.supplement)} variant="ghost" size="sm">
-                      <IconEdit className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {params.price_per_m2 && (
-                    <Button onClick={() => handleEdit(params.price_per_m2)} variant="ghost" size="sm">
-                      <IconEdit className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
-
   const renderDrawersTable = () => {
     const data = getParamsByCategory('drawers');
     return (
@@ -402,9 +359,8 @@ export function DashboardPricingConfig() {
               <IconRefresh className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Tabs defaultValue="materials" className="w-full">
+            <Tabs defaultValue="casing" className="w-full">
               <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-10 bg-muted/50 p-2">
-                <TabsTrigger value="materials" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Matériaux</TabsTrigger>
                 <TabsTrigger value="drawers" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Tiroirs</TabsTrigger>
                 <TabsTrigger value="shelves" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Étagères</TabsTrigger>
                 <TabsTrigger value="lighting" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">LED</TabsTrigger>
@@ -418,40 +374,6 @@ export function DashboardPricingConfig() {
                 <TabsTrigger value="casing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Caisson</TabsTrigger>
                 <TabsTrigger value="display" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">Affichage Prix</TabsTrigger>
               </TabsList>
-
-              <TabsContent value="materials" className="mt-10">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
-                    <h4 className="text-lg font-bold tracking-tight">Matériaux de construction</h4>
-                  </div>
-                  {renderMaterialsTable()}
-
-                  {/* Explication simple */}
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <h5 className="text-sm font-semibold mb-2">💡 Prix du matériau de base (bois de construction)</h5>
-                    <div className="text-xs text-muted-foreground space-y-2">
-                      <p>
-                        <strong>⚠️ IMPORTANT :</strong> Il n'y a qu'UN SEUL prix de matériau pour tous les meubles.
-                      </p>
-                      <p>
-                        Ce prix représente le <strong>bois brut</strong> utilisé pour fabriquer la structure du meuble,
-                        peu importe la finition choisie (Aggloméré, MDF, Plaqué bois, etc.).
-                      </p>
-                      <p className="mt-2">
-                        <strong>Prix au m² :</strong> Prix du bois de construction au m².
-                        Voir l'onglet <strong>"Caisson"</strong> pour la formule de calcul complète.
-                      </p>
-                      <p>
-                        <strong>Supplément :</strong> Prix fixe supplémentaire (généralement 0€).
-                      </p>
-                      <p className="mt-3 p-2 bg-background/50 rounded border">
-                        <strong>💰 Pour varier les prix :</strong> Utilisez les <strong>prix des échantillons</strong>
-                        (Dashboard → Gestion des échantillons) qui s'ajoutent au prix du matériau de base.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
 
               <TabsContent value="drawers" className="mt-10">
                 <div className="space-y-6">
@@ -960,10 +882,15 @@ export function DashboardPricingConfig() {
                     <h5 className="text-sm font-semibold mb-2">Formule de calcul - Prix du Caisson/Structure</h5>
 
                     <div className="font-mono text-xs bg-background p-2 rounded mb-3">
-                      Prix Caisson = Prix_m²_matériau × Surface_totale × Coefficient
+                      Prix Caisson = Prix_échantillon (€/m²) × Surface_totale × Coefficient
                     </div>
 
                     <div className="text-xs text-muted-foreground space-y-3">
+                      <p className="p-2 bg-green-50 border border-green-200 rounded text-green-800">
+                        <strong>💡 Le prix du matériau = le prix de l'échantillon</strong><br/>
+                        Définissez le prix au m² dans <strong>Dashboard → Gestion des échantillons</strong>
+                      </p>
+
                       <p><strong>Le caisson = la boîte principale du meuble (5 faces - OUVERT devant)</strong></p>
 
                       <div className="bg-background/50 p-2 rounded font-mono text-xs">
@@ -989,7 +916,7 @@ export function DashboardPricingConfig() {
                         <li>Dessus + Dessous = (Largeur × Profondeur) × 2</li>
                       </ul>
 
-                      <p className="mt-3"><strong>Exemple complet : Meuble 1500mm × 730mm × 500mm en MDF mélaminé</strong></p>
+                      <p className="mt-3"><strong>Exemple : Meuble 1500mm × 730mm × 500mm avec échantillon "Chêne" à 150€/m²</strong></p>
 
                       <p className="ml-2">Étape 1 - Calculer la surface :</p>
                       <ul className="list-disc list-inside ml-4 space-y-1">
@@ -1001,16 +928,9 @@ export function DashboardPricingConfig() {
 
                       <p className="ml-2 mt-2">Étape 2 - Calculer le prix :</p>
                       <ul className="list-disc list-inside ml-4 space-y-1">
-                        <li>Prix au m² MDF = 80€/m²</li>
-                        <li>Coefficient caisson = 1.2</li>
-                        <li><strong>Prix caisson = 80€ × 3.325m² × 1.2 = 319€</strong></li>
-                      </ul>
-
-                      <p className="ml-2 mt-2">Étape 3 - Prix final :</p>
-                      <ul className="list-disc list-inside ml-4 space-y-1">
-                        <li>Prix caisson = 319€</li>
-                        <li>Supplément MDF = + 70€</li>
-                        <li><strong>TOTAL structure = 389€</strong></li>
+                        <li>Prix échantillon "Chêne" = 150€/m²</li>
+                        <li>Coefficient fabrication = 1.2</li>
+                        <li><strong>Prix caisson = 150€ × 3.325m² × 1.2 = 598€</strong></li>
                       </ul>
 
                       <p className="mt-2 italic">Ensuite on ajoute : tiroirs, portes, socle, étagères, LED, etc.</p>
@@ -1222,10 +1142,12 @@ export function DashboardPricingConfig() {
               </h4>
               <div className="pl-6 space-y-2 text-sm">
                 <p className="font-mono text-xs bg-muted p-2 rounded">
-                  Prix = prix_m²_matériau × surface_totale × coefficient
+                  Prix = prix_échantillon (€/m²) × surface_totale × coefficient
                 </p>
                 <p className="text-muted-foreground">
-                  Surface totale = devant + arrière + 2×côtés + dessus + dessous
+                  Surface totale = arrière + 2×côtés + dessus + dessous (pas de devant)
+                  <br />
+                  Le prix du matériau = prix de l'échantillon sélectionné.
                   <br />
                   Le coefficient majore le prix pour la complexité de fabrication.
                 </p>

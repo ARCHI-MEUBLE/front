@@ -1913,15 +1913,10 @@ export default function ConfiguratorPage() {
     // Normalisation du nom du matériau pour correspondre aux clés API (ex: "Aggloméré" -> "agglomere")
     const normalizedFinish = config.finish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '_');
     
-    // On cherche d'abord une config spécifique au matériau, puis on retombe sur 'base' (fallback)
-    const materialConfig = pricingParams?.materials?.[normalizedFinish] || 
-                          pricingParams?.materials?.[config.finish.toLowerCase().replace(/\s+/g, '_')] || 
-                          pricingParams?.materials?.base || 
-                          (pricingParams?.materials ? Object.values(pricingParams.materials)[0] : null);
+    // Le prix du matériau est maintenant directement le prix de l'échantillon (price_per_m2)
+    // Plus de prix de base séparé - l'échantillon contient le prix complet du matériau
 
-    const baseMaterialPrice = Number((materialConfig as any)?.price_per_m2) || 50;
-    
-    // Déterminer le prix de l'échantillon (revêtement) en mode coloration unie
+    // Déterminer le prix de l'échantillon (= prix du matériau) en mode coloration unie
     let samplePriceUnie = 0;
     if (config.selectedSample && config.selectedSample.price_per_m2 !== undefined) {
       samplePriceUnie = Number(config.selectedSample.price_per_m2);
@@ -1929,15 +1924,14 @@ export default function ConfiguratorPage() {
       samplePriceUnie = Number(samplePricesMap[config.selectedColorId]);
     }
 
-    console.log(`[PRICING] Calcul en cours: ${config.finish} (${normalizedFinish})`, { 
-      baseMaterialPrice,
+    console.log(`[PRICING] Calcul en cours: ${config.finish} (${normalizedFinish})`, {
       samplePriceUnie,
       selectedColorId: config.selectedColorId,
       hasSample: !!config.selectedSample,
       useMultiColor: config.useMultiColor
     });
 
-    if (materialConfig && pricingParams?.casing?.full) {
+    if (pricingParams?.casing?.full) {
       const w = config.width / 1000;
       const h = config.height / 1000;
       const d = config.depth / 1000;
@@ -1947,34 +1941,44 @@ export default function ConfiguratorPage() {
       const topBottomSurface = (w * d) * 2;
       const casingSurface = sidesSurface + topBottomSurface;
 
+      // Coefficient de fabrication (coût main d'œuvre/complexité)
       const casingCoefficient = Number(pricingParams.casing.full.coefficient) || 1.2;
 
-      // Déterminer les prix d'échantillons selon le mode
+      // Déterminer les prix du matériau (= prix échantillon) selon le mode
       let samplePriceStructure = 0;
       let samplePriceBack = 0;
+      let samplePriceDoors = 0;
+      let samplePriceDrawers = 0;
 
       if (config.useMultiColor && config.componentColors) {
         const structColorId = config.componentColors.structure.colorId;
         const backColorId = config.componentColors.back.colorId;
+        const doorsColorId = config.componentColors.doors?.colorId;
+        const drawersColorId = config.componentColors.drawers?.colorId;
         samplePriceStructure = structColorId ? (Number(samplePricesMap[structColorId]) || 0) : 0;
         samplePriceBack = backColorId ? (Number(samplePricesMap[backColorId]) || 0) : 0;
+        samplePriceDoors = doorsColorId ? (Number(samplePricesMap[doorsColorId]) || 0) : samplePriceStructure;
+        samplePriceDrawers = drawersColorId ? (Number(samplePricesMap[drawersColorId]) || 0) : samplePriceStructure;
       } else {
         samplePriceStructure = samplePriceUnie;
         samplePriceBack = samplePriceUnie;
+        samplePriceDoors = samplePriceUnie;
+        samplePriceDrawers = samplePriceUnie;
       }
 
-      // Calcul séparé pour structure (caisson) et fond (back)
-      const priceCasing = (baseMaterialPrice + samplePriceStructure) * casingSurface * casingCoefficient;
-      const priceBack = (baseMaterialPrice + samplePriceBack) * backSurface * casingCoefficient;
-      
+      // Calcul : Prix matériau (€/m²) × Surface × Coefficient fabrication
+      const priceCasing = samplePriceStructure * casingSurface * casingCoefficient;
+      const priceBack = samplePriceBack * backSurface * casingCoefficient;
+
       p = priceCasing + priceBack;
 
       console.log('💰 [STRUCTURE] Calcul détaillé:', {
         mode: config.useMultiColor ? 'multi' : 'single',
         surfaceCasing: `${casingSurface.toFixed(3)} m²`,
         surfaceBack: `${backSurface.toFixed(3)} m²`,
-        prixM2Structure: `${baseMaterialPrice} + ${samplePriceStructure}`,
-        prixM2Back: `${baseMaterialPrice} + ${samplePriceBack}`,
+        prixM2Structure: `${samplePriceStructure}€/m²`,
+        prixM2Back: `${samplePriceBack}€/m²`,
+        coefficient: casingCoefficient,
         total: `${p.toFixed(2)}€`
       });
     } else {
@@ -1983,29 +1987,10 @@ export default function ConfiguratorPage() {
       console.log('⚠️ Fallback prix structure (Volume):', p);
     }
 
-    // Prix des échantillons pour les composants
-    let samplePriceDoors = 0;
-    let samplePriceDrawers = 0;
-    let samplePriceShelves = 0;
-    let samplePriceBase = 0;
+    // Note: Le prix de l'échantillon s'applique au caisson ET aux surfaces visibles (portes, tiroirs)
+    // Les étagères/séparateurs et socle ont leurs propres prix fixes dans l'admin
 
-    if (config.useMultiColor && config.componentColors) {
-      samplePriceDoors = config.componentColors.doors.colorId ? (Number(samplePricesMap[config.componentColors.doors.colorId]) || 0) : 0;
-      samplePriceDrawers = config.componentColors.drawers.colorId ? (Number(samplePricesMap[config.componentColors.drawers.colorId]) || 0) : 0;
-      samplePriceShelves = config.componentColors.shelves.colorId ? (Number(samplePricesMap[config.componentColors.shelves.colorId]) || 0) : 0;
-      samplePriceBase = config.componentColors.base.colorId ? (Number(samplePricesMap[config.componentColors.base.colorId]) || 0) : 0;
-    } else {
-      samplePriceDoors = samplePriceUnie;
-      samplePriceDrawers = samplePriceUnie;
-      samplePriceShelves = samplePriceUnie;
-      samplePriceBase = samplePriceUnie;
-    }
-
-    // 2. Ajouter le supplément matériau
-    const materialSupplement = Number((materialConfig as any)?.supplement) || 0;
-    p += materialSupplement;
-
-    // 3. Ajouter le prix du socle
+    // 2. Ajouter le prix du socle
     if (pricingParams?.bases) {
       if (config.socle === 'none') {
         const nonePrice = Number(pricingParams.bases.none?.fixed_price) || 0;
@@ -2025,21 +2010,16 @@ export default function ConfiguratorPage() {
       } else if (config.socle === 'wood') {
         const woodParams = pricingParams.bases.wood;
         if (woodParams?.price_per_m3 && woodParams?.height) {
-          // Nouvelle formule : Volume × Prix/m³
+          // Formule : Volume × Prix/m³ (prix propre du socle, pas de prix échantillon)
           const h = Number(woodParams.height);
           const volumeM3 = (config.width * config.depth * h) / 1_000_000_000;
           const woodPrice = Number(woodParams.price_per_m3) * volumeM3;
-          
-          // Ajouter le prix de l'échantillon sur la surface visible du socle (périmètre × hauteur)
-          const surfaceSocleVisible = ((config.width * 2) + (config.depth * 2)) * h / 1_000_000;
-          const samplePriceSocle = samplePriceBase * surfaceSocleVisible;
 
-          p += woodPrice + samplePriceSocle;
+          p += woodPrice;
           console.log('👞 [SOCLE] Bois:', {
             volume: volumeM3.toFixed(4) + ' m³',
             prixM3: woodParams.price_per_m3 + '€/m³',
-            samplePrice: samplePriceSocle.toFixed(2) + '€',
-            total: (woodPrice + samplePriceSocle).toFixed(2) + '€'
+            total: woodPrice.toFixed(2) + '€'
           });
         } else if (woodParams?.coefficient) {
           // Ancienne formule (fallback) : Coef × L × P
@@ -2093,17 +2073,19 @@ export default function ConfiguratorPage() {
           const coefficient = Number(doorConfig.coefficient) || 0.00004;
           const hingeCount = Number(doorConfig.hinge_count) || 2;
           const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
-
-          // Calcul : Coef × Largeur × Hauteur + (Prix Charnière × Nombre) + (Prix Échantillon × Surface)
           const surfaceDoorM2 = (w * h) / 1_000_000;
+
+          // Calcul : (Coef × L × H) + (Prix Charnière × Nb) + (Prix Échantillon × Surface)
           const doorPrice = (coefficient * w * h) + (hingePrice * hingeCount) + (samplePriceDoors * surfaceDoorM2);
-          
-          console.log(`🚪 [PORTE] Calcul détaillée (${doorType} -> ${typeKey}):`, {
+
+          console.log(`🚪 [PORTE] Calcul (${doorType} -> ${typeKey}):`, {
             dimensions: `${w.toFixed(0)}x${h.toFixed(0)}mm`,
-            formule: `(${coefficient} × ${w.toFixed(0)} × ${h.toFixed(0)}) + (${hingePrice} × ${hingeCount}) + (${samplePriceDoors} × ${surfaceDoorM2.toFixed(3)})`,
+            surface: `${surfaceDoorM2.toFixed(4)}m²`,
+            prixEchantillon: `${samplePriceDoors}€/m²`,
+            formule: `(${coefficient} × ${w.toFixed(0)} × ${h.toFixed(0)}) + (${hingePrice} × ${hingeCount}) + (${samplePriceDoors} × ${surfaceDoorM2.toFixed(4)})`,
             total: `${doorPrice.toFixed(2)}€`
           });
-          
+
           return doorPrice;
         };
 
@@ -2129,7 +2111,7 @@ export default function ConfiguratorPage() {
 
       if (zone.type === 'leaf') {
         if (pricingParams?.drawers && (zone.content === 'drawer' || zone.content === 'push_drawer')) {
-          // Prix des tiroirs avec formule: base_price + coefficient × largeur × profondeur + (Prix Échantillon × Surface Façade)
+          // Prix des tiroirs : base_price + (coef × L × P) + (prix_échantillon × surface_façade)
           const drawerType = zone.content === 'push_drawer' ? 'push' : 'standard';
           const drawerConfig = pricingParams.drawers[drawerType];
           if (drawerConfig) {
@@ -2138,11 +2120,12 @@ export default function ConfiguratorPage() {
             const surfaceFacadeM2 = (zoneWidth * zoneHeight) / 1_000_000;
             const drawerPrice = basePrice + (coefficient * zoneWidth * config.depth) + (samplePriceDrawers * surfaceFacadeM2);
             extra += drawerPrice;
-            
+
             console.log(`📥 [TIROIR] Calcul détaillé (${drawerType}):`, {
               dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
-              facade: `${zoneWidth.toFixed(0)}x${zoneHeight.toFixed(0)}mm (${surfaceFacadeM2.toFixed(3)}m²)`,
-              formule: `${basePrice} + (${coefficient} × ${zoneWidth.toFixed(0)} × ${config.depth.toFixed(0)}) + (${samplePriceDrawers} × ${surfaceFacadeM2.toFixed(3)})`,
+              facade: `${zoneWidth.toFixed(0)}x${zoneHeight.toFixed(0)}mm = ${surfaceFacadeM2.toFixed(4)}m²`,
+              prixEchantillon: `${samplePriceDrawers}€/m²`,
+              formule: `${basePrice} + (${coefficient} × ${zoneWidth.toFixed(0)} × ${config.depth.toFixed(0)}) + (${samplePriceDrawers} × ${surfaceFacadeM2.toFixed(4)})`,
               total: `${drawerPrice.toFixed(2)}€`
             });
           } else {
@@ -2229,24 +2212,28 @@ export default function ConfiguratorPage() {
           if (zone.type === 'horizontal') {
             // Les enfants partagent la hauteur
             childHeight = zoneHeight * ratio;
-            
+
             // Ajouter le prix de la séparation horizontale (étagère bois)
+            // Prix fixe par étagère défini dans l'admin, ou calcul basé sur la surface
             if (index < zone.children!.length - 1) {
               const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
-              const shelfPrice = (baseMaterialPrice + samplePriceShelves) * surfaceShelfM2 * (Number(pricingParams?.casing?.full?.coefficient) || 1.2);
+              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+              const shelfPrice = pricePerM2 * surfaceShelfM2;
               extra += shelfPrice;
-              console.log(`📏 [ETAGERE BOIS] Calcul: (${baseMaterialPrice} + ${samplePriceShelves}) × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
+              console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
             }
           } else if (zone.type === 'vertical') {
             // Les enfants partagent la largeur
             childWidth = zoneWidth * ratio;
 
             // Ajouter le prix de la séparation verticale (montant bois)
+            // Prix fixe défini dans l'admin, ou calcul basé sur la surface
             if (index < zone.children!.length - 1) {
               const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
-              const verticalPrice = (baseMaterialPrice + samplePriceShelves) * surfaceVerticalM2 * (Number(pricingParams?.casing?.full?.coefficient) || 1.2);
+              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+              const verticalPrice = pricePerM2 * surfaceVerticalM2;
               extra += verticalPrice;
-              console.log(`📏 [MONTANT VERTICAL] Calcul: (${baseMaterialPrice} + ${samplePriceShelves}) × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
+              console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
             }
           }
 
@@ -2266,12 +2253,21 @@ export default function ConfiguratorPage() {
         const coefficient = Number(doorConfig.coefficient) || 0.00004;
         const hingeCount = Number(doorConfig.hinge_count) || 2;
         const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
-        const surfaceDoorM2 = (config.width * config.height) / 1_000_000;
-        const globalDoorPrice = (coefficient * config.width * config.height) + (hingePrice * hingeCount) + (samplePriceDoors * surfaceDoorM2);
+        const surfaceGlobalDoorM2 = (config.width * config.height) / 1_000_000;
+
+        // Déterminer le prix échantillon pour les portes globales
+        let globalDoorSamplePrice = samplePriceUnie;
+        if (config.useMultiColor && config.componentColors?.doors?.colorId) {
+          globalDoorSamplePrice = Number(samplePricesMap[config.componentColors.doors.colorId]) || samplePriceUnie;
+        }
+
+        const globalDoorPrice = (coefficient * config.width * config.height) + (hingePrice * hingeCount) + (globalDoorSamplePrice * surfaceGlobalDoorM2);
         p += globalDoorPrice;
         console.log(`🚪 Prix porte globale (${config.doorType}):`, {
           dimensions: `${config.width}x${config.height}mm`,
-          formule: `(${coefficient} × ${config.width} × ${config.height}) + (${hingePrice} × ${hingeCount}) + (${samplePriceDoors} × ${surfaceDoorM2.toFixed(3)})`,
+          surface: `${surfaceGlobalDoorM2.toFixed(4)}m²`,
+          prixEchantillon: `${globalDoorSamplePrice}€/m²`,
+          formule: `(${coefficient} × ${config.width} × ${config.height}) + (${hingePrice} × ${hingeCount}) + (${globalDoorSamplePrice} × ${surfaceGlobalDoorM2.toFixed(4)})`,
           total: `${globalDoorPrice.toFixed(2)}€`
         });
       } else {
