@@ -607,9 +607,6 @@ export default function ConfiguratorPage() {
   // Gérer la sélection intelligente (clic 1 -> clic 2)
   const handleZoneSelect = useCallback(
     (zoneId: string | null) => {
-      // Désélectionner le panneau quand on sélectionne une zone
-      setSelectedPanelId(null);
-      
       if (!zoneId) {
         setSelectedZoneIds([]);
         return;
