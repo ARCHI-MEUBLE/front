@@ -9,6 +9,8 @@ interface PriceDisplayProps {
   isAdmin?: boolean;
   isAdminCreateModel?: boolean;
   isAdminEditModel?: boolean;
+  displayMode?: number;
+  deviationRange?: number;
 }
 
 export default function PriceDisplay({
@@ -19,15 +21,26 @@ export default function PriceDisplay({
   isAdmin = false,
   isAdminCreateModel = false,
   isAdminEditModel = false,
+  displayMode = 0,
+  deviationRange = 0,
 }: PriceDisplayProps) {
-  const formattedPrice = useMemo(() => {
+  const formatPrice = (p: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(price);
-  }, [price]);
+    }).format(p);
+  };
+
+  const priceContent = useMemo(() => {
+    if (displayMode === 1 && deviationRange > 0) {
+      const minPrice = Math.max(0, price - deviationRange);
+      const maxPrice = price + deviationRange;
+      return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
+    }
+    return formatPrice(price);
+  }, [price, displayMode, deviationRange]);
 
   return (
     <div className="flex items-center justify-between gap-4">
@@ -37,7 +50,7 @@ export default function PriceDisplay({
           Prix estimé
         </span>
         <div className="font-serif text-3xl text-[#1A1917]">
-          {formattedPrice}
+          {priceContent}
         </div>
       </div>
 

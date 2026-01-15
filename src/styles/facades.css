@@ -1,0 +1,313 @@
+/**
+ * ArchiMeuble - Configurateur de Façades CSS
+ * Styles pour le module de configuration de façades
+ */
+
+/* ===== LAYOUT PRINCIPAL ===== */
+.facades-container {
+    display: flex;
+    height: calc(100vh - 73px);
+    overflow: hidden;
+}
+
+/* ===== VIEWER SECTION ===== */
+.facades-viewer-section {
+    flex: 1;
+    background-color: #FAFAF9;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.facades-viewer-wrapper {
+    flex: 1;
+    border-radius: 0.5rem;
+    border: 1px solid #E8E6E3;
+    background: white;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* ===== CONTROLS SECTION ===== */
+.facades-controls-section {
+    width: 400px;
+    flex-shrink: 0;
+    background: white;
+    border-left: 1px solid #E8E6E3;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== TABS ===== */
+.facades-tabs {
+    display: flex;
+    border-bottom: 1px solid #E8E6E3;
+}
+
+.facades-tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #706F6C;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.facades-tab:hover {
+    color: #1A1917;
+}
+
+.facades-tab.active {
+    color: #1A1917;
+    border-bottom-color: #1A1917;
+}
+
+/* ===== CONTENT AREA ===== */
+.facades-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* ===== MATERIAL GRID ===== */
+.material-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.material-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border: 2px solid #E8E6E3;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.material-card:hover {
+    border-color: #706F6C;
+}
+
+.material-card.selected {
+    border-color: #1A1917;
+    background-color: #FAFAF9;
+}
+
+.material-color-preview {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* ===== DRILLING LIST ===== */
+.drilling-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.drilling-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background-color: #FAFAF9;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.drilling-item:hover {
+    background-color: #F5F4F1;
+}
+
+/* ===== PRICE SUMMARY ===== */
+.facades-price-summary {
+    border-top: 1px solid #E8E6E3;
+    padding: 1.5rem;
+    background-color: #FAFAF9;
+}
+
+.price-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.price-label {
+    font-size: 0.875rem;
+    color: #706F6C;
+}
+
+.price-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1A1917;
+}
+
+.price-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid #E8E6E3;
+}
+
+.price-total-label {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1A1917;
+}
+
+.price-total-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1A1917;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .facades-container {
+        flex-direction: column;
+    }
+
+    .facades-viewer-section {
+        height: 50vh;
+        min-height: 300px;
+    }
+
+    .facades-controls-section {
+        width: 100%;
+        height: 50vh;
+        border-left: none;
+        border-top: 1px solid #E8E6E3;
+    }
+}
+
+@media (max-width: 768px) {
+    .facades-viewer-section {
+        padding: 1rem;
+    }
+
+    .facades-content {
+        padding: 1rem;
+    }
+
+    .material-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .facades-price-summary {
+        padding: 1rem;
+    }
+}
+
+/* ===== ADMIN DASHBOARD ===== */
+.admin-facades-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.admin-card {
+    border: 1px solid #E8E6E3;
+    border-radius: 0.5rem;
+    background: white;
+    padding: 1.5rem;
+    transition: box-shadow 0.2s;
+}
+
+.admin-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== LOADING STATES ===== */
+.facades-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.facades-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 4px solid #E8E6E3;
+    border-top-color: #1A1917;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== TOOLTIPS ===== */
+.facades-tooltip {
+    position: relative;
+}
+
+.facades-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 0.75rem;
+    background-color: #1A1917;
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    margin-bottom: 0.5rem;
+}
+
+.facades-tooltip:hover::after {
+    opacity: 1;
+}
+
+/* ===== ANIMATIONS ===== */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

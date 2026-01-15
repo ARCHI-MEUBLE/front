@@ -71,6 +71,33 @@ interface CatalogueCartData {
   items: CatalogueCartItem[];
 }
 
+interface FacadeCartItem {
+  id: number;
+  config: {
+    width: number;
+    height: number;
+    depth: number;
+    material: {
+      id: number;
+      name: string;
+      color_hex: string;
+    };
+    hinges: {
+      type: string;
+      count: number;
+      direction: string;
+    };
+  };
+  quantity: number;
+  unit_price: number;
+}
+
+interface FacadeCartData {
+  items: FacadeCartItem[];
+  total: number;
+  count: number;
+}
+
 export default function Cart() {
   const router = useRouter();
   const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
@@ -78,6 +105,7 @@ export default function Cart() {
   const [cart, setCart] = useState<CartData | null>(null);
   const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
   const [catalogueCart, setCatalogueCart] = useState<CatalogueCartData | null>(null);
+  const [facadeCart, setFacadeCart] = useState<FacadeCartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
@@ -125,6 +153,16 @@ export default function Cart() {
       if (catalogueResponse.ok) {
         const catalogueData = await catalogueResponse.json();
         setCatalogueCart(catalogueData);
+      }
+
+      // Charger les façades
+      const facadeResponse = await fetch('/backend/api/cart/facades.php', {
+        credentials: 'include',
+      });
+
+      if (facadeResponse.ok) {
+        const facadeData = await facadeResponse.json();
+        setFacadeCart(facadeData);
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
@@ -258,12 +296,13 @@ export default function Cart() {
     );
   }
 
-  const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0);
-  const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0) + (catalogueCart?.items?.reduce((acc, i) => acc + i.quantity, 0) || 0);
+  const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0) && (!facadeCart || facadeCart.items.length === 0);
+  const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0) + (catalogueCart?.items?.reduce((acc, i) => acc + i.quantity, 0) || 0) + (facadeCart?.count || 0);
 
   const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
   const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal;
+  const facadeTotal = facadeCart?.total || 0;
+  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal + facadeTotal;
   const hasPaidSamples = samplesCart?.items.some(item => item.unit_price > 0);
 
   return (
@@ -495,6 +534,82 @@ export default function Cart() {
                   </div>
                 )}
 
+                {/* Facades Section */}
+                {facadeCart && facadeCart.items.length > 0 && (
+                  <div className="mb-10">
+                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
+                      <Package className="h-5 w-5 text-[#8B7355]" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                        Façades sur mesure
+                      </h2>
+                      <span className="ml-auto text-sm text-[#706F6C]">
+                        {facadeCart.count} façade{facadeCart.count > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                      {facadeCart.items.map((facade) => (
+                        <div
+                          key={facade.id}
+                          className="group relative flex items-center gap-6 border border-[#E8E6E3] bg-white p-5 transition-colors hover:border-[#1A1917]/20"
+                        >
+                          {/* Color preview */}
+                          <div
+                            className="h-20 w-20 flex-shrink-0 border border-[#E8E6E3]"
+                            style={{ backgroundColor: facade.config.material?.color_hex || '#EEE' }}
+                          />
+
+                          {/* Info */}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-medium text-[#1A1917]">
+                              Façade {facade.config.material?.name || 'Sur mesure'}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#706F6C]">
+                              {facade.config.width / 10} × {facade.config.height / 10} cm · {facade.config.depth} mm
+                            </p>
+                            {facade.config.hinges?.type !== 'no-hole-no-hinge' && (
+                              <p className="mt-1 text-xs text-[#706F6C]">
+                                {facade.config.hinges?.count} charnières · Ouverture {facade.config.hinges?.direction === 'left' ? 'gauche' : 'droite'}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Quantity & Price */}
+                          <div className="text-right">
+                            <p className="font-mono text-lg text-[#1A1917]">
+                              {(facade.unit_price * facade.quantity).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                            </p>
+                            <p className="mt-1 text-xs text-[#706F6C]">
+                              {facade.quantity > 1 ? `${facade.quantity} × ${facade.unit_price.toFixed(2)} €` : `${facade.unit_price.toFixed(2)} € / unité`}
+                            </p>
+                          </div>
+
+                          {/* Remove button */}
+                          <button
+                            onClick={async () => {
+                              if (confirm('Retirer cette façade ?')) {
+                                try {
+                                  await fetch(`/backend/api/cart/facades.php?id=${facade.id}`, {
+                                    method: 'DELETE',
+                                    credentials: 'include',
+                                  });
+                                  await loadCart();
+                                  toast.success('Façade retirée');
+                                } catch (err) {
+                                  toast.error('Erreur lors de la suppression');
+                                }
+                              }
+                            }}
+                            className="text-[#706F6C] hover:text-[#1A1917]"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Configurations Section */}
                 {cart && cart.items.length > 0 && (
                   <div>
@@ -717,6 +832,14 @@ export default function Cart() {
                           <span className="text-[#706F6C]">Échantillons</span>
                           <span className={`font-medium ${samplesTotal > 0 ? 'font-mono text-[#1A1917]' : 'text-[#8B7355]'}`}>
                             {samplesTotal > 0 ? `${samplesTotal.toLocaleString('fr-FR')} €` : 'Offerts'}
+                          </span>
+                        </div>
+                      )}
+                      {facadeCart && facadeCart.count > 0 && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-[#706F6C]">Façades ({facadeCart.count})</span>
+                          <span className="font-mono text-[#1A1917]">
+                            {facadeTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                           </span>
                         </div>
                       )}

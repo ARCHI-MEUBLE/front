@@ -37,6 +37,7 @@ export interface ThreeViewerProps {
   useMultiColor?: boolean;
   doorType?: 'none' | 'single' | 'double';
   doorSide?: 'left' | 'right';
+  mountingStyle?: 'applique' | 'encastre';
   onCaptureReady?: (captureFunction: () => string | null) => void;
 }
 

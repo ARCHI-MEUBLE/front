@@ -141,7 +141,7 @@ export default function Catalogue() {
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl lg:text-6xl font-serif text-white mb-6"
           >
-            Pièces & <span className="text-primary italic">Accessoires</span>
+            <span className="italic">Boutique</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}

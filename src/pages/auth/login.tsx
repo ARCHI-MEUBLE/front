@@ -70,14 +70,15 @@ export default function Login() {
       <div className="relative flex min-h-screen flex-col items-center justify-center font-sans lg:max-w-none lg:grid lg:grid-cols-2 lg:px-0">
         {/* Header mobile (visible uniquement sur mobile) */}
         <div className="flex w-full items-center justify-between p-6 lg:hidden">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-black p-1">
-              <span className="text-xl font-bold text-white">A</span>
-            </div>
-            <span className="font-serif text-xl font-medium text-[#1A1917]">ArchiMeuble</span>
+          <Link href="/">
+            <img
+              src="/images/logo site .png"
+              alt="ArchiMeuble"
+              className="h-10 w-auto"
+            />
           </Link>
-          <Link 
-            href="/auth/register" 
+          <Link
+            href="/auth/register"
             className="text-sm font-medium text-[#8B7355] hover:underline"
           >
             S'inscrire
@@ -95,11 +96,12 @@ export default function Login() {
           />
           <div className="absolute inset-0 bg-black/40" />
           <div className="relative z-20 flex items-center text-lg font-medium">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-white p-1">
-                <span className="text-xl font-bold text-black">A</span>
-              </div>
-              ArchiMeuble
+            <Link href="/">
+              <img
+                src="/images/logo site .png"
+                alt="ArchiMeuble"
+                className="h-10 w-auto brightness-0 invert"
+              />
             </Link>
           </div>
           <div className="relative z-20 mt-auto">
