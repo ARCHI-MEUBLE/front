@@ -48,7 +48,7 @@ function getSafeColor(hexColor: string | null | undefined): string {
   return DEFAULT_MATERIAL_COLOR;
 }
 
-// Composant pour un matériau avec support de texture
+// Composant pour un matériau avec support de texture - Version améliorée PBR
 function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?: string | null }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const textureRef = useRef<THREE.Texture | null>(null);
@@ -96,7 +96,9 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
         }
 
         loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
-        loadedTexture.repeat.set(4, 4); // Augmenter la répétition pour mieux voir la texture
+        loadedTexture.repeat.set(2, 2);
+        loadedTexture.anisotropy = 16;
+        loadedTexture.colorSpace = THREE.SRGBColorSpace;
         loadedTexture.needsUpdate = true;
         textureRef.current = loadedTexture;
         setTexture(loadedTexture);
@@ -129,72 +131,208 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
   // quand la couleur ou la texture change
   const materialKey = texture ? `tex-${currentImageUrlRef.current}-${safeColor}` : `col-${safeColor}`;
 
-  // Si on a une texture chargée, l'utiliser
+  // Si on a une texture chargée, l'utiliser avec des propriétés PBR améliorées
   if (texture) {
     return (
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         key={materialKey}
         attach="material"
         map={texture}
         color={safeColor || "#ffffff"}
-        roughness={0.7}
-        metalness={0.1}
+        roughness={0.55}
+        metalness={0.05}
+        clearcoat={0.1}
+        clearcoatRoughness={0.4}
+        envMapIntensity={0.5}
       />
     );
   }
 
-  // Sinon utiliser la couleur hex (pendant le chargement ou en fallback)
+  // Sinon utiliser la couleur hex avec un effet bois laqué/verni
   return (
-    <meshStandardMaterial
+    <meshPhysicalMaterial
       key={materialKey}
       attach="material"
       color={safeColor}
       roughness={0.4}
-      metalness={0.1}
+      metalness={0.02}
+      clearcoat={0.15}
+      clearcoatRoughness={0.3}
+      envMapIntensity={0.4}
     />
   );
 }
 
-// Composant pour rendre différents types de poignées
+// Composant pour rendre différents types de poignées - Version améliorée avec détails
 function Handle({ type = 'vertical_bar', position, side, height, width }: { type?: string; position: [number, number, number]; side: string; height: number; width?: number }) {
-  const handleMaterial = <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />;
+  // Matériau métallique haut de gamme avec reflets
+  const handleMaterial = (
+    <meshPhysicalMaterial
+      color="#1a1a1a"
+      metalness={0.95}
+      roughness={0.08}
+      clearcoat={0.8}
+      clearcoatRoughness={0.1}
+      envMapIntensity={1.2}
+    />
+  );
+
+  // Matériau pour les fixations/supports
+  const mountMaterial = (
+    <meshPhysicalMaterial
+      color="#222222"
+      metalness={0.9}
+      roughness={0.15}
+      clearcoat={0.5}
+      clearcoatRoughness={0.2}
+    />
+  );
 
   if (type === 'horizontal_bar') {
-    // Barre horizontale (utilise width si disponible, sinon height)
+    // Barre horizontale avec supports aux extrémités
     const barLength = width ? Math.min(width * 0.4, 0.5) : Math.min(height * 0.4, 0.3);
     return (
-      <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.008, 0.008, barLength, 12]} />
-        {handleMaterial}
-      </mesh>
+      <group position={position}>
+        {/* Barre principale */}
+        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.007, 0.007, barLength, 16]} />
+          {handleMaterial}
+        </mesh>
+        {/* Supports aux extrémités */}
+        <mesh position={[-barLength / 2, 0, -0.008]} castShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
+          {mountMaterial}
+        </mesh>
+        <mesh position={[barLength / 2, 0, -0.008]} castShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
+          {mountMaterial}
+        </mesh>
+      </group>
     );
   } else if (type === 'knob') {
-    // Bouton rond
-    return (
-      <mesh position={position}>
-        <sphereGeometry args={[0.02, 16, 16]} />
-        {handleMaterial}
-      </mesh>
-    );
-  } else if (type === 'recessed') {
-    // Poignée encastrée (encoche)
+    // Bouton rond avec base
     return (
       <group position={position}>
-        <mesh>
-          <boxGeometry args={[0.08, 0.025, 0.015]} />
-          <meshStandardMaterial color="#2a2a2a" metalness={0.5} roughness={0.6} />
+        {/* Base du bouton */}
+        <mesh position={[0, 0, -0.005]} castShadow>
+          <cylinderGeometry args={[0.015, 0.018, 0.01, 16]} />
+          {mountMaterial}
+        </mesh>
+        {/* Bouton principal */}
+        <mesh position={[0, 0, 0.005]} castShadow>
+          <sphereGeometry args={[0.018, 24, 24]} />
+          {handleMaterial}
+        </mesh>
+      </group>
+    );
+  } else if (type === 'recessed') {
+    // Poignée encastrée (encoche) avec profondeur
+    return (
+      <group position={position}>
+        {/* Cadre de l'encoche */}
+        <mesh castShadow>
+          <boxGeometry args={[0.09, 0.028, 0.012]} />
+          <meshPhysicalMaterial
+            color="#1f1f1f"
+            metalness={0.7}
+            roughness={0.25}
+            clearcoat={0.4}
+          />
+        </mesh>
+        {/* Intérieur de l'encoche (plus sombre) */}
+        <mesh position={[0, 0, -0.003]}>
+          <boxGeometry args={[0.075, 0.018, 0.01]} />
+          <meshStandardMaterial color="#0a0a0a" roughness={0.8} />
         </mesh>
       </group>
     );
   } else {
-    // Barre verticale (défaut)
+    // Barre verticale (défaut) avec supports
+    const barHeight = Math.min(height * 0.25, 0.4);
     return (
-      <mesh position={position}>
-        <cylinderGeometry args={[0.008, 0.008, Math.min(height * 0.25, 0.4), 12]} />
-        {handleMaterial}
-      </mesh>
+      <group position={position}>
+        {/* Barre principale */}
+        <mesh castShadow>
+          <cylinderGeometry args={[0.007, 0.007, barHeight, 16]} />
+          {handleMaterial}
+        </mesh>
+        {/* Supports haut et bas */}
+        <mesh position={[0, barHeight / 2 - 0.01, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
+          {mountMaterial}
+        </mesh>
+        <mesh position={[0, -barHeight / 2 + 0.01, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
+          {mountMaterial}
+        </mesh>
+      </group>
     );
   }
+}
+
+// Fonction pour calculer les positions des charnières selon la hauteur
+function getHingeYPositions(height: number): number[] {
+  const margin = 0.06; // Marge depuis le bord haut/bas
+  const usableHeight = height - 2 * margin;
+
+  // Logique: 2 charnières jusqu'à 1.5m, puis +1 charnière par 0.5m supplémentaire
+  let numHinges = 2;
+  if (height >= 1.5) {
+    numHinges = 3;
+  }
+  if (height >= 2.0) {
+    numHinges = 4;
+  }
+  if (height >= 2.5) {
+    numHinges = 5;
+  }
+
+  const positions: number[] = [];
+  if (numHinges === 2) {
+    // 2 charnières: haut et bas
+    positions.push(height / 2 - margin);
+    positions.push(-height / 2 + margin);
+  } else {
+    // Plus de 2 charnières: répartition uniforme
+    for (let i = 0; i < numHinges; i++) {
+      const y = (height / 2 - margin) - (i * usableHeight / (numHinges - 1));
+      positions.push(y);
+    }
+  }
+
+  return positions;
+}
+
+// Composant pour les charnières de porte
+function DoorHinge({ position, side }: { position: [number, number, number]; side: 'left' | 'right' }) {
+  const hingeMaterial = (
+    <meshPhysicalMaterial
+      color="#2a2a2a"
+      metalness={0.85}
+      roughness={0.2}
+      clearcoat={0.3}
+    />
+  );
+
+  return (
+    <group position={position}>
+      {/* Partie fixe de la charnière (sur le cadre) */}
+      <mesh position={[side === 'left' ? -0.008 : 0.008, 0, -0.012]} castShadow>
+        <boxGeometry args={[0.012, 0.05, 0.008]} />
+        {hingeMaterial}
+      </mesh>
+      {/* Cylindre central (pivot) */}
+      <mesh position={[side === 'left' ? -0.002 : 0.002, 0, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.004, 0.004, 0.055, 12]} />
+        {hingeMaterial}
+      </mesh>
+      {/* Partie mobile de la charnière (sur la porte) */}
+      <mesh position={[side === 'left' ? 0.004 : -0.004, 0, -0.004]} castShadow>
+        <boxGeometry args={[0.01, 0.045, 0.006]} />
+        {hingeMaterial}
+      </mesh>
+    </group>
+  );
 }
 
 // --- Composants Animés (Utilisant requestAnimationFrame manuel pour plus de robustesse) ---
@@ -250,6 +388,14 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
         side={side}
         height={height}
       />
+      {/* Charnières - nombre dynamique selon hauteur */}
+      {getHingeYPositions(height).map((yPos, index) => (
+        <DoorHinge
+          key={`hinge-${index}`}
+          position={[side === 'left' ? 0.005 : -0.005, yPos, 0]}
+          side={side}
+        />
+      ))}
     </group>
   );
 }
@@ -308,6 +454,14 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
         side={side}
         height={height}
       />
+      {/* Charnières - nombre dynamique selon hauteur */}
+      {getHingeYPositions(height).map((yPos, index) => (
+        <DoorHinge
+          key={`hinge-${index}`}
+          position={[side === 'left' ? 0.005 : -0.005, yPos, 0]}
+          side={side}
+        />
+      ))}
     </group>
   );
 }
@@ -359,6 +513,14 @@ function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, i
         <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
         <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
       </mesh>
+      {/* Charnières - nombre dynamique selon hauteur */}
+      {getHingeYPositions(height).map((yPos, index) => (
+        <DoorHinge
+          key={`hinge-${index}`}
+          position={[side === 'left' ? 0.005 : -0.005, yPos, 0]}
+          side={side}
+        />
+      ))}
     </group>
   );
 }
@@ -932,20 +1094,40 @@ function Furniture({
             // Position Y de chaque étagère (en % depuis le bas)
             const positionPercent = positions[i] / 100;
             const shelfY = y - height / 2 + height * positionPercent;
+            const glassThickness = thickness * 0.5;
 
             items.push(
-              <mesh key={`${zone.id}-shelf-${i}`} position={[x, shelfY, z]} castShadow receiveShadow>
-                <boxGeometry args={[width - 0.004, thickness, d - 0.004]} />
-                <meshPhysicalMaterial
-                  color="#ffffff"
-                  transparent
-                  opacity={0.3}
-                  roughness={0.1}
-                  metalness={0.1}
-                  transmission={0.9}
-                  thickness={0.5}
-                />
-              </mesh>
+              <group key={`${zone.id}-shelf-${i}`} position={[x, shelfY, z]}>
+                {/* Verre principal */}
+                <mesh castShadow receiveShadow>
+                  <boxGeometry args={[width - 0.004, glassThickness, d - 0.004]} />
+                  <meshPhysicalMaterial
+                    color="#E8F4F8"
+                    transparent
+                    opacity={0.35}
+                    roughness={0.02}
+                    metalness={0}
+                    transmission={0.92}
+                    thickness={1.5}
+                    ior={1.52}
+                    clearcoat={1}
+                    clearcoatRoughness={0.02}
+                    envMapIntensity={1}
+                    attenuationColor="#C5E8F0"
+                    attenuationDistance={0.5}
+                  />
+                </mesh>
+                {/* Bords verts caractéristiques du verre (avant) */}
+                <mesh position={[0, 0, d / 2 - 0.003]}>
+                  <boxGeometry args={[width - 0.004, glassThickness, 0.003]} />
+                  <meshPhysicalMaterial color="#A8D5BA" transparent opacity={0.6} roughness={0.1} transmission={0.7} />
+                </mesh>
+                {/* Bords verts caractéristiques du verre (arrière) */}
+                <mesh position={[0, 0, -d / 2 + 0.003]}>
+                  <boxGeometry args={[width - 0.004, glassThickness, 0.003]} />
+                  <meshPhysicalMaterial color="#A8D5BA" transparent opacity={0.6} roughness={0.1} transmission={0.7} />
+                </mesh>
+              </group>
             );
           }
         } else if (zone.content === 'mirror_door') {
