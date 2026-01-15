@@ -274,39 +274,39 @@ export default function ZoneControls({
 
                 {/* Dialogue de choix de côté pour porte Push ou Vitrée */}
                 {doorSideDialog.isOpen && (
-                  <div className="mt-4 border-2 border-[#3B82F6] bg-[#EFF6FF] p-4" style={{ borderRadius: '4px' }}>
-                    <p className="mb-3 text-base font-semibold text-[#1A1917]">
-                      Choisir le côté d'ouverture
+                  <div className="mt-4 border border-[#E8E6E3] bg-[#FAFAF9] p-4" style={{ borderRadius: '2px' }}>
+                    <p className="mb-2 text-sm font-medium text-[#1A1917]">
+                      Côté d'ouverture
                     </p>
-                    <p className="mb-4 text-sm text-[#706F6C]">
-                      {doorSideDialog.doorType === 'push' 
-                        ? 'De quel côté voulez-vous que la porte Push s\'ouvre ?' 
-                        : 'De quel côté voulez-vous que la porte vitrée s\'ouvre ?'}
+                    <p className="mb-4 text-xs text-[#706F6C]">
+                      {doorSideDialog.doorType === 'push'
+                        ? 'Choisissez le côté d\'ouverture de la porte Push'
+                        : 'Choisissez le côté d\'ouverture de la porte vitrée'}
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => handleDoorSideChoice('left')}
-                        className="flex flex-col items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white p-4 text-[#1A1917] transition-all hover:border-[#3B82F6] hover:bg-[#3B82F6]/5"
-                        style={{ borderRadius: '4px' }}
+                        className="flex flex-col items-center justify-center gap-1.5 border border-[#E8E6E3] bg-white py-3 px-2 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
+                        style={{ borderRadius: '2px' }}
                       >
-                        <ChevronLeft className="h-8 w-8" />
-                        <span className="text-sm font-semibold">Ouverture gauche</span>
+                        <ChevronLeft className="h-5 w-5" />
+                        <span className="text-xs font-medium">Gauche</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDoorSideChoice('right')}
-                        className="flex flex-col items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white p-4 text-[#1A1917] transition-all hover:border-[#3B82F6] hover:bg-[#3B82F6]/5"
-                        style={{ borderRadius: '4px' }}
+                        className="flex flex-col items-center justify-center gap-1.5 border border-[#E8E6E3] bg-white py-3 px-2 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
+                        style={{ borderRadius: '2px' }}
                       >
-                        <ChevronRight className="h-8 w-8" />
-                        <span className="text-sm font-semibold">Ouverture droite</span>
+                        <ChevronRight className="h-5 w-5" />
+                        <span className="text-xs font-medium">Droite</span>
                       </button>
                     </div>
                     <button
                       type="button"
                       onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
-                      className="mt-3 w-full text-center text-sm text-[#706F6C] hover:text-[#1A1917]"
+                      className="mt-3 w-full text-center text-xs text-[#706F6C] hover:text-[#1A1917]"
                     >
                       Annuler
                     </button>
