@@ -27,23 +27,16 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
   const loadCategories = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/backend/api/categories.php', {
+      const response = await fetch('/api/admin/categories', {
         credentials: 'include'
       });
-      
-      console.log('--- DIAGNOSTIC CATEGORIES ---');
-      console.log('Status:', response.status);
-      
-      const text = await response.text();
-      console.log('Raw response:', text);
 
       if (response.status === 401 || response.status === 403) {
         toast.error("Accès non autorisé aux catégories");
         return;
       }
 
-      const data = JSON.parse(text);
-      console.log('Parsed data:', data);
+      const data = await response.json();
       setCategories(data.categories || []);
     } catch (error) {
       console.error("Erreur lors du chargement des catégories:", error);
@@ -104,7 +97,7 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
         const formData = new FormData();
         formData.append('image', newCategoryImage);
 
-        const uploadRes = await fetch('/backend/api/admin/upload-image.php', {
+        const uploadRes = await fetch('/api/admin/upload-image', {
           method: 'POST',
           body: formData,
           credentials: 'include'
@@ -124,8 +117,8 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
       }
 
       if (editingCategory) {
-        // Mode édition - l'ID doit être dans le body, pas dans l'URL
-        const response = await fetch('/backend/api/categories.php', {
+        // Mode édition
+        const response = await fetch('/api/admin/categories', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -145,7 +138,7 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
         toast.success("Catégorie mise à jour avec succès");
       } else {
         // Mode création
-        const response = await fetch('/backend/api/categories.php', {
+        const response = await fetch('/api/admin/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -185,7 +178,7 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
     }
 
     try {
-      const response = await fetch(`/backend/api/categories.php?id=${category.id}`, {
+      const response = await fetch(`/api/admin/categories?id=${category.id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
