@@ -11,7 +11,7 @@ const footerLinks = {
     ],
     services: [
         { label: "Échantillons", href: "/samples" },
-        { label: "Réalisations", href: "/showrooms" },
+        { label: "Réalisations", href: "/realisations" },
         { label: "Avis clients", href: "/avis" },
         { label: "Contact", href: "/contact-request" },
     ],

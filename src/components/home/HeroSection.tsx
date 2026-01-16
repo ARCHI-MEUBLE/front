@@ -68,7 +68,7 @@ export function HeroSection() {
               className="mt-6 flex flex-col gap-3 opacity-0 sm:flex-row"
             >
               <Link
-                href="/showrooms"
+                href="/realisations"
                 className="inline-flex h-12 items-center justify-center bg-[#1A1917] px-6 text-sm font-medium text-white"
               >
                 Voir les réalisations
@@ -162,7 +162,7 @@ export function HeroSection() {
               className="mt-12 flex flex-wrap items-center gap-4 opacity-0"
             >
               <Link
-                href="/showrooms"
+                href="/realisations"
                 className="group relative inline-flex h-14 items-center justify-center overflow-hidden bg-[#1A1917] px-8 text-sm font-medium tracking-wide text-white transition-all duration-300 hover:bg-[#2D2B28]"
               >
                 <span className="relative z-10">Voir les réalisations</span>

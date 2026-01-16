@@ -23,6 +23,7 @@ export interface FurnitureModel {
   prompt: string;
   price: number | null;
   image_url: string | null;
+  hover_image_url: string | null;
   created_at: string;
 }
 

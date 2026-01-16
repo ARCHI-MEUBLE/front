@@ -89,7 +89,7 @@ export function ColorsAndFinishesSection({ colors }: Props) {
                 Commander un échantillon
               </Link>
               <Link
-                href="/showrooms"
+                href="/models"
                 className="inline-flex h-12 items-center justify-center border border-[#1A1917] px-6 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#1A1917] hover:text-white sm:px-8"
               >
                 Voir les modèles

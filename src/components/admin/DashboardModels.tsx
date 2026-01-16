@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategoriesModal } from './CategoriesModal';
 import { DashboardCatalogue } from './DashboardCatalogue';
+import { Category } from '@/lib/apiClient';
 
 export interface AdminModel {
   id: number;
@@ -32,6 +33,7 @@ export interface AdminModel {
   description: string;
   prompt: string;
   image_url: string | null;
+  hover_image_url: string | null;
   created_at: string;
 }
 
@@ -40,6 +42,7 @@ type FormState = {
   description: string;
   prompt: string;
   imagePath: string;
+  hoverImagePath: string;
   category: string;
   price: string;
 };
@@ -49,6 +52,7 @@ const EMPTY_FORM: FormState = {
   description: '',
   prompt: '',
   imagePath: '',
+  hoverImagePath: '',
   category: '',
   price: '',
 };
@@ -184,6 +188,8 @@ export function DashboardModels() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [hoverFile, setHoverFile] = useState<File | null>(null);
+  const [hoverPreview, setHoverPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -246,8 +252,11 @@ export function DashboardModels() {
       if (preview?.startsWith('blob:')) {
         URL.revokeObjectURL(preview);
       }
+      if (hoverPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(hoverPreview);
+      }
     };
-  }, [preview]);
+  }, [preview, hoverPreview]);
 
   const sortedModels = useMemo(() => models, [models]);
 
@@ -283,14 +292,35 @@ export function DashboardModels() {
     }
   };
 
+  const handleHoverFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null;
+    setHoverFile(selectedFile);
+
+    if (hoverPreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(hoverPreview);
+    }
+
+    if (selectedFile) {
+      const objectUrl = URL.createObjectURL(selectedFile);
+      setHoverPreview(objectUrl);
+    } else {
+      setHoverPreview(null);
+    }
+  };
+
   const resetForm = () => {
     setFormState(EMPTY_FORM);
     setEditingId(null);
     setFile(null);
+    setHoverFile(null);
     if (preview?.startsWith('blob:')) {
       URL.revokeObjectURL(preview);
     }
+    if (hoverPreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(hoverPreview);
+    }
     setPreview(null);
+    setHoverPreview(null);
     setIsDialogOpen(false);
   };
 
@@ -323,7 +353,9 @@ export function DashboardModels() {
 
     try {
       let imagePath = formState.imagePath;
+      let hoverImagePath = formState.hoverImagePath;
 
+      // Upload main image
       if (file) {
         const base64 = await fileToBase64(file);
         const uploadResponse = await fetch('/api/admin/upload', {
@@ -343,11 +375,38 @@ export function DashboardModels() {
         }
 
         if (!uploadResponse.ok) {
-          throw new Error("L'upload de l'image a échoué");
+          throw new Error("L'upload de l'image principale a échoué");
         }
 
         const uploadData = (await uploadResponse.json()) as { imagePath: string };
         imagePath = uploadData.imagePath;
+      }
+
+      // Upload hover image
+      if (hoverFile) {
+        const base64 = await fileToBase64(hoverFile);
+        const uploadResponse = await fetch('/api/admin/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            fileName: hoverFile.name,
+            fileType: hoverFile.type,
+            data: base64,
+          }),
+        });
+
+        if (uploadResponse.status === 401) {
+          window.location.href = '/admin/login';
+          return;
+        }
+
+        if (!uploadResponse.ok) {
+          throw new Error("L'upload de l'image hover a échoué");
+        }
+
+        const uploadData = (await uploadResponse.json()) as { imagePath: string };
+        hoverImagePath = uploadData.imagePath;
       }
 
       const payload: any = {
@@ -357,6 +416,7 @@ export function DashboardModels() {
         category: formState.category,
         price: parseFloat(formState.price) || null,
         imagePath,
+        hoverImagePath,
       };
 
       if (editingId) {
@@ -406,21 +466,27 @@ export function DashboardModels() {
     }
   };
 
-  const handleEdit = (model: AdminModel & { category?: string; price?: number }) => {
+  const handleEdit = (model: AdminModel & { category?: string; price?: number; hover_image_url?: string }) => {
     setEditingId(model.id);
     setFormState({
       name: model.name,
       description: model.description,
       prompt: model.prompt,
       imagePath: model.image_url ?? '',
+      hoverImagePath: model.hover_image_url ?? '',
       category: model.category ?? '',
       price: model.price?.toString() ?? '',
     });
     setFile(null);
+    setHoverFile(null);
     if (preview) {
       URL.revokeObjectURL(preview);
     }
+    if (hoverPreview) {
+      URL.revokeObjectURL(hoverPreview);
+    }
     setPreview(model.image_url ?? null);
+    setHoverPreview(model.hover_image_url ?? null);
     setIsDialogOpen(true);
   };
 
@@ -724,24 +790,49 @@ export function DashboardModels() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="image">Image du modèle</Label>
-              <Input
-                id="image"
-                name="image"
-                type="file"
-                accept="image/png, image/jpeg"
-                onChange={handleFileChange}
-              />
-              {(preview || formState.imagePath) && (
-                <div className="mt-2 rounded-md border bg-muted p-2">
-                  <img
-                    src={preview ?? formState.imagePath}
-                    alt={formState.name || 'Prévisualisation'}
-                    className="mx-auto max-h-48 object-contain"
-                  />
-                </div>
-              )}
+            {/* Images côte à côte */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="image">Image principale</Label>
+                <Input
+                  id="image"
+                  name="image"
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  onChange={handleFileChange}
+                />
+                {(preview || formState.imagePath) && (
+                  <div className="mt-2 rounded-md border bg-muted p-2">
+                    <img
+                      src={preview ?? formState.imagePath}
+                      alt={formState.name || 'Prévisualisation'}
+                      className="mx-auto max-h-32 object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hoverImage">Image au survol</Label>
+                <Input
+                  id="hoverImage"
+                  name="hoverImage"
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  onChange={handleHoverFileChange}
+                />
+                {(hoverPreview || formState.hoverImagePath) && (
+                  <div className="mt-2 rounded-md border bg-muted p-2">
+                    <img
+                      src={hoverPreview ?? formState.hoverImagePath}
+                      alt={`${formState.name || 'Hover'} - survol`}
+                      className="mx-auto max-h-32 object-contain"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Affichée au survol sur la page modèles
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button

@@ -50,7 +50,7 @@ export function CategoriesSection() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
-              Nos créations
+              Nos modèles
             </span>
             <h2 className="mt-4 font-sans text-3xl font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
               Chaque pièce,
@@ -59,7 +59,7 @@ export function CategoriesSection() {
             </h2>
           </div>
           <Link
-            href="/showrooms"
+            href="/models"
             className="hidden text-sm font-bold uppercase tracking-wider text-[#1A1917] underline underline-offset-4 hover:no-underline sm:block"
           >
             Tout voir
@@ -73,7 +73,7 @@ export function CategoriesSection() {
             return (
               <Link
                 key={category.id}
-                href={`/showrooms?category=${category.slug}`}
+                href={`/models?category=${category.slug}`}
                 className="group relative aspect-[4/3] overflow-hidden bg-[#E8E6E3]"
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
@@ -117,7 +117,7 @@ export function CategoriesSection() {
         {/* Mobile link */}
         <div className="mt-8 text-center sm:hidden">
           <Link
-            href="/showrooms"
+            href="/models"
             className="inline-flex h-12 items-center justify-center border border-[#1A1917] px-8 text-sm font-medium text-[#1A1917]"
           >
             Voir toutes les créations

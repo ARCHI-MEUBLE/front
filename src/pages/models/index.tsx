@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCallback, useEffect, useState } from "react";
@@ -9,22 +10,31 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Ruler, Palette, Truck } from "lucide-react";
 
 export default function ModelsPage() {
+  const router = useRouter();
   const [models, setModels] = useState<ProductModel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
 
+  // Read category from URL query parameter
+  useEffect(() => {
+    if (router.isReady && router.query.category) {
+      setActiveCategory(router.query.category as string);
+    }
+  }, [router.isReady, router.query.category]);
+
   const loadModels = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const data = await apiClient.models.getAll();
-      const productModels: ProductModel[] = data.map((model: FurnitureModel & { category?: string }) => ({
+      const productModels: ProductModel[] = data.map((model: FurnitureModel & { category?: string; hover_image_url?: string }) => ({
         id: model.id,
         name: model.name,
         description: model.description || "",
         image_path: model.image_url || "",
+        hover_image_path: model.hover_image_url || null,
         created_at: model.created_at,
         base_price: model.price || 890,
         category: model.category || (model.name.toLowerCase().includes("dressing") ? "dressing"

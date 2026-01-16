@@ -113,7 +113,7 @@ export function ConfiguratorDemoSection() {
                   className="mt-10 flex flex-wrap gap-4 opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
               >
                 <Link
-                    href="/configurator"
+                    href="/models"
                     className="group relative inline-flex items-center gap-3 bg-white px-7 py-4 text-sm font-bold text-[#0D0D0C] overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                 >
                   <span className="relative z-10">Lancer le configurateur</span>
@@ -168,9 +168,9 @@ export function ConfiguratorDemoSection() {
                 </div>
                 <div className="w-px h-6 bg-white/10" />
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-black text-[#8B7355]">0€</span>
+                  <span className="text-2xl font-black text-[#8B7355]">24/7</span>
                   <span className="text-xs text-[#706F6C] uppercase tracking-wider">
-                  Gratuit
+                  Disponible
                 </span>
                 </div>
                 <div className="w-px h-6 bg-white/10" />
@@ -406,7 +406,7 @@ export function ConfiguratorDemoSection() {
               Prêt à créer votre meuble unique ?
             </p>
             <Link
-                href="/configurator"
+                href="/models"
                 className="inline-flex items-center gap-3 bg-gradient-to-r from-[#8B7355] to-[#6B5A45] px-10 py-5 text-white font-bold tracking-wide hover:shadow-[0_0_50px_rgba(139,115,85,0.4)] transition-all duration-300"
             >
               Commencer maintenant
