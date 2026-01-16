@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiClient, Category } from "@/lib/apiClient";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Upload, ImageIcon, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface CategoriesModalProps {
@@ -11,8 +11,11 @@ interface CategoriesModalProps {
 export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDescription, setNewCategoryDescription] = useState("");
+  const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -50,7 +53,40 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewCategoryImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setNewCategoryImage(null);
+    setImagePreview(null);
+  };
+
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category);
+    setNewCategoryName(category.name);
+    setNewCategoryDescription(category.description || "");
+    setImagePreview(category.image_url || null);
+    setNewCategoryImage(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCategory(null);
+    setNewCategoryName("");
+    setNewCategoryDescription("");
+    setNewCategoryImage(null);
+    setImagePreview(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newCategoryName.trim()) {
@@ -61,28 +97,83 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
     setIsCreating(true);
 
     try {
-      const response = await fetch('/backend/api/categories.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: newCategoryName.trim(),
-          description: newCategoryDescription.trim() || undefined,
-        })
-      });
+      let imageUrl = editingCategory?.image_url || "";
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
-        throw new Error(errorData.error || "Erreur lors de la création");
+      // Upload de l'image si une nouvelle a été sélectionnée
+      if (newCategoryImage) {
+        const formData = new FormData();
+        formData.append('image', newCategoryImage);
+
+        const uploadRes = await fetch('/backend/api/admin/upload-image.php', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrl = uploadData.url;
+        } else {
+          console.error("Erreur upload image");
+        }
       }
 
-      toast.success("Catégorie créée avec succès");
+      // Si l'image a été supprimée (imagePreview est null mais pas de nouvelle image)
+      if (!imagePreview && !newCategoryImage) {
+        imageUrl = "";
+      }
+
+      if (editingCategory) {
+        // Mode édition - l'ID doit être dans le body, pas dans l'URL
+        const response = await fetch('/backend/api/categories.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            id: editingCategory.id,
+            name: newCategoryName.trim(),
+            description: newCategoryDescription.trim() || "",
+            image_url: imageUrl || "",
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+          throw new Error(errorData.error || "Erreur lors de la mise à jour");
+        }
+
+        toast.success("Catégorie mise à jour avec succès");
+      } else {
+        // Mode création
+        const response = await fetch('/backend/api/categories.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: newCategoryName.trim(),
+            description: newCategoryDescription.trim() || undefined,
+            image_url: imageUrl || undefined,
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+          throw new Error(errorData.error || "Erreur lors de la création");
+        }
+
+        toast.success("Catégorie créée avec succès");
+      }
+
+      // Reset form
+      setEditingCategory(null);
       setNewCategoryName("");
       setNewCategoryDescription("");
+      setNewCategoryImage(null);
+      setImagePreview(null);
       await loadCategories();
     } catch (error: any) {
-      console.error("Erreur lors de la création:", error);
-      toast.error(error.message || "Erreur lors de la création");
+      console.error("Erreur:", error);
+      toast.error(error.message || "Une erreur est survenue");
     } finally {
       setIsCreating(false);
     }
@@ -131,8 +222,22 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
           </button>
         </div>
 
-        {/* Formulaire de création */}
-        <form onSubmit={handleCreate} className="mb-6 rounded-lg border border-[#E8E4DE] bg-[#FAFAF9] p-4">
+        {/* Formulaire de création/modification */}
+        <form onSubmit={handleSubmit} className="mb-6 rounded-lg border border-[#E8E4DE] bg-[#FAFAF9] p-4">
+          {editingCategory && (
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-[#8B7355]">
+                Modification de "{editingCategory.name}"
+              </span>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="text-sm text-[#6B6560] hover:text-[#1A1917]"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
           <div className="mb-3">
             <label className="block text-sm font-medium text-[#1A1917]">
               Nom de la catégorie <span className="text-red-500">*</span>
@@ -161,13 +266,61 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
             />
           </div>
 
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-[#1A1917]">
+              Image (pour la page d'accueil)
+            </label>
+            <p className="mt-1 text-xs text-[#6B6560]">
+              Cette image sera affichée dans la section catégories de la page d'accueil
+            </p>
+            <div className="mt-2">
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Aperçu"
+                    className="h-24 w-36 rounded-lg object-cover border border-[#E8E4DE]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                    disabled={isCreating}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#E8E4DE] bg-white px-4 py-3 text-sm text-[#6B6560] transition-colors hover:border-[#1A1917] hover:bg-[#FAFAF9]">
+                  <ImageIcon className="h-5 w-5" />
+                  Choisir une image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    disabled={isCreating}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={isCreating || !newCategoryName.trim()}
             className="flex items-center gap-2 rounded-lg bg-[#1A1917] px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-105 disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" />
-            {isCreating ? "Création..." : "Ajouter la catégorie"}
+            {editingCategory ? (
+              <>
+                {isCreating ? "Enregistrement..." : "Mettre à jour"}
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                {isCreating ? "Création..." : "Ajouter la catégorie"}
+              </>
+            )}
           </button>
         </form>
 
@@ -190,9 +343,22 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
               {categories.map((category) => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between rounded-lg border border-[#E8E4DE] bg-white p-3 transition-colors hover:bg-[#FAFAF9]"
+                  className="flex items-center gap-3 rounded-lg border border-[#E8E4DE] bg-white p-3 transition-colors hover:bg-[#FAFAF9]"
                 >
-                  <div className="flex-1">
+                  {/* Image de la catégorie */}
+                  {category.image_url ? (
+                    <img
+                      src={category.image_url}
+                      alt={category.name}
+                      className="h-14 w-20 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-lg bg-[#F5F3F0]">
+                      <ImageIcon className="h-5 w-5 text-[#6B6560]" />
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-[#1A1917]">{category.name}</span>
                       {category.is_active === 0 && (
@@ -202,18 +368,27 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
                       )}
                     </div>
                     {category.description && (
-                      <p className="mt-0.5 text-sm text-[#6B6560]">{category.description}</p>
+                      <p className="mt-0.5 text-sm text-[#6B6560] truncate">{category.description}</p>
                     )}
                     <p className="mt-1 text-xs text-[#8B7D6B]">Slug: {category.slug}</p>
                   </div>
 
-                  <button
-                    onClick={() => handleDelete(category)}
-                    className="ml-4 rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => handleEdit(category)}
+                      className="rounded-lg p-2 text-[#6B6560] transition-colors hover:bg-[#F5F3F0]"
+                      title="Modifier"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(category)}
+                      className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

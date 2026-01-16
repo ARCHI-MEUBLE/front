@@ -66,9 +66,9 @@ export function CategoriesSection() {
           </Link>
         </div>
 
-        {/* Grid */}
-        <div className="mt-10 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-4 lg:mt-16 lg:grid-cols-3">
-          {categories.map((category, index) => {
+        {/* Grid - Affiche uniquement les 4 premières catégories */}
+        <div className="mt-10 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-4 lg:mt-16 lg:grid-cols-4">
+          {categories.slice(0, 4).map((category, index) => {
             const imageUrl = category.image_url || defaultImages[category.slug] || "/images/accueil image/dressing.jpg";
             return (
               <Link

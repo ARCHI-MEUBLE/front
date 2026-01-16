@@ -187,7 +187,13 @@ export default function AdminLoginPage() {
               </form>
             </CardContent>
 
-            <CardFooter className="flex flex-col gap-6 text-center mt-4">
+            <CardFooter className="flex flex-col gap-4 text-center mt-4">
+              <Link
+                href="/admin/register"
+                className="text-sm text-[#8B7355] hover:text-[#1A1917] transition-colors font-medium"
+              >
+                Créer un compte admin
+              </Link>
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] transition-colors group"

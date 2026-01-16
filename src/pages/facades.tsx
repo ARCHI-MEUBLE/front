@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Breadcrumb } from '@/components/Breadcrumb';
 import FacadeControls from '@/components/facades/FacadeControls';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial } from '@/types/facade';
 import type { FacadeViewerHandle } from '@/components/facades/FacadeViewer';
@@ -93,34 +91,6 @@ export default function FacadesPage() {
     }));
   };
 
-  const handleSaveConfiguration = async () => {
-    try {
-      // Capturer l'aperçu
-      const preview = viewerRef.current?.captureScreenshot();
-
-      const configData = {
-        configuration_data: JSON.stringify(config),
-        preview_image: preview || '',
-        total_price:
-          config.width * config.height * 0.0001 +
-          config.material.price_modifier +
-          config.drillings.reduce((sum, d) => sum + (d.price || 0), 0),
-      };
-
-      // TODO: Enregistrer dans l'API
-      console.log('Configuration à enregistrer:', configData);
-      alert('Configuration sauvegardée avec succès !');
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde');
-    }
-  };
-
-  const handleDownloadDXF = () => {
-    // TODO: Implémenter l'export DXF
-    alert('Export DXF en cours de développement');
-  };
-
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -142,45 +112,16 @@ export default function FacadesPage() {
       <div className="flex min-h-screen flex-col">
         <Header />
 
-        {/* Breadcrumb */}
-        <div className="border-b border-[#E8E6E3] bg-white">
-          <div className="container mx-auto px-4 py-3">
-            <Breadcrumb
-              items={[
-                { label: 'Accueil', href: '/' },
-                { label: 'Façades', href: '/facades' },
-              ]}
-            />
-          </div>
-        </div>
-
         {/* Header Section */}
-        <div className="border-b border-[#E8E6E3] bg-white">
+        <div className="border-b border-[#E8E6E3] bg-white mt-6">
           <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-[#1A1917]">
-                  Configurateur de Façades
-                </h1>
-                <p className="mt-2 text-[#706F6C]">
-                  Créez vos façades sur mesure avec dimensions, couleurs et perçages personnalisés
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDownloadDXF}
-                  className="px-6 py-2.5 border border-[#1A1917] text-[#1A1917] rounded-lg hover:bg-[#FAFAF9] transition-colors font-medium"
-                >
-                  Télécharger DXF
-                </button>
-                <button
-                  onClick={handleSaveConfiguration}
-                  className="px-6 py-2.5 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium"
-                >
-                  Sauvegarder
-                </button>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-[#1A1917]">
+                Configurateur de Façades
+              </h1>
+              <p className="mt-2 text-[#706F6C]">
+                Créez vos façades sur mesure avec dimensions, couleurs et perçages personnalisés
+              </p>
             </div>
           </div>
         </div>
