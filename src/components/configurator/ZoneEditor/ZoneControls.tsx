@@ -163,222 +163,138 @@ function ShelfPositionEditor({
   );
 }
 
-// Composant pour éditer les positions exactes des diviseurs (étagères/colonnes)
+// Composant simplifié pour afficher les dimensions de la zone sélectionnée
 // Exporté pour utilisation dans ZoneEditor/index.tsx
-export function DividerPositionEditor({
-  zone,
-  totalDimensionMm,
-  isHorizontal,
-  onRatiosChange,
+export function SelectedZoneDimensions({
+  widthMm,
+  heightMm,
+  canAdjustWidth,
+  canAdjustHeight,
+  onSetWidth,
+  onSetHeight,
 }: {
-  zone: Zone;
-  totalDimensionMm: number;
-  isHorizontal: boolean; // true = étagères (hauteur), false = colonnes (largeur)
-  onRatiosChange: (ratios: number[]) => void;
+  widthMm: number;
+  heightMm: number;
+  canAdjustWidth: boolean;
+  canAdjustHeight: boolean;
+  onSetWidth?: (newValue: number) => void;
+  onSetHeight?: (newValue: number) => void;
 }) {
-  const children = zone.children ?? [];
-  const childCount = children.length;
+  const stepMm = 10;
+  const [widthInput, setWidthInput] = useState(widthMm.toString());
+  const [heightInput, setHeightInput] = useState(heightMm.toString());
 
-  // Obtenir les ratios actuels
-  const getCurrentRatios = (): number[] => {
-    if (zone.splitRatios?.length === childCount) {
-      return zone.splitRatios;
-    }
-    if (childCount === 2 && zone.splitRatio !== undefined) {
-      return [zone.splitRatio, 100 - zone.splitRatio];
-    }
-    return children.map(() => 100 / childCount);
-  };
-
-  const ratios = getCurrentRatios();
-
-  // Calculer les positions des diviseurs en mm (positions cumulatives)
-  // Pour horizontal: position depuis le HAUT (première section en haut)
-  // Pour vertical: position depuis la GAUCHE
-  const getDividerPositions = (): number[] => {
-    const positions: number[] = [];
-    let cumulative = 0;
-    for (let i = 0; i < ratios.length - 1; i++) {
-      cumulative += (ratios[i] / 100) * totalDimensionMm;
-      positions.push(Math.round(cumulative));
-    }
-    return positions;
-  };
-
-  const [dividerPositions, setDividerPositions] = useState<number[]>(getDividerPositions());
-  const [inputValues, setInputValues] = useState<string[]>(getDividerPositions().map(p => p.toString()));
-
-  // Mettre à jour quand les ratios changent
+  // Sync inputs when props change
   useEffect(() => {
-    const newPositions = getDividerPositions();
-    setDividerPositions(newPositions);
-    setInputValues(newPositions.map(p => p.toString()));
-  }, [zone.splitRatio, zone.splitRatios, totalDimensionMm]);
+    setWidthInput(widthMm.toString());
+  }, [widthMm]);
 
-  // Convertir les positions en ratios (haute précision pour éviter les erreurs d'arrondi)
-  const positionsToRatios = (positions: number[]): number[] => {
-    const newRatios: number[] = [];
-    let prevPos = 0;
-    for (let i = 0; i < positions.length; i++) {
-      const size = positions[i] - prevPos;
-      newRatios.push((size / totalDimensionMm) * 100);
-      prevPos = positions[i];
+  useEffect(() => {
+    setHeightInput(heightMm.toString());
+  }, [heightMm]);
+
+  const applyWidth = (value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num) && num >= 50 && onSetWidth) {
+      onSetWidth(num);
+    } else {
+      setWidthInput(widthMm.toString());
     }
-    // Dernière section
-    newRatios.push(((totalDimensionMm - prevPos) / totalDimensionMm) * 100);
-    // Garder 4 décimales pour la précision au mm
-    return newRatios.map(r => Math.max(5, Math.round(r * 10000) / 10000));
   };
 
-  // Gérer le changement d'input
-  const handleInputChange = (index: number, value: string) => {
-    const newInputValues = [...inputValues];
-    newInputValues[index] = value;
-    setInputValues(newInputValues);
-  };
-
-  // Appliquer la valeur quand on quitte le champ ou appuie sur Entrée
-  const applyValue = (index: number) => {
-    const value = parseInt(inputValues[index], 10);
-    if (isNaN(value)) {
-      // Restaurer la valeur précédente
-      setInputValues(dividerPositions.map(p => p.toString()));
-      return;
+  const applyHeight = (value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num) && num >= 50 && onSetHeight) {
+      onSetHeight(num);
+    } else {
+      setHeightInput(heightMm.toString());
     }
-
-    // Limites: doit être entre le diviseur précédent (+50mm min) et le suivant (-50mm min)
-    const minPos = index === 0 ? 50 : dividerPositions[index - 1] + 50;
-    const maxPos = index === dividerPositions.length - 1
-      ? totalDimensionMm - 50
-      : dividerPositions[index + 1] - 50;
-
-    const clampedValue = Math.max(minPos, Math.min(maxPos, value));
-
-    const newPositions = [...dividerPositions];
-    newPositions[index] = clampedValue;
-    setDividerPositions(newPositions);
-    setInputValues(newPositions.map(p => p.toString()));
-
-    // Convertir en ratios et appliquer
-    const newRatios = positionsToRatios(newPositions);
-    onRatiosChange(newRatios);
   };
-
-  // Ajuster avec les boutons +/- (pas de 10mm)
-  const adjustPosition = (index: number, delta: number) => {
-    const currentPos = dividerPositions[index];
-    const newPos = currentPos + delta;
-
-    const minPos = index === 0 ? 50 : dividerPositions[index - 1] + 50;
-    const maxPos = index === dividerPositions.length - 1
-      ? totalDimensionMm - 50
-      : dividerPositions[index + 1] - 50;
-
-    const clampedValue = Math.max(minPos, Math.min(maxPos, newPos));
-
-    const newPositions = [...dividerPositions];
-    newPositions[index] = clampedValue;
-    setDividerPositions(newPositions);
-    setInputValues(newPositions.map(p => p.toString()));
-
-    const newRatios = positionsToRatios(newPositions);
-    onRatiosChange(newRatios);
-  };
-
-  // Calculer la taille de chaque section
-  const getSectionSizes = (): number[] => {
-    const sizes: number[] = [];
-    let prevPos = 0;
-    for (const pos of dividerPositions) {
-      sizes.push(pos - prevPos);
-      prevPos = pos;
-    }
-    sizes.push(totalDimensionMm - prevPos);
-    return sizes;
-  };
-
-  const sectionSizes = getSectionSizes();
-  const labelPlural = isHorizontal ? 'étagères' : 'colonnes';
-  const dimensionLabel = isHorizontal ? 'Hauteur' : 'Largeur';
 
   return (
-    <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '4px' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          {isHorizontal ? (
-            <Rows3 className="h-5 w-5 text-[#1A1917]" />
-          ) : (
-            <Columns3 className="h-5 w-5 text-[#1A1917]" />
-          )}
-          <span className="text-base font-semibold text-[#1A1917]">
-            Ajuster les {labelPlural}
-          </span>
-        </div>
-        <span className="font-mono text-sm text-[#706F6C]">
-          {dimensionLabel}: {totalDimensionMm} mm
-        </span>
-      </div>
-
-      {/* Liste des positions */}
-      <div className="space-y-3">
-        {dividerPositions.map((pos, index) => (
-          <div key={index} className="flex items-center gap-3">
-            <span className="text-sm font-medium text-[#706F6C] w-24">
-              {isHorizontal ? `Étagère ${index + 1}` : `Séparation ${index + 1}`}
-            </span>
-            <div className="flex items-center gap-2 flex-1">
-              <button
-                type="button"
-                onClick={() => adjustPosition(index, -10)}
-                className="flex h-10 w-10 items-center justify-center border-2 border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-                style={{ borderRadius: '4px' }}
-                title="-10 mm"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <div className="relative flex-1 max-w-32">
-                <input
-                  type="number"
-                  value={inputValues[index]}
-                  onChange={(e) => handleInputChange(index, e.target.value)}
-                  onBlur={() => applyValue(index)}
-                  onKeyDown={(e) => e.key === 'Enter' && applyValue(index)}
-                  className="w-full text-center font-mono text-base font-bold border-2 border-[#E8E6E3] focus:border-[#1A1917] outline-none py-2 pr-10"
-                  style={{ borderRadius: '4px' }}
-                  min={50}
-                  max={totalDimensionMm - 50}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#706F6C]">mm</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => adjustPosition(index, 10)}
-                className="flex h-10 w-10 items-center justify-center border-2 border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-                style={{ borderRadius: '4px' }}
-                title="+10 mm"
-              >
-                <span className="text-lg font-bold">+</span>
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Résumé des tailles */}
-      <div className="mt-4 pt-4 border-t border-[#E8E6E3]">
-        <p className="text-sm text-[#706F6C] mb-2">Dimensions des sections :</p>
-        <div className="flex flex-wrap gap-2">
-          {sectionSizes.map((size, index) => (
-            <span
-              key={index}
-              className="px-3 py-1.5 bg-[#FAFAF9] border border-[#E8E6E3] font-mono text-sm text-[#1A1917]"
-              style={{ borderRadius: '4px' }}
+    <div className="flex items-center gap-4 border border-[#E8E6E3] bg-white px-4 py-3" style={{ borderRadius: '4px' }}>
+      {/* Largeur */}
+      <div className="flex items-center gap-2">
+        <Columns3 className="h-4 w-4 text-[#706F6C]" />
+        <span className="text-sm text-[#706F6C]">Largeur:</span>
+        {canAdjustWidth && onSetWidth ? (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onSetWidth(widthMm - stepMm)}
+              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              style={{ borderRadius: '2px' }}
             >
-              {isHorizontal ? `Niveau ${index + 1}` : `Colonne ${index + 1}`}: <strong>{size} mm</strong>
-            </span>
-          ))}
-        </div>
+              <Minus className="h-3 w-3" />
+            </button>
+            <div className="relative">
+              <input
+                type="number"
+                value={widthInput}
+                onChange={(e) => setWidthInput(e.target.value)}
+                onBlur={(e) => applyWidth(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applyWidth(widthInput)}
+                className="w-20 text-center font-mono text-sm font-semibold border border-[#E8E6E3] focus:border-[#1A1917] outline-none py-1.5 pr-7"
+                style={{ borderRadius: '2px' }}
+                min={50}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#706F6C]">mm</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSetWidth(widthMm + stepMm)}
+              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              style={{ borderRadius: '2px' }}
+            >
+              <span className="text-sm font-bold">+</span>
+            </button>
+          </div>
+        ) : (
+          <span className="font-mono text-sm font-semibold text-[#1A1917]">{widthMm} mm</span>
+        )}
+      </div>
+
+      <div className="h-6 w-px bg-[#E8E6E3]" />
+
+      {/* Hauteur */}
+      <div className="flex items-center gap-2">
+        <Rows3 className="h-4 w-4 text-[#706F6C]" />
+        <span className="text-sm text-[#706F6C]">Hauteur:</span>
+        {canAdjustHeight && onSetHeight ? (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onSetHeight(heightMm - stepMm)}
+              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              style={{ borderRadius: '2px' }}
+            >
+              <Minus className="h-3 w-3" />
+            </button>
+            <div className="relative">
+              <input
+                type="number"
+                value={heightInput}
+                onChange={(e) => setHeightInput(e.target.value)}
+                onBlur={(e) => applyHeight(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applyHeight(heightInput)}
+                className="w-20 text-center font-mono text-sm font-semibold border border-[#E8E6E3] focus:border-[#1A1917] outline-none py-1.5 pr-7"
+                style={{ borderRadius: '2px' }}
+                min={50}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#706F6C]">mm</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSetHeight(heightMm + stepMm)}
+              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              style={{ borderRadius: '2px' }}
+            >
+              <span className="text-sm font-bold">+</span>
+            </button>
+          </div>
+        ) : (
+          <span className="font-mono text-sm font-semibold text-[#1A1917]">{heightMm} mm</span>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
-import ZoneControls, { DividerPositionEditor } from './ZoneControls';
+import ZoneControls, { SelectedZoneDimensions } from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
 
 export { type Zone, type ZoneContent, type ZoneColor } from './types';
@@ -482,26 +482,72 @@ export default function ZoneEditor({
         showNumbers={showNumbers}
       />
 
-      {/* Éditeur de positions exactes - affiché sous le plan 2D */}
-      {selectedZone && selectedZone.type !== 'leaf' && selectedZone.children && selectedZone.children.length >= 2 && (
-        <>
-          {selectedZone.type === 'horizontal' && selectedZoneHeightMm > 0 && (
-            <DividerPositionEditor
-              zone={selectedZone}
-              totalDimensionMm={selectedZoneHeightMm}
-              isHorizontal={true}
-              onRatiosChange={(ratios) => setSplitRatios(selectedZone.id, ratios)}
-            />
-          )}
-          {selectedZone.type === 'vertical' && selectedZoneWidthMm > 0 && (
-            <DividerPositionEditor
-              zone={selectedZone}
-              totalDimensionMm={selectedZoneWidthMm}
-              isHorizontal={false}
-              onRatiosChange={(ratios) => setSplitRatios(selectedZone.id, ratios)}
-            />
-          )}
-        </>
+      {/* Dimensions de la zone sélectionnée - simplifié */}
+      {selectedZone && selectedZoneIds.length === 1 && (
+        <SelectedZoneDimensions
+          widthMm={selectedZoneWidthMm}
+          heightMm={selectedZoneHeightMm}
+          canAdjustWidth={!!(parentZone && parentZone.type === 'vertical' && parentZone.children && parentZone.children.length >= 2)}
+          canAdjustHeight={!!(parentZone && parentZone.type === 'horizontal' && parentZone.children && parentZone.children.length >= 2)}
+          onSetWidth={parentZone && parentZone.type === 'vertical' ? (newWidthMm) => {
+            const siblings = parentZone.children || [];
+            const myIndex = siblings.findIndex(c => c.id === selectedZone.id);
+            if (myIndex === -1 || siblings.length < 2) return;
+
+            const parentWidthMm = calculateZoneWidth(parentZone.id);
+            const neighborIndex = myIndex < siblings.length - 1 ? myIndex + 1 : myIndex - 1;
+
+            // Calculer les tailles actuelles en mm de tous les enfants
+            const currentRatios = siblings.length === 2 && parentZone.splitRatio !== undefined
+              ? [parentZone.splitRatio, 100 - parentZone.splitRatio]
+              : parentZone.splitRatios || siblings.map(() => 100 / siblings.length);
+
+            const currentSizesMm = currentRatios.map(r => (r / 100) * parentWidthMm);
+
+            // Limiter la nouvelle largeur
+            const minSize = 50;
+            const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
+            const clampedNewWidth = Math.max(minSize, Math.min(maxSize, newWidthMm));
+
+            // Calculer le delta et ajuster le voisin
+            const delta = clampedNewWidth - currentSizesMm[myIndex];
+            currentSizesMm[myIndex] = clampedNewWidth;
+            currentSizesMm[neighborIndex] = currentSizesMm[neighborIndex] - delta;
+
+            // Convertir en ratios avec haute précision
+            const newRatios = currentSizesMm.map(size => (size / parentWidthMm) * 100);
+            setSplitRatios(parentZone.id, newRatios);
+          } : undefined}
+          onSetHeight={parentZone && parentZone.type === 'horizontal' ? (newHeightMm) => {
+            const siblings = parentZone.children || [];
+            const myIndex = siblings.findIndex(c => c.id === selectedZone.id);
+            if (myIndex === -1 || siblings.length < 2) return;
+
+            const parentHeightMm = calculateZoneHeight(parentZone.id);
+            const neighborIndex = myIndex < siblings.length - 1 ? myIndex + 1 : myIndex - 1;
+
+            // Calculer les tailles actuelles en mm de tous les enfants
+            const currentRatios = siblings.length === 2 && parentZone.splitRatio !== undefined
+              ? [parentZone.splitRatio, 100 - parentZone.splitRatio]
+              : parentZone.splitRatios || siblings.map(() => 100 / siblings.length);
+
+            const currentSizesMm = currentRatios.map(r => (r / 100) * parentHeightMm);
+
+            // Limiter la nouvelle hauteur
+            const minSize = 50;
+            const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
+            const clampedNewHeight = Math.max(minSize, Math.min(maxSize, newHeightMm));
+
+            // Calculer le delta et ajuster le voisin
+            const delta = clampedNewHeight - currentSizesMm[myIndex];
+            currentSizesMm[myIndex] = clampedNewHeight;
+            currentSizesMm[neighborIndex] = currentSizesMm[neighborIndex] - delta;
+
+            // Convertir en ratios avec haute précision
+            const newRatios = currentSizesMm.map(size => (size / parentHeightMm) * 100);
+            setSplitRatios(parentZone.id, newRatios);
+          } : undefined}
+        />
       )}
 
       {/* Contenu personnalisé après le canvas (ex: dimensions) */}
