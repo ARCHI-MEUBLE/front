@@ -475,7 +475,7 @@ export default function ZoneEditor({
       <ZoneCanvas
         zone={rootZone}
         selectedZoneIds={selectedZoneIds}
-        onSelect={onSelectZone}
+        onSelect={onSelectZone || (() => {})}
         onRatioChange={handleRatioChange}
         width={width}
         height={height}

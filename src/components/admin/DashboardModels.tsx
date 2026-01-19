@@ -777,18 +777,16 @@ export function DashboardModels() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Prix estimé (€)</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  step="0.01"
-                  value={formState.price}
-                  onChange={handleInputChange}
-                  placeholder="Ex: 1200"
-                />
-              </div>
+              {/* Prix calculé automatiquement - affiché en lecture seule */}
+              {formState.price > 0 && (
+                <div className="space-y-2">
+                  <Label>Prix calculé</Label>
+                  <div className="flex items-center gap-2 h-10 px-3 py-2 rounded-md border bg-gray-50">
+                    <span className="font-semibold">{formState.price} €</span>
+                    <span className="text-xs text-muted-foreground">(auto-calculé)</span>
+                  </div>
+                </div>
+              )}
             </div>
             {/* Images côte à côte */}
             <div className="grid grid-cols-2 gap-4">
