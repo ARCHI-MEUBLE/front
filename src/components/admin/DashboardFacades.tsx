@@ -279,7 +279,10 @@ function MaterialModal({
     price_per_m2: 150,
     is_active: true,
   });
+  const [textureFile, setTextureFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [renderMode, setRenderMode] = useState<'color' | 'texture'>('color');
 
   useEffect(() => {
     if (material) {
@@ -290,6 +293,7 @@ function MaterialModal({
         price_per_m2: material.price_per_m2 || 150,
         is_active: material.is_active !== false,
       });
+      setRenderMode(material.texture_url ? 'texture' : 'color');
     } else {
       setFormData({
         name: '',
@@ -298,8 +302,34 @@ function MaterialModal({
         price_per_m2: 150,
         is_active: true,
       });
+      setRenderMode('color');
     }
   }, [material, open]);
+
+  const handleUploadTexture = async () => {
+    if (!textureFile) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', textureFile);
+      const res = await fetch('/backend/api/upload-texture.php', {
+        method: 'POST',
+        body: form,
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        setFormData({ ...formData, texture_url: data.url });
+        toast.success('Texture uploadée');
+      } else {
+        toast.error(data.error || "Échec de l'upload");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors de l'upload");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,13 +337,44 @@ function MaterialModal({
 
     try {
       const url = material
-        ? `/backend/api/facade-materials.php?id=${material.id}`
+        ? `/backend/api/facade-materials.php/${material.id}`
         : '/backend/api/facade-materials.php';
+
+      // Validation stricte: soit couleur, soit texture selon le choix
+      if (renderMode === 'color' && !formData.color_hex) {
+        toast.error('Veuillez choisir une couleur');
+        setLoading(false);
+        return;
+      }
+      if (renderMode === 'texture' && !formData.texture_url) {
+        toast.error('Veuillez uploader une texture');
+        setLoading(false);
+        return;
+      }
+
+      // Construire le payload en respectant STRICTEMENT le choix renderMode
+      // SI couleur unie → envoyer SEULEMENT color_hex, vider texture_url
+      // SI texture image → envoyer SEULEMENT texture_url, vider color_hex
+      const payload: any = {
+        name: formData.name,
+        price_per_m2: formData.price_per_m2,
+        is_active: formData.is_active,
+      };
+
+      if (renderMode === 'color') {
+        // Mode couleur: envoyer couleur, vider texture
+        payload.color_hex = formData.color_hex;
+        payload.texture_url = '';
+      } else {
+        // Mode texture: envoyer texture, vider couleur
+        payload.color_hex = '';
+        payload.texture_url = formData.texture_url;
+      }
 
       const response = await fetch(url, {
         method: material ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -353,6 +414,32 @@ function MaterialModal({
             />
           </div>
 
+          {/* Choix obligatoire du type de rendu */}
+          <div className="space-y-2">
+            <Label>Type de rendu (obligatoire)</Label>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="renderMode"
+                  checked={renderMode === 'color'}
+                  onChange={() => setRenderMode('color')}
+                />
+                Couleur unie
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="renderMode"
+                  checked={renderMode === 'texture'}
+                  onChange={() => setRenderMode('texture')}
+                />
+                Texture image
+              </label>
+            </div>
+          </div>
+
+          {/* Couleur unie */}
           <div className="space-y-2">
             <Label>Couleur</Label>
             <div className="flex gap-2">
@@ -361,22 +448,50 @@ function MaterialModal({
                 value={formData.color_hex}
                 onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
                 className="h-10 w-20 rounded border cursor-pointer"
+                disabled={renderMode !== 'color'}
               />
               <Input
                 value={formData.color_hex}
                 onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
                 className="flex-1"
+                disabled={renderMode !== 'color'}
               />
             </div>
           </div>
 
+          {/* Texture image */}
           <div className="space-y-2">
-            <Label htmlFor="texture">URL de texture (optionnel)</Label>
-            <Input
-              id="texture"
-              value={formData.texture_url}
-              onChange={(e) => setFormData({ ...formData, texture_url: e.target.value })}
-            />
+            <Label>Texture</Label>
+            <div className="space-y-2">
+              <Input
+                placeholder="URL de texture (si déjà hébergée)"
+                value={formData.texture_url}
+                onChange={(e) => setFormData({ ...formData, texture_url: e.target.value })}
+                disabled={renderMode !== 'texture'}
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  onChange={(e) => setTextureFile(e.target.files?.[0] || null)}
+                  disabled={renderMode !== 'texture'}
+                />
+                <Button type="button" variant="secondary" onClick={handleUploadTexture} disabled={renderMode !== 'texture' || !textureFile || uploading}>
+                  {uploading ? 'Upload…' : 'Uploader'}
+                </Button>
+              </div>
+              {renderMode === 'texture' && formData.texture_url && (
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded border overflow-hidden" style={{
+                    backgroundColor: formData.color_hex,
+                    backgroundImage: `url(${formData.texture_url})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }} />
+                  <span className="text-xs text-muted-foreground">Texture appliquée</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">

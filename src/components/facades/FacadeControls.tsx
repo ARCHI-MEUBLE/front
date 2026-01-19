@@ -477,9 +477,21 @@ function MaterialPanel({
             }`}
           >
             <div
-              className="w-16 h-16 rounded-lg mb-2 shadow-sm"
-              style={{ backgroundColor: material.color_hex }}
-            />
+              className="relative w-16 h-16 rounded-lg mb-2 shadow-sm border border-[#E8E6E3] overflow-hidden"
+              style={{
+                backgroundColor: material.color_hex,
+                backgroundImage: material.texture_url ? `url(${material.texture_url})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              }}
+            >
+              {material.texture_url && (
+                <span className="absolute top-1 right-1 text-[10px] px-1 py-0.5 bg-white/85 border border-[#E8E6E3] rounded text-[#1A1917] font-semibold">
+                  Texture
+                </span>
+              )}
+            </div>
             <span className="text-xs font-medium text-center">
               {material.name}
             </span>

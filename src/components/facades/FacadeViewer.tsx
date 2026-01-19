@@ -1,5 +1,5 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import React, { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { Canvas, useThree, useLoader } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { FacadeConfig, FacadeDrilling } from '@/types/facade';
@@ -13,6 +13,61 @@ export interface FacadeViewerHandle {
   captureScreenshot: () => string | null;
 }
 
+// Composant pour une face unique
+function FacadeFace({ 
+  colorHex,
+  textureUrl,
+  position, 
+  rotation, 
+  args, 
+  side 
+}: { 
+  colorHex: string;
+  textureUrl: string;
+  position: [number, number, number]; 
+  rotation?: [number, number, number]; 
+  args: [number, number]; 
+  side?: typeof THREE.FrontSide | typeof THREE.DoubleSide;
+}) {
+  // Logique simple: texture_url vide/null → couleur, sinon → texture
+  const hasTexture = !!(textureUrl && textureUrl.trim() !== '');
+  
+  return (
+    <mesh castShadow receiveShadow position={position} rotation={rotation}>
+      <planeGeometry args={args} />
+      {hasTexture ? (
+        <FaceMaterialWithTexture textureUrl={textureUrl} />
+      ) : (
+        <meshStandardMaterial
+          color={colorHex}
+          roughness={0.7}
+          metalness={0.1}
+          side={side || THREE.FrontSide}
+        />
+      )}
+    </mesh>
+  );
+}
+
+// Composant séparé pour le matériau avec texture
+function FaceMaterialWithTexture({ textureUrl }: { textureUrl: string }) {
+  const texture = useLoader(THREE.TextureLoader, textureUrl);
+  
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = 8;
+
+  return (
+    <meshStandardMaterial
+      color="#ffffff"
+      map={texture}
+      roughness={0.7}
+      metalness={0.1}
+      side={THREE.FrontSide}
+    />
+  );
+}
+
 // Composant principal de la façade
 function FacadePanel({ config }: { config: FacadeConfig }) {
   const { width, height, depth, material, drillings } = config;
@@ -22,76 +77,71 @@ function FacadePanel({ config }: { config: FacadeConfig }) {
   const h = height / 1000;
   const d = depth / 1000;
 
-  // Texture si disponible
-  const textureUrl = material.texture_url;
+  const colorHex = material.color_hex || '#D8C7A1';
+  const textureUrl = material.texture_url || '';
 
   return (
     <group>
-      {/* Face avant (colorée) */}
-      <mesh castShadow receiveShadow position={[0, 0, d / 2]}>
-        <planeGeometry args={[w, h]} />
-        <meshStandardMaterial
-          color={material.color_hex}
-          roughness={0.7}
-          metalness={0.1}
-          side={THREE.FrontSide}
-        />
-      </mesh>
+      {/* Face avant */}
+      <FacadeFace 
+        colorHex={colorHex}
+        textureUrl={textureUrl}
+        position={[0, 0, d / 2]} 
+        args={[w, h]} 
+        side={THREE.FrontSide}
+      />
 
-      {/* Face arrière (blanche) */}
-      <mesh castShadow receiveShadow position={[0, 0, -d / 2]} rotation={[0, Math.PI, 0]}>
-        <planeGeometry args={[w, h]} />
-        <meshStandardMaterial
-          color="#FFFFFF"
-          roughness={0.7}
-          metalness={0.1}
-          side={THREE.FrontSide}
-        />
-      </mesh>
+      {/* Face arrière */}
+      <FacadeFace 
+        colorHex={colorHex}
+        textureUrl={textureUrl}
+        position={[0, 0, -d / 2]} 
+        rotation={[0, Math.PI, 0]}
+        args={[w, h]} 
+        side={THREE.FrontSide}
+      />
 
-      {/* Faces latérales (épaisseur) avec la couleur */}
       {/* Haut */}
-      <mesh castShadow receiveShadow position={[0, h / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[w, d]} />
-        <meshStandardMaterial 
-          color={material.color_hex} 
-          roughness={0.7} 
-          metalness={0.1} 
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* Bas */}
-      <mesh castShadow receiveShadow position={[0, -h / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[w, d]} />
-        <meshStandardMaterial 
-          color={material.color_hex} 
-          roughness={0.7} 
-          metalness={0.1} 
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* Gauche */}
-      <mesh castShadow receiveShadow position={[-w / 2, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[d, h]} />
-        <meshStandardMaterial 
-          color={material.color_hex} 
-          roughness={0.7} 
-          metalness={0.1} 
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* Droite */}
-      <mesh castShadow receiveShadow position={[w / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
-        <planeGeometry args={[d, h]} />
-        <meshStandardMaterial 
-          color={material.color_hex} 
-          roughness={0.7} 
-          metalness={0.1} 
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      <FacadeFace 
+        colorHex={colorHex}
+        textureUrl={textureUrl}
+        position={[0, h / 2, 0]} 
+        rotation={[Math.PI / 2, 0, 0]}
+        args={[w, d]} 
+        side={THREE.DoubleSide}
+      />
 
-      {/* Rendu des perçages (visibles sur la face arrière uniquement) */}
+      {/* Bas */}
+      <FacadeFace 
+        colorHex={colorHex}
+        textureUrl={textureUrl}
+        position={[0, -h / 2, 0]} 
+        rotation={[-Math.PI / 2, 0, 0]}
+        args={[w, d]} 
+        side={THREE.DoubleSide}
+      />
+
+      {/* Gauche */}
+      <FacadeFace 
+        colorHex={colorHex}
+        textureUrl={textureUrl}
+        position={[-w / 2, 0, 0]} 
+        rotation={[0, Math.PI / 2, 0]}
+        args={[d, h]} 
+        side={THREE.DoubleSide}
+      />
+
+      {/* Droite */}
+      <FacadeFace 
+        colorHex={colorHex}
+        textureUrl={textureUrl}
+        position={[w / 2, 0, 0]} 
+        rotation={[0, -Math.PI / 2, 0]}
+        args={[d, h]} 
+        side={THREE.DoubleSide}
+      />
+
+      {/* Rendu des perçages */}
       {drillings.map((drilling: FacadeDrilling) => (
         <Drilling
           key={drilling.id}
@@ -102,7 +152,7 @@ function FacadePanel({ config }: { config: FacadeConfig }) {
         />
       ))}
 
-      {/* Cadre/bordure pour délimiter la façade */}
+      {/* Cadre/bordure */}
       <EdgesHelper width={w} height={h} depth={d} />
     </group>
   );
