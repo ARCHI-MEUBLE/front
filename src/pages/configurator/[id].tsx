@@ -125,16 +125,16 @@ function materialLabelFromKey(key: string): string {
   return key;
 }
 
-function ConfigurationSummary({ 
+function ConfigurationSummary({
   width, height, depth, finish, color, socle, rootZone, price, modelName,
-  isAdmin, onEdit, priceDisplaySettings
+  isAdmin, onEdit, priceDisplaySettings, mountingStyle, colorLabel
 }: any) {
   const analyzeConfiguration = (zone: Zone) => {
     const handleTypes = new Set<string>();
     const leafZones: any[] = [];
-    
+
     let leafCounter = 0;
-    
+
     const traverse = (z: Zone) => {
       if (z.type === 'leaf') {
         leafCounter++;
@@ -154,238 +154,190 @@ function ConfigurationSummary({
           }
         }
       }
-      
+
       if (z.children) z.children.forEach(traverse);
     };
-    
+
     traverse(zone);
-    
-    return { 
+
+    return {
       handleTypes: Array.from(handleTypes),
       leafZones
     };
   };
 
   const analysis = analyzeConfiguration(rootZone);
-  
+
   const labels: Record<string, string> = {
-    drawer: 'Tiroir(s)',
-    push_drawer: 'Tiroir(s) Push-to-Open',
-    dressing: 'Penderie(s)',
-    door: 'Porte(s) Gauche',
-    door_right: 'Porte(s) Droite',
-    door_double: 'Double Porte(s)',
-    mirror_door: 'Porte(s) Vitrée',
-    push_door: 'Porte(s) Push-to-Open',
-    glass_shelf: 'Étagère(s) en verre',
-    shelf: 'Étagère(s) standard',
-    light: 'Éclairage(s) LED',
-    cable_hole: 'Passe-câble(s)',
+    drawer: 'Tiroir',
+    push_drawer: 'Tiroir Push-to-Open',
+    dressing: 'Penderie',
+    door: 'Porte Gauche',
+    door_right: 'Porte Droite',
+    door_double: 'Double Porte',
+    mirror_door: 'Porte Vitrée',
+    push_door: 'Porte Push-to-Open',
+    glass_shelf: 'Étagère verre',
+    shelf: 'Étagère',
+    light: 'Éclairage LED',
+    cable_hole: 'Passe-câble',
   };
 
   const handleLabels: Record<string, string> = {
     vertical_bar: 'Barre verticale',
     horizontal_bar: 'Barre horizontale',
-    knob: 'Bouton',
-    recessed: 'Encastrée',
+    knob: 'Bouton rond',
+    recessed: 'Poignée encastrée',
   };
 
+  // Compter les équipements
+  const equipmentCount: Record<string, number> = {};
+  analysis.leafZones.forEach((z: any) => {
+    const key = z.content || 'empty';
+    equipmentCount[key] = (equipmentCount[key] || 0) + 1;
+  });
+
   return (
-    <div className="flex flex-col h-full bg-[#FAFAF9] overflow-y-auto custom-scrollbar">
-      {/* Header simple et chic */}
-      <div className="p-6 lg:p-8 border-b border-[#E8E6E3] bg-white">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-[#706F6C] font-medium mb-2 block">Administration</span>
-        <h2 className="font-serif text-3xl text-[#1A1917] leading-tight">Récapitulatif de configuration</h2>
-        <p className="mt-2 text-sm text-[#706F6C]">Analyse technique du meuble configuré par le client.</p>
+    <div className="flex flex-col h-full bg-white overflow-y-auto custom-scrollbar">
+      {/* Header */}
+      <div className="p-5 border-b border-[#E8E6E3]">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-serif text-xl text-[#1A1917]">Fiche technique</h2>
+            <p className="text-xs text-[#706F6C] mt-0.5">{modelName || 'Configuration client'}</p>
+          </div>
+          {isAdmin && (
+            <Button
+              onClick={onEdit}
+              size="sm"
+              className="bg-[#1A1917] text-white hover:bg-[#2A2927] h-8 px-4 text-xs"
+            >
+              <IconEdit className="h-3.5 w-3.5 mr-1.5" />
+              Modifier
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="p-6 lg:p-8 space-y-8">
-        {/* Visualisation 2D - Le "vrai" plus pour l'admin */}
-        <section>
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] mb-4 flex items-center gap-2">
-            <IconApps className="h-3.5 w-3.5" />
-            Structure visuelle
-          </h3>
-          <div className="bg-white border border-[#E8E6E3] rounded-[2px] p-4 shadow-sm">
-            <ZoneEditor
-              rootZone={rootZone}
-              selectedZoneIds={[]}
-              onRootZoneChange={() => {}}
-              onSelectedZoneIdsChange={() => {}}
-              width={width}
-              height={height}
-              hideControls={true}
-              showNumbers={true}
-            />
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Dimensions */}
-          <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] mb-4 flex items-center gap-2">
-              <IconRuler2 className="h-3.5 w-3.5" />
-              Dimensions (mm)
-            </h3>
-            <div className="space-y-3">
-              {[
-                { label: 'Largeur', value: width },
-                { label: 'Hauteur', value: height },
-                { label: 'Profondeur', value: depth }
-              ].map((dim) => (
-                <div key={dim.label} className="flex justify-between items-baseline border-b border-[#E8E6E3] pb-2">
-                  <span className="text-sm text-[#706F6C]">{dim.label}</span>
-                  <span className="text-base font-bold tabular-nums">{dim.value}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Finitions */}
-          <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] mb-4 flex items-center gap-2">
-              <IconTablerPalette className="h-3.5 w-3.5" />
-              Esthétique
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
-                <span className="text-sm text-[#706F6C]">Finition</span>
-                <span className="text-sm font-semibold">{finish}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
-                <span className="text-sm text-[#706F6C]">Couleur</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: color }}></div>
-                  <span className="text-sm font-semibold">{color}</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
-                <span className="text-sm text-[#706F6C]">Socle</span>
-                <span className="text-sm font-semibold">
-                  {socle === 'metal' ? 'Métal Noir' : socle === 'wood' ? 'Plinthe Bois' : 'Aucun'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-[#E8E6E3] pb-2">
-                <span className="text-sm text-[#706F6C]">Poignée</span>
-                <span className="text-sm font-semibold">
-                  {analysis.handleTypes.length > 0 
-                    ? analysis.handleTypes.map(h => handleLabels[h] || h).join(', ')
-                    : 'Aucune'}
-                </span>
-              </div>
-            </div>
-          </section>
+      <div className="p-5 space-y-5">
+        {/* Visualisation 2D */}
+        <div className="border border-[#E8E6E3] p-3 bg-[#FAFAF9]">
+          <ZoneEditor
+            rootZone={rootZone}
+            selectedZoneIds={[]}
+            onRootZoneChange={() => {}}
+            onSelectedZoneIdsChange={() => {}}
+            width={width}
+            height={height}
+            hideControls={true}
+            showNumbers={true}
+          />
         </div>
 
-        {/* Inventaire détaillé par compartiment */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#1A1917] flex items-center gap-2">
-              <IconRuler2 className="h-3.5 w-3.5" />
-              Inventaire par compartiment
-            </h3>
-            <span className="text-[9px] text-[#706F6C] uppercase font-bold tracking-tighter bg-[#F5F5F4] px-2 py-1">Lecture de gauche à droite, haut en bas</span>
+        {/* Caractéristiques principales - 2 colonnes */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Largeur</span>
+            <span className="font-medium">{width} mm</span>
           </div>
-          <div className="bg-white border border-[#E8E6E3] rounded-[2px] overflow-hidden shadow-sm">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FAFAF9] border-b border-[#E8E6E3]">
-                  <th className="p-3 font-bold text-[10px] uppercase tracking-wider w-12 text-center">N°</th>
-                  <th className="p-3 font-bold text-[10px] uppercase tracking-wider">Équipement</th>
-                  <th className="p-3 font-bold text-[10px] uppercase tracking-wider">Détails / Poignée</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E6E3]">
-                {analysis.leafZones.map((z: any) => (
-                  <tr key={z.id} className="hover:bg-[#FAFAF9] transition-colors">
-                    <td className="p-3 text-center">
-                      <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[#1A1917] text-white text-[10px] font-bold shadow-sm">
-                        {z.number}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="font-semibold text-[#1A1917]">
-                        {labels[z.content] || (z.content === 'empty' ? 'Étagères / Vide' : z.content)}
-                      </div>
-                      <div className="flex gap-1.5 mt-1.5">
-                        {z.hasLight && (
-                          <span className="text-[8px] bg-yellow-400 text-black px-1.5 py-0.5 rounded-[1px] font-black uppercase">LED</span>
-                        )}
-                        {z.hasCableHole && (
-                          <span className="text-[8px] bg-blue-500 text-white px-1.5 py-0.5 rounded-[1px] font-black uppercase">Câble</span>
-                        )}
-                        {z.color && (
-                          <div className="flex items-center gap-1 bg-[#F5F5F4] px-1.5 py-0.5 rounded-[1px] border border-[#E8E6E3]">
-                            <div className="h-2 w-2 rounded-full border border-black/10" style={{ backgroundColor: z.color }}></div>
-                            <span className="text-[8px] font-bold text-[#706F6C]">{z.color}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 text-[#706F6C] text-xs">
-                      {z.handleType ? (
-                        <div className="flex items-center gap-2">
-                          <IconTrendingUp className="h-3 w-3 text-[#1A1917]" />
-                          <span className="font-medium italic">{handleLabels[z.handleType] || z.handleType}</span>
-                        </div>
-                      ) : (
-                        z.content !== 'empty' && !['shelf', 'glass_shelf', 'pegboard', 'dressing'].includes(z.content) ? (
-                          <div className="flex items-center gap-2 text-amber-700">
-                            <div className="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
-                            <span className="text-[10px] uppercase tracking-tighter font-black">Pousser-Lâcher</span>
-                          </div>
-                        ) : (
-                          <span className="text-[#D0CEC9]">—</span>
-                        )
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Hauteur</span>
+            <span className="font-medium">{height} mm</span>
           </div>
-        </section>
-
-        <div className="pt-4 border-t border-[#E8E6E3]">
-          <div className="flex items-center justify-between bg-[#1A1917] p-6 rounded-[2px] text-white">
-            <div>
-              <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1 block">Estimation brute</span>
-              <div className="flex items-baseline gap-1 font-serif text-4xl">
-                {priceDisplaySettings?.mode === 1 && priceDisplaySettings?.range > 0 ? (
-                  <>
-                    <span>{Math.max(0, price - priceDisplaySettings.range)}</span>
-                    <span className="text-xl">€</span>
-                    <span className="text-2xl mx-2 opacity-40">-</span>
-                    <span>{price + priceDisplaySettings.range}</span>
-                    <span className="text-xl">€</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{price}</span>
-                    <span className="text-xl">€</span>
-                  </>
-                )}
-              </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Profondeur</span>
+            <span className="font-medium">{depth} mm</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Montage</span>
+            <span className="font-medium">{mountingStyle === 'encastre' ? 'Encastré' : 'En applique'}</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Matériau</span>
+            <span className="font-medium">{finish}</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Couleur</span>
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 border border-black/10" style={{ backgroundColor: color }}></span>
+              <span className="font-medium">{colorLabel || color}</span>
             </div>
-            {isAdmin && (
-              <Button
-                onClick={onEdit}
-                className="bg-white text-[#1A1917] hover:bg-[#E8E6E3] h-12 px-6 font-bold rounded-[2px] transition-all active:scale-[0.98]"
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Socle</span>
+            <span className="font-medium">
+              {socle === 'metal' ? 'Métal noir' : socle === 'wood' ? 'Plinthe bois' : 'Sans socle'}
+            </span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Poignées</span>
+            <span className="font-medium">
+              {analysis.handleTypes.length > 0
+                ? analysis.handleTypes.map(h => handleLabels[h] || h).join(', ')
+                : 'Push-to-open'}
+            </span>
+          </div>
+        </div>
+
+        {/* Équipements - Liste compacte */}
+        <div>
+          <h3 className="text-xs font-medium text-[#706F6C] uppercase tracking-wide mb-2">Équipements ({analysis.leafZones.length} zones)</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(equipmentCount).map(([key, count]) => (
+              <span
+                key={key}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-[#F5F5F4] text-xs border border-[#E8E6E3]"
               >
-                <IconEdit className="h-4 w-4 mr-2" />
-                Modifier
-              </Button>
+                <span className="font-medium">{count}x</span>
+                <span className="text-[#706F6C]">{labels[key] || (key === 'empty' ? 'Vide' : key)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Détails par zone - Table simplifiée */}
+        <div>
+          <h3 className="text-xs font-medium text-[#706F6C] uppercase tracking-wide mb-2">Détail par zone</h3>
+          <div className="border border-[#E8E6E3] divide-y divide-[#E8E6E3] text-sm">
+            {analysis.leafZones.map((z: any) => (
+              <div key={z.id} className="flex items-center gap-3 px-3 py-2 hover:bg-[#FAFAF9]">
+                <span className="flex items-center justify-center h-5 w-5 bg-[#1A1917] text-white text-[10px] font-bold">
+                  {z.number}
+                </span>
+                <span className="flex-1 font-medium">
+                  {labels[z.content] || (z.content === 'empty' ? 'Vide' : z.content)}
+                </span>
+                <div className="flex items-center gap-2 text-xs text-[#706F6C]">
+                  {z.hasLight && <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 text-[10px]">LED</span>}
+                  {z.hasCableHole && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[10px]">Câble</span>}
+                  {z.color && (
+                    <span className="h-3 w-3 border border-black/10" style={{ backgroundColor: z.color }}></span>
+                  )}
+                  {z.handleType && <span className="italic">{handleLabels[z.handleType]}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Prix */}
+        <div className="flex items-center justify-between py-4 border-t border-[#E8E6E3]">
+          <span className="text-sm text-[#706F6C]">Estimation</span>
+          <div className="text-right">
+            {priceDisplaySettings?.mode === 1 && priceDisplaySettings?.range > 0 ? (
+              <span className="font-serif text-2xl font-medium">
+                {Math.max(0, price - priceDisplaySettings.range)} - {price + priceDisplaySettings.range} €
+              </span>
+            ) : (
+              <span className="font-serif text-2xl font-medium">{price} €</span>
             )}
           </div>
         </div>
 
         {/* Note informative */}
-        <div className="p-4 bg-blue-50 border border-blue-100 rounded-[2px] flex gap-3">
-          <IconInfoCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-800 leading-relaxed">
-            <strong>Mode Consultation</strong> : Les modifications directes sont désactivées dans cette vue. Utilisez le bouton "Modifier" pour ajuster la configuration avec le client.
-          </p>
-        </div>
+        <p className="text-xs text-[#706F6C] text-center py-3 border-t border-[#E8E6E3]">
+          Mode consultation — Cliquez sur Modifier pour éditer
+        </p>
       </div>
     </div>
   );
@@ -548,6 +500,13 @@ export default function ConfiguratorPage() {
   const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [price, setPrice] = useState(899);
+
+  // Synchroniser le prix calculé avec le formulaire quand le dialog s'ouvre
+  useEffect(() => {
+    if (isCreateModelDialogOpen && price > 0) {
+      setModelForm(prev => ({ ...prev, price: Math.round(price) }));
+    }
+  }, [isCreateModelDialogOpen, price]);
 
   // Paramètres de pricing configurables chargés depuis l'API
   const [pricingParams, setPricingParams] = useState<any>(null);
@@ -2556,7 +2515,12 @@ export default function ConfiguratorPage() {
 
   // Sauvegarde
   const saveConfiguration = async () => {
-    if (!isAdmin && (!isAuthenticated || !customer)) {
+    // En mode édition admin (venant du dashboard), on utilise le nom existant
+    const isAdminEditingConfig = isEditMode && editingConfigId;
+
+    // Si pas admin ET pas client connecté, on demande de se connecter
+    // Exception: en mode édition admin, on essaie quand même de sauvegarder (le backend vérifiera la session)
+    if (!isAdmin && !isAdminEditingConfig && (!isAuthenticated || !customer)) {
       setShowAuthModal(true);
       return;
     }
@@ -2564,7 +2528,8 @@ export default function ConfiguratorPage() {
     let configNameInput = editingConfigName;
 
     // Si ce n'est pas un admin qui édite une config existante, on demande le nom
-    if (!(isAdmin && editingConfigId)) {
+    // En mode édition admin, on garde le nom existant
+    if (!isAdminEditingConfig && !(isAdmin && editingConfigId)) {
       const promptedName = prompt('Nom de cette configuration :', editingConfigName || '');
       if (promptedName === null) return; // Annulation
       if (!promptedName.trim()) {
@@ -2629,9 +2594,17 @@ export default function ConfiguratorPage() {
         const errorData = await response.json().catch(() => ({}));
         const backendError = errorData.error || 'Erreur lors de la sauvegarde';
 
-        // Si c'est un admin qui essaie de sauvegarder sans compte client
-        if (response.status === 401 && isAdmin) {
-          setErrorMessage('Un administrateur ne peut pas créer de configuration.\n\nPour créer une configuration, vous devez :\n1. Vous déconnecter du panel admin\n2. Vous connecter en tant que client\n3. Puis créer votre configuration');
+        // Gestion des erreurs 401
+        if (response.status === 401) {
+          if (isAdminEditingConfig) {
+            // Admin en mode édition mais session expirée ou invalide
+            setErrorMessage('Votre session admin a expiré.\n\nVeuillez vous reconnecter au panel admin puis réessayer.');
+          } else if (isAdmin) {
+            // Admin qui essaie de créer une nouvelle configuration
+            setErrorMessage('Un administrateur ne peut pas créer de configuration.\n\nPour créer une configuration, vous devez :\n1. Vous déconnecter du panel admin\n2. Vous connecter en tant que client\n3. Puis créer votre configuration');
+          } else {
+            setErrorMessage(backendError);
+          }
           setShowErrorModal(true);
         } else {
           setErrorMessage(backendError);
@@ -2826,13 +2799,22 @@ export default function ConfiguratorPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="price">Prix de base (€)</Label>
-              <Input
-                id="price"
-                type="number"
-                value={modelForm.price}
-                onChange={(e) => setModelForm({ ...modelForm, price: Number(e.target.value) })}
-              />
+              <Label htmlFor="price">Prix calculé (€)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="price"
+                  type="number"
+                  value={modelForm.price}
+                  readOnly
+                  className="bg-gray-50 font-semibold"
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  Auto-calculé
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                Ce prix est calculé automatiquement selon les dimensions et options choisies.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="image">Photo du modèle</Label>
@@ -2914,12 +2896,15 @@ export default function ConfiguratorPage() {
                   {isViewMode && (
                     <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
                   )}
-                  {(isEditMode && isAdmin) && (
+                  {isEditMode && editingConfigId && (
                     <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Édition Admin</span>
+                  )}
+                  {editingConfigName && isEditMode && (
+                    <span className="text-[11px] text-[#706F6C] font-medium">&quot;{editingConfigName}&quot;</span>
                   )}
                 </div>
                 <p className="hidden text-xs text-[#706F6C] sm:block">
-                  {isViewMode ? 'Consultation de la configuration client' : 'Configurateur sur mesure'}
+                  {isViewMode ? 'Consultation de la configuration client' : (isEditMode && editingConfigId ? 'Modification de la configuration client' : 'Configurateur sur mesure')}
                 </p>
               </div>
             </div>
@@ -2956,12 +2941,12 @@ export default function ConfiguratorPage() {
                   hasSocle={socle !== 'none'}
                   socle={socle}
                   rootZone={rootZone}
-                  selectedZoneIds={selectedZoneIds}
-                  onSelectZone={handleZoneSelect}
+                  selectedZoneIds={isViewMode ? [] : selectedZoneIds}
+                  onSelectZone={isViewMode ? undefined : handleZoneSelect}
                   isBuffet={furnitureStructure?.isBuffet}
                   doorsOpen={doorsOpen}
                   showDecorations={showDecorations}
-                  onToggleDoors={handleToggleDoors}
+                  onToggleDoors={isViewMode ? undefined : handleToggleDoors}
                   componentColors={componentColors}
                   useMultiColor={useMultiColor}
                   doorType={doorType}
@@ -2970,7 +2955,7 @@ export default function ConfiguratorPage() {
                 />
 
                 {/* Sélecteur de couleur pour la zone (tiroir/porte) - apparaît quand une zone colorisable est sélectionnée */}
-                {isSelectedZoneColorizable && selectedZone && (
+                {!isViewMode && isSelectedZoneColorizable && selectedZone && (
                   <ZoneColorPicker
                     zone={selectedZone}
                     materialsMap={materialsMap}
@@ -3091,6 +3076,7 @@ export default function ConfiguratorPage() {
                 depth={depth}
                 finish={finish}
                 color={color}
+                colorLabel={colorLabel}
                 socle={socle}
                 rootZone={rootZone}
                 price={price}
@@ -3098,6 +3084,7 @@ export default function ConfiguratorPage() {
                 isAdmin={isAdmin}
                 onEdit={handleAdminEdit}
                 priceDisplaySettings={priceDisplaySettings}
+                mountingStyle={mountingStyle}
               />
             ) : (
               <>
@@ -3345,7 +3332,7 @@ export default function ConfiguratorPage() {
                 >
                   <Box className="h-4 w-4" />
                   <span>
-                    {isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider' : 'Enregistrer')}
+                    {(isEditMode && editingConfigId) ? 'Enregistrer' : (isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider' : 'Enregistrer'))}
                   </span>
                 </button>
               ) : (
@@ -3476,20 +3463,33 @@ export default function ConfiguratorPage() {
                 </svg>
               </div>
 
-              {/* Message personnalisé */}
-              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
-                Configuration enregistrée !
-              </h2>
-              <p className="mb-6 text-center text-base text-[#706F6C]">
-                {customer?.civility === 'M' ? 'Monsieur' : customer?.civility === 'Mme' ? 'Madame' : ''}{' '}
-                <span className="font-semibold text-[#1A1917]">
-                  {customer?.last_name}
-                </span>
-                , un menuisier va vous rappeler au plus vite pour valider votre projet et finaliser votre commande.
-              </p>
+              {/* Message personnalisé - différent pour admin vs client */}
+              {(isEditMode && editingConfigId) ? (
+                <>
+                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                    Configuration mise à jour !
+                  </h2>
+                  <p className="mb-6 text-center text-base text-[#706F6C]">
+                    La configuration <span className="font-semibold text-[#1A1917]">&quot;{editingConfigName}&quot;</span> a été modifiée avec succès.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                    Configuration enregistrée !
+                  </h2>
+                  <p className="mb-6 text-center text-base text-[#706F6C]">
+                    {customer?.civility === 'M' ? 'Monsieur' : customer?.civility === 'Mme' ? 'Madame' : ''}{' '}
+                    <span className="font-semibold text-[#1A1917]">
+                      {customer?.last_name}
+                    </span>
+                    , un menuisier va vous rappeler au plus vite pour valider votre projet et finaliser votre commande.
+                  </p>
+                </>
+              )}
 
-              {/* Informations complémentaires */}
-              {!isAdmin && (
+              {/* Informations complémentaires - seulement pour les clients */}
+              {!(isEditMode && editingConfigId) && !isAdmin && (
                 <div className="mb-6 border-t border-[#E8E6E3] pt-4">
                   <p className="text-sm text-[#706F6C]">
                     <strong className="text-[#1A1917]">Prochaines étapes :</strong>
@@ -3511,27 +3511,50 @@ export default function ConfiguratorPage() {
                 </div>
               )}
 
-              {/* Boutons */}
+              {/* Boutons - différents pour admin vs client */}
               <div className="flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const isAdminUser = typeof window !== 'undefined' && localStorage.getItem('admin_email');
-                    router.push(isAdminUser ? '/admin/dashboard' : '/my-configurations');
-                  }}
-                  className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
-                  style={{ borderRadius: '2px' }}
-                >
-                  {typeof window !== 'undefined' && localStorage.getItem('admin_email') ? 'Retour au Dashboard' : 'Mes configurations'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push('/')}
-                  className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
-                  style={{ borderRadius: '2px' }}
-                >
-                  Retour à l'accueil
-                </button>
+                {(isEditMode && editingConfigId) ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/admin/dashboard?tab=configurations')}
+                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      Retour aux configurations
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmationModal(false)}
+                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      Continuer à modifier
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isAdminUser = typeof window !== 'undefined' && localStorage.getItem('admin_email');
+                        router.push(isAdminUser ? '/admin/dashboard' : '/my-configurations');
+                      }}
+                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {typeof window !== 'undefined' && localStorage.getItem('admin_email') ? 'Retour au Dashboard' : 'Mes configurations'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/')}
+                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      Retour à l'accueil
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
+import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
 
 interface FacadeControlsProps {
   config: FacadeConfig;
@@ -843,9 +844,10 @@ function DrillingPanel({
               className="w-full flex items-center justify-between p-4 border-2 border-[#E8E6E3] rounded-lg hover:border-[#1A1917] transition-all"
             >
               <div className="flex items-center gap-3">
-                <div 
+                {/* SÉCURITÉ: SVG sanitisé pour prévenir XSS */}
+                <div
                   className="w-12 h-12 flex items-center justify-center bg-[#FAFAF9] rounded-lg"
-                  dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" class="w-8 h-8">${type.icon_svg}</svg>` }}
+                  dangerouslySetInnerHTML={getSafeSvgMarkup(type.icon_svg, '0 0 24 24', 'w-8 h-8') || undefined}
                 />
                 <div className="text-left">
                   <p className="text-sm font-medium text-[#1A1917]">

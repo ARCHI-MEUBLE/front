@@ -86,15 +86,15 @@ export default function Login() {
         </div>
 
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
-          <div 
-            className="absolute inset-0 bg-zinc-900" 
+          <div
+            className="absolute inset-0 bg-zinc-900"
             style={{
-              backgroundImage: 'url("https://images.unsplash.com/photo-1590069261209-f8e9b8642343?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1376&q=80")',
+              backgroundImage: 'url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?ixlib=rb-4.0.3&auto=format&fit=crop&w=1632&q=80")',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
           />
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-black/30" />
           <div className="relative z-20 flex items-center text-lg font-medium">
             <Link href="/">
               <img

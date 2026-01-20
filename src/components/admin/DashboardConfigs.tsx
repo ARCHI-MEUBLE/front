@@ -12,6 +12,7 @@ import {
   IconFilter,
   IconX,
   IconBox,
+  IconEdit,
 } from '@tabler/icons-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -415,19 +416,31 @@ export function DashboardConfigs() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm sm:text-base">Visualisation</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">Voir la configuration interactive</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">Voir ou modifier la configuration</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-2">
                     <Button
                       onClick={() => {
                         const match = selectedConfig.prompt?.match(/^(M[1-5])\(/);
                         const templateKey = selectedConfig.model_id ? String(selectedConfig.model_id) : (match ? match[1] : 'M1');
                         window.open(`/configurator/${templateKey}?mode=view&configId=${selectedConfig.id}`, '_blank');
                       }}
+                      variant="outline"
+                      className="w-full h-10"
+                    >
+                      <IconEye className="w-4 h-4 mr-2" />
+                      Voir en 3D (lecture seule)
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        const match = selectedConfig.prompt?.match(/^(M[1-5])\(/);
+                        const templateKey = selectedConfig.model_id ? String(selectedConfig.model_id) : (match ? match[1] : 'M1');
+                        window.open(`/configurator/${templateKey}?mode=edit&configId=${selectedConfig.id}`, '_blank');
+                      }}
                       className="w-full h-10 bg-blue-600 hover:bg-blue-700"
                     >
-                      <IconBox className="w-4 h-4 mr-2" />
-                      Ouvrir le configurateur 3D
+                      <IconEdit className="w-4 h-4 mr-2" />
+                      Modifier la configuration
                     </Button>
                   </CardContent>
                 </Card>
