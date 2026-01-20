@@ -598,15 +598,18 @@ export const generateApi = {
    * @param closed Mode fermé (true = sans portes, false = avec portes)
    * @param color Couleur hex optionnelle unique (ex: "#D8C7A1") - legacy
    * @param colors Couleurs multi-composants optionnelles
+   * @param deletedPanels Liste des IDs de panneaux à exclure du DXF
    */
   async generate(
     prompt: string,
     closed: boolean = false,
     color?: string,
-    colors?: FurnitureColors
+    colors?: FurnitureColors,
+    deletedPanels?: string[]
   ): Promise<{
     success: boolean;
     glb_url: string;
+    dxf_url?: string;
     message: string;
   }> {
     const body: any = { prompt, closed };
@@ -618,7 +621,12 @@ export const generateApi = {
       body.color = color;
     }
 
-    return request<{ success: boolean; glb_url: string; message: string }>(
+    // Panneaux supprimés pour le DXF
+    if (deletedPanels && deletedPanels.length > 0) {
+      body.deletedPanels = deletedPanels;
+    }
+
+    return request<{ success: boolean; glb_url: string; dxf_url?: string; message: string }>(
       '/api/generate',
       {
         method: 'POST',

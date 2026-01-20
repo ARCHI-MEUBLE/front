@@ -1078,6 +1078,7 @@ export default function ConfiguratorPage() {
       mountingStyle,
       doorsOpen,
       showDecorations,
+      deletedPanelIds: Array.from(deletedPanelIds),
       timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
     };
 
@@ -1087,7 +1088,7 @@ export default function ConfiguratorPage() {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
 
   // Charger les matériaux
   useEffect(() => {
@@ -1671,6 +1672,7 @@ export default function ConfiguratorPage() {
         if (configToRestore.doorType) setDoorType(configToRestore.doorType);
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
+        if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
         console.log('✅ Configuration restaurée avec succès');
         setInitialConfigApplied(true);
       } else {
@@ -1770,6 +1772,7 @@ export default function ConfiguratorPage() {
     if (c.mountingStyle) setMountingStyle(c.mountingStyle);
     if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
     if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
+    if (c.deletedPanelIds) setDeletedPanelIds(new Set(c.deletedPanelIds));
     
     // Réactiver la régénération et forcer l'application
     setTimeout(() => {
@@ -2303,7 +2306,17 @@ export default function ConfiguratorPage() {
       }
 
       const excludeDoors = !doorsOpenRef.current || doorType === 'none';
-      const result = await apiClient.generate.generate(prompt, excludeDoors, singleColor, furnitureColors);
+      
+      // Convertir les panneaux supprimés en tableau pour l'API
+      const deletedPanelsArray = Array.from(deletedPanelIds);
+      
+      const result = await apiClient.generate.generate(
+        prompt, 
+        excludeDoors, 
+        singleColor, 
+        furnitureColors,
+        deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined
+      );
 
       let glbUrlAbsolute = result.glb_url;
       // On utilise maintenant le proxy configuré dans next.config.js
@@ -2314,7 +2327,7 @@ export default function ConfiguratorPage() {
     } finally {
       setGenerating(false);
     }
-  }, [selectedColorOption, useMultiColor, componentColors, doorType]);
+  }, [selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds]);
 
   // Effet de régénération
   useEffect(() => {
@@ -2595,6 +2608,7 @@ export default function ConfiguratorPage() {
         advancedZones: rootZone,
         useMultiColor,
         componentColors,
+        deletedPanelIds: Array.from(deletedPanelIds),
       };
 
       const payload = {
