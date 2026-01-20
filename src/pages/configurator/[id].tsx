@@ -20,7 +20,7 @@ const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'
 });
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
-import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META, PanelPlanCanvas } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
@@ -3229,6 +3229,17 @@ export default function ConfiguratorPage() {
                           />
                         }
                       />
+
+                      {/* Sélection des panneaux (nouveau composant séparé) */}
+                      <PanelPlanCanvas
+                        zone={rootZone}
+                        width={width}
+                        height={height}
+                        selectedPanelId={selectedPanelId}
+                        onSelectPanel={handlePanelSelect}
+                        deletedPanelIds={deletedPanelIds}
+                      />
+
                       {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
                       <SocleSelector
                         value={socle}
