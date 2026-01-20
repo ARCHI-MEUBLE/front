@@ -20,7 +20,7 @@ const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'
 });
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
-import ZoneEditor, { Zone, ZoneContent, ZoneColor } from '@/components/configurator/ZoneEditor';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
@@ -30,7 +30,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2, Edit3 } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2, Edit3, Trash2 } from 'lucide-react';
 import { 
   IconRuler2, 
   IconPalette as IconTablerPalette, 
@@ -577,10 +577,38 @@ export default function ConfiguratorPage() {
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
   const [doors, setDoors] = useState(0);
+  
+  // Panel selection and deletion states
+  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
+
+  // Handle panel deletion/restoration toggle
+  const togglePanelDeleted = useCallback((panelId: string) => {
+    setDeletedPanelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(panelId)) {
+        next.delete(panelId);
+      } else {
+        next.add(panelId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Handle panel selection (deselects zones when a panel is selected)
+  const handlePanelSelect = useCallback((panelId: string | null) => {
+    setSelectedPanelId(panelId);
+    if (panelId) {
+      setSelectedZoneIds([]);
+    }
+  }, []);
 
   // Gérer la sélection intelligente (clic 1 -> clic 2)
   const handleZoneSelect = useCallback(
     (zoneId: string | null) => {
+      // Deselect panel when selecting a zone
+      setSelectedPanelId(null);
+      
       if (!zoneId) {
         setSelectedZoneIds([]);
         return;
@@ -2952,6 +2980,9 @@ export default function ConfiguratorPage() {
                   doorType={doorType}
                   doorSide={doorSide}
                   mountingStyle={mountingStyle}
+                  selectedPanelId={isViewMode ? null : selectedPanelId}
+                  onSelectPanel={isViewMode ? undefined : handlePanelSelect}
+                  deletedPanelIds={deletedPanelIds}
                 />
 
                 {/* Sélecteur de couleur pour la zone (tiroir/porte) - apparaît quand une zone colorisable est sélectionnée */}
@@ -3043,6 +3074,53 @@ export default function ConfiguratorPage() {
                     >
                       <Redo2 className="h-4 w-4" />
                     </button>
+                  </div>
+                )}
+
+                {/* Panel selection indicator */}
+                {selectedPanelId && !isViewMode && (
+                  <div className="absolute top-4 right-4 z-20 hidden lg:block">
+                    <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className={`h-3 w-3 rounded-full ${deletedPanelIds.has(selectedPanelId) ? 'bg-[#FF5722]' : 'bg-[#2196F3]'}`} />
+                      <span className={`text-sm font-medium ${deletedPanelIds.has(selectedPanelId) ? 'text-[#706F6C] line-through' : 'text-[#1A1917]'}`}>
+                        {(() => {
+                          const panelInfo = stringToPanelId(selectedPanelId);
+                          if (panelInfo) {
+                            if (panelInfo.type === 'separator') {
+                              const isHorizontal = selectedPanelId.includes('-h-');
+                              return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                            }
+                            const baseLabel = PANEL_META[panelInfo.type]?.label || selectedPanelId;
+                            if (panelInfo.index !== undefined) {
+                              return `${baseLabel} (segment ${panelInfo.index + 1})`;
+                            }
+                            return baseLabel;
+                          }
+                          return selectedPanelId;
+                        })()}
+                      </span>
+                      {/* Delete/restore panel button */}
+                      <button
+                        type="button"
+                        onClick={() => togglePanelDeleted(selectedPanelId)}
+                        className={`ml-1 ${deletedPanelIds.has(selectedPanelId) ? 'text-[#4CAF50] hover:text-[#388E3C]' : 'text-[#FF5722] hover:text-[#E64A19]'}`}
+                        title={deletedPanelIds.has(selectedPanelId) ? 'Restaurer ce panneau' : 'Retirer ce panneau'}
+                      >
+                        {deletedPanelIds.has(selectedPanelId) ? (
+                          <RotateCcw className="h-4 w-4" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPanelId(null)}
+                        className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
+                        title="Désélectionner"
+                      >
+                        <IconTablerX className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 )}
 

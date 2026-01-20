@@ -39,6 +39,10 @@ export interface ThreeViewerProps {
   doorSide?: 'left' | 'right';
   mountingStyle?: 'applique' | 'encastre';
   onCaptureReady?: (captureFunction: () => string | null) => void;
+  // Panel selection and deletion
+  selectedPanelId?: string | null;
+  onSelectPanel?: (panelId: string | null) => void;
+  deletedPanelIds?: Set<string>;
 }
 
 // Export du type pour utilisation externe

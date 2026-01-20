@@ -4,7 +4,7 @@ import { Canvas, useThree, RootState } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
-import { Zone } from './ZoneEditor/types';
+import { Zone, PanelId, panelIdToString } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 
@@ -26,6 +26,9 @@ interface ThreeViewerProps {
   rootZone: Zone | null;
   selectedZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
+  selectedPanelId?: string | null;
+  onSelectPanel?: (panelId: string | null) => void;
+  deletedPanelIds?: Set<string>;
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
@@ -160,6 +163,98 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
       clearcoatRoughness={0.3}
       envMapIntensity={0.4}
     />
+  );
+}
+
+// Composant pour une hitbox de sélection de segment de panneau (invisible, uniquement pour la sélection)
+interface PanelSegmentHitboxProps {
+  panelId: string;
+  position: [number, number, number];
+  size: [number, number, number]; // width, height, depth
+  isSelected: boolean;
+  onSelect: (panelId: string | null) => void;
+  isDeleted?: boolean;
+}
+
+function PanelSegmentHitbox({ 
+  panelId, 
+  position, 
+  size, 
+  isSelected, 
+  onSelect,
+  isDeleted = false
+}: PanelSegmentHitboxProps) {
+  return (
+    <group position={position}>
+      {/* Hitbox invisible pour la sélection */}
+      <mesh
+        visible={false}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'default';
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(isSelected ? null : panelId);
+        }}
+      >
+        <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.002]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+      
+      {/* Effet de sélection visible uniquement quand sélectionné */}
+      {isSelected && (
+        <>
+          <mesh>
+            <boxGeometry args={[size[0] + 0.003, size[1] + 0.003, size[2] + 0.003]} />
+            <meshBasicMaterial 
+              transparent 
+              opacity={isDeleted ? 0.35 : 0.4}
+              color={isDeleted ? "#FF5722" : "#2196F3"}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, size[2] + 0.004]} />
+            <meshBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} wireframe transparent opacity={0.5} toneMapped={false} />
+          </mesh>
+          <lineSegments>
+            <edgesGeometry args={[new THREE.BoxGeometry(size[0] + 0.005, size[1] + 0.005, size[2] + 0.005)]} />
+            <lineBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} linewidth={4} toneMapped={false} />
+          </lineSegments>
+        </>
+      )}
+    </group>
+  );
+}
+
+// Composant pour un panneau structurel (visuel uniquement, sans interaction)
+interface StructuralPanelProps {
+  position: [number, number, number];
+  size: [number, number, number]; // width, height, depth
+  hexColor: string;
+  imageUrl?: string | null;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+}
+
+function StructuralPanel({ 
+  position, 
+  size, 
+  hexColor, 
+  imageUrl, 
+  castShadow = true,
+  receiveShadow = true
+}: StructuralPanelProps) {
+  return (
+    <mesh position={position} castShadow={castShadow} receiveShadow={receiveShadow}>
+      <boxGeometry args={size} />
+      <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+    </mesh>
   );
 }
 
