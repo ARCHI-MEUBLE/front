@@ -28,7 +28,7 @@ export default function FacadeControls({
     material_price_per_m2: 150,
     hinge_base_price: 34.20,
     hinge_coefficient: 0.05,
-    hinge_edge_margin: 20,
+    hinge_edge_margin: 150, // 15 cm par défaut
     hinge_hole_diameter: 26,
   });
 
@@ -1115,7 +1115,7 @@ function SummaryPanel({
 }
 
 // Fonction helper pour générer les positions des trous de charnières
-function generateHingeHoles(count: HingeCount, direction: OpeningDirection, height: number, edgeMargin: number = 20, diameter: number = 26): Array<{x: number, y: number, diameter: number}> {
+function generateHingeHoles(count: HingeCount, direction: OpeningDirection, height: number, edgeMargin: number = 150, diameter: number = 26): Array<{x: number, y: number, diameter: number}> {
   const x = direction === 'left' ? 5 : 95; // 5% du bord gauche ou droit
   const holes = [];
   

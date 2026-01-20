@@ -53,9 +53,11 @@ function FacadeFace({
 function FaceMaterialWithTexture({ textureUrl }: { textureUrl: string }) {
   const texture = useLoader(THREE.TextureLoader, textureUrl);
   
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
+  // Étirer la texture pour couvrir toute la face
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.anisotropy = 8;
+  texture.repeat.set(1, 1);
 
   return (
     <meshStandardMaterial
@@ -101,40 +103,40 @@ function FacadePanel({ config }: { config: FacadeConfig }) {
         side={THREE.FrontSide}
       />
 
-      {/* Haut */}
+      {/* Haut - couleur uniquement pour les bords */}
       <FacadeFace 
         colorHex={colorHex}
-        textureUrl={textureUrl}
+        textureUrl=""
         position={[0, h / 2, 0]} 
         rotation={[Math.PI / 2, 0, 0]}
         args={[w, d]} 
         side={THREE.DoubleSide}
       />
 
-      {/* Bas */}
+      {/* Bas - couleur uniquement pour les bords */}
       <FacadeFace 
         colorHex={colorHex}
-        textureUrl={textureUrl}
+        textureUrl=""
         position={[0, -h / 2, 0]} 
         rotation={[-Math.PI / 2, 0, 0]}
         args={[w, d]} 
         side={THREE.DoubleSide}
       />
 
-      {/* Gauche */}
+      {/* Gauche - couleur uniquement pour les bords */}
       <FacadeFace 
         colorHex={colorHex}
-        textureUrl={textureUrl}
+        textureUrl=""
         position={[-w / 2, 0, 0]} 
         rotation={[0, Math.PI / 2, 0]}
         args={[d, h]} 
         side={THREE.DoubleSide}
       />
 
-      {/* Droite */}
+      {/* Droite - couleur uniquement pour les bords */}
       <FacadeFace 
         colorHex={colorHex}
-        textureUrl={textureUrl}
+        textureUrl=""
         position={[w / 2, 0, 0]} 
         rotation={[0, -Math.PI / 2, 0]}
         args={[d, h]} 

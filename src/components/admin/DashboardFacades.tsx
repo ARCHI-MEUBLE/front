@@ -665,10 +665,10 @@ function SettingsPanel({
           <SettingCard
             title="Marge des charnières"
             settingKey="hinge_edge_margin"
-            defaultValue="20 mm (2 cm)"
+            defaultValue="150 mm (15 cm)"
             description="Distance minimale entre les premiers/derniers trous de charnières et les bords haut/bas de la façade."
             min={10}
-            max={100}
+            max={300}
           />
           <SettingCard
             title="Diamètre des trous"
