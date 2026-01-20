@@ -765,7 +765,10 @@ function Furniture({
   useMultiColor = false,
   mountingStyle = 'applique',
   selectedZoneIds = [],
-  onSelectZone
+  onSelectZone,
+  selectedPanelId,
+  onSelectPanel,
+  deletedPanelIds = new Set()
 }: ThreeViewerProps) {
   const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
 
@@ -1446,21 +1449,76 @@ function Furniture({
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
   // et des flashs blancs lors des changements de couleur
 
+  // Callback pour la sélection de panneaux (désélectionne les zones si on sélectionne un panneau)
+  const handlePanelSelect = useCallback((panelId: string | null) => {
+    if (panelId && onSelectZone) {
+      onSelectZone(null); // Désélectionner les zones
+    }
+    onSelectPanel?.(panelId);
+  }, [onSelectPanel, onSelectZone]);
+
+  // Définition des IDs de panneaux
+  const PANEL_LEFT = 'panel-left-0';
+  const PANEL_RIGHT = 'panel-right-0';
+  const PANEL_TOP = 'panel-top-0';
+  const PANEL_BOTTOM = 'panel-bottom-0';
+  const PANEL_BACK = 'panel-back-0';
+
   return (
     <group>
-      {/* Côtés */}
-      <mesh position={[-w/2 + thickness/2, sideHeight/2 + yOffset, 0]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, sideHeight, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
-      <mesh position={[w/2 - thickness/2, sideHeight/2 + yOffset, 0]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, sideHeight, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
-      <mesh position={[0, h - thickness/2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[w, thickness, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
+      {/* Panneau gauche */}
+      {!deletedPanelIds.has(PANEL_LEFT) && (
+        <StructuralPanel
+          position={[-w/2 + thickness/2, sideHeight/2 + yOffset, 0]}
+          size={[thickness, sideHeight, d]}
+          hexColor={finalStructureColor}
+          imageUrl={finalStructureImageUrl}
+        />
+      )}
+      <PanelSegmentHitbox
+        panelId={PANEL_LEFT}
+        position={[-w/2 + thickness/2, sideHeight/2 + yOffset, 0]}
+        size={[thickness, sideHeight, d]}
+        isSelected={selectedPanelId === PANEL_LEFT}
+        onSelect={handlePanelSelect}
+        isDeleted={deletedPanelIds.has(PANEL_LEFT)}
+      />
+
+      {/* Panneau droit */}
+      {!deletedPanelIds.has(PANEL_RIGHT) && (
+        <StructuralPanel
+          position={[w/2 - thickness/2, sideHeight/2 + yOffset, 0]}
+          size={[thickness, sideHeight, d]}
+          hexColor={finalStructureColor}
+          imageUrl={finalStructureImageUrl}
+        />
+      )}
+      <PanelSegmentHitbox
+        panelId={PANEL_RIGHT}
+        position={[w/2 - thickness/2, sideHeight/2 + yOffset, 0]}
+        size={[thickness, sideHeight, d]}
+        isSelected={selectedPanelId === PANEL_RIGHT}
+        onSelect={handlePanelSelect}
+        isDeleted={deletedPanelIds.has(PANEL_RIGHT)}
+      />
+
+      {/* Panneau supérieur */}
+      {!deletedPanelIds.has(PANEL_TOP) && (
+        <StructuralPanel
+          position={[0, h - thickness/2, 0]}
+          size={[w, thickness, d]}
+          hexColor={finalStructureColor}
+          imageUrl={finalStructureImageUrl}
+        />
+      )}
+      <PanelSegmentHitbox
+        panelId={PANEL_TOP}
+        position={[0, h - thickness/2, 0]}
+        size={[w, thickness, d]}
+        isSelected={selectedPanelId === PANEL_TOP}
+        onSelect={handlePanelSelect}
+        isDeleted={deletedPanelIds.has(PANEL_TOP)}
+      />
 
       {/* Décorations sur le dessus */}
       {showDecorations && (
@@ -1480,10 +1538,23 @@ function Furniture({
         </group>
       )}
 
-      <mesh position={[0, yOffset + thickness/2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[w, thickness, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
+      {/* Panneau inférieur */}
+      {!deletedPanelIds.has(PANEL_BOTTOM) && (
+        <StructuralPanel
+          position={[0, yOffset + thickness/2, 0]}
+          size={[w, thickness, d]}
+          hexColor={finalStructureColor}
+          imageUrl={finalStructureImageUrl}
+        />
+      )}
+      <PanelSegmentHitbox
+        panelId={PANEL_BOTTOM}
+        position={[0, yOffset + thickness/2, 0]}
+        size={[w, thickness, d]}
+        isSelected={selectedPanelId === PANEL_BOTTOM}
+        onSelect={handlePanelSelect}
+        isDeleted={deletedPanelIds.has(PANEL_BOTTOM)}
+      />
 
       {/* Dynamic Elements */}
       {elements}
@@ -1574,10 +1645,24 @@ function Furniture({
       )}
 
       {/* Back Panel */}
-      <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]} receiveShadow>
-        <boxGeometry args={[w - 0.01, sideHeight - 0.01, 0.004]} />
-        <TexturedMaterial hexColor={finalBackColor} imageUrl={finalBackImageUrl} />
-      </mesh>
+      {!deletedPanelIds.has(PANEL_BACK) && (
+        <StructuralPanel
+          position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]}
+          size={[w - 0.01, sideHeight - 0.01, 0.004]}
+          hexColor={finalBackColor}
+          imageUrl={finalBackImageUrl}
+          receiveShadow
+          castShadow={false}
+        />
+      )}
+      <PanelSegmentHitbox
+        panelId={PANEL_BACK}
+        position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]}
+        size={[w - 0.01, sideHeight - 0.01, 0.004]}
+        isSelected={selectedPanelId === PANEL_BACK}
+        onSelect={handlePanelSelect}
+        isDeleted={deletedPanelIds.has(PANEL_BACK)}
+      />
     </group>
   );
 }
