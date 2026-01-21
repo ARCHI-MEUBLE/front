@@ -1215,17 +1215,40 @@ function Furniture({
       innerHeight
     );
 
+    // Définir les limites ABSOLUES de l'intérieur du meuble (basées sur la structure, pas les cellules)
+    // Ces valeurs correspondent aux bords internes des panneaux haut/bas
+    const furnitureBottomInner = yOffset + thickness;  // Haut du panneau du bas
+    const furnitureTopInner = yOffset + sideHeight - thickness;  // Bas du panneau du haut
+
     // Créer les segments du panneau arrière basés sur les cellules
+    // Calculer les limites min/max réelles des cellules (pour référence)
+    const minCellY = Math.min(...allCells.map(c => c.y - c.height / 2));
+    const maxCellY = Math.max(...allCells.map(c => c.y + c.height / 2));
+    const minCellX = Math.min(...allCells.map(c => c.x - c.width / 2));
+    const maxCellX = Math.max(...allCells.map(c => c.x + c.width / 2));
+
     allCells.forEach((cell, i) => {
       let segX = cell.x;
       let segY = cell.y;
       let segWidth = cell.width;
       let segHeight = cell.height;
 
-      const isLeftmost = cell.x - cell.width / 2 <= -innerWidth / 2 + 0.01;
-      const isRightmost = cell.x + cell.width / 2 >= innerWidth / 2 - 0.01;
-      const isTopmost = cell.y + cell.height / 2 >= sideHeight / 2 + yOffset + innerHeight / 2 - 0.01;
-      const isBottommost = cell.y - cell.height / 2 <= sideHeight / 2 + yOffset - innerHeight / 2 + 0.01;
+      // Utiliser les limites réelles des cellules pour déterminer les bords
+      const cellBottom = cell.y - cell.height / 2;
+      const cellTop = cell.y + cell.height / 2;
+      const cellLeft = cell.x - cell.width / 2;
+      const cellRight = cell.x + cell.width / 2;
+
+      // Vérifier si la cellule est aux bords par rapport aux autres cellules
+      const isLeftmost = cellLeft <= minCellX + 0.01;
+      const isRightmost = cellRight >= maxCellX - 0.01;
+      const isTopmost = cellTop >= maxCellY - 0.01;
+      const isBottommost = cellBottom <= minCellY + 0.01;
+
+      // Vérifier AUSSI contre les limites absolues du meuble (pour les colonnes internes)
+      // Utiliser une tolérance plus grande (0.05) pour capturer les cellules proches du bord
+      const touchesFurnitureBottom = cellBottom <= furnitureBottomInner + 0.05;
+      const touchesFurnitureTop = cellTop >= furnitureTopInner - 0.05;
 
       if (isLeftmost) {
         segWidth += thickness;
@@ -1235,13 +1258,18 @@ function Furniture({
         segWidth += thickness;
         segX += thickness / 2;
       }
-      if (isTopmost) {
+      // Étendre vers le haut si cellule au sommet
+      if (isTopmost || touchesFurnitureTop) {
         segHeight += thickness;
         segY += thickness / 2;
       }
-      if (isBottommost) {
-        segHeight += thickness;
-        segY -= thickness / 2;
+      // Étendre vers le bas si cellule au fond du meuble - étendre jusqu'au socle
+      if (isBottommost || touchesFurnitureBottom) {
+        // Calculer l'extension exacte nécessaire pour atteindre le haut du socle (yOffset)
+        const gapToBottom = cellBottom - yOffset;
+        const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+        segHeight += extensionBottom;
+        segY -= extensionBottom / 2;
       }
 
       const colIndex = cell.colPath.length > 0 ? cell.colPath[0] : 0;
@@ -1268,9 +1296,15 @@ function Furniture({
     }));
 
     // Pour le panneau du haut - segmenter selon les colonnes de premier niveau
-    // Identifier les colonnes uniques (basées sur la position X)
+    // IMPORTANT: Ne considérer que les cellules qui touchent le bord SUPÉRIEUR
+    const maxY = Math.max(...allCells.map(c => c.y + c.height / 2));
+    const topTouchingCells = allCells.filter(cell =>
+      cell.y + cell.height / 2 >= maxY - 0.01
+    );
+
+    // Identifier les colonnes uniques parmi les cellules touchant le haut
     const uniqueTopColumns = new Map<number, GridCell[]>();
-    allCells.forEach(cell => {
+    topTouchingCells.forEach(cell => {
       const key = Math.round(cell.x * 1000);
       if (!uniqueTopColumns.has(key)) {
         uniqueTopColumns.set(key, []);
@@ -1321,16 +1355,34 @@ function Furniture({
       });
     }
 
-    // Pour le panneau du bas - segmenter selon les colonnes de premier niveau
-    if (sortedTopColumns.length > 1) {
-      sortedTopColumns.forEach(([, cells], index) => {
+    // Pour le panneau du bas - segmenter selon les colonnes qui touchent le BAS
+    // IMPORTANT: Ne considérer que les cellules qui touchent le bord INFÉRIEUR
+    const minY = Math.min(...allCells.map(c => c.y - c.height / 2));
+    const bottomTouchingCells = allCells.filter(cell =>
+      cell.y - cell.height / 2 <= minY + 0.01
+    );
+
+    const uniqueBottomColumns = new Map<number, GridCell[]>();
+    bottomTouchingCells.forEach(cell => {
+      const key = Math.round(cell.x * 1000);
+      if (!uniqueBottomColumns.has(key)) {
+        uniqueBottomColumns.set(key, []);
+      }
+      uniqueBottomColumns.get(key)!.push(cell);
+    });
+
+    const sortedBottomColumns = Array.from(uniqueBottomColumns.entries())
+      .sort(([keyA], [keyB]) => keyA - keyB);
+
+    if (sortedBottomColumns.length > 1) {
+      sortedBottomColumns.forEach(([, cells], index) => {
         const cell = cells[0];
         const isLeftmost = index === 0;
-        const isRightmost = index === sortedTopColumns.length - 1;
-        
+        const isRightmost = index === sortedBottomColumns.length - 1;
+
         let segX = cell.x;
         let segWidth = cell.width;
-        
+
         if (isLeftmost) {
           segWidth += thickness;
           segX -= thickness / 2;
@@ -1339,7 +1391,7 @@ function Furniture({
           segWidth += thickness;
           segX += thickness / 2;
         }
-        
+
         bottomSegments.push({
           id: `panel-bottom-${index}`,
           x: segX,
@@ -1379,19 +1431,23 @@ function Furniture({
         const cell = cells[0];
         const isTopmost = index === 0;
         const isBottommost = index === sortedLeftRows.length - 1;
-        
+
         let segY = cell.y;
         let segHeight = cell.height;
-        
+
         if (isTopmost) {
           segHeight += thickness;
           segY += thickness / 2;
         }
         if (isBottommost) {
-          segHeight += thickness;
-          segY -= thickness / 2;
+          // Étendre jusqu'au socle (yOffset)
+          const cellBottom = cell.y - cell.height / 2;
+          const gapToBottom = cellBottom - yOffset;
+          const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+          segHeight += extensionBottom;
+          segY -= extensionBottom / 2;
         }
-        
+
         leftSegments.push({
           id: `panel-left-${index}`,
           x: -w / 2 + thickness / 2,
@@ -1431,19 +1487,23 @@ function Furniture({
         const cell = cells[0];
         const isTopmost = index === 0;
         const isBottommost = index === sortedRightRows.length - 1;
-        
+
         let segY = cell.y;
         let segHeight = cell.height;
-        
+
         if (isTopmost) {
           segHeight += thickness;
           segY += thickness / 2;
         }
         if (isBottommost) {
-          segHeight += thickness;
-          segY -= thickness / 2;
+          // Étendre jusqu'au socle (yOffset)
+          const cellBottom = cell.y - cell.height / 2;
+          const gapToBottom = cellBottom - yOffset;
+          const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+          segHeight += extensionBottom;
+          segY -= extensionBottom / 2;
         }
-        
+
         rightSegments.push({
           id: `panel-right-${index}`,
           x: w / 2 - thickness / 2,
@@ -1467,17 +1527,33 @@ function Furniture({
       `${sep.orientation === 'vertical' ? 'V' : 'H'}[${sep.path}] at ${sep.orientation === 'vertical' ? `x=${sep.x.toFixed(2)}` : `y=${sep.y.toFixed(2)}`}`
     ));
 
+    // Utiliser les limites réelles des cellules pour les séparateurs aussi
+    // (déjà calculées ci-dessus : minCellY, maxCellY, minCellX, maxCellX)
+
     // Créer les segments des séparateurs
     allSeparators.forEach((sep, i) => {
       // Pour chaque séparateur, on peut le segmenter selon les cellules qu'il borde
       // Pour simplifier, on crée un segment pour chaque portion du séparateur
-      
+
       if (sep.orientation === 'vertical') {
+        // Vérifier si le séparateur lui-même touche les bords ABSOLUS du meuble
+        // Utiliser une tolérance plus grande (0.05) pour éviter les erreurs de virgule flottante
+        const sepBottom = sep.y - sep.height / 2;
+        const sepTop = sep.y + sep.height / 2;
+        const sepTouchesFurnitureTop = sepTop >= furnitureTopInner - 0.05;
+        const sepTouchesFurnitureBottom = sepBottom <= furnitureBottomInner + 0.05;
+
+        // DEBUG: Afficher les valeurs pour diagnostic
+        console.log(`Separator ${sep.path}: bottom=${sepBottom.toFixed(4)}, furnitureBottomInner=${furnitureBottomInner.toFixed(4)}, touches=${sepTouchesFurnitureBottom}`);
+
         // Trouver toutes les cellules à gauche de ce séparateur
-        const adjacentCells = allCells.filter(cell => 
-          Math.abs((cell.x + cell.width / 2) - (sep.x - thickness / 2)) < 0.02
+        // Utiliser une tolérance plus grande pour capturer les cellules adjacentes
+        const adjacentCells = allCells.filter(cell =>
+          Math.abs((cell.x + cell.width / 2) - (sep.x - thickness / 2)) < 0.05
         );
-        
+
+        console.log(`Separator ${sep.path}: found ${adjacentCells.length} adjacent cells`);
+
         if (adjacentCells.length > 0) {
           // Grouper par Y
           const uniqueRows = new Map<number, GridCell>();
@@ -1487,25 +1563,33 @@ function Furniture({
               uniqueRows.set(key, cell);
             }
           });
-          
+
           Array.from(uniqueRows.values())
             .sort((a, b) => b.y - a.y)
             .forEach((cell, j) => {
-              let segY = cell.y;
-              let segHeight = cell.height;
-              
-              const isTopmost = cell.y + cell.height / 2 >= sep.y + sep.height / 2 - 0.01;
-              const isBottommost = cell.y - cell.height / 2 <= sep.y - sep.height / 2 + 0.01;
-              
-              if (isTopmost) {
-                segHeight += thickness;
-                segY += thickness / 2;
+              // Utiliser directement les positions du séparateur pour assurer l'alignement
+              let segY = sep.y;
+              let segHeight = sep.height;
+
+              // Étendre vers le haut si le séparateur touche le haut du meuble
+              if (sepTouchesFurnitureTop) {
+                // Calculer l'extension exacte nécessaire pour atteindre le haut
+                const gapToTop = furnitureTopInner - sepTop;
+                const extensionTop = thickness + Math.max(0, gapToTop);
+                segHeight += extensionTop;
+                segY += extensionTop / 2;
               }
-              if (isBottommost) {
-                segHeight += thickness;
-                segY -= thickness / 2;
+              // Étendre vers le bas si le séparateur touche le bas du meuble
+              if (sepTouchesFurnitureBottom) {
+                // Calculer l'extension exacte nécessaire pour atteindre le bas (yOffset = haut du socle)
+                const gapToBottom = sepBottom - yOffset;
+                const extensionBottom = Math.max(thickness, gapToBottom + 0.001); // +0.001 pour s'assurer de la couverture
+                segHeight += extensionBottom;
+                segY -= extensionBottom / 2;
               }
-              
+
+              console.log(`Sep ${sep.path} segment ${j}: sepBottom=${sepBottom.toFixed(4)}, yOffset=${yOffset.toFixed(4)}, furnitureBottomInner=${furnitureBottomInner.toFixed(4)}, sepTouchesFurnitureBottom=${sepTouchesFurnitureBottom}, height=${segHeight.toFixed(4)}`);
+
               separatorSegments.push({
                 id: `separator-v-${sep.path}-${j}`,
                 x: sep.x,
@@ -1517,23 +1601,49 @@ function Furniture({
               });
             });
         } else {
-          // Pas de cellules adjacentes, segment unique
+          // Pas de cellules adjacentes, utiliser les dimensions du séparateur
+          let segY = sep.y;
+          let segHeight = sep.height;
+
+          // Étendre jusqu'aux bords du meuble si le séparateur les touche
+          if (sepTouchesFurnitureTop) {
+            const gapToTop = furnitureTopInner - sepTop;
+            const extensionTop = thickness + Math.max(0, gapToTop);
+            segHeight += extensionTop;
+            segY += extensionTop / 2;
+          }
+          if (sepTouchesFurnitureBottom) {
+            // Calculer l'extension exacte nécessaire pour atteindre le bas (yOffset = haut du socle)
+            const gapToBottom = sepBottom - yOffset;
+            const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+            segHeight += extensionBottom;
+            segY -= extensionBottom / 2;
+          }
+
           separatorSegments.push({
             id: `separator-v-${sep.path}-0`,
             x: sep.x,
-            y: sep.y,
-            width: sep.width,
-            height: sep.height + thickness * 2, // Étendre en haut et en bas
+            y: segY,
+            width: thickness,
+            height: segHeight,
             orientation: 'vertical',
             segmentIndex: 0
           });
         }
       } else {
         // Séparateur horizontal
-        const adjacentCells = allCells.filter(cell => 
+        // Limites gauche/droite du meuble
+        const furnitureLeftInner = -innerWidth / 2;
+        const furnitureRightInner = innerWidth / 2;
+
+        // Vérifier si le séparateur lui-même touche les bords du meuble
+        const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.01;
+        const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.01;
+
+        const adjacentCells = allCells.filter(cell =>
           Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.02
         );
-        
+
         if (adjacentCells.length > 0) {
           const uniqueCols = new Map<number, GridCell>();
           adjacentCells.forEach(cell => {
@@ -1542,25 +1652,31 @@ function Furniture({
               uniqueCols.set(key, cell);
             }
           });
-          
+
           Array.from(uniqueCols.values())
             .sort((a, b) => a.x - b.x)
             .forEach((cell, j) => {
               let segX = cell.x;
               let segWidth = cell.width;
-              
+
               const isLeftmost = cell.x - cell.width / 2 <= sep.x - sep.width / 2 + 0.01;
               const isRightmost = cell.x + cell.width / 2 >= sep.x + sep.width / 2 - 0.01;
-              
-              if (isLeftmost) {
+
+              // Vérifier aussi si la cellule touche les bords ABSOLUS du meuble
+              const touchesFurnitureLeft = cell.x - cell.width / 2 <= furnitureLeftInner + 0.01;
+              const touchesFurnitureRight = cell.x + cell.width / 2 >= furnitureRightInner - 0.01;
+
+              // Étendre vers la gauche si nécessaire
+              if (isLeftmost || touchesFurnitureLeft || sepTouchesFurnitureLeft) {
                 segWidth += thickness;
                 segX -= thickness / 2;
               }
-              if (isRightmost) {
+              // Étendre vers la droite si nécessaire
+              if (isRightmost || touchesFurnitureRight || sepTouchesFurnitureRight) {
                 segWidth += thickness;
                 segX += thickness / 2;
               }
-              
+
               separatorSegments.push({
                 id: `separator-h-${sep.path}-${j}`,
                 x: segX,
@@ -1572,11 +1688,25 @@ function Furniture({
               });
             });
         } else {
+          // Pas de cellules adjacentes, utiliser les dimensions du séparateur
+          let segX = sep.x;
+          let segWidth = sep.width;
+
+          // Étendre jusqu'aux bords du meuble si le séparateur les touche
+          if (sepTouchesFurnitureLeft) {
+            segWidth += thickness;
+            segX -= thickness / 2;
+          }
+          if (sepTouchesFurnitureRight) {
+            segWidth += thickness;
+            segX += thickness / 2;
+          }
+
           separatorSegments.push({
             id: `separator-h-${sep.path}-0`,
-            x: sep.x,
+            x: segX,
             y: sep.y,
-            width: sep.width + thickness * 2,
+            width: segWidth,
             height: sep.height,
             orientation: 'horizontal',
             segmentIndex: 0

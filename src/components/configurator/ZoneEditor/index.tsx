@@ -93,6 +93,41 @@ export default function ZoneEditor({
   const selectedZone = selectedZoneInfo?.zone ?? rootZone;
   const parentZone = selectedZoneInfo?.parent ?? null;
 
+  // Détecter si plusieurs zones sélectionnées partagent le même parent (pour ajuster le groupe)
+  const multiSelectInfo = useMemo(() => {
+    if (selectedZoneIds.length < 2) return null;
+
+    // Trouver le parent de chaque zone sélectionnée
+    const parents: { zone: Zone; parent: Zone | null }[] = [];
+    for (const id of selectedZoneIds) {
+      const info = findZoneWithParent(rootZone, id);
+      if (info) parents.push(info);
+    }
+
+    // Vérifier que tous ont le même parent
+    if (parents.length !== selectedZoneIds.length) return null;
+    const firstParent = parents[0].parent;
+    if (!firstParent) return null;
+
+    const allSameParent = parents.every(p => p.parent?.id === firstParent.id);
+    if (!allSameParent) return null;
+
+    // Vérifier si toutes les zones sélectionnées sont des enfants directs de ce parent
+    const selectedIds = new Set(selectedZoneIds);
+    const allAreDirectChildren = firstParent.children?.every(child =>
+      selectedIds.has(child.id) || !selectedIds.has(child.id)
+    ) ?? false;
+
+    // Vérifier si TOUS les enfants du parent sont sélectionnés
+    const allChildrenSelected = firstParent.children?.every(child => selectedIds.has(child.id)) ?? false;
+
+    return {
+      commonParent: firstParent,
+      allChildrenSelected,
+      selectedZones: parents.map(p => p.zone)
+    };
+  }, [selectedZoneIds, rootZone, findZoneWithParent]);
+
   // Calculer la hauteur d'une zone en mm (parcours récursif)
   const calculateZoneHeight = useCallback(
     (targetId: string, zone: Zone = rootZone, availableHeight: number = height): number => {
@@ -706,6 +741,79 @@ export default function ZoneEditor({
           } : undefined}
         />
       )}
+
+      {/* Dimensions du groupe quand plusieurs zones avec même parent sont sélectionnées */}
+      {multiSelectInfo && multiSelectInfo.allChildrenSelected && (() => {
+        const commonParent = multiSelectInfo.commonParent;
+        const grandParent = findZoneWithParent(rootZone, commonParent.id)?.parent;
+
+        // Le groupe peut ajuster sa hauteur si le grand-parent est horizontal (étagères)
+        const canAdjustGroupHeight = !!(grandParent && grandParent.type === 'horizontal' && grandParent.children && grandParent.children.length >= 2);
+        // Le groupe peut ajuster sa largeur si le grand-parent est vertical
+        const canAdjustGroupWidth = !!(grandParent && grandParent.type === 'vertical' && grandParent.children && grandParent.children.length >= 2);
+
+        const groupWidthMm = Math.round(calculateZoneWidth(commonParent.id));
+        const groupHeightMm = Math.round(calculateZoneHeight(commonParent.id));
+
+        return (
+          <SelectedZoneDimensions
+            widthMm={groupWidthMm}
+            heightMm={groupHeightMm}
+            canAdjustWidth={canAdjustGroupWidth}
+            canAdjustHeight={canAdjustGroupHeight}
+            onSetWidth={canAdjustGroupWidth && grandParent ? (newWidthMm) => {
+              const siblings = grandParent.children || [];
+              const myIndex = siblings.findIndex(c => c.id === commonParent.id);
+              if (myIndex === -1 || siblings.length < 2) return;
+
+              const grandParentWidthMm = calculateZoneWidth(grandParent.id);
+              const neighborIndex = myIndex < siblings.length - 1 ? myIndex + 1 : myIndex - 1;
+
+              const currentRatios = siblings.length === 2 && grandParent.splitRatio !== undefined
+                ? [grandParent.splitRatio, 100 - grandParent.splitRatio]
+                : grandParent.splitRatios || siblings.map(() => 100 / siblings.length);
+
+              const currentSizesMm = currentRatios.map(r => (r / 100) * grandParentWidthMm);
+
+              const minSize = 50;
+              const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
+              const clampedNewWidth = Math.max(minSize, Math.min(maxSize, newWidthMm));
+
+              const delta = clampedNewWidth - currentSizesMm[myIndex];
+              currentSizesMm[myIndex] = clampedNewWidth;
+              currentSizesMm[neighborIndex] = currentSizesMm[neighborIndex] - delta;
+
+              const newRatios = currentSizesMm.map(size => (size / grandParentWidthMm) * 100);
+              setSplitRatios(grandParent.id, newRatios);
+            } : undefined}
+            onSetHeight={canAdjustGroupHeight && grandParent ? (newHeightMm) => {
+              const siblings = grandParent.children || [];
+              const myIndex = siblings.findIndex(c => c.id === commonParent.id);
+              if (myIndex === -1 || siblings.length < 2) return;
+
+              const grandParentHeightMm = calculateZoneHeight(grandParent.id);
+              const neighborIndex = myIndex < siblings.length - 1 ? myIndex + 1 : myIndex - 1;
+
+              const currentRatios = siblings.length === 2 && grandParent.splitRatio !== undefined
+                ? [grandParent.splitRatio, 100 - grandParent.splitRatio]
+                : grandParent.splitRatios || siblings.map(() => 100 / siblings.length);
+
+              const currentSizesMm = currentRatios.map(r => (r / 100) * grandParentHeightMm);
+
+              const minSize = 50;
+              const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
+              const clampedNewHeight = Math.max(minSize, Math.min(maxSize, newHeightMm));
+
+              const delta = clampedNewHeight - currentSizesMm[myIndex];
+              currentSizesMm[myIndex] = clampedNewHeight;
+              currentSizesMm[neighborIndex] = currentSizesMm[neighborIndex] - delta;
+
+              const newRatios = currentSizesMm.map(size => (size / grandParentHeightMm) * 100);
+              setSplitRatios(grandParent.id, newRatios);
+            } : undefined}
+          />
+        );
+      })()}
 
       {/* Contenu personnalisé après le canvas (ex: dimensions) */}
       {renderAfterCanvas}

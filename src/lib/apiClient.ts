@@ -589,6 +589,16 @@ export interface FurnitureColors {
 }
 
 /**
+ * Interface pour la structure des zones (pour segmentation des panneaux)
+ */
+export interface ZoneStructure {
+  type: 'leaf' | 'horizontal' | 'vertical';
+  children?: ZoneStructure[];
+  splitRatio?: number;
+  splitRatios?: number[];
+}
+
+/**
  * API Client - Génération 3D
  */
 export const generateApi = {
@@ -599,13 +609,15 @@ export const generateApi = {
    * @param color Couleur hex optionnelle unique (ex: "#D8C7A1") - legacy
    * @param colors Couleurs multi-composants optionnelles
    * @param deletedPanels Liste des IDs de panneaux à exclure du DXF
+   * @param zones Structure des zones pour la segmentation des panneaux
    */
   async generate(
     prompt: string,
     closed: boolean = false,
     color?: string,
     colors?: FurnitureColors,
-    deletedPanels?: string[]
+    deletedPanels?: string[],
+    zones?: ZoneStructure
   ): Promise<{
     success: boolean;
     glb_url: string;
@@ -624,6 +636,11 @@ export const generateApi = {
     // Panneaux supprimés pour le DXF
     if (deletedPanels && deletedPanels.length > 0) {
       body.deletedPanels = deletedPanels;
+    }
+
+    // Structure des zones pour segmentation des panneaux
+    if (zones) {
+      body.zones = zones;
     }
 
     return request<{ success: boolean; glb_url: string; dxf_url?: string; message: string }>(

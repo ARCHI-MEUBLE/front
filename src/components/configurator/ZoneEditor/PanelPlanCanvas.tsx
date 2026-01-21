@@ -249,16 +249,31 @@ export default function PanelPlanCanvas({
         const allSeparators = collectSeparators(zone, 0, 0, canvasWidth, canvasHeight);
         const segments: Panel2DSegment[] = [];
 
-        // Identifier les colonnes uniques pour segmenter les panneaux haut et bas
-        const uniqueColumns = new Map<number, typeof allCells[0][]>();
-        allCells.forEach(cell => {
+        // Identifier les colonnes uniques pour segmenter les panneaux haut
+        // IMPORTANT: Ne considérer que les cellules qui touchent le bord SUPÉRIEUR (y proche de 0)
+        const topTouchingCells = allCells.filter(cell => cell.y < 1);
+        const uniqueTopColumns = new Map<number, typeof allCells[0][]>();
+        topTouchingCells.forEach(cell => {
             const key = Math.round(cell.x * 1000);
-            if (!uniqueColumns.has(key)) {
-                uniqueColumns.set(key, []);
+            if (!uniqueTopColumns.has(key)) {
+                uniqueTopColumns.set(key, []);
             }
-            uniqueColumns.get(key)!.push(cell);
+            uniqueTopColumns.get(key)!.push(cell);
         });
-        const sortedColumns = Array.from(uniqueColumns.entries()).sort(([a], [b]) => a - b);
+        const sortedTopColumns = Array.from(uniqueTopColumns.entries()).sort(([a], [b]) => a - b);
+
+        // Identifier les colonnes uniques pour segmenter les panneaux bas
+        // IMPORTANT: Ne considérer que les cellules qui touchent le bord INFÉRIEUR
+        const bottomTouchingCells = allCells.filter(cell => cell.y + cell.height > canvasHeight - 1);
+        const uniqueBottomColumns = new Map<number, typeof allCells[0][]>();
+        bottomTouchingCells.forEach(cell => {
+            const key = Math.round(cell.x * 1000);
+            if (!uniqueBottomColumns.has(key)) {
+                uniqueBottomColumns.set(key, []);
+            }
+            uniqueBottomColumns.get(key)!.push(cell);
+        });
+        const sortedBottomColumns = Array.from(uniqueBottomColumns.entries()).sort(([a], [b]) => a - b);
 
         // Identifier les rangées uniques pour les panneaux gauche et droit
         const leftCells = allCells.filter(cell => cell.x < 1);
@@ -335,9 +350,9 @@ export default function PanelPlanCanvas({
             });
         }
 
-        // Panneau haut - segmenté selon les colonnes
-        if (sortedColumns.length > 1) {
-            sortedColumns.forEach(([, cells], index) => {
+        // Panneau haut - segmenté selon les colonnes touchant le haut
+        if (sortedTopColumns.length > 1) {
+            sortedTopColumns.forEach(([, cells], index) => {
                 const cell = cells[0];
                 segments.push({
                     id: `panel-top-${index}`,
@@ -361,9 +376,9 @@ export default function PanelPlanCanvas({
             });
         }
 
-        // Panneau bas - segmenté selon les colonnes
-        if (sortedColumns.length > 1) {
-            sortedColumns.forEach(([, cells], index) => {
+        // Panneau bas - segmenté selon les colonnes touchant le bas
+        if (sortedBottomColumns.length > 1) {
+            sortedBottomColumns.forEach(([, cells], index) => {
                 const cell = cells[0];
                 segments.push({
                     id: `panel-bottom-${index}`,
