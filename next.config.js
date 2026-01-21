@@ -60,8 +60,8 @@ const nextConfig = {
       },
       // Proxy pour les textures uploadées côté backend
       {
-        source: '/back/textures/:path*',
-        destination: `${backendUrl}/back/textures/:path*`
+        source: '/textures/:path*',
+        destination: `${backendUrl}/textures/:path*`
       }
     ];
   }

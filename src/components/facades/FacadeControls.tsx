@@ -1058,8 +1058,13 @@ function SummaryPanel({
         <p className="text-sm font-medium text-[#1A1917] mb-3">Matériau</p>
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded"
-            style={{ backgroundColor: config.material.color_hex }}
+            className="w-10 h-10 rounded border border-[#E8E6E3] overflow-hidden"
+            style={{
+              backgroundColor: config.material.color_hex,
+              backgroundImage: config.material.texture_url ? `url(${config.material.texture_url})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
           />
           <div>
             <p className="text-sm font-medium text-[#1A1917]">{config.material.name}</p>
