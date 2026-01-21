@@ -264,7 +264,9 @@ export default function PanelPlanCanvas({
 
         // Identifier les colonnes uniques pour segmenter les panneaux bas
         // IMPORTANT: Ne considérer que les cellules qui touchent le bord INFÉRIEUR
-        const bottomTouchingCells = allCells.filter(cell => cell.y + cell.height > canvasHeight - 1);
+        // Utiliser une approche relative: trouver le Y maximum et filtrer les cellules proches
+        const maxBottom = Math.max(...allCells.map(c => c.y + c.height));
+        const bottomTouchingCells = allCells.filter(cell => cell.y + cell.height >= maxBottom - 1);
         const uniqueBottomColumns = new Map<number, typeof allCells[0][]>();
         bottomTouchingCells.forEach(cell => {
             const key = Math.round(cell.x * 1000);
@@ -274,6 +276,15 @@ export default function PanelPlanCanvas({
             uniqueBottomColumns.get(key)!.push(cell);
         });
         const sortedBottomColumns = Array.from(uniqueBottomColumns.entries()).sort(([a], [b]) => a - b);
+
+        // DEBUG: Afficher les cellules touchant le bas
+        console.log('PanelPlanCanvas - maxBottom:', maxBottom);
+        console.log('PanelPlanCanvas - bottomTouchingCells:', bottomTouchingCells.length, 'cells');
+        console.log('PanelPlanCanvas - sortedBottomColumns:', sortedBottomColumns.length, 'columns');
+        console.log('PanelPlanCanvas - canvasHeight:', canvasHeight);
+        bottomTouchingCells.forEach(cell => {
+            console.log(`  Cell: x=${cell.x}, y=${cell.y}, width=${cell.width}, height=${cell.height}, bottom=${cell.y + cell.height}`);
+        });
 
         // Identifier les rangées uniques pour les panneaux gauche et droit
         const leftCells = allCells.filter(cell => cell.x < 1);
