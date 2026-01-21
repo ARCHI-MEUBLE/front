@@ -2441,11 +2441,43 @@ function Furniture({
               </mesh>
             </group>
           ) : (
-            /* Socle plein (bois) */
-            <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
-              <boxGeometry args={[w, 0.1, d - 0.02]} />
-              <TexturedMaterial hexColor={finalBaseColor} imageUrl={finalBaseImageUrl} />
-            </mesh>
+            /* Socle plein (bois) - segmenté selon les colonnes du bas */
+            <group>
+              {panelSegments.bottomSegments.map((segment, index) => {
+                if (deletedPanelIds.has(segment.id)) return null;
+
+                // Étendre le socle pour couvrir les espaces des séparateurs
+                const isFirst = index === 0;
+                const isLast = index === panelSegments.bottomSegments.length - 1;
+                const separatorGap = thickness; // Épaisseur du séparateur vertical
+
+                let socleX = segment.x;
+                let socleWidth = segment.width;
+
+                // Étendre vers la droite pour couvrir le séparateur (sauf dernier segment)
+                if (!isLast) {
+                  socleWidth += separatorGap / 2;
+                  socleX += separatorGap / 4;
+                }
+                // Étendre vers la gauche pour couvrir le séparateur (sauf premier segment)
+                if (!isFirst) {
+                  socleWidth += separatorGap / 2;
+                  socleX -= separatorGap / 4;
+                }
+
+                return (
+                  <mesh
+                    key={`socle-${segment.id}`}
+                    position={[socleX, 0.05, 0]}
+                    castShadow
+                    receiveShadow
+                  >
+                    <boxGeometry args={[socleWidth, 0.1, d - 0.02]} />
+                    <TexturedMaterial hexColor={finalBaseColor} imageUrl={finalBaseImageUrl} />
+                  </mesh>
+                );
+              })}
+            </group>
           )}
         </>
       )}
