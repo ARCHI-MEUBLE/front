@@ -10,7 +10,11 @@ import {
   IconCurrencyEuro,
   IconRuler,
   IconCheck,
+  IconPhoto,
+  IconPalette,
 } from '@tabler/icons-react';
+import { uploadImage } from '@/lib/apiClient';
+import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -196,8 +200,13 @@ export function DashboardFacades() {
                         <TableRow key={material.id}>
                           <TableCell>
                             <div
-                              className="w-10 h-10 rounded-lg border shadow-sm"
-                              style={{ backgroundColor: material.color_hex }}
+                              className="w-10 h-10 rounded-lg border shadow-sm overflow-hidden"
+                              style={{
+                                backgroundColor: material.color_hex || '#E5E7EB',
+                                backgroundImage: material.texture_url ? `url(${material.texture_url})` : undefined,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }}
                             />
                           </TableCell>
                           <TableCell className="font-medium">{material.name}</TableCell>
@@ -279,9 +288,15 @@ function MaterialModal({
     price_per_m2: 150,
     is_active: true,
   });
+  const [textureFile, setTextureFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [renderMode, setRenderMode] = useState<'color' | 'texture'>('color');
 
   useEffect(() => {
+    // Reset textureFile quand le modal s'ouvre
+    setTextureFile(null);
+
     if (material) {
       setFormData({
         name: material.name || '',
@@ -290,6 +305,7 @@ function MaterialModal({
         price_per_m2: material.price_per_m2 || 150,
         is_active: material.is_active !== false,
       });
+      setRenderMode(material.texture_url ? 'texture' : 'color');
     } else {
       setFormData({
         name: '',
@@ -298,8 +314,27 @@ function MaterialModal({
         price_per_m2: 150,
         is_active: true,
       });
+      setRenderMode('color');
     }
   }, [material, open]);
+
+  const handleUploadTexture = async () => {
+    if (!textureFile) return;
+    setUploading(true);
+    try {
+      // Utiliser la même fonction que les échantillons
+      const imageUrl = await uploadImage(textureFile);
+      console.log('Upload response:', imageUrl);
+
+      setFormData(prev => ({ ...prev, texture_url: imageUrl }));
+      toast.success('Texture uploadée');
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error("Erreur lors de l'upload");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,13 +342,67 @@ function MaterialModal({
 
     try {
       const url = material
-        ? `/backend/api/facade-materials.php?id=${material.id}`
+        ? `/backend/api/facade-materials.php/${material.id}`
         : '/backend/api/facade-materials.php';
+
+      // Validation stricte: soit couleur, soit texture selon le choix
+      if (renderMode === 'color' && !formData.color_hex) {
+        toast.error('Veuillez choisir une couleur');
+        setLoading(false);
+        return;
+      }
+
+      // Si mode texture, uploader le fichier s'il n'est pas encore uploadé
+      let finalTextureUrl = formData.texture_url;
+      console.log('handleSubmit - renderMode:', renderMode);
+      console.log('handleSubmit - formData.texture_url:', formData.texture_url);
+      console.log('handleSubmit - textureFile:', textureFile?.name);
+
+      if (renderMode === 'texture') {
+        if (!finalTextureUrl && textureFile) {
+          // Upload automatique du fichier
+          try {
+            toast.loading('Upload de la texture...');
+            finalTextureUrl = await uploadImage(textureFile);
+            toast.dismiss();
+          } catch (uploadErr) {
+            toast.dismiss();
+            toast.error("Erreur lors de l'upload de la texture");
+            setLoading(false);
+            return;
+          }
+        }
+
+        if (!finalTextureUrl) {
+          toast.error('Veuillez sélectionner une image');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Construire le payload en respectant STRICTEMENT le choix renderMode
+      // SI couleur unie → envoyer SEULEMENT color_hex, vider texture_url
+      // SI texture image → envoyer SEULEMENT texture_url, vider color_hex
+      const payload: any = {
+        name: formData.name,
+        price_per_m2: formData.price_per_m2,
+        is_active: formData.is_active,
+      };
+
+      if (renderMode === 'color') {
+        // Mode couleur: envoyer couleur, vider texture
+        payload.color_hex = formData.color_hex;
+        payload.texture_url = '';
+      } else {
+        // Mode texture: envoyer texture, vider couleur
+        payload.color_hex = '';
+        payload.texture_url = finalTextureUrl;
+      }
 
       const response = await fetch(url, {
         method: material ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -334,80 +423,139 @@ function MaterialModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{material ? 'Modifier' : 'Ajouter'} un matériau</DialogTitle>
-          <DialogDescription>
-            Configurez les propriétés du matériau de façade
-          </DialogDescription>
+          <DialogTitle className="text-lg font-semibold">{material ? 'Modifier' : 'Ajouter'} un matériau</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nom</Label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Nom du matériau */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nom</Label>
             <Input
-              id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Ex: Chêne naturel"
+              className="h-9"
               required
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Couleur</Label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={formData.color_hex}
-                onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
-                className="h-10 w-20 rounded border cursor-pointer"
-              />
-              <Input
-                value={formData.color_hex}
-                onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
-                className="flex-1"
-              />
+          <Separator />
+
+          {/* Type de rendu avec Tabs */}
+          <div className="space-y-3">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Apparence</Label>
+            <Tabs value={renderMode} onValueChange={(val) => setRenderMode(val as 'color' | 'texture')} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 h-9">
+                <TabsTrigger value="color" className="text-xs gap-1.5">
+                  <IconPalette className="w-3.5 h-3.5" />
+                  Couleur
+                </TabsTrigger>
+                <TabsTrigger value="texture" className="text-xs gap-1.5">
+                  <IconPhoto className="w-3.5 h-3.5" />
+                  Image
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Mode couleur */}
+              <TabsContent value="color" className="pt-3 space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.color_hex}
+                    onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
+                    className="h-9 w-14 rounded border cursor-pointer bg-transparent"
+                  />
+                  <Input
+                    value={formData.color_hex}
+                    onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
+                    className="flex-1 h-9 font-mono text-xs"
+                    placeholder="#FFFFFF"
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Mode texture */}
+              <TabsContent value="texture" className="pt-3 space-y-3">
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setTextureFile(file);
+                    if (file) {
+                      setFormData(prev => ({ ...prev, texture_url: '' }));
+                    }
+                  }}
+                  className="h-9 text-xs"
+                />
+                {(textureFile || formData.texture_url) && (
+                  <div className="flex items-center gap-3 p-2 rounded-md border bg-muted/30">
+                    <div
+                      className="w-12 h-12 rounded border bg-muted flex-shrink-0 overflow-hidden"
+                      style={{
+                        backgroundImage: formData.texture_url
+                          ? `url(${formData.texture_url})`
+                          : textureFile
+                            ? `url(${URL.createObjectURL(textureFile)})`
+                            : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {textureFile?.name || formData.texture_url?.split('/').pop()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formData.texture_url ? 'Texture enregistrée' : 'Prêt à uploader'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <Separator />
+
+          {/* Prix et statut */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Prix/m²</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.price_per_m2}
+                  onChange={(e) => setFormData({ ...formData, price_per_m2: Number(e.target.value) })}
+                  className="h-9 pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Statut</Label>
+              <Button
+                type="button"
+                variant={formData.is_active ? 'default' : 'outline'}
+                size="sm"
+                className="w-full h-9 text-xs"
+                onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
+              >
+                {formData.is_active ? 'Actif' : 'Inactif'}
+              </Button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="texture">URL de texture (optionnel)</Label>
-            <Input
-              id="texture"
-              value={formData.texture_url}
-              onChange={(e) => setFormData({ ...formData, texture_url: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="price">Prix au m² (€)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.price_per_m2}
-              onChange={(e) => setFormData({ ...formData, price_per_m2: Number(e.target.value) })}
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="active"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            <Label htmlFor="active">Actif</Label>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'En cours...' : 'Enregistrer'}
+            <Button type="submit" size="sm" disabled={loading}>
+              {loading ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
           </DialogFooter>
         </form>
@@ -550,10 +698,10 @@ function SettingsPanel({
           <SettingCard
             title="Marge des charnières"
             settingKey="hinge_edge_margin"
-            defaultValue="20 mm (2 cm)"
+            defaultValue="150 mm (15 cm)"
             description="Distance minimale entre les premiers/derniers trous de charnières et les bords haut/bas de la façade."
             min={10}
-            max={100}
+            max={300}
           />
           <SettingCard
             title="Diamètre des trous"

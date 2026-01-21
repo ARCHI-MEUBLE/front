@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
-import { apiClient, Category } from "@/lib/apiClient";
-import { Plus, Trash2, X, Upload, ImageIcon, Pencil } from "lucide-react";
+import { Category } from "@/lib/apiClient";
+import { Plus, Trash2, X, ImageIcon, Pencil, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 interface CategoriesModalProps {
   isOpen: boolean;
@@ -92,7 +103,6 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
     try {
       let imageUrl = editingCategory?.image_url || "";
 
-      // Upload de l'image si une nouvelle a été sélectionnée
       if (newCategoryImage) {
         const formData = new FormData();
         formData.append('image', newCategoryImage);
@@ -106,18 +116,14 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
           imageUrl = uploadData.url;
-        } else {
-          console.error("Erreur upload image");
         }
       }
 
-      // Si l'image a été supprimée (imagePreview est null mais pas de nouvelle image)
       if (!imagePreview && !newCategoryImage) {
         imageUrl = "";
       }
 
       if (editingCategory) {
-        // Mode édition
         const response = await fetch('/api/admin/categories', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -135,9 +141,8 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
           throw new Error(errorData.error || "Erreur lors de la mise à jour");
         }
 
-        toast.success("Catégorie mise à jour avec succès");
+        toast.success("Catégorie mise à jour");
       } else {
-        // Mode création
         const response = await fetch('/api/admin/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -154,10 +159,9 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
           throw new Error(errorData.error || "Erreur lors de la création");
         }
 
-        toast.success("Catégorie créée avec succès");
+        toast.success("Catégorie créée");
       }
 
-      // Reset form
       setEditingCategory(null);
       setNewCategoryName("");
       setNewCategoryDescription("");
@@ -173,9 +177,7 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
   };
 
   const handleDelete = async (category: Category) => {
-    if (!confirm(`Supprimer la catégorie "${category.name}" ?\n\nCette action échouera si des modèles utilisent cette catégorie.`)) {
-      return;
-    }
+    if (!confirm(`Supprimer "${category.name}" ?`)) return;
 
     try {
       const response = await fetch(`/api/admin/categories?id=${category.id}`, {
@@ -183,221 +185,198 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
         credentials: 'include'
       });
 
-      if (!response.ok) {
-        throw new Error("Impossible de supprimer");
-      }
+      if (!response.ok) throw new Error("Impossible de supprimer");
 
       toast.success("Catégorie supprimée");
       await loadCategories();
-    } catch (error: any) {
-      console.error("Erreur lors de la suppression:", error);
+    } catch (error) {
       toast.error("Impossible de supprimer (utilisée par des modèles)");
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#1A1917]">Gérer les catégories</h2>
-            <p className="mt-1 text-sm text-[#6B6560]">
-              Ajoutez ou supprimez des catégories de meubles
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-[#6B6560] transition-colors hover:bg-[#F5F3F0]"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">Gérer les catégories</DialogTitle>
+        </DialogHeader>
 
-        {/* Formulaire de création/modification */}
-        <form onSubmit={handleSubmit} className="mb-6 rounded-lg border border-[#E8E4DE] bg-[#FAFAF9] p-4">
-          {editingCategory && (
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-medium text-[#8B7355]">
-                Modification de "{editingCategory.name}"
-              </span>
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="text-sm text-[#6B6560] hover:text-[#1A1917]"
-              >
-                Annuler
-              </button>
-            </div>
-          )}
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-[#1A1917]">
-              Nom de la catégorie <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-[#E8E4DE] px-4 py-2 focus:border-[#1A1917] focus:outline-none"
-              placeholder="Ex: Dressing, Bibliothèque..."
-              disabled={isCreating}
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-[#1A1917]">
-              Description (optionnelle)
-            </label>
-            <input
-              type="text"
-              value={newCategoryDescription}
-              onChange={(e) => setNewCategoryDescription(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-[#E8E4DE] px-4 py-2 focus:border-[#1A1917] focus:outline-none"
-              placeholder="Ex: Optimisez chaque centimètre"
-              disabled={isCreating}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-[#1A1917]">
-              Image (pour la page d'accueil)
-            </label>
-            <p className="mt-1 text-xs text-[#6B6560]">
-              Cette image sera affichée dans la section catégories de la page d'accueil
-            </p>
-            <div className="mt-2">
-              {imagePreview ? (
-                <div className="relative inline-block">
-                  <img
-                    src={imagePreview}
-                    alt="Aperçu"
-                    className="h-24 w-36 rounded-lg object-cover border border-[#E8E4DE]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                    disabled={isCreating}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : (
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#E8E4DE] bg-white px-4 py-3 text-sm text-[#6B6560] transition-colors hover:border-[#1A1917] hover:bg-[#FAFAF9]">
-                  <ImageIcon className="h-5 w-5" />
-                  Choisir une image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    disabled={isCreating}
-                  />
-                </label>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isCreating || !newCategoryName.trim()}
-            className="flex items-center gap-2 rounded-lg bg-[#1A1917] px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-105 disabled:opacity-50"
-          >
-            {editingCategory ? (
-              <>
-                {isCreating ? "Enregistrement..." : "Mettre à jour"}
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                {isCreating ? "Création..." : "Ajouter la catégorie"}
-              </>
+        <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+          {/* Formulaire */}
+          <form onSubmit={handleSubmit} className="space-y-4 p-4 rounded-lg border bg-muted/30">
+            {editingCategory && (
+              <div className="flex items-center justify-between pb-2">
+                <Badge variant="secondary" className="text-xs">
+                  Modification : {editingCategory.name}
+                </Badge>
+                <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit} className="h-7 text-xs">
+                  Annuler
+                </Button>
+              </div>
             )}
-          </button>
-        </form>
 
-        {/* Liste des catégories */}
-        <div>
-          <h3 className="mb-3 text-sm font-medium text-[#1A1917]">
-            Catégories existantes ({categories.length})
-          </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Nom */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Nom <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Ex: Dressing"
+                  className="h-9"
+                  disabled={isCreating}
+                />
+              </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Description
+                </Label>
+                <Input
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  placeholder="Ex: Optimisez chaque centimètre"
+                  className="h-9"
+                  disabled={isCreating}
+                />
+              </div>
             </div>
-          ) : categories.length === 0 ? (
-            <div className="py-8 text-center text-sm text-[#6B6560]">
-              Aucune catégorie. Créez-en une ci-dessus.
-            </div>
-          ) : (
-            <div className="max-h-[400px] space-y-2 overflow-y-auto">
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center gap-3 rounded-lg border border-[#E8E4DE] bg-white p-3 transition-colors hover:bg-[#FAFAF9]"
-                >
-                  {/* Image de la catégorie */}
-                  {category.image_url ? (
+
+            {/* Image */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Image d'accueil
+              </Label>
+              <div className="flex items-center gap-3">
+                {imagePreview ? (
+                  <div className="relative group">
                     <img
-                      src={category.image_url}
-                      alt={category.name}
-                      className="h-14 w-20 shrink-0 rounded-lg object-cover"
+                      src={imagePreview}
+                      alt="Aperçu"
+                      className="h-16 w-24 rounded-md object-cover border"
                     />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -right-1.5 -top-1.5 rounded-full bg-destructive p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      disabled={isCreating}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 cursor-pointer rounded-md border border-dashed px-4 py-3 text-xs text-muted-foreground hover:border-foreground hover:bg-muted/50 transition-colors">
+                    <ImageIcon className="h-4 w-4" />
+                    <span>Choisir une image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      disabled={isCreating}
+                    />
+                  </label>
+                )}
+                <Button type="submit" size="sm" disabled={isCreating || !newCategoryName.trim()} className="ml-auto">
+                  {isCreating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : editingCategory ? (
+                    "Mettre à jour"
                   ) : (
-                    <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-lg bg-[#F5F3F0]">
-                      <ImageIcon className="h-5 w-5 text-[#6B6560]" />
-                    </div>
+                    <>
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      Ajouter
+                    </>
                   )}
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-[#1A1917]">{category.name}</span>
-                      {category.is_active === 0 && (
-                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
-                          Désactivée
-                        </span>
-                      )}
-                    </div>
-                    {category.description && (
-                      <p className="mt-0.5 text-sm text-[#6B6560] truncate">{category.description}</p>
-                    )}
-                    <p className="mt-1 text-xs text-[#8B7D6B]">Slug: {category.slug}</p>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      onClick={() => handleEdit(category)}
-                      className="rounded-lg p-2 text-[#6B6560] transition-colors hover:bg-[#F5F3F0]"
-                      title="Modifier"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(category)}
-                      className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                </Button>
+              </div>
             </div>
-          )}
-        </div>
+          </form>
 
-        {/* Footer */}
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-[#E8E4DE] px-6 py-2 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#F5F3F0]"
-          >
-            Fermer
-          </button>
+          <Separator />
+
+          {/* Liste des catégories */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Catégories existantes
+              </p>
+              <Badge variant="outline" className="text-xs">
+                {categories.length}
+              </Badge>
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                Aucune catégorie
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Image */}
+                    {category.image_url ? (
+                      <img
+                        src={category.image_url}
+                        alt={category.name}
+                        className="h-12 w-16 shrink-0 rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-muted">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+
+                    {/* Infos */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{category.name}</span>
+                        {category.is_active === 0 && (
+                          <Badge variant="secondary" className="text-[10px]">Désactivée</Badge>
+                        )}
+                      </div>
+                      {category.description && (
+                        <p className="text-xs text-muted-foreground truncate">{category.description}</p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground/70 font-mono">{category.slug}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(category)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(category)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

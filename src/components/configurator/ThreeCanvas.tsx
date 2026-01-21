@@ -272,7 +272,7 @@ function Handle({ type = 'vertical_bar', position, side, height, width }: { type
 
 // Fonction pour calculer les positions des charnières selon la hauteur
 function getHingeYPositions(height: number): number[] {
-  const margin = 0.06; // Marge depuis le bord haut/bas
+  const margin = 0.15; // Marge de 15cm depuis le bord haut/bas
   const usableHeight = height - 2 * margin;
 
   // Logique: 2 charnières jusqu'à 1.5m, puis +1 charnière par 0.5m supplémentaire

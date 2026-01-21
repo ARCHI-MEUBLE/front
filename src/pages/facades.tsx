@@ -34,6 +34,7 @@ export default function FacadesPage() {
       id: 1,
       name: 'Chêne Naturel',
       color_hex: '#D8C7A1',
+      texture_url: '',
       price_modifier: 0,
       price_per_m2: 150,
       is_active: true,
