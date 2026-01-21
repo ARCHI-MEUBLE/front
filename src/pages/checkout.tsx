@@ -894,6 +894,12 @@ export default function CheckoutStripe() {
                       <span className="text-[#706F6C]">Sous-total</span>
                       <span className="font-mono text-[#1A1917]">{(cart?.total || 0).toLocaleString('fr-FR')} €</span>
                     </div>
+                    {catalogueTotal > 0 && (
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-[#706F6C]">Articles catalogue</span>
+                        <span className="font-mono text-[#1A1917]">{catalogueTotal.toLocaleString('fr-FR')} €</span>
+                      </div>
+                    )}
                     {samplesTotal > 0 && (
                       <div className="mt-2 flex items-center justify-between text-sm">
                         <span className="text-[#706F6C]">Échantillons</span>
