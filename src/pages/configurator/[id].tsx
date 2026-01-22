@@ -20,7 +20,7 @@ const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'
 });
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
-import ZoneEditor, { Zone, ZoneContent, ZoneColor } from '@/components/configurator/ZoneEditor';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META, PanelPlanCanvas } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
@@ -30,7 +30,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2, Edit3 } from 'lucide-react';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2, Edit3, Trash2 } from 'lucide-react';
 import { 
   IconRuler2, 
   IconPalette as IconTablerPalette, 
@@ -577,10 +577,49 @@ export default function ConfiguratorPage() {
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
   const [doors, setDoors] = useState(0);
+  
+  // Panel selection and deletion states
+  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
+  const [showPanelTool, setShowPanelTool] = useState(false);
+  const panelToolRef = useRef<HTMLDivElement>(null);
+
+  // Scroll vers le plan 2D quand l'outil est activé
+  useEffect(() => {
+    if (showPanelTool && panelToolRef.current) {
+      setTimeout(() => {
+        panelToolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [showPanelTool]);
+
+  // Handle panel deletion/restoration toggle
+  const togglePanelDeleted = useCallback((panelId: string) => {
+    setDeletedPanelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(panelId)) {
+        next.delete(panelId);
+      } else {
+        next.add(panelId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Handle panel selection (deselects zones when a panel is selected)
+  const handlePanelSelect = useCallback((panelId: string | null) => {
+    setSelectedPanelId(panelId);
+    if (panelId) {
+      setSelectedZoneIds([]);
+    }
+  }, []);
 
   // Gérer la sélection intelligente (clic 1 -> clic 2)
   const handleZoneSelect = useCallback(
     (zoneId: string | null) => {
+      // Deselect panel when selecting a zone
+      setSelectedPanelId(null);
+      
       if (!zoneId) {
         setSelectedZoneIds([]);
         return;
@@ -1050,6 +1089,7 @@ export default function ConfiguratorPage() {
       mountingStyle,
       doorsOpen,
       showDecorations,
+      deletedPanelIds: Array.from(deletedPanelIds),
       timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
     };
 
@@ -1059,7 +1099,7 @@ export default function ConfiguratorPage() {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
 
   // Charger les matériaux
   useEffect(() => {
@@ -1643,6 +1683,7 @@ export default function ConfiguratorPage() {
         if (configToRestore.doorType) setDoorType(configToRestore.doorType);
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
+        if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
         console.log('✅ Configuration restaurée avec succès');
         setInitialConfigApplied(true);
       } else {
@@ -1702,6 +1743,9 @@ export default function ConfiguratorPage() {
     setDoorType(initialConfig.doorType || 'none');
     setDoorSide(initialConfig.doorSide || 'left');
     setSelectedZoneIds(['root']);
+    setDeletedPanelIds(new Set()); // Réinitialiser les panneaux supprimés
+    setSelectedPanelId(null); // Désélectionner le panneau
+    setShowPanelTool(false); // Fermer l'outil de suppression
 
     // Supprimer la sauvegarde localStorage
     try {
@@ -1742,6 +1786,7 @@ export default function ConfiguratorPage() {
     if (c.mountingStyle) setMountingStyle(c.mountingStyle);
     if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
     if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
+    if (c.deletedPanelIds) setDeletedPanelIds(new Set(c.deletedPanelIds));
     
     // Réactiver la régénération et forcer l'application
     setTimeout(() => {
@@ -2275,7 +2320,21 @@ export default function ConfiguratorPage() {
       }
 
       const excludeDoors = !doorsOpenRef.current || doorType === 'none';
-      const result = await apiClient.generate.generate(prompt, excludeDoors, singleColor, furnitureColors);
+
+      // Convertir les panneaux supprimés en tableau pour l'API
+      const deletedPanelsArray = Array.from(deletedPanelIds);
+
+      // Préparer la structure des zones pour la segmentation (si des panneaux sont supprimés)
+      const zonesForSegmentation = deletedPanelsArray.length > 0 ? rootZone : undefined;
+
+      const result = await apiClient.generate.generate(
+        prompt,
+        excludeDoors,
+        singleColor,
+        furnitureColors,
+        deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined,
+        zonesForSegmentation
+      );
 
       let glbUrlAbsolute = result.glb_url;
       // On utilise maintenant le proxy configuré dans next.config.js
@@ -2286,7 +2345,7 @@ export default function ConfiguratorPage() {
     } finally {
       setGenerating(false);
     }
-  }, [selectedColorOption, useMultiColor, componentColors, doorType]);
+  }, [selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds, rootZone]);
 
   // Effet de régénération
   useEffect(() => {
@@ -2567,6 +2626,7 @@ export default function ConfiguratorPage() {
         advancedZones: rootZone,
         useMultiColor,
         componentColors,
+        deletedPanelIds: Array.from(deletedPanelIds),
       };
 
       const payload = {
@@ -2952,6 +3012,9 @@ export default function ConfiguratorPage() {
                   doorType={doorType}
                   doorSide={doorSide}
                   mountingStyle={mountingStyle}
+                  selectedPanelId={isViewMode || !showPanelTool ? null : selectedPanelId}
+                  onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
+                  deletedPanelIds={deletedPanelIds}
                 />
 
                 {/* Sélecteur de couleur pour la zone (tiroir/porte) - apparaît quand une zone colorisable est sélectionnée */}
@@ -2981,6 +3044,38 @@ export default function ConfiguratorPage() {
                     <span>Capturer</span>
                   </button>
                   */}
+
+                  {/* Bouton outil suppression planches */}
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPanelTool(!showPanelTool);
+                        if (showPanelTool) {
+                          setSelectedPanelId(null);
+                        }
+                      }}
+                      className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                        showPanelTool
+                          ? 'border-[#E64A19] bg-[#E64A19] text-white'
+                          : 'border-[#FF8A65] bg-[#FFF3E0] text-[#E64A19] hover:border-[#E64A19] hover:bg-[#E64A19] hover:text-white'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title={showPanelTool ? "Fermer l'outil" : "Retirer des planches"}
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="4" width="20" height="4" rx="0.5" />
+                        <line x1="6" y1="12" x2="18" y2="12" strokeDasharray="2 2" opacity="0.5" />
+                        <rect x="2" y="16" width="20" height="4" rx="0.5" />
+                      </svg>
+                      <span>Retirer planches</span>
+                      {deletedPanelIds.size > 0 && (
+                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-[#E64A19]">
+                          {deletedPanelIds.size}
+                        </span>
+                      )}
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -3043,6 +3138,53 @@ export default function ConfiguratorPage() {
                     >
                       <Redo2 className="h-4 w-4" />
                     </button>
+                  </div>
+                )}
+
+                {/* Panel selection indicator */}
+                {selectedPanelId && !isViewMode && showPanelTool && (
+                  <div className="absolute top-4 right-4 z-20 hidden lg:block">
+                    <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className={`h-3 w-3 rounded-full ${deletedPanelIds.has(selectedPanelId) ? 'bg-[#FF5722]' : 'bg-[#2196F3]'}`} />
+                      <span className={`text-sm font-medium ${deletedPanelIds.has(selectedPanelId) ? 'text-[#706F6C] line-through' : 'text-[#1A1917]'}`}>
+                        {(() => {
+                          const panelInfo = stringToPanelId(selectedPanelId);
+                          if (panelInfo) {
+                            if (panelInfo.type === 'separator') {
+                              const isHorizontal = selectedPanelId.includes('-h-');
+                              return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                            }
+                            const baseLabel = PANEL_META[panelInfo.type]?.label || selectedPanelId;
+                            if (panelInfo.index !== undefined) {
+                              return `${baseLabel} (segment ${panelInfo.index + 1})`;
+                            }
+                            return baseLabel;
+                          }
+                          return selectedPanelId;
+                        })()}
+                      </span>
+                      {/* Delete/restore panel button */}
+                      <button
+                        type="button"
+                        onClick={() => togglePanelDeleted(selectedPanelId)}
+                        className={`ml-1 ${deletedPanelIds.has(selectedPanelId) ? 'text-[#4CAF50] hover:text-[#388E3C]' : 'text-[#FF5722] hover:text-[#E64A19]'}`}
+                        title={deletedPanelIds.has(selectedPanelId) ? 'Restaurer ce panneau' : 'Retirer ce panneau'}
+                      >
+                        {deletedPanelIds.has(selectedPanelId) ? (
+                          <RotateCcw className="h-4 w-4" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPanelId(null)}
+                        className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
+                        title="Désélectionner"
+                      >
+                        <IconTablerX className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -3151,6 +3293,21 @@ export default function ConfiguratorPage() {
                           />
                         }
                       />
+
+                      {/* Outil de suppression de panneaux - affiché quand actif via bouton flottant */}
+                      {showPanelTool && (
+                        <div ref={panelToolRef}>
+                          <PanelPlanCanvas
+                            zone={rootZone}
+                            width={width}
+                            height={height}
+                            selectedPanelId={selectedPanelId}
+                            onSelectPanel={handlePanelSelect}
+                            deletedPanelIds={deletedPanelIds}
+                          />
+                        </div>
+                      )}
+
                       {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
                       <SocleSelector
                         value={socle}

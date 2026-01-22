@@ -172,6 +172,7 @@ export function SelectedZoneDimensions({
   canAdjustHeight,
   onSetWidth,
   onSetHeight,
+  label,
 }: {
   widthMm: number;
   heightMm: number;
@@ -179,6 +180,7 @@ export function SelectedZoneDimensions({
   canAdjustHeight: boolean;
   onSetWidth?: (newValue: number) => void;
   onSetHeight?: (newValue: number) => void;
+  label?: string;
 }) {
   const stepMm = 10;
   const [widthInput, setWidthInput] = useState(widthMm.toString());
@@ -211,8 +213,43 @@ export function SelectedZoneDimensions({
     }
   };
 
+  const incrementWidth = () => {
+    const currentValue = parseInt(widthInput, 10) || widthMm;
+    const newValue = currentValue + stepMm;
+    setWidthInput(newValue.toString());
+    if (onSetWidth) onSetWidth(newValue);
+  };
+
+  const decrementWidth = () => {
+    const currentValue = parseInt(widthInput, 10) || widthMm;
+    const newValue = Math.max(50, currentValue - stepMm);
+    setWidthInput(newValue.toString());
+    if (onSetWidth) onSetWidth(newValue);
+  };
+
+  const incrementHeight = () => {
+    const currentValue = parseInt(heightInput, 10) || heightMm;
+    const newValue = currentValue + stepMm;
+    setHeightInput(newValue.toString());
+    if (onSetHeight) onSetHeight(newValue);
+  };
+
+  const decrementHeight = () => {
+    const currentValue = parseInt(heightInput, 10) || heightMm;
+    const newValue = Math.max(50, currentValue - stepMm);
+    setHeightInput(newValue.toString());
+    if (onSetHeight) onSetHeight(newValue);
+  };
+
   return (
     <div className="flex items-center gap-4 border border-[#E8E6E3] bg-white px-4 py-3" style={{ borderRadius: '4px' }}>
+      {/* Label optionnel pour groupe */}
+      {label && (
+        <>
+          <span className="text-sm font-medium text-[#8B7355]">{label}</span>
+          <div className="h-6 w-px bg-[#E8E6E3]" />
+        </>
+      )}
       {/* Largeur */}
       <div className="flex items-center gap-2">
         <Columns3 className="h-4 w-4 text-[#706F6C]" />
@@ -221,7 +258,7 @@ export function SelectedZoneDimensions({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onSetWidth(widthMm - stepMm)}
+              onClick={decrementWidth}
               className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
               style={{ borderRadius: '2px' }}
             >
@@ -242,7 +279,7 @@ export function SelectedZoneDimensions({
             </div>
             <button
               type="button"
-              onClick={() => onSetWidth(widthMm + stepMm)}
+              onClick={incrementWidth}
               className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
               style={{ borderRadius: '2px' }}
             >
@@ -264,7 +301,7 @@ export function SelectedZoneDimensions({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onSetHeight(heightMm - stepMm)}
+              onClick={decrementHeight}
               className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
               style={{ borderRadius: '2px' }}
             >
@@ -285,7 +322,7 @@ export function SelectedZoneDimensions({
             </div>
             <button
               type="button"
-              onClick={() => onSetHeight(heightMm + stepMm)}
+              onClick={incrementHeight}
               className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
               style={{ borderRadius: '2px' }}
             >

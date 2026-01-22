@@ -25,6 +25,7 @@ export type Zone = {
   zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
   glassShelfCount?: number; // Nombre d'étagères en verre (1-5, défaut: 1)
   glassShelfPositions?: number[]; // Positions des étagères en % depuis le bas (0-100)
+  isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
 };
 
 export interface ZoneContentMeta {
@@ -108,3 +109,83 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     description: 'Tiroir sans poignée, ouverture par pression',
   },
 };
+
+// Types pour les panneaux/faces sélectionnables du meuble
+export type PanelType = 'left' | 'right' | 'top' | 'bottom' | 'back' | 'separator';
+
+export interface PanelId {
+  type: PanelType;
+  index?: number; // Pour les séparateurs (sep-0, sep-1, etc.)
+}
+
+export interface PanelMeta {
+  label: string;
+  shortLabel: string;
+  icon: string;
+}
+
+export const PANEL_META: Record<PanelType, PanelMeta> = {
+  left: {
+    label: 'Côté gauche',
+    shortLabel: 'Gauche',
+    icon: '◀',
+  },
+  right: {
+    label: 'Côté droit',
+    shortLabel: 'Droite',
+    icon: '▶',
+  },
+  top: {
+    label: 'Panneau supérieur',
+    shortLabel: 'Haut',
+    icon: '▲',
+  },
+  bottom: {
+    label: 'Panneau inférieur',
+    shortLabel: 'Bas',
+    icon: '▼',
+  },
+  back: {
+    label: 'Panneau arrière',
+    shortLabel: 'Dos',
+    icon: '■',
+  },
+  separator: {
+    label: 'Séparateur',
+    shortLabel: 'Sép.',
+    icon: '|',
+  },
+};
+
+// Fonction utilitaire pour créer un ID de panneau sous forme de string
+export function panelIdToString(panel: PanelId): string {
+  if (panel.type === 'separator' && panel.index !== undefined) {
+    return `panel-separator-${panel.index}`;
+  }
+  return `panel-${panel.type}`;
+}
+
+// Fonction utilitaire pour parser un ID de panneau depuis une string
+// Gère les formats: panel-left, panel-left-0, panel-left-0-1, panel-separator-h-root-0, etc.
+export function stringToPanelId(str: string): PanelId | null {
+  if (!str.startsWith('panel-')) return null;
+  const rest = str.substring(6); // Enlever 'panel-'
+  
+  // Séparateurs: panel-separator-h-{zoneId}-{index} ou panel-separator-v-{zoneId}-{index}
+  if (rest.startsWith('separator-')) {
+    const index = parseInt(rest.split('-').pop() || '0', 10);
+    return { type: 'separator', index: isNaN(index) ? 0 : index };
+  }
+  
+  // Panneaux segmentés: panel-left-0, panel-top-1, panel-right-0-2, etc.
+  const parts = rest.split('-');
+  const baseType = parts[0];
+  
+  if (['left', 'right', 'top', 'bottom', 'back'].includes(baseType)) {
+    // Extraire l'index du segment si présent (panel-left-0 -> index 0)
+    const index = parts.length > 1 ? parseInt(parts[1], 10) : undefined;
+    return { type: baseType as PanelType, index: isNaN(index as number) ? undefined : index };
+  }
+  
+  return null;
+}

@@ -4,7 +4,7 @@ import { Canvas, useThree, RootState } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
-import { Zone } from './ZoneEditor/types';
+import { Zone, PanelId, panelIdToString } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 
@@ -26,6 +26,9 @@ interface ThreeViewerProps {
   rootZone: Zone | null;
   selectedZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
+  selectedPanelId?: string | null;
+  onSelectPanel?: (panelId: string | null) => void;
+  deletedPanelIds?: Set<string>;
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
@@ -35,6 +38,7 @@ interface ThreeViewerProps {
   doorSide?: 'left' | 'right';
   useMultiColor?: boolean;
   mountingStyle?: 'applique' | 'encastre';
+  onCaptureReady?: (captureFunction: () => string | null) => void;
 }
 
 // Couleur par défaut (beige/bois naturel)
@@ -48,7 +52,7 @@ function getSafeColor(hexColor: string | null | undefined): string {
   return DEFAULT_MATERIAL_COLOR;
 }
 
-// Composant pour un matériau avec support de texture - Version améliorée PBR
+// Composant pour un matériau avec support de texture
 function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?: string | null }) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const textureRef = useRef<THREE.Texture | null>(null);
@@ -96,9 +100,7 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
         }
 
         loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
-        loadedTexture.repeat.set(2, 2);
-        loadedTexture.anisotropy = 16;
-        loadedTexture.colorSpace = THREE.SRGBColorSpace;
+        loadedTexture.repeat.set(4, 4); // Augmenter la répétition pour mieux voir la texture
         loadedTexture.needsUpdate = true;
         textureRef.current = loadedTexture;
         setTexture(loadedTexture);
@@ -129,143 +131,164 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
 
   // Utiliser une clé unique pour forcer React à recréer le matériau proprement
   // quand la couleur ou la texture change
-  const materialKey = texture ? `tex-${currentImageUrlRef.current}-${safeColor}` : `col-${safeColor}`;
+  const materialKey = texture ? `tex-${currentImageUrlRef.current}` : `col-${safeColor}`;
 
-  // Si on a une texture chargée, l'utiliser avec des propriétés PBR améliorées
+  // Si on a une texture chargée, l'utiliser
   if (texture) {
     return (
-      <meshPhysicalMaterial
+      <meshStandardMaterial
         key={materialKey}
         attach="material"
         map={texture}
-        color={safeColor || "#ffffff"}
-        roughness={0.55}
-        metalness={0.05}
-        clearcoat={0.1}
-        clearcoatRoughness={0.4}
-        envMapIntensity={0.5}
+        color="#ffffff"
+        roughness={0.7}
+        metalness={0.1}
       />
     );
   }
 
-  // Sinon utiliser la couleur hex avec un effet bois laqué/verni
+  // Sinon utiliser la couleur hex (pendant le chargement ou en fallback)
   return (
-    <meshPhysicalMaterial
+    <meshStandardMaterial
       key={materialKey}
       attach="material"
       color={safeColor}
       roughness={0.4}
-      metalness={0.02}
-      clearcoat={0.15}
-      clearcoatRoughness={0.3}
-      envMapIntensity={0.4}
+      metalness={0.1}
     />
   );
 }
 
-// Composant pour rendre différents types de poignées - Version améliorée avec détails
-function Handle({ type = 'vertical_bar', position, side, height, width }: { type?: string; position: [number, number, number]; side: string; height: number; width?: number }) {
-  // Matériau métallique haut de gamme avec reflets
-  const handleMaterial = (
-    <meshPhysicalMaterial
-      color="#1a1a1a"
-      metalness={0.95}
-      roughness={0.08}
-      clearcoat={0.8}
-      clearcoatRoughness={0.1}
-      envMapIntensity={1.2}
-    />
-  );
+// Composant pour une hitbox de sélection de segment de panneau (invisible, uniquement pour la sélection)
+interface PanelSegmentHitboxProps {
+  panelId: string;
+  position: [number, number, number];
+  size: [number, number, number]; // width, height, depth
+  isSelected: boolean;
+  onSelect: (panelId: string | null) => void;
+  isDeleted?: boolean;
+}
 
-  // Matériau pour les fixations/supports
-  const mountMaterial = (
-    <meshPhysicalMaterial
-      color="#222222"
-      metalness={0.9}
-      roughness={0.15}
-      clearcoat={0.5}
-      clearcoatRoughness={0.2}
-    />
+function PanelSegmentHitbox({ 
+  panelId, 
+  position, 
+  size, 
+  isSelected, 
+  onSelect,
+  isDeleted = false
+}: PanelSegmentHitboxProps) {
+  return (
+    <group position={position}>
+      {/* Hitbox invisible pour la sélection */}
+      <mesh
+        visible={false}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'default';
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(isSelected ? null : panelId);
+        }}
+      >
+        <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.002]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+      
+      {/* Effet de sélection visible uniquement quand sélectionné */}
+      {isSelected && (
+        <>
+          <mesh>
+            <boxGeometry args={[size[0] + 0.003, size[1] + 0.003, size[2] + 0.003]} />
+            <meshBasicMaterial 
+              transparent 
+              opacity={isDeleted ? 0.35 : 0.4}
+              color={isDeleted ? "#FF5722" : "#2196F3"}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, size[2] + 0.004]} />
+            <meshBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} wireframe transparent opacity={0.5} toneMapped={false} />
+          </mesh>
+          <lineSegments>
+            <edgesGeometry args={[new THREE.BoxGeometry(size[0] + 0.005, size[1] + 0.005, size[2] + 0.005)]} />
+            <lineBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} linewidth={4} toneMapped={false} />
+          </lineSegments>
+        </>
+      )}
+    </group>
   );
+}
+
+// Composant pour un panneau structurel (visuel uniquement, sans interaction)
+interface StructuralPanelProps {
+  position: [number, number, number];
+  size: [number, number, number]; // width, height, depth
+  hexColor: string;
+  imageUrl?: string | null;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+}
+
+function StructuralPanel({ 
+  position, 
+  size, 
+  hexColor, 
+  imageUrl, 
+  castShadow = true,
+  receiveShadow = true
+}: StructuralPanelProps) {
+  return (
+    <mesh position={position} castShadow={castShadow} receiveShadow={receiveShadow}>
+      <boxGeometry args={size} />
+      <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+    </mesh>
+  );
+}
+
+// Composant pour rendre différents types de poignées
+function Handle({ type = 'vertical_bar', position, side, height, width }: { type?: string; position: [number, number, number]; side: string; height: number; width?: number }) {
+  const handleMaterial = <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />;
 
   if (type === 'horizontal_bar') {
-    // Barre horizontale avec supports aux extrémités
+    // Barre horizontale (utilise width si disponible, sinon height)
     const barLength = width ? Math.min(width * 0.4, 0.5) : Math.min(height * 0.4, 0.3);
     return (
-      <group position={position}>
-        {/* Barre principale */}
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.007, 0.007, barLength, 16]} />
-          {handleMaterial}
-        </mesh>
-        {/* Supports aux extrémités */}
-        <mesh position={[-barLength / 2, 0, -0.008]} castShadow>
-          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
-          {mountMaterial}
-        </mesh>
-        <mesh position={[barLength / 2, 0, -0.008]} castShadow>
-          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
-          {mountMaterial}
-        </mesh>
-      </group>
+      <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.008, 0.008, barLength, 12]} />
+        {handleMaterial}
+      </mesh>
     );
   } else if (type === 'knob') {
-    // Bouton rond avec base
+    // Bouton rond
     return (
-      <group position={position}>
-        {/* Base du bouton */}
-        <mesh position={[0, 0, -0.005]} castShadow>
-          <cylinderGeometry args={[0.015, 0.018, 0.01, 16]} />
-          {mountMaterial}
-        </mesh>
-        {/* Bouton principal */}
-        <mesh position={[0, 0, 0.005]} castShadow>
-          <sphereGeometry args={[0.018, 24, 24]} />
-          {handleMaterial}
-        </mesh>
-      </group>
+      <mesh position={position}>
+        <sphereGeometry args={[0.02, 16, 16]} />
+        {handleMaterial}
+      </mesh>
     );
   } else if (type === 'recessed') {
-    // Poignée encastrée (encoche) avec profondeur
+    // Poignée encastrée (encoche)
     return (
       <group position={position}>
-        {/* Cadre de l'encoche */}
-        <mesh castShadow>
-          <boxGeometry args={[0.09, 0.028, 0.012]} />
-          <meshPhysicalMaterial
-            color="#1f1f1f"
-            metalness={0.7}
-            roughness={0.25}
-            clearcoat={0.4}
-          />
-        </mesh>
-        {/* Intérieur de l'encoche (plus sombre) */}
-        <mesh position={[0, 0, -0.003]}>
-          <boxGeometry args={[0.075, 0.018, 0.01]} />
-          <meshStandardMaterial color="#0a0a0a" roughness={0.8} />
+        <mesh>
+          <boxGeometry args={[0.08, 0.025, 0.015]} />
+          <meshStandardMaterial color="#2a2a2a" metalness={0.5} roughness={0.6} />
         </mesh>
       </group>
     );
   } else {
-    // Barre verticale (défaut) avec supports
-    const barHeight = Math.min(height * 0.25, 0.4);
+    // Barre verticale (défaut)
     return (
-      <group position={position}>
-        {/* Barre principale */}
-        <mesh castShadow>
-          <cylinderGeometry args={[0.007, 0.007, barHeight, 16]} />
-          {handleMaterial}
-        </mesh>
-        {/* Supports haut et bas */}
-        <mesh position={[0, barHeight / 2 - 0.01, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
-          {mountMaterial}
-        </mesh>
-        <mesh position={[0, -barHeight / 2 + 0.01, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.01, 0.01, 0.016, 12]} />
-          {mountMaterial}
-        </mesh>
-      </group>
+      <mesh position={position}>
+        <cylinderGeometry args={[0.008, 0.008, Math.min(height * 0.25, 0.4), 12]} />
+        {handleMaterial}
+      </mesh>
     );
   }
 }
@@ -388,14 +411,6 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
         side={side}
         height={height}
       />
-      {/* Charnières - nombre dynamique selon hauteur */}
-      {getHingeYPositions(height).map((yPos, index) => (
-        <DoorHinge
-          key={`hinge-${index}`}
-          position={[side === 'left' ? 0.005 : -0.005, yPos, 0]}
-          side={side}
-        />
-      ))}
     </group>
   );
 }
@@ -454,14 +469,6 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
         side={side}
         height={height}
       />
-      {/* Charnières - nombre dynamique selon hauteur */}
-      {getHingeYPositions(height).map((yPos, index) => (
-        <DoorHinge
-          key={`hinge-${index}`}
-          position={[side === 'left' ? 0.005 : -0.005, yPos, 0]}
-          side={side}
-        />
-      ))}
     </group>
   );
 }
@@ -513,14 +520,6 @@ function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, i
         <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
         <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
       </mesh>
-      {/* Charnières - nombre dynamique selon hauteur */}
-      {getHingeYPositions(height).map((yPos, index) => (
-        <DoorHinge
-          key={`hinge-${index}`}
-          position={[side === 'left' ? 0.005 : -0.005, yPos, 0]}
-          side={side}
-        />
-      ))}
     </group>
   );
 }
@@ -662,15 +661,174 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, is
   );
 }
 
-function Furniture({
-  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
+// Composant pour générer le panneau arrière avec des ouvertures pour les espaces ouverts
+function BackPanelWithOpenings({
+  totalWidth,
+  totalHeight,
+  yOffset,
+  zOffset,
+  openSpaces,
+  hexColor,
+  imageUrl
+}: {
+  totalWidth: number;
+  totalHeight: number;
+  yOffset: number;
+  zOffset: number;
+  openSpaces: { x: number; y: number; width: number; height: number }[];
+  hexColor: string;
+  imageUrl?: string | null;
+}) {
+  // Pour simplifier, on divise le panneau en segments horizontaux
+  // Si un espace ouvert couvre toute la largeur, on crée des panneaux au-dessus et en-dessous
+  // Pour des cas plus complexes (plusieurs colonnes ouvertes), on génère des segments
+
+  // Trier les espaces ouverts par position Y (de haut en bas)
+  const sortedOpenSpaces = [...openSpaces].sort((a, b) => b.y - a.y);
+  
+  // Générer les panneaux qui évitent les zones ouvertes
+  const panels: React.ReactNode[] = [];
+  
+  // Simplification : créer des panneaux autour de chaque espace ouvert
+  // En utilisant une approche par colonne verticale
+  
+  const leftEdge = -totalWidth / 2;
+  const rightEdge = totalWidth / 2;
+  const topEdge = yOffset + totalHeight / 2;
+  const bottomEdge = yOffset - totalHeight / 2;
+  
+  // Convertir les espaces ouverts en rectangles exclus
+  const exclusions = openSpaces.map(os => ({
+    left: os.x - os.width / 2,
+    right: os.x + os.width / 2,
+    top: os.y + os.height / 2,
+    bottom: os.y - os.height / 2
+  }));
+
+  // Pour chaque espace ouvert, créer des panneaux à gauche, à droite, au-dessus et en-dessous
+  if (exclusions.length === 1) {
+    const ex = exclusions[0];
+    
+    // Panneau à gauche de l'ouverture
+    if (ex.left > leftEdge + 0.01) {
+      const panelWidth = ex.left - leftEdge;
+      panels.push(
+        <mesh key="back-left" position={[leftEdge + panelWidth/2, yOffset, zOffset]} receiveShadow>
+          <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
+          <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+        </mesh>
+      );
+    }
+    
+    // Panneau à droite de l'ouverture
+    if (ex.right < rightEdge - 0.01) {
+      const panelWidth = rightEdge - ex.right;
+      panels.push(
+        <mesh key="back-right" position={[rightEdge - panelWidth/2, yOffset, zOffset]} receiveShadow>
+          <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
+          <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+        </mesh>
+      );
+    }
+    
+    // Panneau au-dessus de l'ouverture (dans la colonne de l'ouverture)
+    if (ex.top < topEdge - 0.01) {
+      const panelHeight = topEdge - ex.top;
+      const panelWidth = ex.right - ex.left;
+      panels.push(
+        <mesh key="back-top" position={[(ex.left + ex.right)/2, topEdge - panelHeight/2, zOffset]} receiveShadow>
+          <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
+          <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+        </mesh>
+      );
+    }
+    
+    // Panneau en-dessous de l'ouverture (dans la colonne de l'ouverture)
+    if (ex.bottom > bottomEdge + 0.01) {
+      const panelHeight = ex.bottom - bottomEdge;
+      const panelWidth = ex.right - ex.left;
+      panels.push(
+        <mesh key="back-bottom" position={[(ex.left + ex.right)/2, bottomEdge + panelHeight/2, zOffset]} receiveShadow>
+          <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
+          <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+        </mesh>
+      );
+    }
+  } else if (exclusions.length > 1) {
+    // Pour plusieurs ouvertures, utiliser une approche plus générale
+    // On crée un panneau complet puis on "découpe" conceptuellement avec des panneaux par segment
+    
+    // Trier par position X
+    const sortedExclusions = [...exclusions].sort((a, b) => a.left - b.left);
+    
+    let currentX = leftEdge;
+    
+    sortedExclusions.forEach((ex, i) => {
+      // Panneau à gauche de cette exclusion
+      if (ex.left > currentX + 0.01) {
+        const panelWidth = ex.left - currentX;
+        panels.push(
+          <mesh key={`back-seg-${i}-left`} position={[currentX + panelWidth/2, yOffset, zOffset]} receiveShadow>
+            <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
+            <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+          </mesh>
+        );
+      }
+      
+      // Panneau au-dessus de l'ouverture
+      if (ex.top < topEdge - 0.01) {
+        const panelHeight = topEdge - ex.top;
+        const panelWidth = ex.right - ex.left;
+        panels.push(
+          <mesh key={`back-seg-${i}-top`} position={[(ex.left + ex.right)/2, topEdge - panelHeight/2, zOffset]} receiveShadow>
+            <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
+            <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+          </mesh>
+        );
+      }
+      
+      // Panneau en-dessous de l'ouverture
+      if (ex.bottom > bottomEdge + 0.01) {
+        const panelHeight = ex.bottom - bottomEdge;
+        const panelWidth = ex.right - ex.left;
+        panels.push(
+          <mesh key={`back-seg-${i}-bottom`} position={[(ex.left + ex.right)/2, bottomEdge + panelHeight/2, zOffset]} receiveShadow>
+            <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
+            <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+          </mesh>
+        );
+      }
+      
+      currentX = ex.right;
+    });
+    
+    // Panneau final à droite
+    if (currentX < rightEdge - 0.01) {
+      const panelWidth = rightEdge - currentX;
+      panels.push(
+        <mesh key="back-seg-final" position={[currentX + panelWidth/2, yOffset, zOffset]} receiveShadow>
+          <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
+          <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+        </mesh>
+      );
+    }
+  }
+  
+  return <group>{panels}</group>;
+}
+
+function Furniture({ 
+  width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet, 
   doorsOpen, showDecorations, onToggleDoors, componentColors,
   doorType = 'none',
   doorSide = 'left',
   useMultiColor = false,
   mountingStyle = 'applique',
   selectedZoneIds = [],
-  onSelectZone
+  onSelectZone,
+  selectedPanelId = null,
+  onSelectPanel,
+  deletedPanelIds = new Set()
 }: ThreeViewerProps) {
   const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
 
@@ -679,12 +837,7 @@ function Furniture({
     if (rootZone) {
       const newOpenStates: Record<string, boolean> = {};
       const applyOpenState = (zone: Zone) => {
-        // Portes/tiroirs sur zones feuilles
         if (zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right')) {
-          newOpenStates[zone.id] = doorsOpen || false;
-        }
-        // Portes sur zones groupes (parent avec enfants)
-        if (zone.doorContent && zone.doorContent !== 'empty') {
           newOpenStates[zone.id] = doorsOpen || false;
         }
         if (zone.children) {
@@ -710,8 +863,8 @@ function Furniture({
     const sideHeight = hasSocle ? h - 0.1 : h;
     const yOffset = hasSocle ? 0.1 : 0;
     // Gap selon le style de montage :
-    // - Applique : petit gap (3mm) entre portes adjacentes, les portes couvrent le cadre car positionnées devant
-    // - Encastré : gap visible (6mm = 3mm par côté) - on voit le cadre autour des portes
+    // - Applique : petit gap (3mm) entre portes adjacentes
+    // - Encastré : gap visible (6mm = 3mm par côté)
     const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
     return { w, h, d, sideHeight, yOffset, thickness, compartmentGap };
   }, [width, height, depth, hasSocle, mountingStyle]);
@@ -793,24 +946,12 @@ function Furniture({
   const separatorColor = finalStructureColor;
   const separatorImageUrl = finalStructureImageUrl;
 
-  // Décalage Z pour portes/tiroirs selon le style de montage
-  // Le mesh de la porte est à z=0.01 relatif au groupe, épaisseur 0.018m
-  // Face arrière = groupe_z + 0.001, Face avant = groupe_z + 0.019
-  // Applique: dos de la porte touche le cadre (d/2) → offset = -0.001
-  // Encastré: face avant à fleur avec le cadre (d/2) → offset = -0.019
-  const mountingOffset = mountingStyle === 'encastre' ? -0.019 : -0.001;
-
   // Check if any zone has a zone-specific door
   const hasZoneSpecificDoors = useMemo(() => {
     if (!rootZone) return false;
 
     const checkZone = (zone: Zone): boolean => {
-      // Porte sur zone feuille
       if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right')) {
-        return true;
-      }
-      // Porte sur zone groupe (doorContent)
-      if (zone.doorContent && zone.doorContent !== 'empty') {
         return true;
       }
       if (zone.children) {
@@ -822,6 +963,835 @@ function Furniture({
     return checkZone(rootZone);
   }, [rootZone]);
 
+  // Collecter les informations sur les espaces ouverts pour le rendu du fond
+  const openSpaceInfo = useMemo(() => {
+    const openSpaces: { x: number; y: number; width: number; height: number }[] = [];
+    if (!rootZone) return openSpaces;
+
+    const collectOpenSpaces = (zone: Zone, x: number, y: number, width: number, height: number) => {
+      if (zone.type === 'leaf' && zone.isOpenSpace) {
+        openSpaces.push({ x, y, width, height });
+        return;
+      }
+
+      if (zone.children && zone.children.length > 0) {
+        let currentPos = 0;
+        zone.children.forEach((child, i) => {
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[i] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+
+          if (zone.type === 'horizontal') {
+            const childHeight = height * ratio;
+            collectOpenSpaces(child, x, (y + height/2) - currentPos - childHeight/2, width, childHeight);
+            currentPos += childHeight;
+          } else {
+            const childWidth = width * ratio;
+            collectOpenSpaces(child, x - width/2 + currentPos + childWidth/2, y, childWidth, height);
+            currentPos += childWidth;
+          }
+        });
+      }
+    };
+
+    collectOpenSpaces(rootZone, 0, sideHeight/2 + yOffset, w - (thickness * 2), sideHeight - (thickness * 2));
+    return openSpaces;
+  }, [rootZone, w, sideHeight, yOffset, thickness]);
+
+  // Calculer les segments de panneaux basés sur la structure des zones
+  // Cela permet de sélectionner des portions de panneaux correspondant aux zones
+  interface PanelSegment {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
+
+  // Interface pour les segments du panneau arrière (2D grid)
+  interface BackPanelSegment extends PanelSegment {
+    colIndex: number;
+    rowIndex: number;
+  }
+
+  // Interface pour les séparateurs
+  interface SeparatorSegment extends PanelSegment {
+    orientation: 'vertical' | 'horizontal';
+    segmentIndex: number;
+  }
+
+  const panelSegments = useMemo(() => {
+    const topSegments: PanelSegment[] = [];
+    const bottomSegments: PanelSegment[] = [];
+    const leftSegments: PanelSegment[] = [];
+    const rightSegments: PanelSegment[] = [];
+    const backSegments: BackPanelSegment[] = [];
+    const separatorSegments: SeparatorSegment[] = [];
+
+    const innerWidth = w - (thickness * 2);
+    const innerHeight = sideHeight - (thickness * 2);
+
+    if (!rootZone) {
+      // Si pas de zones, un seul segment par panneau
+      topSegments.push({ id: 'panel-top-0', x: 0, y: h - thickness/2, width: w, height: thickness });
+      bottomSegments.push({ id: 'panel-bottom-0', x: 0, y: yOffset + thickness/2, width: w, height: thickness });
+      leftSegments.push({ id: 'panel-left-0', x: -w/2 + thickness/2, y: sideHeight/2 + yOffset, width: thickness, height: sideHeight });
+      rightSegments.push({ id: 'panel-right-0', x: w/2 - thickness/2, y: sideHeight/2 + yOffset, width: thickness, height: sideHeight });
+      backSegments.push({ id: 'panel-back-0-0', x: 0, y: sideHeight/2 + yOffset, width: w - 0.01, height: sideHeight - 0.01, colIndex: 0, rowIndex: 0 });
+      return { topSegments, bottomSegments, leftSegments, rightSegments, backSegments, separatorSegments };
+    }
+
+    // Fonction pour collecter toutes les cellules (grille 2D) récursivement
+    interface GridCell {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      colPath: number[];
+      rowPath: number[];
+      zone: Zone;
+    }
+
+    const collectGridCells = (
+      zone: Zone, 
+      x: number, 
+      y: number, 
+      width: number, 
+      height: number,
+      colPath: number[] = [],
+      rowPath: number[] = []
+    ): GridCell[] => {
+      if (zone.type === 'leaf' || !zone.children || zone.children.length === 0) {
+        return [{ x, y, width, height, colPath, rowPath, zone }];
+      }
+
+      const cells: GridCell[] = [];
+
+      if (zone.type === 'vertical') {
+        // Soustraire l'espace occupé par les séparateurs
+        const numSeparators = zone.children.length - 1;
+        const availableWidth = width - (numSeparators * thickness);
+        let currentX = x - width / 2;
+        
+        zone.children.forEach((child, i) => {
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[i] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+          
+          const colWidth = availableWidth * ratio;
+          const childCells = collectGridCells(
+            child,
+            currentX + colWidth / 2,
+            y,
+            colWidth,
+            height,
+            [...colPath, i],
+            rowPath
+          );
+          cells.push(...childCells);
+          currentX += colWidth;
+          if (i < zone.children!.length - 1) {
+            currentX += thickness;
+          }
+        });
+      } else if (zone.type === 'horizontal') {
+        // Soustraire l'espace occupé par les séparateurs
+        const numSeparators = zone.children.length - 1;
+        const availableHeight = height - (numSeparators * thickness);
+        let currentY = y + height / 2;
+        
+        zone.children.forEach((child, i) => {
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[i] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+          
+          const rowHeight = availableHeight * ratio;
+          const childCells = collectGridCells(
+            child,
+            x,
+            currentY - rowHeight / 2,
+            width,
+            rowHeight,
+            colPath,
+            [...rowPath, i]
+          );
+          cells.push(...childCells);
+          currentY -= rowHeight;
+          if (i < zone.children!.length - 1) {
+            currentY -= thickness;
+          }
+        });
+      }
+
+      return cells;
+    };
+
+    // Collecter les séparateurs récursivement
+    interface SeparatorInfo {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      orientation: 'vertical' | 'horizontal';
+      path: string;
+    }
+
+    const collectSeparators = (
+      zone: Zone,
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      path: string = ''
+    ): SeparatorInfo[] => {
+      const separators: SeparatorInfo[] = [];
+      
+      if (!zone.children || zone.children.length <= 1) {
+        return separators;
+      }
+
+      if (zone.type === 'vertical') {
+        // Soustraire l'espace occupé par les séparateurs
+        const numSeparators = zone.children.length - 1;
+        const availableWidth = width - (numSeparators * thickness);
+        let currentX = x - width / 2;
+        
+        zone.children.forEach((child, i) => {
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[i] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+          
+          const colWidth = availableWidth * ratio;
+          
+          // Ajouter séparateur vertical après chaque colonne sauf la dernière
+          if (i < zone.children!.length - 1) {
+            separators.push({
+              x: currentX + colWidth + thickness / 2,
+              y: y,
+              width: thickness,
+              height: height,
+              orientation: 'vertical',
+              path: `${path}v${i}`
+            });
+          }
+          
+          // Récursion dans l'enfant
+          const childSeparators = collectSeparators(
+            child,
+            currentX + colWidth / 2,
+            y,
+            colWidth,
+            height,
+            `${path}c${i}-`
+          );
+          separators.push(...childSeparators);
+          
+          currentX += colWidth;
+          if (i < zone.children!.length - 1) {
+            currentX += thickness;
+          }
+        });
+      } else if (zone.type === 'horizontal') {
+        // Soustraire l'espace occupé par les séparateurs
+        const numSeparators = zone.children.length - 1;
+        const availableHeight = height - (numSeparators * thickness);
+        let currentY = y + height / 2;
+        
+        zone.children.forEach((child, i) => {
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[i] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+          
+          const rowHeight = availableHeight * ratio;
+          
+          // Ajouter séparateur horizontal après chaque rangée sauf la dernière
+          if (i < zone.children!.length - 1) {
+            separators.push({
+              x: x,
+              y: currentY - rowHeight - thickness / 2,
+              width: width,
+              height: thickness,
+              orientation: 'horizontal',
+              path: `${path}h${i}`
+            });
+          }
+          
+          // Récursion dans l'enfant
+          const childSeparators = collectSeparators(
+            child,
+            x,
+            currentY - rowHeight / 2,
+            width,
+            rowHeight,
+            `${path}r${i}-`
+          );
+          separators.push(...childSeparators);
+          
+          currentY -= rowHeight;
+          if (i < zone.children!.length - 1) {
+            currentY -= thickness;
+          }
+        });
+      }
+
+      return separators;
+    };
+
+    // Collecter toutes les cellules de la grille
+    const allCells = collectGridCells(
+      rootZone,
+      0,
+      sideHeight / 2 + yOffset,
+      innerWidth,
+      innerHeight
+    );
+
+    // Collecter tous les séparateurs
+    const allSeparators = collectSeparators(
+      rootZone,
+      0,
+      sideHeight / 2 + yOffset,
+      innerWidth,
+      innerHeight
+    );
+
+    // Définir les limites ABSOLUES de l'intérieur du meuble (basées sur la structure, pas les cellules)
+    // Ces valeurs correspondent aux bords internes des panneaux haut/bas
+    const furnitureBottomInner = yOffset + thickness;  // Haut du panneau du bas
+    const furnitureTopInner = yOffset + sideHeight - thickness;  // Bas du panneau du haut
+
+    // Créer les segments du panneau arrière basés sur les cellules
+    // Calculer les limites min/max réelles des cellules (pour référence)
+    const minCellY = Math.min(...allCells.map(c => c.y - c.height / 2));
+    const maxCellY = Math.max(...allCells.map(c => c.y + c.height / 2));
+    const minCellX = Math.min(...allCells.map(c => c.x - c.width / 2));
+    const maxCellX = Math.max(...allCells.map(c => c.x + c.width / 2));
+
+    allCells.forEach((cell, i) => {
+      let segX = cell.x;
+      let segY = cell.y;
+      let segWidth = cell.width;
+      let segHeight = cell.height;
+
+      // Utiliser les limites réelles des cellules pour déterminer les bords
+      const cellBottom = cell.y - cell.height / 2;
+      const cellTop = cell.y + cell.height / 2;
+      const cellLeft = cell.x - cell.width / 2;
+      const cellRight = cell.x + cell.width / 2;
+
+      // Vérifier si la cellule est aux bords par rapport aux autres cellules
+      const isLeftmost = cellLeft <= minCellX + 0.01;
+      const isRightmost = cellRight >= maxCellX - 0.01;
+      const isTopmost = cellTop >= maxCellY - 0.01;
+      const isBottommost = cellBottom <= minCellY + 0.01;
+
+      // Vérifier AUSSI contre les limites absolues du meuble (pour les colonnes internes)
+      // Utiliser une tolérance plus grande (0.05) pour capturer les cellules proches du bord
+      const touchesFurnitureBottom = cellBottom <= furnitureBottomInner + 0.05;
+      const touchesFurnitureTop = cellTop >= furnitureTopInner - 0.05;
+
+      if (isLeftmost) {
+        segWidth += thickness;
+        segX -= thickness / 2;
+      }
+      if (isRightmost) {
+        segWidth += thickness;
+        segX += thickness / 2;
+      }
+      // Étendre vers le haut si cellule au sommet
+      if (isTopmost || touchesFurnitureTop) {
+        segHeight += thickness;
+        segY += thickness / 2;
+      }
+      // Étendre vers le bas si cellule au fond du meuble - étendre jusqu'au socle
+      if (isBottommost || touchesFurnitureBottom) {
+        // Calculer l'extension exacte nécessaire pour atteindre le haut du socle (yOffset)
+        const gapToBottom = cellBottom - yOffset;
+        const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+        segHeight += extensionBottom;
+        segY -= extensionBottom / 2;
+      }
+
+      const colIndex = cell.colPath.length > 0 ? cell.colPath[0] : 0;
+      const rowIndex = cell.rowPath.length > 0 ? cell.rowPath[0] : 0;
+      
+      // Utiliser le chemin complet pour un ID unique et stable
+      const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
+      
+      backSegments.push({
+        id: `panel-back-${pathId}`,
+        x: segX,
+        y: segY,
+        width: segWidth,
+        height: segHeight,
+        colIndex,
+        rowIndex
+      });
+    });
+    
+    // DEBUG: Log pour comparer avec PanelPlanCanvas
+    console.log('ThreeCanvas - Back panel IDs:', allCells.map((cell) => {
+      const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
+      return `panel-back-${pathId}`;
+    }));
+
+    // Pour le panneau du haut - segmenter selon les colonnes de premier niveau
+    // IMPORTANT: Ne considérer que les cellules qui touchent le bord SUPÉRIEUR
+    const maxY = Math.max(...allCells.map(c => c.y + c.height / 2));
+    const topTouchingCells = allCells.filter(cell =>
+      cell.y + cell.height / 2 >= maxY - 0.01
+    );
+
+    // Identifier les colonnes uniques parmi les cellules touchant le haut
+    const uniqueTopColumns = new Map<number, GridCell[]>();
+    topTouchingCells.forEach(cell => {
+      const key = Math.round(cell.x * 1000);
+      if (!uniqueTopColumns.has(key)) {
+        uniqueTopColumns.set(key, []);
+      }
+      uniqueTopColumns.get(key)!.push(cell);
+    });
+
+    // Créer un segment de panneau haut pour chaque colonne
+    const sortedTopColumns = Array.from(uniqueTopColumns.entries())
+      .sort(([keyA], [keyB]) => keyA - keyB);
+
+    if (sortedTopColumns.length > 1) {
+      sortedTopColumns.forEach(([, cells], index) => {
+        // Prendre la première cellule de cette colonne pour obtenir la position
+        const cell = cells[0];
+        const isLeftmost = index === 0;
+        const isRightmost = index === sortedTopColumns.length - 1;
+        
+        let segX = cell.x;
+        let segWidth = cell.width;
+        
+        // Étendre aux bords pour les colonnes extrêmes
+        if (isLeftmost) {
+          segWidth += thickness;
+          segX -= thickness / 2;
+        }
+        if (isRightmost) {
+          segWidth += thickness;
+          segX += thickness / 2;
+        }
+        
+        topSegments.push({
+          id: `panel-top-${index}`,
+          x: segX,
+          y: h - thickness / 2,
+          width: segWidth,
+          height: thickness
+        });
+      });
+    } else {
+      // Pas de colonnes multiples, un seul segment
+      topSegments.push({
+        id: 'panel-top-0',
+        x: 0,
+        y: h - thickness / 2,
+        width: w,
+        height: thickness
+      });
+    }
+
+    // Pour le panneau du bas - segmenter selon les colonnes qui touchent le BAS
+    // IMPORTANT: Ne considérer que les cellules qui touchent le bord INFÉRIEUR
+    const minY = Math.min(...allCells.map(c => c.y - c.height / 2));
+    const bottomTouchingCells = allCells.filter(cell =>
+      cell.y - cell.height / 2 <= minY + 0.01
+    );
+
+    const uniqueBottomColumns = new Map<number, GridCell[]>();
+    bottomTouchingCells.forEach(cell => {
+      const key = Math.round(cell.x * 1000);
+      if (!uniqueBottomColumns.has(key)) {
+        uniqueBottomColumns.set(key, []);
+      }
+      uniqueBottomColumns.get(key)!.push(cell);
+    });
+
+    const sortedBottomColumns = Array.from(uniqueBottomColumns.entries())
+      .sort(([keyA], [keyB]) => keyA - keyB);
+
+    if (sortedBottomColumns.length > 1) {
+      sortedBottomColumns.forEach(([, cells], index) => {
+        const cell = cells[0];
+        const isLeftmost = index === 0;
+        const isRightmost = index === sortedBottomColumns.length - 1;
+
+        let segX = cell.x;
+        let segWidth = cell.width;
+
+        if (isLeftmost) {
+          segWidth += thickness;
+          segX -= thickness / 2;
+        }
+        if (isRightmost) {
+          segWidth += thickness;
+          segX += thickness / 2;
+        }
+
+        bottomSegments.push({
+          id: `panel-bottom-${index}`,
+          x: segX,
+          y: yOffset + thickness / 2,
+          width: segWidth,
+          height: thickness
+        });
+      });
+    } else {
+      bottomSegments.push({
+        id: 'panel-bottom-0',
+        x: 0,
+        y: yOffset + thickness / 2,
+        width: w,
+        height: thickness
+      });
+    }
+
+    // Pour le panneau gauche - segmenter selon les rangées de premier niveau
+    const uniqueLeftRows = new Map<number, GridCell[]>();
+    const leftCells = allCells.filter(cell => 
+      cell.x - cell.width / 2 <= -innerWidth / 2 + 0.01
+    );
+    leftCells.forEach(cell => {
+      const key = Math.round(cell.y * 1000);
+      if (!uniqueLeftRows.has(key)) {
+        uniqueLeftRows.set(key, []);
+      }
+      uniqueLeftRows.get(key)!.push(cell);
+    });
+
+    const sortedLeftRows = Array.from(uniqueLeftRows.entries())
+      .sort(([keyA], [keyB]) => keyB - keyA); // Tri descendant pour Y (haut en premier)
+
+    if (sortedLeftRows.length > 1) {
+      sortedLeftRows.forEach(([, cells], index) => {
+        const cell = cells[0];
+        const isTopmost = index === 0;
+        const isBottommost = index === sortedLeftRows.length - 1;
+
+        let segY = cell.y;
+        let segHeight = cell.height;
+
+        if (isTopmost) {
+          segHeight += thickness;
+          segY += thickness / 2;
+        }
+        if (isBottommost) {
+          // Étendre jusqu'au socle (yOffset)
+          const cellBottom = cell.y - cell.height / 2;
+          const gapToBottom = cellBottom - yOffset;
+          const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+          segHeight += extensionBottom;
+          segY -= extensionBottom / 2;
+        }
+
+        leftSegments.push({
+          id: `panel-left-${index}`,
+          x: -w / 2 + thickness / 2,
+          y: segY,
+          width: thickness,
+          height: segHeight
+        });
+      });
+    } else {
+      leftSegments.push({
+        id: 'panel-left-0',
+        x: -w / 2 + thickness / 2,
+        y: sideHeight / 2 + yOffset,
+        width: thickness,
+        height: sideHeight
+      });
+    }
+
+    // Pour le panneau droit - segmenter selon les rangées de premier niveau
+    const uniqueRightRows = new Map<number, GridCell[]>();
+    const rightCells = allCells.filter(cell => 
+      cell.x + cell.width / 2 >= innerWidth / 2 - 0.01
+    );
+    rightCells.forEach(cell => {
+      const key = Math.round(cell.y * 1000);
+      if (!uniqueRightRows.has(key)) {
+        uniqueRightRows.set(key, []);
+      }
+      uniqueRightRows.get(key)!.push(cell);
+    });
+
+    const sortedRightRows = Array.from(uniqueRightRows.entries())
+      .sort(([keyA], [keyB]) => keyB - keyA); // Tri descendant pour Y (haut en premier)
+
+    if (sortedRightRows.length > 1) {
+      sortedRightRows.forEach(([, cells], index) => {
+        const cell = cells[0];
+        const isTopmost = index === 0;
+        const isBottommost = index === sortedRightRows.length - 1;
+
+        let segY = cell.y;
+        let segHeight = cell.height;
+
+        if (isTopmost) {
+          segHeight += thickness;
+          segY += thickness / 2;
+        }
+        if (isBottommost) {
+          // Étendre jusqu'au socle (yOffset)
+          const cellBottom = cell.y - cell.height / 2;
+          const gapToBottom = cellBottom - yOffset;
+          const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+          segHeight += extensionBottom;
+          segY -= extensionBottom / 2;
+        }
+
+        rightSegments.push({
+          id: `panel-right-${index}`,
+          x: w / 2 - thickness / 2,
+          y: segY,
+          width: thickness,
+          height: segHeight
+        });
+      });
+    } else {
+      rightSegments.push({
+        id: 'panel-right-0',
+        x: w / 2 - thickness / 2,
+        y: sideHeight / 2 + yOffset,
+        width: thickness,
+        height: sideHeight
+      });
+    }
+
+    // DEBUG: Log séparateurs
+    console.log('ThreeCanvas - Separators:', allSeparators.map((sep) => 
+      `${sep.orientation === 'vertical' ? 'V' : 'H'}[${sep.path}] at ${sep.orientation === 'vertical' ? `x=${sep.x.toFixed(2)}` : `y=${sep.y.toFixed(2)}`}`
+    ));
+
+    // Utiliser les limites réelles des cellules pour les séparateurs aussi
+    // (déjà calculées ci-dessus : minCellY, maxCellY, minCellX, maxCellX)
+
+    // Créer les segments des séparateurs
+    allSeparators.forEach((sep, i) => {
+      // Pour chaque séparateur, on peut le segmenter selon les cellules qu'il borde
+      // Pour simplifier, on crée un segment pour chaque portion du séparateur
+
+      if (sep.orientation === 'vertical') {
+        // Vérifier si le séparateur lui-même touche les bords ABSOLUS du meuble
+        // Utiliser une tolérance plus grande (0.05) pour éviter les erreurs de virgule flottante
+        const sepBottom = sep.y - sep.height / 2;
+        const sepTop = sep.y + sep.height / 2;
+        const sepTouchesFurnitureTop = sepTop >= furnitureTopInner - 0.05;
+        const sepTouchesFurnitureBottom = sepBottom <= furnitureBottomInner + 0.05;
+
+        // DEBUG: Afficher les valeurs pour diagnostic
+        console.log(`Separator ${sep.path}: bottom=${sepBottom.toFixed(4)}, furnitureBottomInner=${furnitureBottomInner.toFixed(4)}, touches=${sepTouchesFurnitureBottom}`);
+
+        // Trouver toutes les cellules à gauche de ce séparateur
+        // Utiliser une tolérance plus grande pour capturer les cellules adjacentes
+        const adjacentCells = allCells.filter(cell =>
+          Math.abs((cell.x + cell.width / 2) - (sep.x - thickness / 2)) < 0.05
+        );
+
+        console.log(`Separator ${sep.path}: found ${adjacentCells.length} adjacent cells`);
+
+        if (adjacentCells.length > 0) {
+          // Grouper par Y
+          const uniqueRows = new Map<number, GridCell>();
+          adjacentCells.forEach(cell => {
+            const key = Math.round(cell.y * 1000);
+            if (!uniqueRows.has(key)) {
+              uniqueRows.set(key, cell);
+            }
+          });
+
+          Array.from(uniqueRows.values())
+            .sort((a, b) => b.y - a.y)
+            .forEach((cell, j) => {
+              // Utiliser directement les positions du séparateur pour assurer l'alignement
+              let segY = sep.y;
+              let segHeight = sep.height;
+
+              // Étendre vers le haut si le séparateur touche le haut du meuble
+              if (sepTouchesFurnitureTop) {
+                // Calculer l'extension exacte nécessaire pour atteindre le haut
+                const gapToTop = furnitureTopInner - sepTop;
+                const extensionTop = thickness + Math.max(0, gapToTop);
+                segHeight += extensionTop;
+                segY += extensionTop / 2;
+              }
+              // Étendre vers le bas si le séparateur touche le bas du meuble
+              if (sepTouchesFurnitureBottom) {
+                // Calculer l'extension exacte nécessaire pour atteindre le bas (yOffset = haut du socle)
+                const gapToBottom = sepBottom - yOffset;
+                const extensionBottom = Math.max(thickness, gapToBottom + 0.001); // +0.001 pour s'assurer de la couverture
+                segHeight += extensionBottom;
+                segY -= extensionBottom / 2;
+              }
+
+              console.log(`Sep ${sep.path} segment ${j}: sepBottom=${sepBottom.toFixed(4)}, yOffset=${yOffset.toFixed(4)}, furnitureBottomInner=${furnitureBottomInner.toFixed(4)}, sepTouchesFurnitureBottom=${sepTouchesFurnitureBottom}, height=${segHeight.toFixed(4)}`);
+
+              separatorSegments.push({
+                id: `separator-v-${sep.path}-${j}`,
+                x: sep.x,
+                y: segY,
+                width: thickness,
+                height: segHeight,
+                orientation: 'vertical',
+                segmentIndex: j
+              });
+            });
+        } else {
+          // Pas de cellules adjacentes, utiliser les dimensions du séparateur
+          let segY = sep.y;
+          let segHeight = sep.height;
+
+          // Étendre jusqu'aux bords du meuble si le séparateur les touche
+          if (sepTouchesFurnitureTop) {
+            const gapToTop = furnitureTopInner - sepTop;
+            const extensionTop = thickness + Math.max(0, gapToTop);
+            segHeight += extensionTop;
+            segY += extensionTop / 2;
+          }
+          if (sepTouchesFurnitureBottom) {
+            // Calculer l'extension exacte nécessaire pour atteindre le bas (yOffset = haut du socle)
+            const gapToBottom = sepBottom - yOffset;
+            const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+            segHeight += extensionBottom;
+            segY -= extensionBottom / 2;
+          }
+
+          separatorSegments.push({
+            id: `separator-v-${sep.path}-0`,
+            x: sep.x,
+            y: segY,
+            width: thickness,
+            height: segHeight,
+            orientation: 'vertical',
+            segmentIndex: 0
+          });
+        }
+      } else {
+        // Séparateur horizontal
+        // Limites gauche/droite du meuble
+        const furnitureLeftInner = -innerWidth / 2;
+        const furnitureRightInner = innerWidth / 2;
+
+        // Vérifier si le séparateur lui-même touche les bords du meuble
+        const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.01;
+        const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.01;
+
+        const adjacentCells = allCells.filter(cell =>
+          Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.02
+        );
+
+        if (adjacentCells.length > 0) {
+          const uniqueCols = new Map<number, GridCell>();
+          adjacentCells.forEach(cell => {
+            const key = Math.round(cell.x * 1000);
+            if (!uniqueCols.has(key)) {
+              uniqueCols.set(key, cell);
+            }
+          });
+
+          Array.from(uniqueCols.values())
+            .sort((a, b) => a.x - b.x)
+            .forEach((cell, j) => {
+              let segX = cell.x;
+              let segWidth = cell.width;
+
+              const isLeftmost = cell.x - cell.width / 2 <= sep.x - sep.width / 2 + 0.01;
+              const isRightmost = cell.x + cell.width / 2 >= sep.x + sep.width / 2 - 0.01;
+
+              // Vérifier aussi si la cellule touche les bords ABSOLUS du meuble
+              const touchesFurnitureLeft = cell.x - cell.width / 2 <= furnitureLeftInner + 0.01;
+              const touchesFurnitureRight = cell.x + cell.width / 2 >= furnitureRightInner - 0.01;
+
+              // Étendre vers la gauche si nécessaire
+              if (isLeftmost || touchesFurnitureLeft || sepTouchesFurnitureLeft) {
+                segWidth += thickness;
+                segX -= thickness / 2;
+              }
+              // Étendre vers la droite si nécessaire
+              if (isRightmost || touchesFurnitureRight || sepTouchesFurnitureRight) {
+                segWidth += thickness;
+                segX += thickness / 2;
+              }
+
+              separatorSegments.push({
+                id: `separator-h-${sep.path}-${j}`,
+                x: segX,
+                y: sep.y,
+                width: segWidth,
+                height: thickness,
+                orientation: 'horizontal',
+                segmentIndex: j
+              });
+            });
+        } else {
+          // Pas de cellules adjacentes, utiliser les dimensions du séparateur
+          let segX = sep.x;
+          let segWidth = sep.width;
+
+          // Étendre jusqu'aux bords du meuble si le séparateur les touche
+          if (sepTouchesFurnitureLeft) {
+            segWidth += thickness;
+            segX -= thickness / 2;
+          }
+          if (sepTouchesFurnitureRight) {
+            segWidth += thickness;
+            segX += thickness / 2;
+          }
+
+          separatorSegments.push({
+            id: `separator-h-${sep.path}-0`,
+            x: segX,
+            y: sep.y,
+            width: segWidth,
+            height: sep.height,
+            orientation: 'horizontal',
+            segmentIndex: 0
+          });
+        }
+      }
+    });
+
+    // Log des segments séparateurs créés
+    console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
+
+    // Fallback pour le panneau arrière si aucun segment n'a été créé
+    if (backSegments.length === 0) {
+      backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
+    }
+    
+    return { topSegments, bottomSegments, leftSegments, rightSegments, backSegments, separatorSegments };
+  }, [rootZone, w, h, sideHeight, yOffset, thickness]);
+
+
   const elements = useMemo(() => {
     const items: React.ReactNode[] = [];
     if (!rootZone) return items;
@@ -831,16 +1801,61 @@ function Furniture({
     // console.log('🎨 ThreeCanvas - rootZone.type:', rootZone.type);
     // console.log('🎨 ThreeCanvas - rootZone.children:', rootZone.children?.length || 0, 'enfants');
 
-    const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, parentHasDoorClosed: boolean = false) => {
+    const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number) => {
       if (zone.type === 'leaf') {
+        // Si c'est un espace ouvert, ne pas ajouter de contenu ni de hitbox normale
+        if (zone.isOpenSpace) {
+          // Hitbox transparente pour pouvoir sélectionner l'espace ouvert
+          items.push(
+            <mesh
+              key={`${zone.id}-hitbox`}
+              position={[x, y, 0]}
+              visible={true}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                document.body.style.cursor = 'pointer';
+              }}
+              onPointerOut={() => {
+                document.body.style.cursor = 'default';
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectZone?.(zone.id);
+              }}
+            >
+              <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
+              <meshBasicMaterial 
+                transparent 
+                opacity={selectedZoneIds.includes(zone.id) ? 0.3 : 0.01} 
+                color="#4CAF50"
+                depthWrite={false}
+                toneMapped={false}
+              />
+              {selectedZoneIds.includes(zone.id) && (
+                <>
+                  <mesh>
+                    <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
+                    <meshBasicMaterial color="#4CAF50" wireframe transparent opacity={0.4} toneMapped={false} />
+                  </mesh>
+                  <lineSegments>
+                    <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, d + 0.002)]} />
+                    <lineBasicMaterial color="#4CAF50" linewidth={4} toneMapped={false} />
+                  </lineSegments>
+                </>
+              )}
+            </mesh>
+          );
+          return; // Ne pas continuer - c'est un espace ouvert
+        }
+
         // Ajouter l'éclairage si activé
         if (zone.hasLight) {
           items.push(
-            <CompartmentLight
-              key={`${zone.id}-light`}
-              width={width}
-              depth={d}
-              position={[x, y + height/2, 0]}
+            <CompartmentLight 
+              key={`${zone.id}-light`} 
+              width={width} 
+              depth={d} 
+              position={[x, y + height/2, 0]} 
             />
           );
         }
@@ -858,33 +1873,30 @@ function Furniture({
           );
         }
 
-        // Hitbox de sélection pour zones leaf (sauf si parent a une porte FERMÉE)
-        // Si le parent a une porte fermée, on ne rend pas la hitbox pour éviter d'intercepter les clics sur la porte
-        // Mais si la porte est ouverte, on permet la sélection des enfants
-        if (!parentHasDoorClosed) {
-          items.push(
-            <mesh
-              key={`${zone.id}-hitbox`}
-              position={[x, y, 0]}
-              visible={true}
-              onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-              }}
-              onPointerOut={() => {
-                document.body.style.cursor = 'default';
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                // On appelle onSelectZone avec l'id de la zone.
-                onSelectZone?.(zone.id);
-
-                // On bascule l'ouverture si c'est un compartiment mobile
-                if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
-                  toggleCompartment(zone.id);
-                }
-              }}
-            >
+        // Hitbox de sélection pour toutes les zones leaf
+        items.push(
+          <mesh
+            key={`${zone.id}-hitbox`}
+            position={[x, y, 0]}
+            visible={true}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={() => {
+              document.body.style.cursor = 'default';
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // On appelle onSelectZone avec l'id de la zone.
+              onSelectZone?.(zone.id);
+              
+              // On bascule l'ouverture si c'est un compartiment mobile
+              if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
+                toggleCompartment(zone.id);
+              }
+            }}
+          >
             <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
             <meshBasicMaterial 
               transparent 
@@ -908,8 +1920,7 @@ function Furniture({
               </>
             )}
           </mesh>
-          );
-        }
+        );
 
         if (zone.content === 'shelf') {
           items.push(
@@ -930,15 +1941,10 @@ function Furniture({
           // Utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
-          
-          if (zone.zoneColor?.hex) {
-            console.log(`🎨 [3D] Tiroir ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
-          }
-
           items.push(
             <AnimatedDrawer
               key={zone.id}
-              position={[x, y, d / 2 + mountingOffset]}
+              position={[x, y, d / 2]}
               width={width - compartmentGap}
               height={height - compartmentGap}
               depth={d}
@@ -957,15 +1963,10 @@ function Furniture({
           // Tiroir push-to-open sans poignée - utiliser la couleur spécifique de la zone si disponible
           const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
           const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
-
-          if (zone.zoneColor?.hex) {
-            console.log(`🎨 [3D] Tiroir Push ${zone.id} - Couleur spécifique: ${drawerHexColor}`);
-          }
-
           items.push(
             <AnimatedPushDrawer
               key={zone.id}
-              position={[x, y, d / 2 + mountingOffset]}
+              position={[x, y, d / 2]}
               width={width - compartmentGap}
               height={height - compartmentGap}
               depth={d}
@@ -996,29 +1997,23 @@ function Furniture({
 
         if (doorToRender) {
           const isDouble = doorToRender === 'door_double';
-          const isRight = doorToRender === 'door_right' || doorToRender === 'push_door_right' || doorToRender === 'mirror_door_right';
+          const isRight = doorToRender === 'door_right';
           const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
+          const isPushRight = doorToRender === 'push_door_right';
           const isMirror = doorToRender === 'mirror_door' || doorToRender === 'mirror_door_right';
+          const isMirrorRight = doorToRender === 'mirror_door_right';
           
           const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
           const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
-          if (zone.zoneColor?.hex) {
-            console.log(`🎨 [3D] Porte ${zone.id} - Couleur spécifique: ${doorHexColor}`);
-          }
-
           if (isMirror) {
-            const mirrorSide = isRight ? 'right' : 'left';
-            const mirrorPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
                 <AnimatedMirrorDoor
-                  side={mirrorSide}
-                  position={[mirrorPosX, 0, 0]}
+                  side={isMirrorRight ? "right" : "left"}
+                  position={[isMirrorRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
                   width={width - compartmentGap}
                   height={height - compartmentGap}
-                  hexColor={doorHexColor}
-                  imageUrl={doorImageUrl}
                   handleType={zone.handleType}
                   isOpen={openCompartments[zone.id]}
                   onClick={() => {
@@ -1029,13 +2024,11 @@ function Furniture({
               </group>
             );
           } else if (isPush) {
-            const pushSide = isRight ? 'right' : 'left';
-            const pushPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
                 <AnimatedPushDoor
-                  side={pushSide}
-                  position={[pushPosX, 0, 0]}
+                  side={isPushRight ? "right" : "left"}
+                  position={[isPushRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
                   width={width - compartmentGap}
                   height={height - compartmentGap}
                   hexColor={doorHexColor}
@@ -1051,7 +2044,7 @@ function Furniture({
             );
           } else {
             items.push(
-              <group key={`${zone.id}-door`} position={[x, y, d/2 + mountingOffset]}>
+              <group key={`${zone.id}-door`} position={[x, y, d/2]}>
                 {(isDouble || !isRight) && (
                   <AnimatedDoor
                     side="left"
@@ -1065,7 +2058,6 @@ function Furniture({
                     onClick={(e: any) => {
                       e.stopPropagation();
                       onSelectZone?.(zone.id);
-                      toggleCompartment(zone.id);
                     }}
                   />
                 )}
@@ -1082,7 +2074,6 @@ function Furniture({
                     onClick={(e: any) => {
                       e.stopPropagation();
                       onSelectZone?.(zone.id);
-                      toggleCompartment(zone.id);
                     }}
                   />
                 )}
@@ -1092,72 +2083,29 @@ function Furniture({
         }
 
         if (zone.content === 'glass_shelf') {
-          // Étagères en verre transparentes (1 à 5)
-          const shelfCount = zone.glassShelfCount || 1;
-
-          // Utiliser les positions personnalisées ou calculer un espacement uniforme
-          const getShelfPositions = () => {
-            if (zone.glassShelfPositions && zone.glassShelfPositions.length === shelfCount) {
-              return zone.glassShelfPositions;
-            }
-            // Positions par défaut (uniformément réparties)
-            return Array.from({ length: shelfCount }, (_, i) =>
-              ((i + 1) / (shelfCount + 1)) * 100
-            );
-          };
-
-          const positions = getShelfPositions();
-
-          for (let i = 0; i < shelfCount; i++) {
-            // Position Y de chaque étagère (en % depuis le bas)
-            const positionPercent = positions[i] / 100;
-            const shelfY = y - height / 2 + height * positionPercent;
-            const glassThickness = thickness * 0.5;
-
-            items.push(
-              <group key={`${zone.id}-shelf-${i}`} position={[x, shelfY, z]}>
-                {/* Verre principal */}
-                <mesh castShadow receiveShadow>
-                  <boxGeometry args={[width - 0.004, glassThickness, d - 0.004]} />
-                  <meshPhysicalMaterial
-                    color="#E8F4F8"
-                    transparent
-                    opacity={0.35}
-                    roughness={0.02}
-                    metalness={0}
-                    transmission={0.92}
-                    thickness={1.5}
-                    ior={1.52}
-                    clearcoat={1}
-                    clearcoatRoughness={0.02}
-                    envMapIntensity={1}
-                    attenuationColor="#C5E8F0"
-                    attenuationDistance={0.5}
-                  />
-                </mesh>
-                {/* Bords verts caractéristiques du verre (avant) */}
-                <mesh position={[0, 0, d / 2 - 0.003]}>
-                  <boxGeometry args={[width - 0.004, glassThickness, 0.003]} />
-                  <meshPhysicalMaterial color="#A8D5BA" transparent opacity={0.6} roughness={0.1} transmission={0.7} />
-                </mesh>
-                {/* Bords verts caractéristiques du verre (arrière) */}
-                <mesh position={[0, 0, -d / 2 + 0.003]}>
-                  <boxGeometry args={[width - 0.004, glassThickness, 0.003]} />
-                  <meshPhysicalMaterial color="#A8D5BA" transparent opacity={0.6} roughness={0.1} transmission={0.7} />
-                </mesh>
-              </group>
-            );
-          }
-        } else if (zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
-          // Porte avec miroir (gauche ou droite)
-          const mirrorIsRight = zone.content === 'mirror_door_right';
-          const mirrorSide = mirrorIsRight ? 'right' : 'left';
-          const mirrorPosX = mirrorIsRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
+          // Étagère en verre transparente
           items.push(
-            <group key={zone.id} position={[x, y, d/2 + mountingOffset]}>
+            <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
+              <boxGeometry args={[width, thickness, d]} />
+              <meshPhysicalMaterial
+                color="#ffffff"
+                transparent
+                opacity={0.3}
+                roughness={0.1}
+                metalness={0.1}
+                transmission={0.9}
+                thickness={0.5}
+              />
+            </mesh>
+          );
+        } else if (zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
+          // Porte avec miroir
+          const isMirrorRightLeaf = zone.content === 'mirror_door_right';
+          items.push(
+            <group key={zone.id} position={[x, y, d/2]}>
               <AnimatedMirrorDoor
-                side={mirrorSide}
-                position={[mirrorPosX, 0, 0]}
+                side={isMirrorRightLeaf ? "right" : "left"}
+                position={[isMirrorRightLeaf ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
                 width={width - compartmentGap}
                 height={height - compartmentGap}
                 handleType={zone.handleType}
@@ -1188,21 +2136,21 @@ function Furniture({
       if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty') {
         const doorToRender = groupDoor;
         const isDouble = doorToRender === 'door_double';
-        const isRight = doorToRender === 'door_right' || doorToRender === 'push_door_right' || doorToRender === 'mirror_door_right';
+        const isRight = doorToRender === 'door_right';
         const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
+        const isPushRightGroup = doorToRender === 'push_door_right';
         const isMirror = doorToRender === 'mirror_door' || doorToRender === 'mirror_door_right';
-
+        const isMirrorRightGroup = doorToRender === 'mirror_door_right';
+        
         const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
         const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
 
         if (isMirror) {
-          const mirrorSide = isRight ? 'right' : 'left';
-          const mirrorPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
               <AnimatedMirrorDoor
-                side={mirrorSide}
-                position={[mirrorPosX, 0, 0]}
+                side={isMirrorRightGroup ? "right" : "left"}
+                position={[isMirrorRightGroup ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
                 width={width - compartmentGap}
                 height={height - compartmentGap}
                 handleType={zone.handleType}
@@ -1216,13 +2164,11 @@ function Furniture({
             </group>
           );
         } else if (isPush) {
-          const pushSide = isRight ? 'right' : 'left';
-          const pushPosX = isRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2);
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
               <AnimatedPushDoor
-                side={pushSide}
-                position={[pushPosX, 0, 0]}
+                side={isPushRightGroup ? "right" : "left"}
+                position={[isPushRightGroup ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
                 width={width - compartmentGap}
                 height={height - compartmentGap}
                 hexColor={doorHexColor}
@@ -1238,7 +2184,7 @@ function Furniture({
           );
         } else {
           items.push(
-            <group key={`${zone.id}-group-door`} position={[x, y, d/2 + mountingOffset]}>
+            <group key={`${zone.id}-group-door`} position={[x, y, d/2]}>
               {(isDouble || !isRight) && (
                 <AnimatedDoor
                   side="left"
@@ -1296,42 +2242,19 @@ function Furniture({
           }
           console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
           
-          // Vérifier si cette zone a une porte (pour bloquer les hitboxes des enfants quand fermée)
-          const thisZoneHasDoor = !!(zone.doorContent && zone.doorContent !== 'empty');
-          // Vérifier si c'est une porte vitrée fermée (pour décaler les séparateurs en Z et éviter z-fighting)
-          const isGlassDoor = zone.doorContent === 'mirror_door' || zone.doorContent === 'mirror_door_right';
-          const isDoorClosed = thisZoneHasDoor && !openCompartments[zone.id];
-          const separatorZOffset = (isGlassDoor && isDoorClosed) ? -0.02 : 0; // Décaler en arrière si porte vitrée fermée
-          // Passer aux enfants si cette zone a une porte FERMÉE (ou si le parent en avait une fermée)
-          const childHasDoorClosed = isDoorClosed || parentHasDoorClosed;
-
           if (zone.type === 'horizontal') {
             const childHeight = height * ratio;
             // Rendu de haut en bas pour correspondre à l'UI 2D (index 0 = haut)
-            parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childHasDoorClosed);
+            parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight);
             currentPos += childHeight;
-            // Toujours rendre les séparateurs, mais décalés en Z si porte vitrée fermée
-            if (i < zone.children!.length - 1) {
-              items.push(
-                <mesh key={`${zone.id}-sep-${i}`} position={[x, (y + height/2) - currentPos, z + separatorZOffset]} castShadow receiveShadow>
-                  <boxGeometry args={[width, thickness, d]} />
-                  <TexturedMaterial hexColor={finalShelfColor} imageUrl={finalShelfImageUrl} />
-                </mesh>
-              );
-            }
+            // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
+            // pour permettre la suppression individuelle de chaque segment
           } else {
             const childWidth = width * ratio;
-            parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, childHasDoorClosed);
+            parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height);
             currentPos += childWidth;
-            // Toujours rendre les séparateurs, mais décalés en Z si porte vitrée fermée
-            if (i < zone.children!.length - 1) {
-              items.push(
-                <mesh key={`${zone.id}-sep-${i}`} position={[x - width/2 + currentPos, y, z + separatorZOffset]} castShadow receiveShadow>
-                  <boxGeometry args={[thickness, height, d]} />
-                  <TexturedMaterial hexColor={separatorColor} imageUrl={separatorImageUrl} />
-                </mesh>
-              );
-            }
+            // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
+            // pour permettre la suppression individuelle de chaque segment
           }
         });
       }
@@ -1340,32 +2263,101 @@ function Furniture({
     parseZone(rootZone, 0, sideHeight/2 + yOffset, 0, w - (thickness * 2), sideHeight - (thickness * 2));
     return items;
   }, [
-    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d, mountingOffset,
+    rootZone, w, sideHeight, yOffset, thickness, compartmentGap, d,
     finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
     finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
     separatorColor, separatorImageUrl,
     openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment,
-    useMultiColor
+    selectedPanelId, onSelectPanel
   ]);
 
   // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
   // et des flashs blancs lors des changements de couleur
 
+  // Callback pour la sélection de panneaux (désélectionne les zones si on sélectionne un panneau)
+  const handlePanelSelect = useCallback((panelId: string | null) => {
+    if (panelId && onSelectZone) {
+      onSelectZone(null); // Désélectionner les zones
+    }
+    onSelectPanel?.(panelId);
+  }, [onSelectPanel, onSelectZone]);
+
   return (
     <group>
-      {/* Côtés */}
-      <mesh position={[-w/2 + thickness/2, sideHeight/2 + yOffset, 0]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, sideHeight, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
-      <mesh position={[w/2 - thickness/2, sideHeight/2 + yOffset, 0]} castShadow receiveShadow>
-        <boxGeometry args={[thickness, sideHeight, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
-      <mesh position={[0, h - thickness/2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[w, thickness, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
+      {/* Panneau gauche - rendu segment par segment pour permettre la suppression individuelle */}
+      {panelSegments.leftSegments.map((segment) => (
+        !deletedPanelIds.has(segment.id) && (
+          <StructuralPanel
+            key={`visual-${segment.id}`}
+            position={[segment.x, segment.y, 0]}
+            size={[segment.width, segment.height, d]}
+            hexColor={finalStructureColor}
+            imageUrl={finalStructureImageUrl}
+          />
+        )
+      ))}
+      {/* Hitbox de sélection par segment pour le panneau gauche */}
+      {panelSegments.leftSegments.map((segment) => (
+        <PanelSegmentHitbox
+          key={segment.id}
+          panelId={segment.id}
+          position={[segment.x, segment.y, 0]}
+          size={[segment.width, segment.height, d]}
+          isSelected={selectedPanelId === segment.id}
+          onSelect={handlePanelSelect}
+          isDeleted={deletedPanelIds.has(segment.id)}
+        />
+      ))}
+      
+      {/* Panneau droit - rendu segment par segment pour permettre la suppression individuelle */}
+      {panelSegments.rightSegments.map((segment) => (
+        !deletedPanelIds.has(segment.id) && (
+          <StructuralPanel
+            key={`visual-${segment.id}`}
+            position={[segment.x, segment.y, 0]}
+            size={[segment.width, segment.height, d]}
+            hexColor={finalStructureColor}
+            imageUrl={finalStructureImageUrl}
+          />
+        )
+      ))}
+      {/* Hitbox de sélection par segment pour le panneau droit */}
+      {panelSegments.rightSegments.map((segment) => (
+        <PanelSegmentHitbox
+          key={segment.id}
+          panelId={segment.id}
+          position={[segment.x, segment.y, 0]}
+          size={[segment.width, segment.height, d]}
+          isSelected={selectedPanelId === segment.id}
+          onSelect={handlePanelSelect}
+          isDeleted={deletedPanelIds.has(segment.id)}
+        />
+      ))}
+      
+      {/* Panneau supérieur - rendu segment par segment pour permettre la suppression individuelle */}
+      {panelSegments.topSegments.map((segment) => (
+        !deletedPanelIds.has(segment.id) && (
+          <StructuralPanel
+            key={`visual-${segment.id}`}
+            position={[segment.x, segment.y, 0]}
+            size={[segment.width, segment.height, d]}
+            hexColor={finalStructureColor}
+            imageUrl={finalStructureImageUrl}
+          />
+        )
+      ))}
+      {/* Hitbox de sélection par segment pour le panneau supérieur */}
+      {panelSegments.topSegments.map((segment) => (
+        <PanelSegmentHitbox
+          key={segment.id}
+          panelId={segment.id}
+          position={[segment.x, segment.y, 0]}
+          size={[segment.width, segment.height, d]}
+          isSelected={selectedPanelId === segment.id}
+          onSelect={handlePanelSelect}
+          isDeleted={deletedPanelIds.has(segment.id)}
+        />
+      ))}
 
       {/* Décorations sur le dessus */}
       {showDecorations && (
@@ -1385,10 +2377,55 @@ function Furniture({
         </group>
       )}
 
-      <mesh position={[0, yOffset + thickness/2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[w, thickness, d]} />
-        <TexturedMaterial hexColor={finalStructureColor} imageUrl={finalStructureImageUrl} />
-      </mesh>
+      {/* Panneau inférieur - rendu segment par segment pour permettre la suppression individuelle */}
+      {panelSegments.bottomSegments.map((segment) => (
+        !deletedPanelIds.has(segment.id) && (
+          <StructuralPanel
+            key={`visual-${segment.id}`}
+            position={[segment.x, segment.y, 0]}
+            size={[segment.width, segment.height, d]}
+            hexColor={finalStructureColor}
+            imageUrl={finalStructureImageUrl}
+          />
+        )
+      ))}
+      {/* Hitbox de sélection par segment pour le panneau inférieur */}
+      {panelSegments.bottomSegments.map((segment) => (
+        <PanelSegmentHitbox
+          key={segment.id}
+          panelId={segment.id}
+          position={[segment.x, segment.y, 0]}
+          size={[segment.width, segment.height, d]}
+          isSelected={selectedPanelId === segment.id}
+          onSelect={handlePanelSelect}
+          isDeleted={deletedPanelIds.has(segment.id)}
+        />
+      ))}
+
+      {/* Séparateurs - rendu segment par segment pour permettre la suppression individuelle */}
+      {panelSegments.separatorSegments.map((segment) => (
+        !deletedPanelIds.has(segment.id) && (
+          <StructuralPanel
+            key={`visual-${segment.id}`}
+            position={[segment.x, segment.y, 0]}
+            size={[segment.width, segment.height, d]}
+            hexColor={segment.orientation === 'vertical' ? separatorColor : finalShelfColor}
+            imageUrl={segment.orientation === 'vertical' ? separatorImageUrl : finalShelfImageUrl}
+          />
+        )
+      ))}
+      {/* Hitbox de sélection par segment pour les séparateurs */}
+      {panelSegments.separatorSegments.map((segment) => (
+        <PanelSegmentHitbox
+          key={segment.id}
+          panelId={segment.id}
+          position={[segment.x, segment.y, 0]}
+          size={[segment.width, segment.height, d]}
+          isSelected={selectedPanelId === segment.id}
+          onSelect={handlePanelSelect}
+          isDeleted={deletedPanelIds.has(segment.id)}
+        />
+      ))}
 
       {/* Dynamic Elements */}
       {elements}
@@ -1469,20 +2506,110 @@ function Furniture({
               </mesh>
             </group>
           ) : (
-            /* Socle plein (bois) */
-            <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
-              <boxGeometry args={[w, 0.1, d - 0.02]} />
-              <TexturedMaterial hexColor={finalBaseColor} imageUrl={finalBaseImageUrl} />
-            </mesh>
+            /* Socle plein (bois) - segmenté selon les colonnes du bas */
+            <group>
+              {panelSegments.bottomSegments.map((segment, index) => {
+                if (deletedPanelIds.has(segment.id)) return null;
+
+                // Étendre le socle pour couvrir les espaces des séparateurs
+                const isFirst = index === 0;
+                const isLast = index === panelSegments.bottomSegments.length - 1;
+                const separatorGap = thickness; // Épaisseur du séparateur vertical
+
+                let socleX = segment.x;
+                let socleWidth = segment.width;
+
+                // Étendre vers la droite pour couvrir le séparateur (sauf dernier segment)
+                if (!isLast) {
+                  socleWidth += separatorGap / 2;
+                  socleX += separatorGap / 4;
+                }
+                // Étendre vers la gauche pour couvrir le séparateur (sauf premier segment)
+                if (!isFirst) {
+                  socleWidth += separatorGap / 2;
+                  socleX -= separatorGap / 4;
+                }
+
+                return (
+                  <mesh
+                    key={`socle-${segment.id}`}
+                    position={[socleX, 0.05, 0]}
+                    castShadow
+                    receiveShadow
+                  >
+                    <boxGeometry args={[socleWidth, 0.1, d - 0.02]} />
+                    <TexturedMaterial hexColor={finalBaseColor} imageUrl={finalBaseImageUrl} />
+                  </mesh>
+                );
+              })}
+            </group>
           )}
         </>
       )}
 
-      {/* Back Panel */}
-      <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.002]} receiveShadow>
-        <boxGeometry args={[w - 0.01, sideHeight - 0.01, 0.004]} />
-        <TexturedMaterial hexColor={finalBackColor} imageUrl={finalBackImageUrl} />
-      </mesh>
+      {/* Back Panel - avec gestion des espaces ouverts */}
+      {openSpaceInfo.length === 0 ? (
+        // Pas d'espaces ouverts : panneaux segmentés avec suppression individuelle
+        <>
+          {/* Panneaux arrière visuels par segment (peuvent être supprimés individuellement) */}
+          {panelSegments.backSegments.map((segment) => (
+            !deletedPanelIds.has(segment.id) && (
+              <StructuralPanel
+                key={`visual-${segment.id}`}
+                position={[segment.x, segment.y, -d/2 + 0.002]}
+                size={[segment.width, segment.height, 0.004]}
+                hexColor={finalBackColor}
+                imageUrl={finalBackImageUrl}
+                castShadow={false}
+              />
+            )
+          ))}
+          {/* Hitbox de sélection par segment pour le panneau arrière */}
+          {panelSegments.backSegments.map((segment) => (
+            <PanelSegmentHitbox
+              key={segment.id}
+              panelId={segment.id}
+              position={[segment.x, segment.y, -d/2 + 0.002]}
+              size={[segment.width, segment.height, 0.004]}
+              isSelected={selectedPanelId === segment.id}
+              onSelect={handlePanelSelect}
+              isDeleted={deletedPanelIds.has(segment.id)}
+            />
+          ))}
+        </>
+      ) : (
+        // Avec espaces ouverts : générer des panneaux qui évitent les zones ouvertes
+        // Note: Pour simplifier, le back panel avec ouvertures n'est pas sélectionnable pour l'instant
+        <group
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePanelSelect(selectedPanelId === 'panel-back' ? null : 'panel-back');
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = 'default';
+          }}
+        >
+          <BackPanelWithOpenings
+            totalWidth={w - 0.01}
+            totalHeight={sideHeight - 0.01}
+            yOffset={sideHeight/2 + yOffset}
+            zOffset={-d/2 + 0.002}
+            openSpaces={openSpaceInfo}
+            hexColor={finalBackColor}
+            imageUrl={finalBackImageUrl}
+          />
+          {selectedPanelId === 'panel-back' && (
+            <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
+              <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
+              <meshBasicMaterial color="#2196F3" wireframe transparent opacity={0.5} toneMapped={false} />
+            </mesh>
+          )}
+        </group>
+      )}
     </group>
   );
 }
