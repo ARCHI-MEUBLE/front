@@ -293,6 +293,71 @@ function Handle({ type = 'vertical_bar', position, side, height, width }: { type
   }
 }
 
+// Fonction pour calculer les positions des charnières selon la hauteur
+function getHingeYPositions(height: number): number[] {
+  const margin = 0.15; // Marge de 15cm depuis le bord haut/bas
+  const usableHeight = height - 2 * margin;
+
+  // Logique: 2 charnières jusqu'à 1.5m, puis +1 charnière par 0.5m supplémentaire
+  let numHinges = 2;
+  if (height >= 1.5) {
+    numHinges = 3;
+  }
+  if (height >= 2.0) {
+    numHinges = 4;
+  }
+  if (height >= 2.5) {
+    numHinges = 5;
+  }
+
+  const positions: number[] = [];
+  if (numHinges === 2) {
+    // 2 charnières: haut et bas
+    positions.push(height / 2 - margin);
+    positions.push(-height / 2 + margin);
+  } else {
+    // Plus de 2 charnières: répartition uniforme
+    for (let i = 0; i < numHinges; i++) {
+      const y = (height / 2 - margin) - (i * usableHeight / (numHinges - 1));
+      positions.push(y);
+    }
+  }
+
+  return positions;
+}
+
+// Composant pour les charnières de porte
+function DoorHinge({ position, side }: { position: [number, number, number]; side: 'left' | 'right' }) {
+  const hingeMaterial = (
+    <meshPhysicalMaterial
+      color="#2a2a2a"
+      metalness={0.85}
+      roughness={0.2}
+      clearcoat={0.3}
+    />
+  );
+
+  return (
+    <group position={position}>
+      {/* Partie fixe de la charnière (sur le cadre) */}
+      <mesh position={[side === 'left' ? -0.008 : 0.008, 0, -0.012]} castShadow>
+        <boxGeometry args={[0.012, 0.05, 0.008]} />
+        {hingeMaterial}
+      </mesh>
+      {/* Cylindre central (pivot) */}
+      <mesh position={[side === 'left' ? -0.002 : 0.002, 0, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.004, 0.004, 0.055, 12]} />
+        {hingeMaterial}
+      </mesh>
+      {/* Partie mobile de la charnière (sur la porte) */}
+      <mesh position={[side === 'left' ? 0.004 : -0.004, 0, -0.004]} castShadow>
+        <boxGeometry args={[0.01, 0.045, 0.006]} />
+        {hingeMaterial}
+      </mesh>
+    </group>
+  );
+}
+
 // --- Composants Animés (Utilisant requestAnimationFrame manuel pour plus de robustesse) ---
 
 function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {

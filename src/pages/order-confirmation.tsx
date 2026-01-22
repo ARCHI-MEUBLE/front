@@ -192,29 +192,31 @@ export default function OrderConfirmation() {
               </div>
               <div className="divide-y divide-[#E8E4DE]">
                 {/* Configurations */}
-                {order.items.map((item, index) => (
+                {order.items && order.items.length > 0 ? order.items.map((item, index) => (
                   <div key={`config-${index}`} className="flex items-start justify-between py-4 first:pt-0 last:pb-0">
                     <div>
-                      <h3 className="font-medium text-[#1A1917]">{item.name}</h3>
-                      <p className="mt-1 text-sm text-[#6B6560]">Meuble sur mesure • Qté: {item.quantity}</p>
+                      <h3 className="font-medium text-[#1A1917]">{item.name || 'Configuration'}</h3>
+                      <p className="mt-1 text-sm text-[#6B6560]">Meuble sur mesure • Qté: {item.quantity || 1}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-[#1A1917]">{item.price * item.quantity}€</p>
-                      <p className="text-sm text-[#6B6560]">{item.price}€ × {item.quantity}</p>
+                      <p className="font-medium text-[#1A1917]">{((item.price || 0) * (item.quantity || 1)).toLocaleString('fr-FR')}€</p>
+                      <p className="text-sm text-[#6B6560]">{(item.price || 0).toLocaleString('fr-FR')}€ × {item.quantity || 1}</p>
                     </div>
                   </div>
-                ))}
-                
+                )) : (
+                  <div className="py-4 text-sm text-[#6B6560]">Aucun article dans cette commande</div>
+                )}
+
                 {/* Catalogue Items */}
-                {order.catalogue_items && order.catalogue_items.map((item, index) => (
+                {order.catalogue_items && order.catalogue_items.length > 0 && order.catalogue_items.map((item, index) => (
                   <div key={`catalogue-${index}`} className="flex items-start justify-between py-4 first:pt-0 last:pb-0">
                     <div>
-                      <h3 className="font-medium text-[#1A1917]">{item.name}</h3>
-                      <p className="mt-1 text-sm text-[#6B6560]">Article catalogue • Qté: {item.quantity}</p>
+                      <h3 className="font-medium text-[#1A1917]">{item.name || 'Article catalogue'}</h3>
+                      <p className="mt-1 text-sm text-[#6B6560]">Article catalogue • Qté: {item.quantity || 1}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-[#1A1917]">{item.price * item.quantity}€</p>
-                      <p className="text-sm text-[#6B6560]">{item.price}€ × {item.quantity}</p>
+                      <p className="font-medium text-[#1A1917]">{((item.price || 0) * (item.quantity || 1)).toLocaleString('fr-FR')}€</p>
+                      <p className="text-sm text-[#6B6560]">{(item.price || 0).toLocaleString('fr-FR')}€ × {item.quantity || 1}</p>
                     </div>
                   </div>
                 ))}

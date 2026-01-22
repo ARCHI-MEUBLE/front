@@ -16,6 +16,11 @@ const nextConfig = {
         ...config.resolve.alias,
         'three': require.resolve('three')
       };
+      // Désactiver les avertissements de chunk size
+      config.performance = {
+        ...config.performance,
+        hints: false,
+      };
     }
     return config;
   },
@@ -52,6 +57,11 @@ const nextConfig = {
       {
         source: '/models/:path*',
         destination: `${backendUrl}/models/:path*`
+      },
+      // Proxy pour les textures uploadées côté backend
+      {
+        source: '/textures/:path*',
+        destination: `${backendUrl}/textures/:path*`
       }
     ];
   }

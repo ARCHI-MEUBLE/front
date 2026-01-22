@@ -29,7 +29,7 @@ export default function FacadeControls({
     material_price_per_m2: 150,
     hinge_base_price: 34.20,
     hinge_coefficient: 0.05,
-    hinge_edge_margin: 20,
+    hinge_edge_margin: 150, // 15 cm par défaut
     hinge_hole_diameter: 26,
   });
 
@@ -478,9 +478,21 @@ function MaterialPanel({
             }`}
           >
             <div
-              className="w-16 h-16 rounded-lg mb-2 shadow-sm"
-              style={{ backgroundColor: material.color_hex }}
-            />
+              className="relative w-16 h-16 rounded-lg mb-2 shadow-sm border border-[#E8E6E3] overflow-hidden"
+              style={{
+                backgroundColor: material.color_hex,
+                backgroundImage: material.texture_url ? `url(${material.texture_url})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              }}
+            >
+              {material.texture_url && (
+                <span className="absolute top-1 right-1 text-[10px] px-1 py-0.5 bg-white/85 border border-[#E8E6E3] rounded text-[#1A1917] font-semibold">
+                  Texture
+                </span>
+              )}
+            </div>
             <span className="text-xs font-medium text-center">
               {material.name}
             </span>
@@ -1046,8 +1058,13 @@ function SummaryPanel({
         <p className="text-sm font-medium text-[#1A1917] mb-3">Matériau</p>
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded"
-            style={{ backgroundColor: config.material.color_hex }}
+            className="w-10 h-10 rounded border border-[#E8E6E3] overflow-hidden"
+            style={{
+              backgroundColor: config.material.color_hex,
+              backgroundImage: config.material.texture_url ? `url(${config.material.texture_url})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
           />
           <div>
             <p className="text-sm font-medium text-[#1A1917]">{config.material.name}</p>
@@ -1105,7 +1122,7 @@ function SummaryPanel({
 }
 
 // Fonction helper pour générer les positions des trous de charnières
-function generateHingeHoles(count: HingeCount, direction: OpeningDirection, height: number, edgeMargin: number = 20, diameter: number = 26): Array<{x: number, y: number, diameter: number}> {
+function generateHingeHoles(count: HingeCount, direction: OpeningDirection, height: number, edgeMargin: number = 150, diameter: number = 26): Array<{x: number, y: number, diameter: number}> {
   const x = direction === 'left' ? 5 : 95; // 5% du bord gauche ou droit
   const holes = [];
   
