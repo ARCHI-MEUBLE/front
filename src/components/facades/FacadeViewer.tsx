@@ -1,6 +1,6 @@
-import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState, Suspense } from 'react';
 import { Canvas, useThree, useLoader, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { FacadeConfig, FacadeDrilling } from '@/types/facade';
 
@@ -13,30 +13,33 @@ export interface FacadeViewerHandle {
   captureScreenshot: () => string | null;
 }
 
-// Composant pour une face unique
-function FacadeFace({ 
+// Composant pour une face unique - accepte soit une couleur soit une texture pré-chargée
+function FacadeFace({
   colorHex,
-  textureUrl,
-  position, 
-  rotation, 
-  args, 
-  side 
-}: { 
+  texture,
+  position,
+  rotation,
+  args,
+  side
+}: {
   colorHex: string;
-  textureUrl: string;
-  position: [number, number, number]; 
-  rotation?: [number, number, number]; 
-  args: [number, number]; 
+  texture: THREE.Texture | null;
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  args: [number, number];
   side?: typeof THREE.FrontSide | typeof THREE.DoubleSide;
 }) {
-  // Logique simple: texture_url vide/null → couleur, sinon → texture
-  const hasTexture = !!(textureUrl && textureUrl.trim() !== '');
-  
   return (
     <mesh castShadow receiveShadow position={position} rotation={rotation}>
       <planeGeometry args={args} />
-      {hasTexture ? (
-        <FaceMaterialWithTexture textureUrl={textureUrl} />
+      {texture ? (
+        <meshStandardMaterial
+          color="#ffffff"
+          map={texture}
+          roughness={0.7}
+          metalness={0.1}
+          side={side || THREE.FrontSide}
+        />
       ) : (
         <meshStandardMaterial
           color={colorHex}
@@ -49,24 +52,164 @@ function FacadeFace({
   );
 }
 
-// Composant séparé pour le matériau avec texture
-function FaceMaterialWithTexture({ textureUrl }: { textureUrl: string }) {
-  const texture = useLoader(THREE.TextureLoader, textureUrl);
-  
-  // Étirer la texture pour couvrir toute la face
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.anisotropy = 8;
-  texture.repeat.set(1, 1);
+// Composant qui charge la texture une seule fois et rend toutes les faces
+function TexturedFacadeBox({
+  textureUrl,
+  colorHex,
+  w,
+  h,
+  d,
+  drillings,
+}: {
+  textureUrl: string;
+  colorHex: string;
+  w: number;
+  h: number;
+  d: number;
+  drillings: FacadeDrilling[];
+}) {
+  // Charger la texture avec useTexture de drei (gère bien le caching et Suspense)
+  const texture = useTexture(textureUrl);
+
+  // Configurer la texture
+  React.useEffect(() => {
+    if (texture) {
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = 8;
+      texture.needsUpdate = true;
+    }
+  }, [texture]);
 
   return (
-    <meshStandardMaterial
-      color="#ffffff"
-      map={texture}
-      roughness={0.7}
-      metalness={0.1}
-      side={THREE.FrontSide}
+    <FacadeBoxContent
+      texture={texture}
+      colorHex={colorHex}
+      w={w}
+      h={h}
+      d={d}
+      drillings={drillings}
     />
+  );
+}
+
+// Composant qui rend la boîte avec couleur uniquement
+function ColoredFacadeBox({
+  colorHex,
+  w,
+  h,
+  d,
+  drillings,
+}: {
+  colorHex: string;
+  w: number;
+  h: number;
+  d: number;
+  drillings: FacadeDrilling[];
+}) {
+  return (
+    <FacadeBoxContent
+      texture={null}
+      colorHex={colorHex}
+      w={w}
+      h={h}
+      d={d}
+      drillings={drillings}
+    />
+  );
+}
+
+// Contenu commun de la boîte (6 faces + perçages + bordures)
+function FacadeBoxContent({
+  texture,
+  colorHex,
+  w,
+  h,
+  d,
+  drillings,
+}: {
+  texture: THREE.Texture | null;
+  colorHex: string;
+  w: number;
+  h: number;
+  d: number;
+  drillings: FacadeDrilling[];
+}) {
+  return (
+    <>
+      {/* Face avant */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, 0, d / 2]}
+        args={[w, h]}
+        side={THREE.FrontSide}
+      />
+
+      {/* Face arrière */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, 0, -d / 2]}
+        rotation={[0, Math.PI, 0]}
+        args={[w, h]}
+        side={THREE.FrontSide}
+      />
+
+      {/* Haut */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, h / 2, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        args={[w, d]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Bas */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, -h / 2, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        args={[w, d]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Gauche */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[-w / 2, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        args={[d, h]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Droite */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[w / 2, 0, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        args={[d, h]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Rendu des perçages */}
+      {drillings.map((drilling: FacadeDrilling) => (
+        <Drilling
+          key={drilling.id}
+          drilling={drilling}
+          panelWidth={w}
+          panelHeight={h}
+          panelDepth={d}
+        />
+      ))}
+
+      {/* Cadre/bordure */}
+      <EdgesHelper width={w} height={h} depth={d} />
+    </>
   );
 }
 
@@ -122,78 +265,35 @@ function FacadePanel({ config }: { config: FacadeConfig }) {
       <group ref={groupRef}>
         {/* Décalage pour centrer la façade par rapport au pivot */}
         <group position={[-pivotX, 0, 0]}>
-          {/* Face avant */}
-        <FacadeFace 
-          colorHex={colorHex}
-          textureUrl={textureUrl}
-          position={[0, 0, d / 2]} 
-          args={[w, h]} 
-          side={THREE.FrontSide}
-        />
-
-        {/* Face arrière */}
-        <FacadeFace 
-          colorHex={colorHex}
-          textureUrl={textureUrl}
-          position={[0, 0, -d / 2]} 
-          rotation={[0, Math.PI, 0]}
-          args={[w, h]} 
-          side={THREE.FrontSide}
-        />
-
-        {/* Haut - couleur uniquement pour les bords */}
-        <FacadeFace 
-          colorHex={colorHex}
-          textureUrl=""
-          position={[0, h / 2, 0]} 
-          rotation={[Math.PI / 2, 0, 0]}
-          args={[w, d]} 
-          side={THREE.DoubleSide}
-        />
-
-        {/* Bas - couleur uniquement pour les bords */}
-        <FacadeFace 
-          colorHex={colorHex}
-          textureUrl=""
-          position={[0, -h / 2, 0]} 
-          rotation={[-Math.PI / 2, 0, 0]}
-          args={[w, d]} 
-          side={THREE.DoubleSide}
-        />
-
-        {/* Gauche - couleur uniquement pour les bords */}
-        <FacadeFace 
-          colorHex={colorHex}
-          textureUrl=""
-          position={[-w / 2, 0, 0]} 
-          rotation={[0, Math.PI / 2, 0]}
-          args={[d, h]} 
-          side={THREE.DoubleSide}
-        />
-
-        {/* Droite - couleur uniquement pour les bords */}
-        <FacadeFace 
-          colorHex={colorHex}
-          textureUrl=""
-          position={[w / 2, 0, 0]} 
-          rotation={[0, -Math.PI / 2, 0]}
-          args={[d, h]} 
-          side={THREE.DoubleSide}
-        />
-
-        {/* Rendu des perçages */}
-        {drillings.map((drilling: FacadeDrilling) => (
-          <Drilling
-            key={drilling.id}
-            drilling={drilling}
-            panelWidth={w}
-            panelHeight={h}
-            panelDepth={d}
-          />
-        ))}
-
-        {/* Cadre/bordure */}
-        <EdgesHelper width={w} height={h} depth={d} />
+          {/* Rendu conditionnel: texture avec Suspense ou couleur simple */}
+          {textureUrl && textureUrl.trim() !== '' ? (
+            <Suspense fallback={
+              <ColoredFacadeBox
+                colorHex={colorHex}
+                w={w}
+                h={h}
+                d={d}
+                drillings={drillings}
+              />
+            }>
+              <TexturedFacadeBox
+                textureUrl={textureUrl}
+                colorHex={colorHex}
+                w={w}
+                h={h}
+                d={d}
+                drillings={drillings}
+              />
+            </Suspense>
+          ) : (
+            <ColoredFacadeBox
+              colorHex={colorHex}
+              w={w}
+              h={h}
+              d={d}
+              drillings={drillings}
+            />
+          )}
         </group>
       </group>
     </group>
