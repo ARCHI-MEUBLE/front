@@ -4,6 +4,11 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 import { hasAdminSession } from '@/lib/adminAuth';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
 
 interface LoginForm {
   email: string;
@@ -66,64 +71,138 @@ export default function AdminLoginPage() {
   return (
     <>
       <Head>
-        <title>ArchiMeuble — Administration</title>
+        <title>Administration | ArchiMeuble</title>
       </Head>
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center px-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-8">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold text-gray-900">Espace administrateur</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Connectez-vous pour gérer le catalogue ArchiMeuble.
-            </p>
+      <div className="relative flex min-h-screen flex-col items-center justify-center font-sans lg:max-w-none lg:grid lg:grid-cols-2 lg:px-0">
+        {/* Header mobile */}
+        <div className="flex w-full items-center justify-between p-6 lg:hidden">
+          <Link href="/">
+            <img
+              src="/images/logo site .png"
+              alt="ArchiMeuble"
+              className="h-10 w-auto"
+            />
+          </Link>
+        </div>
+
+        {/* Image de fond */}
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
+          <div
+            className="absolute inset-0 bg-zinc-900"
+            style={{
+              backgroundImage: 'url("https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative z-20 flex items-center text-lg font-medium">
+            <Link href="/">
+              <img
+                src="/images/logo site .png"
+                alt="ArchiMeuble"
+                className="h-10 w-auto brightness-0 invert"
+              />
+            </Link>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={form.email}
-                onChange={handleChange}
-                className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Mot de passe
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={form.password}
-                onChange={handleChange}
-                className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-gray-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100"
-              />
-            </div>
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                &ldquo;Espace d&apos;administration pour la gestion du catalogue,
+                des commandes et des paramètres de votre boutique.&rdquo;
+              </p>
+              <footer className="text-sm">Administration ArchiMeuble</footer>
+            </blockquote>
+          </div>
+        </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+        {/* Formulaire */}
+        <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 lg:p-8 h-full w-full">
+          <Card className="w-full max-w-md border-none shadow-none bg-transparent">
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-3xl font-bold tracking-tight text-[#1A1917]">
+                Administration
+              </CardTitle>
+              <CardDescription className="text-zinc-500">
+                Connectez-vous pour gérer ArchiMeuble
+              </CardDescription>
+            </CardHeader>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-lg bg-amber-600 py-2.5 text-white font-medium transition-all duration-200 hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-75"
-            >
-              {isSubmitting ? 'Connexion...' : 'Se connecter'}
-            </button>
+            <CardContent className="grid gap-4 mt-4">
+              {error && (
+                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
 
-            <div className="text-center">
-              <Link href="/admin/register" className="text-sm text-amber-600 hover:text-amber-500">
-                Créer un nouveau compte administrateur
+              <form onSubmit={handleSubmit} className="grid gap-5">
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-[#1A1917]">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="admin@archimeuble.com"
+                    autoComplete="email"
+                    required
+                    value={form.email}
+                    onChange={handleChange}
+                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-[#1A1917]">
+                    Mot de passe
+                  </Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    required
+                    value={form.password}
+                    onChange={handleChange}
+                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all shadow-sm"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connexion en cours...
+                    </>
+                  ) : (
+                    'Se connecter'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-4 text-center mt-4">
+              <Link
+                href="/admin/register"
+                className="text-sm text-[#8B7355] hover:text-[#1A1917] transition-colors font-medium"
+              >
+                Créer un compte admin
               </Link>
-            </div>
-          </form>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] transition-colors group"
+              >
+                <IconArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                Retour au site
+              </Link>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     </>

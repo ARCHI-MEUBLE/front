@@ -9,6 +9,21 @@ const nextConfig = {
     // Désactiver TypeScript pendant le build de production pour Vercel
     ignoreBuildErrors: true
   },
+  webpack: (config, { isServer }) => {
+    // Éviter les instances multiples de Three.js
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'three': require.resolve('three')
+      };
+      // Désactiver les avertissements de chunk size
+      config.performance = {
+        ...config.performance,
+        hints: false,
+      };
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {
@@ -22,10 +37,31 @@ const nextConfig = {
     ]
   },
   async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     return [
       {
         source: '/backend/api/:path*',
         destination: '/api/proxy/backend/api/:path*'
+      },
+      // Proxy pour les uploads (images) du backend
+      {
+        source: '/uploads/:path*',
+        destination: `${backendUrl}/uploads/:path*`
+      },
+      // Proxy pour les uploads locaux (via /backend/uploads)
+      {
+        source: '/backend/uploads/:path*',
+        destination: `${backendUrl}/uploads/:path*`
+      },
+      // Proxy pour les modèles 3D générés du backend
+      {
+        source: '/models/:path*',
+        destination: `${backendUrl}/models/:path*`
+      },
+      // Proxy pour les textures uploadées côté backend
+      {
+        source: '/textures/:path*',
+        destination: `${backendUrl}/textures/:path*`
       }
     ];
   }

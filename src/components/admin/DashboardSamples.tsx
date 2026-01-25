@@ -5,6 +5,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient, type SampleType, uploadImage } from '@/lib/apiClient';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Trash2, ChevronLeft, ChevronRight, ImageIcon, Hash, Loader2, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function DashboardSamples() {
   const [items, setItems] = useState<SampleType[]>([]);
@@ -24,14 +36,23 @@ export function DashboardSamples() {
     }
   };
 
+  const existingMaterials = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(item => {
+      if (item.material) set.add(item.material);
+    });
+    return Array.from(set).sort();
+  }, [items]);
+
   useEffect(() => {
     reload();
   }, []);
 
   const byMaterial = useMemo(() => {
+    console.log('[DEBUG] Grouping materials from items:', items);
     const map: Record<string, SampleType[]> = {};
     for (const t of items) {
-      const key = t.material || 'Autre';
+      const key = t.material || 'Sans matériau';
       if (!map[key]) map[key] = [];
       map[key].push(t);
     }
@@ -39,20 +60,47 @@ export function DashboardSamples() {
   }, [items]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Gestion des échantillons</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Ajoutez/retirez des types et leurs couleurs. Ces éléments apparaissent sur la page publique Échantillons.
-        </p>
+    <div className="px-4 lg:px-6 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des échantillons</h3>
+          <p className="text-sm text-muted-foreground">
+            Gérez votre catalogue de matériaux et de finitions visibles dans le configurateur.
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-10">
+      <div className="grid gap-6 lg:grid-cols-7">
+        <div className="lg:col-span-5 space-y-8">
           {loading ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6">Chargement…</div>
+            <div className="flex h-[400px] items-center justify-center rounded-md border border-dashed">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Chargement des échantillons...</p>
+              </div>
+            </div>
           ) : error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">{error}</div>
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="text-destructive">Erreur</CardTitle>
+                <CardDescription>{error}</CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button variant="outline" onClick={reload}>Réessayer</Button>
+              </CardFooter>
+            </Card>
+          ) : Object.keys(byMaterial).length === 0 ? (
+            <div className="flex h-[400px] items-center justify-center rounded-md border border-dashed text-center">
+              <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+                  <Plus className="h-10 w-10" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">Aucun échantillon</h3>
+                <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                  Vous n'avez pas encore ajouté de types d'échantillons. Commencez par en créer un à droite.
+                </p>
+              </div>
+            </div>
           ) : (
             Object.entries(byMaterial).map(([material, list]) => (
               <MaterialSection key={material} title={material} list={list} onChanged={reload} />
@@ -60,83 +108,221 @@ export function DashboardSamples() {
           )}
         </div>
 
-        <aside className="space-y-6">
-          <CreateTypeCard onCreated={reload} />
-        </aside>
+        <div className="lg:col-span-2">
+          <CreateTypeCard onCreated={reload} existingMaterials={existingMaterials} />
+        </div>
       </div>
     </div>
   );
 }
 
 function MaterialSection({ title, list, onChanged }: { title: string; list: SampleType[]; onChanged: () => void }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const scrollBy = (dx: number) => ref.current?.scrollBy({ left: dx, behavior: 'smooth' });
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const removeMaterial = async () => {
+    if (!confirm(`Attention : Supprimer le matériau "${title}" supprimera également les ${list.length} types et toutes leurs finitions associés. Continuer ?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // On supprime chaque type de ce matériau un par un via l'API existante
+      // Le backend supprimera les couleurs par cascade
+      for (const type of list) {
+        await apiClient.samples.deleteType(type.id);
+      }
+      onChanged();
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de la suppression du matériau');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
-    <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-wide text-gray-900">{title}</h2>
-        <div className="hidden sm:flex items-center gap-2">
-          <button type="button" className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm hover:bg-gray-50" onClick={() => scrollBy(-480)} aria-label="Défiler à gauche">◀</button>
-          <button type="button" className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm hover:bg-gray-50" onClick={() => scrollBy(480)} aria-label="Défiler à droite">▶</button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-serif font-semibold tracking-tight uppercase text-muted-foreground">{title}</h3>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-muted-foreground hover:text-destructive" 
+            onClick={removeMaterial}
+            disabled={isDeleting}
+            title={`Supprimer tout le matériau ${title}`}
+          >
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
         </div>
+        <Badge variant="outline">{list.length} modèles</Badge>
       </div>
-      <div ref={ref} className="overflow-x-auto pb-2">
-        <div className="flex gap-3 snap-x snap-mandatory">
+      <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+        <div className="flex w-max space-x-4 p-4">
           {list.map((t) => (
-            <div key={t.id} className="snap-start min-w-[300px] sm:min-w-[360px] max-w-[360px] shrink-0">
+            <div key={t.id} className="w-[350px] shrink-0">
               <TypeRow type={t} onChanged={onChanged} />
             </div>
           ))}
         </div>
-      </div>
-    </section>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
 }
 
-function CreateTypeCard({ onCreated }: { onCreated: () => void }) {
+function CreateTypeCard({ onCreated, existingMaterials }: { onCreated: () => void; existingMaterials: string[] }) {
   const [name, setName] = useState('');
-  const [material, setMaterial] = useState('Aggloméré');
+  const [material, setMaterial] = useState('');
+  const [customMaterial, setCustomMaterial] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Gestion intelligente du mode initial et des changements de liste
+  useEffect(() => {
+    if (existingMaterials.length === 0) {
+      if (!isCustom) setIsCustom(true);
+    } else if (!isCustom && !material && existingMaterials.length > 0) {
+      // On ne met plus de valeur par défaut automatique pour forcer le choix
+      // setMaterial(existingMaterials[0]); 
+    }
+  }, [existingMaterials, isCustom, material]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Détermination stricte du matériau
+    const finalMaterial = isCustom ? customMaterial.trim() : material;
+    
+    console.log('[DEBUG] Form submission:', { 
+      name, 
+      finalMaterial, 
+      isCustom, 
+      customMaterial, 
+      material 
+    });
+
+    if (!name.trim()) {
+      alert('Veuillez donner un nom au modèle.');
+      return;
+    }
+    
+    if (!finalMaterial || finalMaterial === 'NEW') {
+      alert('Veuillez spécifier un matériau.');
+      return;
+    }
+    
     setSaving(true);
     try {
-      await apiClient.samples.createType({ name, material, description });
-      setName(''); setDescription(''); setMaterial('Aggloméré');
+      const res = await apiClient.samples.createType({ 
+        name: name.trim(), 
+        material: finalMaterial, 
+        description: description.trim()
+      });
+      
+      console.log('[DEBUG] Creation success:', res);
+
+      // Réinitialisation complète
+      setName(''); 
+      setDescription(''); 
+      setCustomMaterial('');
+      
+      if (isCustom) {
+        setIsCustom(false);
+      }
+      setMaterial(finalMaterial); // On sélectionne celui qu'on vient de créer
+      
       onCreated();
+    } catch (err) {
+      console.error('[DEBUG] Creation error:', err);
+      alert('Erreur lors de la création');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <form onSubmit={submit} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-semibold text-gray-900">Nouveau type</h3>
-      <div className="mt-4 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-          <input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Matériau</label>
-          <select className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" value={material} onChange={(e) => setMaterial(e.target.value)}>
-            <option>Aggloméré</option>
-            <option>MDF + revêtement (mélaminé)</option>
-            <option>Plaqué bois</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        <div className="flex justify-end">
-          <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50" disabled={saving}>{saving ? 'Création…' : 'Créer'}</button>
-        </div>
-      </div>
-    </form>
+    <Card className="sticky top-4">
+      <CardHeader>
+        <CardTitle>Nouveau type</CardTitle>
+        <CardDescription>
+          Créez une nouvelle catégorie de finitions.
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={submit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="type-name">Nom commercial</Label>
+            <Input 
+              id="type-name" 
+              placeholder="Ex: Chêne Halifax" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="type-material">Matériau de base</Label>
+            {existingMaterials.length > 0 && !isCustom ? (
+              <Select 
+                key={`select-${existingMaterials.join('-')}`} // Clé pour forcer le rafraîchissement
+                value={material} 
+                onValueChange={(val) => {
+                  if (val === 'NEW') {
+                    setIsCustom(true);
+                  } else {
+                    setMaterial(val);
+                  }
+                }}
+              >
+                <SelectTrigger id="type-material">
+                  <SelectValue placeholder="Sélectionner un matériau" />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingMaterials.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                  <Separator className="my-2" />
+                  <SelectItem value="NEW" className="text-amber-600 font-medium">+ Autre matériau</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex gap-2">
+                <Input 
+                  autoFocus 
+                  placeholder="Nom du nouveau matériau" 
+                  value={customMaterial} 
+                  onChange={(e) => setCustomMaterial(e.target.value)} 
+                />
+                {existingMaterials.length > 0 && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setIsCustom(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="type-desc">Description (optionnel)</Label>
+            <Textarea 
+              id="type-desc" 
+              rows={3} 
+              placeholder="Détails sur la texture, l'entretien..." 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+            />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button className="w-full" disabled={saving || !name}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {saving ? 'Création...' : 'Créer le type'}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
   );
 }
 
@@ -146,32 +332,40 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
   const [hex, setHex] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [newColorPriceM2, setNewColorPriceM2] = useState('0');
+  const [newColorUnitPrice, setNewColorUnitPrice] = useState('0');
 
   const addColor = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'image' && !file) {
-      alert('Veuillez sélectionner une image pour la couleur.');
-      return;
-    }
-    if (mode === 'hex') {
-      const value = hex.trim();
-      if (!/^#?[0-9a-fA-F]{6}$/.test(value)) {
-        alert('Veuillez saisir une valeur hexadécimale valide (ex: #aabbcc).');
-        return;
-      }
-    }
+    if (mode === 'image' && !file) return;
+    if (mode === 'hex' && !hex) return;
+
     setSaving(true);
     try {
       const derivedName = (type.name || 'Couleur').trim();
       if (mode === 'image') {
         const image_url = await uploadImage(file as File);
-        await apiClient.samples.createColor({ type_id: type.id, name: derivedName, image_url });
+        await apiClient.samples.createColor({ 
+          type_id: type.id, 
+          name: derivedName, 
+          image_url,
+          price_per_m2: parseFloat(newColorPriceM2) || 0,
+          unit_price: parseFloat(newColorUnitPrice) || 0
+        });
         setFile(null);
       } else {
         const normalized = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
-        await apiClient.samples.createColor({ type_id: type.id, name: derivedName, hex: normalized });
+        await apiClient.samples.createColor({ 
+          type_id: type.id, 
+          name: derivedName, 
+          hex: normalized,
+          price_per_m2: parseFloat(newColorPriceM2) || 0,
+          unit_price: parseFloat(newColorUnitPrice) || 0
+        });
         setHex('');
       }
+      setNewColorPriceM2('0');
+      setNewColorUnitPrice('0');
       onChanged();
     } finally {
       setSaving(false);
@@ -190,119 +384,178 @@ function TypeRow({ type, onChanged }: { type: SampleType; onChanged: () => void 
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between">
+    <Card className="h-full overflow-hidden flex flex-col">
+      <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
         <div>
-          <div className="text-gray-900 font-semibold">{type.name}</div>
-          <div className="text-xs text-gray-500">{type.material}</div>
-          {type.description ? (
-            <div className="mt-1 text-sm text-gray-600">{type.description}</div>
-          ) : null}
+          <CardTitle className="text-lg">{type.name}</CardTitle>
+          <CardDescription className="font-medium text-amber-600">{type.material}</CardDescription>
         </div>
-        <button onClick={removeType} className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 hover:bg-gray-50" disabled={removing}>{removing ? 'Suppression…' : 'Supprimer'}</button>
-      </div>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={removeType} disabled={removing}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      
+      <CardContent className="pb-4 flex-1">
+        {type.description && <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{type.description}</p>}
+        
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            {type.colors?.map((c) => (
+              <VariantCard key={c.id} variant={c} onChanged={onChanged} />
+            ))}
+          </div>
 
-      {/* Liste des couleurs */}
-      <div className="mt-4 overflow-x-auto pb-2">
-        <div className="flex gap-3">
-          {type.colors?.map((c) => (
-            <div key={c.id} className="relative flex w-24 flex-col items-center">
-              <button
-                title="Retirer"
-                className="absolute -top-1 -right-1 z-10 rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-red-600 shadow hover:bg-white"
-                onClick={async () => { await apiClient.samples.deleteColor(c.id); onChanged(); }}
-              >
-                ×
-              </button>
-              <div className="h-16 w-16 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                {c.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div style={{ backgroundColor: c.hex || '#EEE', width: '100%', height: '100%' }} />
-                )}
+          <Separator />
+
+          <form onSubmit={addColor} className="space-y-3 pt-1">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">Nouvelle variante</p>
+            <Tabs value={mode} onValueChange={(val) => setMode(val as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="image" className="text-xs">
+                  <ImageIcon className="mr-2 h-3 w-3" /> Image
+                </TabsTrigger>
+                <TabsTrigger value="hex" className="text-xs">
+                  <Hash className="mr-2 h-3 w-3" /> HEX
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="image" className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    type="file" 
+                    className="text-xs" 
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    accept="image/*"
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="hex" className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    placeholder="#FFFFFF" 
+                    value={hex} 
+                    onChange={(e) => setHex(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                  <div 
+                    className="h-8 w-8 shrink-0 rounded border" 
+                    style={{ backgroundColor: hex.startsWith('#') ? hex : `#${hex || 'FFF'}` }} 
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px]">Prix m²</Label>
+                <Input 
+                  className="h-7 text-xs px-2" 
+                  type="number" 
+                  value={newColorPriceM2} 
+                  onChange={e => setNewColorPriceM2(e.target.value)} 
+                />
               </div>
-              <div className="mt-2 text-[11px] font-semibold tracking-wide text-gray-900 uppercase text-center max-w-[7rem] truncate" title={c.name}>
-                {c.name}
+              <div className="space-y-1">
+                <Label className="text-[10px]">Prix Echant.</Label>
+                <Input 
+                  className="h-7 text-xs px-2" 
+                  type="number" 
+                  value={newColorUnitPrice} 
+                  onChange={e => setNewColorUnitPrice(e.target.value)} 
+                />
               </div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Formulaire ajout couleur */}
-      <form onSubmit={addColor} className="mt-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="inline-flex w-44 rounded-full border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setMode('image')}
-              className={`flex-1 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-center transition-colors ${mode==='image' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-              aria-pressed={mode==='image'}
-            >
-              Image
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('hex')}
-              className={`flex-1 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-center transition-colors ${mode==='hex' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-              aria-pressed={mode==='hex'}
-            >
-              HEX
-            </button>
-          </div>
-          <span className="text-xs text-gray-500">Choisissez la méthode</span>
+            <Button size="sm" className="w-full h-8 text-xs" disabled={saving || (mode === 'image' ? !file : !hex)}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="mr-2 h-3 w-3" />}
+              {saving ? 'Ajout...' : 'Ajouter la variante'}
+            </Button>
+          </form>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-        {mode === 'image' ? (
-          <div className="flex items-center gap-4 flex-wrap">
-            <input
-              id={`file-${type.id}`}
-              className="sr-only"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-            <label htmlFor={`file-${type.id}`} className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 cursor-pointer">
-              Choisir une image
-            </label>
-            <span className="text-sm text-gray-600 max-w-[220px] truncate">{file?.name || 'Aucun fichier sélectionné'}</span>
-            <div className="h-10 w-10 overflow-hidden rounded border border-gray-200 bg-white">
-              {file ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={URL.createObjectURL(file)} alt="Prévisualisation" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-gray-100" />
-              )}
-            </div>
-          </div>
+import { type SampleColor } from '@/lib/apiClient';
+
+function VariantCard({ variant, onChanged }: { variant: SampleColor, onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [priceM2, setPriceM2] = useState((variant.price_per_m2 ?? 0).toString());
+  const [unitPrice, setUnitPrice] = useState((variant.unit_price ?? 0).toString());
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiClient.samples.updateColor(variant.id, {
+        price_per_m2: parseFloat(priceM2) || 0,
+        unit_price: parseFloat(unitPrice) || 0
+      });
+      setEditing(false);
+      onChanged();
+    } catch (e) {
+      alert("Erreur lors de la mise à jour");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="group relative">
+      <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform group-hover:scale-105">
+        {variant.image_url ? (
+          <img src={variant.image_url} alt={variant.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">Code</label>
-              <input
-                className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500"
-                placeholder="#aabbcc"
-                value={hex}
-                onChange={(e) => setHex(e.target.value)}
-              />
+          <div className="h-full w-full" style={{ backgroundColor: variant.hex || '#EEE' }} />
+        )}
+      </div>
+
+      {/* Boutons d'action rapides */}
+      <div className="absolute -right-1 -top-1 hidden gap-1 group-hover:flex">
+         <button
+          onClick={() => setEditing(true)}
+          className="h-5 w-5 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-sm"
+          title="Modifier les prix"
+        >
+          <Hash className="h-3 w-3" />
+        </button>
+        <button
+          onClick={async () => { if(confirm("Supprimer cette variante ?")) { await apiClient.samples.deleteColor(variant.id); onChanged(); } }}
+          className="h-5 w-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      
+      <div className="mt-1 max-w-[56px] truncate text-[9px] font-bold text-center uppercase text-zinc-600">
+        {variant.unit_price > 0 ? `${variant.unit_price}€` : 'OFFERT'}
+      </div>
+
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier les prix : {variant.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priceM2" className="text-right text-xs">Prix m² (€)</Label>
+              <Input id="priceM2" type="number" value={priceM2} onChange={e => setPriceM2(e.target.value)} className="col-span-3 h-8" />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">Aperçu</label>
-              <input
-                type="color"
-                className="h-10 w-10 rounded border border-gray-200 bg-white p-0"
-                value={(hex?.trim().startsWith('#') ? hex.trim() : `#${hex?.trim() || 'ffffff'}`)}
-                onChange={(e) => setHex(e.target.value)}
-              />
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="unitPrice" className="text-right text-xs">Prix Unit. (€)</Label>
+              <Input id="unitPrice" type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="col-span-3 h-8" />
             </div>
           </div>
-        )}
-
-        <div className="flex justify-end pt-1">
-          <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50" disabled={saving}>{saving ? 'Ajout…' : 'Ajouter'}</button>
-        </div>
-      </form>
+          <DialogFooter>
+            <Button size="sm" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

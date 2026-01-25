@@ -4,7 +4,7 @@
  * Date : 2025-10-21
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 /**
  * Interface pour les réponses d'erreur
@@ -23,6 +23,7 @@ export interface FurnitureModel {
   prompt: string;
   price: number | null;
   image_url: string | null;
+  hover_image_url: string | null;
   created_at: string;
 }
 
@@ -210,6 +211,26 @@ export const authApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   },
+
+  /**
+   * Demande de réinitialisation de mot de passe
+   */
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /**
+   * Réinitialisation du mot de passe
+   */
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
 };
 
 /**
@@ -220,7 +241,7 @@ export const adminAuthApi = {
    * Connexion admin
    */
   async login(email: string, password: string): Promise<{ success: boolean; admin: Admin }> {
-    return request<{ success: boolean; admin: Admin }>('/api/admin-auth/login', {
+    return request<{ success: boolean; admin: Admin }>('/api/admin/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -230,7 +251,7 @@ export const adminAuthApi = {
    * Déconnexion admin
    */
   async logout(): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>('/api/admin-auth/logout', {
+    return request<{ success: boolean }>('/api/admin/logout', {
       method: 'POST',
     });
   },
@@ -239,7 +260,90 @@ export const adminAuthApi = {
    * Vérifier la session admin
    */
   async getSession(): Promise<{ admin: Admin }> {
-    return request<{ admin: Admin }>('/api/admin-auth/session');
+    return request<{ admin: Admin }>('/api/admin/session');
+  },
+};
+
+/**
+ * API Client - Catégories
+ */
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  display_order: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const categoriesApi = {
+  /**
+   * Récupérer toutes les catégories
+   */
+  async getAll(onlyActive: boolean = false): Promise<Category[]> {
+    const url = onlyActive ? '/api/categories?active=true' : '/api/categories';
+    const response = await request<{ categories: Category[] }>(url);
+    return response.categories;
+  },
+
+  /**
+   * Récupérer une catégorie par son ID
+   */
+  async getById(id: number): Promise<Category> {
+    return request<Category>(`/api/categories?id=${id}`);
+  },
+
+  /**
+   * Créer une nouvelle catégorie (admin uniquement)
+   */
+  async create(category: {
+    name: string;
+    slug?: string;
+    description?: string;
+    image_url?: string;
+    display_order?: number;
+    is_active?: boolean;
+  }): Promise<{ success: boolean; category: Category }> {
+    return request<{ success: boolean; category: Category }>('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    });
+  },
+
+  /**
+   * Mettre à jour une catégorie (admin uniquement)
+   */
+  async update(
+    id: number,
+    data: Partial<Omit<Category, 'id' | 'created_at' | 'updated_at'>>
+  ): Promise<{ success: boolean; category: Category }> {
+    return request<{ success: boolean; category: Category }>('/api/categories', {
+      method: 'PUT',
+      body: JSON.stringify({ id, ...data }),
+    });
+  },
+
+  /**
+   * Supprimer une catégorie (admin uniquement)
+   */
+  async delete(id: number): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>('/api/categories', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
+  },
+
+  /**
+   * Réorganiser l'ordre des catégories (admin uniquement)
+   */
+  async reorder(categoryIds: number[]): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>('/api/categories', {
+      method: 'PUT',
+      body: JSON.stringify({ action: 'reorder', categoryIds }),
+    });
   },
 };
 
@@ -254,6 +358,8 @@ export interface SampleColor {
   image_url: string | null;
   active: number;
   position: number;
+  price_per_m2: number;
+  unit_price: number;
 }
 
 export interface SampleType {
@@ -263,6 +369,8 @@ export interface SampleType {
   description: string | null;
   active: number;
   position: number;
+  price_per_m2?: number; // Optionnel maintenant
+  unit_price?: number;  // Optionnel maintenant
   colors: SampleColor[];
 }
 
@@ -282,14 +390,21 @@ export const samplesApi = {
     return res.data;
   },
 
-  async createType(payload: { name: string; material: string; description?: string; position?: number }): Promise<{ success: boolean; id: number }> {
+  async createType(payload: { 
+    name: string; 
+    material: string; 
+    description?: string; 
+    position?: number;
+    price_per_m2?: number;
+    unit_price?: number;
+  }): Promise<{ success: boolean; id: number }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'create_type', ...payload }),
     });
   },
 
-  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'>>): Promise<{ success: boolean }> {
+  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'|'price_per_m2'|'unit_price'>>): Promise<{ success: boolean }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_type', id, ...payload }),
@@ -303,14 +418,22 @@ export const samplesApi = {
     });
   },
 
-  async createColor(payload: { type_id: number; name: string; hex?: string; image_url?: string; position?: number }): Promise<{ success: boolean; id: number }> {
+  async createColor(payload: { 
+    type_id: number; 
+    name: string; 
+    hex?: string; 
+    image_url?: string; 
+    position?: number;
+    price_per_m2?: number;
+    unit_price?: number;
+  }): Promise<{ success: boolean; id: number }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'create_color', ...payload }),
     });
   },
 
-  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'>>): Promise<{ success: boolean }> {
+  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'|'price_per_m2'|'unit_price'>>): Promise<{ success: boolean }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_color', id, ...payload }),
@@ -461,6 +584,18 @@ export interface FurnitureColors {
   drawers?: string;    // Tiroirs
   doors?: string;      // Portes
   base?: string;       // Socle/base
+  shelves?: string;    // Étagères
+  back?: string;       // Fond
+}
+
+/**
+ * Interface pour la structure des zones (pour segmentation des panneaux)
+ */
+export interface ZoneStructure {
+  type: 'leaf' | 'horizontal' | 'vertical';
+  children?: ZoneStructure[];
+  splitRatio?: number;
+  splitRatios?: number[];
 }
 
 /**
@@ -473,15 +608,20 @@ export const generateApi = {
    * @param closed Mode fermé (true = sans portes, false = avec portes)
    * @param color Couleur hex optionnelle unique (ex: "#D8C7A1") - legacy
    * @param colors Couleurs multi-composants optionnelles
+   * @param deletedPanels Liste des IDs de panneaux à exclure du DXF
+   * @param zones Structure des zones pour la segmentation des panneaux
    */
   async generate(
     prompt: string,
     closed: boolean = false,
     color?: string,
-    colors?: FurnitureColors
+    colors?: FurnitureColors,
+    deletedPanels?: string[],
+    zones?: ZoneStructure
   ): Promise<{
     success: boolean;
     glb_url: string;
+    dxf_url?: string;
     message: string;
   }> {
     const body: any = { prompt, closed };
@@ -493,7 +633,17 @@ export const generateApi = {
       body.color = color;
     }
 
-    return request<{ success: boolean; glb_url: string; message: string }>(
+    // Panneaux supprimés pour le DXF
+    if (deletedPanels && deletedPanels.length > 0) {
+      body.deletedPanels = deletedPanels;
+    }
+
+    // Structure des zones pour segmentation des panneaux
+    if (zones) {
+      body.zones = zones;
+    }
+
+    return request<{ success: boolean; glb_url: string; dxf_url?: string; message: string }>(
       '/api/generate',
       {
         method: 'POST',
@@ -509,6 +659,7 @@ export const generateApi = {
 export const apiClient = {
   auth: authApi,
   adminAuth: adminAuthApi,
+  categories: categoriesApi,
   models: modelsApi,
   configurations: configurationsApi,
   generate: generateApi,

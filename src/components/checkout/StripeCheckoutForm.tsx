@@ -63,11 +63,18 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
           })
         });
 
-        // Vider le panier
-        await fetch('/backend/api/cart/index.php', {
-          method: 'DELETE',
-          credentials: 'include',
-        });
+        // Vider le panier (ne pas bloquer en cas d'erreur)
+        try {
+          const cartResponse = await fetch('/backend/api/cart/index.php', {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          if (!cartResponse.ok) {
+            console.error('Erreur lors du vidage du panier:', await cartResponse.text());
+          }
+        } catch (cartError) {
+          console.error('Erreur lors du vidage du panier:', cartError);
+        }
 
         // Rediriger vers la page de confirmation
         setTimeout(() => {

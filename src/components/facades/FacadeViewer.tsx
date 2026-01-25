@@ -1,0 +1,506 @@
+import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState, Suspense } from 'react';
+import { Canvas, useThree, useLoader, useFrame } from '@react-three/fiber';
+import { OrbitControls, Environment, ContactShadows, useTexture } from '@react-three/drei';
+import * as THREE from 'three';
+import { FacadeConfig, FacadeDrilling } from '@/types/facade';
+
+interface FacadeViewerProps {
+  config: FacadeConfig;
+  showGrid?: boolean;
+}
+
+export interface FacadeViewerHandle {
+  captureScreenshot: () => string | null;
+}
+
+// Composant pour une face unique - accepte soit une couleur soit une texture pré-chargée
+function FacadeFace({
+  colorHex,
+  texture,
+  position,
+  rotation,
+  args,
+  side
+}: {
+  colorHex: string;
+  texture: THREE.Texture | null;
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  args: [number, number];
+  side?: typeof THREE.FrontSide | typeof THREE.DoubleSide;
+}) {
+  return (
+    <mesh castShadow receiveShadow position={position} rotation={rotation}>
+      <planeGeometry args={args} />
+      {texture ? (
+        <meshStandardMaterial
+          color="#ffffff"
+          map={texture}
+          roughness={0.7}
+          metalness={0.1}
+          side={side || THREE.FrontSide}
+        />
+      ) : (
+        <meshStandardMaterial
+          color={colorHex}
+          roughness={0.7}
+          metalness={0.1}
+          side={side || THREE.FrontSide}
+        />
+      )}
+    </mesh>
+  );
+}
+
+// Composant qui charge la texture une seule fois et rend toutes les faces
+function TexturedFacadeBox({
+  textureUrl,
+  colorHex,
+  w,
+  h,
+  d,
+  drillings,
+}: {
+  textureUrl: string;
+  colorHex: string;
+  w: number;
+  h: number;
+  d: number;
+  drillings: FacadeDrilling[];
+}) {
+  // Charger la texture avec useTexture de drei (gère bien le caching et Suspense)
+  const texture = useTexture(textureUrl);
+
+  // Configurer la texture
+  React.useEffect(() => {
+    if (texture) {
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = 8;
+      texture.needsUpdate = true;
+    }
+  }, [texture]);
+
+  return (
+    <FacadeBoxContent
+      texture={texture}
+      colorHex={colorHex}
+      w={w}
+      h={h}
+      d={d}
+      drillings={drillings}
+    />
+  );
+}
+
+// Composant qui rend la boîte avec couleur uniquement
+function ColoredFacadeBox({
+  colorHex,
+  w,
+  h,
+  d,
+  drillings,
+}: {
+  colorHex: string;
+  w: number;
+  h: number;
+  d: number;
+  drillings: FacadeDrilling[];
+}) {
+  return (
+    <FacadeBoxContent
+      texture={null}
+      colorHex={colorHex}
+      w={w}
+      h={h}
+      d={d}
+      drillings={drillings}
+    />
+  );
+}
+
+// Contenu commun de la boîte (6 faces + perçages + bordures)
+function FacadeBoxContent({
+  texture,
+  colorHex,
+  w,
+  h,
+  d,
+  drillings,
+}: {
+  texture: THREE.Texture | null;
+  colorHex: string;
+  w: number;
+  h: number;
+  d: number;
+  drillings: FacadeDrilling[];
+}) {
+  return (
+    <>
+      {/* Face avant */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, 0, d / 2]}
+        args={[w, h]}
+        side={THREE.FrontSide}
+      />
+
+      {/* Face arrière */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, 0, -d / 2]}
+        rotation={[0, Math.PI, 0]}
+        args={[w, h]}
+        side={THREE.FrontSide}
+      />
+
+      {/* Haut */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, h / 2, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        args={[w, d]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Bas */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[0, -h / 2, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        args={[w, d]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Gauche */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[-w / 2, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        args={[d, h]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Droite */}
+      <FacadeFace
+        colorHex={colorHex}
+        texture={texture}
+        position={[w / 2, 0, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        args={[d, h]}
+        side={THREE.DoubleSide}
+      />
+
+      {/* Rendu des perçages */}
+      {drillings.map((drilling: FacadeDrilling) => (
+        <Drilling
+          key={drilling.id}
+          drilling={drilling}
+          panelWidth={w}
+          panelHeight={h}
+          panelDepth={d}
+        />
+      ))}
+
+      {/* Cadre/bordure */}
+      <EdgesHelper width={w} height={h} depth={d} />
+    </>
+  );
+}
+
+// Composant principal de la façade avec animation d'ouverture
+function FacadePanel({ config }: { config: FacadeConfig }) {
+  const { width, height, depth, material, drillings, hinges } = config;
+  const groupRef = useRef<THREE.Group>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [targetRotation, setTargetRotation] = useState(0);
+  
+  // Conversion mm -> mètres pour Three.js
+  const w = width / 1000;
+  const h = height / 1000;
+  const d = depth / 1000;
+
+  const colorHex = material.color_hex || '#D8C7A1';
+  const textureUrl = material.texture_url || '';
+
+  // Déterminer l'angle d'ouverture selon le sens (ouverture extérieure)
+  // Charnières à gauche → rotation négative (s'ouvre vers l'extérieur à droite)
+  // Charnières à droite → rotation positive (s'ouvre vers l'extérieur à gauche)
+  const openAngle = hinges.direction === 'left' ? -Math.PI / 2 : Math.PI / 2; // 90° ouverture extérieure
+
+  // Animation progressive de la rotation
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      const current = groupRef.current.rotation.y;
+      const speed = 3; // Vitesse d'animation
+      const newRotation = THREE.MathUtils.lerp(current, targetRotation, delta * speed);
+      groupRef.current.rotation.y = newRotation;
+    }
+  });
+
+  // Gérer le clic pour ouvrir/fermer
+  const handleClick = (e: any) => {
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+    setTargetRotation(isOpen ? 0 : openAngle);
+  };
+
+  // Position du pivot : exactement sur le bord où sont les charnières
+  // Le groupe parent sera à cette position et pivotera autour de son origine (0,0,0)
+  const pivotX = hinges.direction === 'left' ? -w / 2 : w / 2;
+
+  return (
+    <group 
+      position={[pivotX, 0, 0]}
+      onClick={handleClick}
+      onPointerOver={() => document.body.style.cursor = 'pointer'}
+      onPointerOut={() => document.body.style.cursor = 'default'}
+    >
+      {/* Groupe rotatif - pivote autour de (0,0,0) local qui correspond au bord */}
+      <group ref={groupRef}>
+        {/* Décalage pour centrer la façade par rapport au pivot */}
+        <group position={[-pivotX, 0, 0]}>
+          {/* Rendu conditionnel: texture avec Suspense ou couleur simple */}
+          {textureUrl && textureUrl.trim() !== '' ? (
+            <Suspense fallback={
+              <ColoredFacadeBox
+                colorHex={colorHex}
+                w={w}
+                h={h}
+                d={d}
+                drillings={drillings}
+              />
+            }>
+              <TexturedFacadeBox
+                textureUrl={textureUrl}
+                colorHex={colorHex}
+                w={w}
+                h={h}
+                d={d}
+                drillings={drillings}
+              />
+            </Suspense>
+          ) : (
+            <ColoredFacadeBox
+              colorHex={colorHex}
+              w={w}
+              h={h}
+              d={d}
+              drillings={drillings}
+            />
+          )}
+        </group>
+      </group>
+    </group>
+  );
+}
+
+// Composant pour les perçages (visibles uniquement sur la face arrière)
+function Drilling({
+  drilling,
+  panelWidth,
+  panelHeight,
+  panelDepth,
+}: {
+  drilling: FacadeDrilling;
+  panelWidth: number;
+  panelHeight: number;
+  panelDepth: number;
+}) {
+  // Conversion des pourcentages en position réelle
+  const xPos = (drilling.x / 100 - 0.5) * panelWidth;
+  const yPos = (drilling.y / 100 - 0.5) * panelHeight;
+  const zPos = -panelDepth / 2 - 0.001; // Sur la face arrière
+
+  if (drilling.type === 'circular' || drilling.diameter) {
+    // Perçage circulaire - cercle noir sur la face arrière
+    const radius = (drilling.diameter || 30) / 1000 / 2;
+    return (
+      <mesh position={[xPos, yPos, zPos]} rotation={[0, Math.PI, 0]}>
+        <circleGeometry args={[radius, 32]} />
+        <meshStandardMaterial
+          color="#000000"
+          roughness={1}
+          metalness={0}
+          side={THREE.FrontSide}
+        />
+      </mesh>
+    );
+  } else if (drilling.type === 'rectangular' || (drilling.width && drilling.height)) {
+    // Perçage rectangulaire - rectangle noir sur la face arrière
+    const w = (drilling.width || 100) / 1000;
+    const h = (drilling.height || 50) / 1000;
+    return (
+      <mesh position={[xPos, yPos, zPos]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[w, h]} />
+        <meshStandardMaterial
+          color="#000000"
+          roughness={1}
+          metalness={0}
+          side={THREE.FrontSide}
+        />
+      </mesh>
+    );
+  }
+
+  return null;
+}
+
+// Helper pour afficher les bordures
+function EdgesHelper({
+  width,
+  height,
+  depth,
+}: {
+  width: number;
+  height: number;
+  depth: number;
+}) {
+  const geometry = new THREE.BoxGeometry(width, height, depth);
+  const edges = new THREE.EdgesGeometry(geometry);
+
+  return (
+    <lineSegments geometry={edges}>
+      <lineBasicMaterial color="#1A1917" linewidth={2} />
+    </lineSegments>
+  );
+}
+
+// Grille de référence optionnelle
+function Grid({ width, height }: { width: number; height: number }) {
+  const divisions = 10;
+  
+  return (
+    <group position={[0, 0, -0.01]}>
+      <gridHelper
+        args={[Math.max(width, height), divisions, '#E8E6E3', '#E8E6E3']}
+        rotation={[Math.PI / 2, 0, 0]}
+      />
+    </group>
+  );
+}
+
+// Composant de capture de screenshot
+function ScreenshotCapture({
+  onCapture,
+}: {
+  onCapture: (fn: () => string | null) => void;
+}) {
+  const { gl, scene, camera } = useThree();
+
+  React.useEffect(() => {
+    const captureScreenshot = () => {
+      try {
+        gl.render(scene, camera);
+        const dataUrl = gl.domElement.toDataURL('image/png');
+        return dataUrl;
+      } catch (error) {
+        console.error('Erreur lors de la capture:', error);
+        return null;
+      }
+    };
+
+    onCapture(captureScreenshot);
+  }, [gl, scene, camera, onCapture]);
+
+  return null;
+}
+
+// Composant principal exporté
+const FacadeViewer = forwardRef<FacadeViewerHandle, FacadeViewerProps>(
+  ({ config, showGrid = false }, ref) => {
+    const captureRef = useRef<(() => string | null) | null>(null);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        captureScreenshot: () => {
+          if (captureRef.current) {
+            return captureRef.current();
+          }
+          return null;
+        },
+      }),
+      []
+    );
+
+    const handleCapture = (fn: () => string | null) => {
+      captureRef.current = fn;
+    };
+
+    return (
+      <div className="w-full h-full bg-[#FAFAF9] relative">
+        {/* Badge informatif */}
+        {config.hinges.type !== 'no-hole-no-hinge' && (
+          <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md border border-[#E8E6E3] flex items-center gap-2">
+            <svg className="w-5 h-5 text-[#1A1917]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+            </svg>
+            <span className="text-sm font-medium text-[#1A1917]">
+              Cliquez sur la façade pour simuler l'ouverture
+            </span>
+          </div>
+        )}
+        
+        <Canvas
+          shadows
+          dpr={[1, 2]}
+          camera={{ position: [0, 0, 2], fov: 45 }}
+          onCreated={({ gl }) => {
+            gl.setClearColor('#FAFAF9');
+            gl.toneMapping = THREE.ACESFilmicToneMapping;
+            gl.toneMappingExposure = 1.0;
+          }}
+          gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+        >
+          <ScreenshotCapture onCapture={handleCapture} />
+
+          <OrbitControls
+            enableDamping
+            minDistance={0.5}
+            maxDistance={5}
+            maxPolarAngle={Math.PI / 2}
+            target={[0, 0, 0]}
+          />
+
+          <ambientLight intensity={0.5} />
+          <hemisphereLight intensity={0.5} groundColor="#ffffff" color="#ffffff" />
+          <directionalLight
+            position={[3, 5, 2]}
+            intensity={1.2}
+            castShadow
+            shadow-mapSize={[1024, 1024]}
+          />
+
+          {showGrid && (
+            <Grid
+              width={config.width / 1000}
+              height={config.height / 1000}
+            />
+          )}
+
+          <FacadePanel config={config} />
+          
+          <ContactShadows
+            position={[0, -config.height / 2000 - 0.01, 0]}
+            opacity={0.3}
+            scale={Math.max(config.width, config.height) / 1000 * 1.5}
+            blur={2}
+            far={1}
+          />
+
+          <Environment preset="city" background={false} />
+        </Canvas>
+      </div>
+    );
+  }
+);
+
+FacadeViewer.displayName = 'FacadeViewer';
+
+export default FacadeViewer;

@@ -1,2688 +1,3819 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import type { SyntheticEvent, KeyboardEvent } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import Link from 'next/link';
 import Viewer from '@/components/configurator/Viewer';
-import Controls from '@/components/configurator/Controls';
-import Price from '@/components/configurator/Price';
+import type { ThreeCanvasHandle } from '@/components/configurator/types';
+
+// Import dynamique pour éviter les erreurs SSR avec R3F
+const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '500px' }}>
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
+        <p className="text-sm font-medium text-[#706F6C]">Chargement du studio 3D...</p>
+      </div>
+    </div>
+  ),
+});
+import DimensionsPanel from '@/components/configurator/DimensionsPanel';
+import ActionBar from '@/components/configurator/ActionBar';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META, PanelPlanCanvas } from '@/components/configurator/ZoneEditor';
+import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
+import SocleSelector from '@/components/configurator/SocleSelector';
+import DoorSelector from '@/components/configurator/DoorSelector';
+import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
+import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
+import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
+import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Camera, Download, Undo2, Redo2, Edit3, Trash2 } from 'lucide-react';
+import { 
+  IconRuler2, 
+  IconPalette as IconTablerPalette, 
+  IconApps, 
+  IconInfoCircle, 
+  IconEdit,
+  IconTrendingUp,
+  IconPlus,
+  IconRefresh,
+  IconX as IconTablerX
+} from '@tabler/icons-react';
+import { Button } from '@/components/ui/button';
+import { useHistory } from '@/hooks/useHistory';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import toast from 'react-hot-toast';
 
-const MATERIAL_ORDER = [
-    'Aggloméré',
-    'MDF + revêtement (mélaminé)',
-    'Plaqué bois'
-];
+// Hook pour détecter mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
 
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth < 768;
+      setIsMobile(mobileRegex.test(userAgent.toLowerCase()) || (isTouchDevice && isSmallScreen));
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
+
+// Mapping pour les anciens matériaux uniquement (backward compatibility)
 const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
-    agglomere: 'Aggloméré',
-    mdf_melamine: 'MDF + revêtement (mélaminé)',
-    plaque_bois: 'Plaqué bois'
+  agglomere: 'Aggloméré',
+  mdf_melamine: 'MDF + revêtement (mélaminé)',
+  plaque_bois: 'Plaqué bois',
 };
 
-const MATERIAL_ABBR_BY_KEY: Record<string, string> = {
-    agglomere: 'Ag',
-    mdf_melamine: 'Mm',
-    plaque_bois: 'Pl'
-};
-
-const BESTSELLER_COLOR_LABELS = new Set([
-    'Blanc',
-    'Blanc | Bord contreplaqué',
-    'Chêne'
-]);
-
+// Prix par défaut pour les anciens matériaux (backward compatibility)
 const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
-    agglomere: 0,
-    mdf_melamine: 70,
-    plaque_bois: 140
+  agglomere: 0,
+  mdf_melamine: 70,
+  plaque_bois: 140,
 };
 
 const DEFAULT_COLOR_HEX = '#D8C7A1';
 
+// Mapping pour les poignées vers codes prompt
+const HANDLE_TYPE_CODE: Record<string, string> = {
+  'vertical_bar': '1',
+  'horizontal_bar': '2',
+  'knob': '3',
+  'recessed': '4',
+};
+
+// Normalise une clé de matériau - garde la valeur telle quelle pour les nouveaux matériaux
 function normalizeMaterialKey(value: string | null | undefined): string {
-    if (!value) {
-        return 'agglomere';
-    }
-
-    const normalized = value
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-
-    if (normalized.includes('agglom')) {
-        return 'agglomere';
-    }
-    if (normalized.includes('mdf') || normalized.includes('melamine')) {
-        return 'mdf_melamine';
-    }
-    if (normalized.includes('plaque') || normalized.includes('bois')) {
-        return 'plaque_bois';
-    }
-    if (normalized.includes('brillant') || normalized.includes('satin')) {
-        return 'mdf_melamine';
-    }
-    if (normalized.includes('mat')) {
-        return 'agglomere';
-    }
-
-    return 'agglomere';
+  if (!value) return 'agglomere';
+  
+  // Normalisation pour comparaison
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  
+  // Mapping strict pour la rétrocompatibilité uniquement
+  // On ne cherche plus de correspondances partielles comme "bois" qui polluent les nouvelles catégories
+  if (normalized === 'agglomere') return 'agglomere';
+  if (normalized === 'mdf + revetement (melamine)' || normalized === 'mdf_melamine') return 'mdf_melamine';
+  if (normalized === 'plaque bois' || normalized === 'plaque_bois') return 'plaque_bois';
+  
+  // Pour tout le reste (nouvelles catégories admin), retourner la valeur originale sans transformation
+  return value;
 }
 
 function materialLabelFromKey(key: string): string {
-    return MATERIAL_LABEL_BY_KEY[key] || key;
+  // Les matériaux sont maintenant gérés dynamiquement via l'API
+  return key;
 }
 
-export default function ConfiguratorPage() {
-    const router = useRouter();
-    const { id } = router.query;
-    const { customer, isAuthenticated } = useCustomer();
+function ConfigurationSummary({
+  width, height, depth, finish, color, socle, rootZone, price, modelName,
+  isAdmin, onEdit, priceDisplaySettings, mountingStyle, colorLabel, isOwner, onEditOwn
+}: any) {
+  const analyzeConfiguration = (zone: Zone) => {
+    const handleTypes = new Set<string>();
+    const leafZones: any[] = [];
 
-    const [model, setModel] = useState<FurnitureModel | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
-    const [glbUrl, setGlbUrl] = useState<string | null>(null);
-    const [dxfUrl, setDxfUrl] = useState<string | null>(null);
-    const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
-    const [editingConfigName, setEditingConfigName] = useState<string>('');
-    const [initialConfigApplied, setInitialConfigApplied] = useState(true);
-    const [skipNextAutoGenerate, setSkipNextAutoGenerate] = useState(false);
-    const isEditing = Boolean(editingConfigId);
+    let leafCounter = 0;
 
-    // Prompt du template (comme dans configurator.js)
-    const [templatePrompt, setTemplatePrompt] = useState<string | null>(null);
+    const traverse = (z: Zone) => {
+      if (z.type === 'leaf') {
+        leafCounter++;
+        leafZones.push({
+          number: leafCounter,
+          id: z.id,
+          content: z.content || 'empty',
+          handleType: z.handleType,
+          hasLight: z.hasLight,
+          hasCableHole: z.hasCableHole,
+          color: z.zoneColor?.hex
+        });
 
-    // Configuration state - valeurs par défaut depuis le prompt du modèle
-    const [modules, setModules] = useState(3);
-    const [height, setHeight] = useState(730);
-    const [depth, setDepth] = useState(500);
-    const [socle, setSocle] = useState('none');
-    const [finish, setFinish] = useState('Aggloméré');
-    const [color, setColor] = useState(DEFAULT_COLOR_HEX);
-    const [colorLabel, setColorLabel] = useState('Aggloméré naturel');
-    const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
-    const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
-    const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
-    const [materialsLoading, setMaterialsLoading] = useState(false);
-    const [price, setPrice] = useState(899);
-    const [doorsOpen, setDoorsOpen] = useState(true); // true = avec portes, false = sans portes
+        if (z.content && z.content !== 'empty') {
+          if (z.handleType) {
+            handleTypes.add(z.handleType);
+          }
+        }
+      }
 
-    // Multi-couleurs par composant
-    const [useMultiColor, setUseMultiColor] = useState(false);
-    const [componentColors, setComponentColors] = useState<{
-        structure: { colorId: number | null; hex: string | null };
-        drawers: { colorId: number | null; hex: string | null };
-        doors: { colorId: number | null; hex: string | null };
-        base: { colorId: number | null; hex: string | null };
-    }>({
-        structure: { colorId: null, hex: null },
-        drawers: { colorId: null, hex: null },
-        doors: { colorId: null, hex: null },
-        base: { colorId: null, hex: null },
-    });
-
-    // Mode EZ/Expert
-    const [isExpertMode, setIsExpertMode] = useState(false);
-    const [customPrompt, setCustomPrompt] = useState(''); // Pour le mode Expert
-
-    // Nouvelles options Mode EZ
-    const [shelves, setShelves] = useState(2); // Nombre d'étagères
-    const [drawers, setDrawers] = useState(1); // Nombre de tiroirs
-    const [doors, setDoors] = useState(2); // Nombre de portes
-    const [hasDressing, setHasDressing] = useState(false); // Penderie (tringle)
-
-    // Valeurs initiales du template (pour détecter si l'utilisateur a modifié)
-    const [initialSliderValues, setInitialSliderValues] = useState<{
-        shelves: number;
-        drawers: number;
-        doors: number;
-    } | null>(null);
-
-    // Système de zones/compartiments pour gestion avancée
-    type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf';
-    type Zone = {
-        id: string;
-        type: 'leaf' | 'horizontal' | 'vertical'; // leaf = pas de subdivision
-        content?: ZoneContent; // Seulement pour les leaf
-        children?: Zone[]; // Seulement pour horizontal/vertical
-        height?: number; // Hauteur relative de la zone (pour dressing)
-        splitRatio?: number; // Pourcentage de division (0-100) pour le premier enfant
+      if (z.children) z.children.forEach(traverse);
     };
 
-    const [useAdvancedMode, setUseAdvancedMode] = useState(false); // Toggle simple/avancé
-    const [rootZone, setRootZone] = useState<Zone>({
-        id: 'root',
-        type: 'leaf',
-        content: 'empty'
+    traverse(zone);
+
+    return {
+      handleTypes: Array.from(handleTypes),
+      leafZones
+    };
+  };
+
+  const analysis = analyzeConfiguration(rootZone);
+
+  const labels: Record<string, string> = {
+    drawer: 'Tiroir',
+    push_drawer: 'Tiroir Push-to-Open',
+    dressing: 'Penderie',
+    door: 'Porte Gauche',
+    door_right: 'Porte Droite',
+    door_double: 'Double Porte',
+    mirror_door: 'Porte Vitrée',
+    push_door: 'Porte Push-to-Open',
+    glass_shelf: 'Étagère verre',
+    shelf: 'Étagère',
+    light: 'Éclairage LED',
+    cable_hole: 'Passe-câble',
+  };
+
+  const handleLabels: Record<string, string> = {
+    vertical_bar: 'Barre verticale',
+    horizontal_bar: 'Barre horizontale',
+    knob: 'Bouton rond',
+    recessed: 'Poignée encastrée',
+  };
+
+  // Compter les équipements
+  const equipmentCount: Record<string, number> = {};
+  analysis.leafZones.forEach((z: any) => {
+    const key = z.content || 'empty';
+    equipmentCount[key] = (equipmentCount[key] || 0) + 1;
+  });
+
+  return (
+    <div className="flex flex-col h-full bg-white overflow-y-auto custom-scrollbar">
+      {/* Header */}
+      <div className="p-5 border-b border-[#E8E6E3]">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-serif text-xl text-[#1A1917]">Fiche technique</h2>
+            <p className="text-xs text-[#706F6C] mt-0.5">{modelName || 'Configuration client'}</p>
+          </div>
+          {isAdmin && onEdit && (
+            <Button
+              onClick={onEdit}
+              size="sm"
+              className="bg-[#1A1917] text-white hover:bg-[#2A2927] h-8 px-4 text-xs"
+            >
+              <IconEdit className="h-3.5 w-3.5 mr-1.5" />
+              Modifier
+            </Button>
+          )}
+          {!isAdmin && isOwner && onEditOwn && (
+            <Button
+              onClick={onEditOwn}
+              size="sm"
+              className="bg-[#1A1917] text-white hover:bg-[#2A2927] h-8 px-4 text-xs"
+            >
+              <IconEdit className="h-3.5 w-3.5 mr-1.5" />
+              Modifier ma configuration
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="p-5 space-y-5">
+        {/* Visualisation 2D */}
+        <div className="border border-[#E8E6E3] p-3 bg-[#FAFAF9]">
+          <ZoneEditor
+            rootZone={rootZone}
+            selectedZoneIds={[]}
+            onRootZoneChange={() => {}}
+            onSelectedZoneIdsChange={() => {}}
+            width={width}
+            height={height}
+            hideControls={true}
+            showNumbers={true}
+          />
+        </div>
+
+        {/* Caractéristiques principales - 2 colonnes */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Largeur</span>
+            <span className="font-medium">{width} mm</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Hauteur</span>
+            <span className="font-medium">{height} mm</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Profondeur</span>
+            <span className="font-medium">{depth} mm</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Montage</span>
+            <span className="font-medium">{mountingStyle === 'encastre' ? 'Encastré' : 'En applique'}</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Matériau</span>
+            <span className="font-medium">{finish}</span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Couleur</span>
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 border border-black/10" style={{ backgroundColor: color }}></span>
+              <span className="font-medium">{colorLabel || color}</span>
+            </div>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Socle</span>
+            <span className="font-medium">
+              {socle === 'metal' ? 'Métal noir' : socle === 'wood' ? 'Plinthe bois' : 'Sans socle'}
+            </span>
+          </div>
+          <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
+            <span className="text-[#706F6C]">Poignées</span>
+            <span className="font-medium">
+              {analysis.handleTypes.length > 0
+                ? analysis.handleTypes.map(h => handleLabels[h] || h).join(', ')
+                : 'Push-to-open'}
+            </span>
+          </div>
+        </div>
+
+        {/* Équipements - Liste compacte */}
+        <div>
+          <h3 className="text-xs font-medium text-[#706F6C] uppercase tracking-wide mb-2">Équipements ({analysis.leafZones.length} zones)</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(equipmentCount).map(([key, count]) => (
+              <span
+                key={key}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-[#F5F5F4] text-xs border border-[#E8E6E3]"
+              >
+                <span className="font-medium">{count}x</span>
+                <span className="text-[#706F6C]">{labels[key] || (key === 'empty' ? 'Vide' : key)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Détails par zone - Table simplifiée */}
+        <div>
+          <h3 className="text-xs font-medium text-[#706F6C] uppercase tracking-wide mb-2">Détail par zone</h3>
+          <div className="border border-[#E8E6E3] divide-y divide-[#E8E6E3] text-sm">
+            {analysis.leafZones.map((z: any) => (
+              <div key={z.id} className="flex items-center gap-3 px-3 py-2 hover:bg-[#FAFAF9]">
+                <span className="flex items-center justify-center h-5 w-5 bg-[#1A1917] text-white text-[10px] font-bold">
+                  {z.number}
+                </span>
+                <span className="flex-1 font-medium">
+                  {labels[z.content] || (z.content === 'empty' ? 'Vide' : z.content)}
+                </span>
+                <div className="flex items-center gap-2 text-xs text-[#706F6C]">
+                  {z.hasLight && <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 text-[10px]">LED</span>}
+                  {z.hasCableHole && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[10px]">Câble</span>}
+                  {z.color && (
+                    <span className="h-3 w-3 border border-black/10" style={{ backgroundColor: z.color }}></span>
+                  )}
+                  {z.handleType && <span className="italic">{handleLabels[z.handleType]}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Prix */}
+        <div className="flex items-center justify-between py-4 border-t border-[#E8E6E3]">
+          <span className="text-sm text-[#706F6C]">Estimation</span>
+          <div className="text-right">
+            {priceDisplaySettings?.mode === 1 && priceDisplaySettings?.range > 0 ? (
+              <span className="font-serif text-2xl font-medium">
+                {Math.max(0, price - priceDisplaySettings.range)} - {price + priceDisplaySettings.range} €
+              </span>
+            ) : (
+              <span className="font-serif text-2xl font-medium">{price} €</span>
+            )}
+          </div>
+        </div>
+
+        {/* Note informative */}
+        <p className="text-xs text-[#706F6C] text-center py-3 border-t border-[#E8E6E3]">
+          Mode consultation — Cliquez sur Modifier pour éditer
+        </p>
+      </div>
+    </div>
+  );
+}
+
+type ConfigTab = 'dimensions' | 'materials';
+
+export default function ConfiguratorPage() {
+  const router = useRouter();
+  const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
+  const { customer, isAuthenticated } = useCustomer();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdminCreateModel = adminMode === 'createModel';
+  const isAdminEditModel = adminMode === 'editModel';
+  const isMobile = useIsMobile();
+  const [showMobileWarning, setShowMobileWarning] = useState(true);
+
+  // Formulaire création modèle
+  const [isCreateModelDialogOpen, setIsCreateModelDialogOpen] = useState(false);
+  const [showModelCreatedModal, setShowModelCreatedModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSavingModel, setIsSavingModel] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+
+
+  // Charger les catégories dynamiques
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/backend/api/categories.php?active=true');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.categories) {
+            setAvailableCategories(data.categories);
+            // Si on est en mode création, on peut présélectionner la première catégorie
+            if (isAdminCreateModel && data.categories.length > 0 && !modelForm.category) {
+              setModelForm(prev => ({ ...prev, category: data.categories[0].slug }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erreur chargement categories configurateur:", error);
+      }
+    };
+    fetchCategories();
+  }, [isAdminCreateModel]);
+
+  const [modelForm, setModelForm] = useState({
+    name: '',
+    description: '',
+    category: 'dressing',
+    price: 890,
+    imageUrl: ''
+  });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setIsUploading(true);
+      console.log('📤 Début de l\'upload de l\'image...', file.name);
+      const response = await fetch('/api/admin/upload-model-image', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      console.log('📥 Réponse du serveur (status):', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur serveur upload:', errorText);
+        throw new Error('Erreur lors de l\'upload');
+      }
+
+      const data = await response.json();
+      console.log('✅ Données upload reçues:', data);
+      if (data.success) {
+        setModelForm({ ...modelForm, imageUrl: data.url });
+        toast.success('Image mise en ligne !');
+      }
+    } catch (err) {
+      console.error('💥 Exception upload:', err);
+      toast.error('Échec de l\'upload de l\'image');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Modes
+  const isEditMode = mode === 'edit' && queryConfigId;
+  const isViewMode = mode === 'view' && queryConfigId;
+  const configIdToEdit = queryConfigId ? Number(queryConfigId) : null;
+
+  // Vérifier la session admin au chargement
+  useEffect(() => {
+    const checkAdmin = async () => {
+      // Si fromAdmin=true dans l'URL, on est venu du dashboard admin
+      if (fromAdmin === 'true') {
+        setIsAdmin(true);
+        console.log('👑 Accès depuis le dashboard admin (fromAdmin=true)');
+        return;
+      }
+
+      try {
+        console.log('🔍 Vérification session admin...');
+        const data = await apiClient.adminAuth.getSession();
+        console.log('🔍 Réponse getSession:', data);
+        if (data.admin) {
+          setIsAdmin(true);
+          console.log('👑 Session administrateur détectée');
+        } else {
+          console.log('❌ Pas de session admin (data.admin = false ou undefined)');
+        }
+      } catch (e) {
+        console.error('❌ Erreur lors de la vérification admin:', e);
+      }
+    };
+    checkAdmin();
+  }, [fromAdmin]);
+
+  // Clé localStorage unique par modèle
+  const localStorageKey = useMemo(() => `configurator_config_${id}`, [id]);
+
+  // État pour la configuration initiale (pour réinitialiser)
+  const [initialConfig, setInitialConfig] = useState<{
+    width: number;
+    height: number;
+    depth: number;
+    socle: string;
+    rootZone: Zone;
+    finish: string;
+    doorType?: 'none' | 'single' | 'double';
+    doorSide?: 'left' | 'right';
+  } | null>(null);
+
+  // États de base
+  const [model, setModel] = useState<FurnitureModel | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editingConfiguration, setEditingConfiguration] = useState<any>(null);
+  const [generating, setGenerating] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [pendingRestoreConfig, setPendingRestoreDialog] = useState<any>(null);
+  const [glbUrl, setGlbUrl] = useState<string | null>(null);
+  const [dxfUrl, setDxfUrl] = useState<string | null>(null);
+  const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
+  const [editingConfigName, setEditingConfigName] = useState<string>('');
+  const [initialConfigApplied, setInitialConfigApplied] = useState(false);
+  const [skipNextAutoGenerate, setSkipNextAutoGenerate] = useState(false);
+
+  // Prompt template
+  const [templatePrompt, setTemplatePrompt] = useState<string | null>(null);
+
+  // Configuration
+  const [width, setWidth] = useState(1500);
+  const [height, setHeight] = useState(730);
+  const [depth, setDepth] = useState(500);
+  const [socle, setSocle] = useState('none');
+  const [finish, setFinish] = useState('Aggloméré');
+  const [color, setColor] = useState(DEFAULT_COLOR_HEX);
+  const [colorLabel, setColorLabel] = useState('Aggloméré naturel');
+  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
+  const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
+  const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
+  const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [price, setPrice] = useState(899);
+
+  // Synchroniser le prix calculé avec le formulaire quand le dialog s'ouvre
+  useEffect(() => {
+    if (isCreateModelDialogOpen && price > 0) {
+      setModelForm(prev => ({ ...prev, price: Math.round(price) }));
+    }
+  }, [isCreateModelDialogOpen, price]);
+
+  // Paramètres de pricing configurables chargés depuis l'API
+  const [pricingParams, setPricingParams] = useState<any>(null);
+
+  const [doorsOpen, setDoorsOpen] = useState(true);
+  const [showDecorations, setShowDecorations] = useState(true);
+  const doorsOpenRef = useRef(doorsOpen);
+  // const viewerRef = useRef<ThreeCanvasHandle>(null); // TODO: Implémenter la capture d'écran
+  const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
+  const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
+  const [mountingStyle, setMountingStyle] = useState<'applique' | 'encastre'>('applique');
+
+  useEffect(() => {
+    doorsOpenRef.current = doorsOpen;
+  }, [doorsOpen]);
+
+  // TODO: Implémenter la capture d'écran - nécessite de résoudre les problèmes SSR avec forwardRef
+  // const handleCaptureScreenshot = useCallback(() => { ... }, []);
+
+  // Mode multi-couleurs
+  const [useMultiColor, setUseMultiColor] = useState(false);
+  const [componentColors, setComponentColors] = useState<ComponentColors>({
+    structure: { colorId: null, hex: null },
+    drawers: { colorId: null, hex: null },
+    doors: { colorId: null, hex: null },
+    shelves: { colorId: null, hex: null },
+    back: { colorId: null, hex: null },
+    base: { colorId: null, hex: null },
+  });
+
+  // Zones (mode par défaut) - avec historique pour undo/redo
+  const {
+    state: rootZone,
+    setState: setRootZone,
+    undo: undoZone,
+    redo: redoZone,
+    canUndo: canUndoZone,
+    canRedo: canRedoZone,
+  } = useHistory<Zone>({
+    id: 'root',
+    type: 'leaf',
+    content: 'empty',
+  }, { maxHistory: 30 });
+
+  // Raccourcis clavier pour undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorer si l'utilisateur est dans un champ de saisie
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Ctrl+Z ou Cmd+Z pour Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndoZone) undoZone();
+      }
+      // Ctrl+Y ou Cmd+Shift+Z pour Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedoZone) redoZone();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndoZone, canRedoZone, undoZone, redoZone]);
+
+  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
+  const [doors, setDoors] = useState(0);
+  
+  // Panel selection and deletion states
+  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
+  const [showPanelTool, setShowPanelTool] = useState(false);
+  const panelToolRef = useRef<HTMLDivElement>(null);
+
+  // Scroll vers le plan 2D quand l'outil est activé
+  useEffect(() => {
+    if (showPanelTool && panelToolRef.current) {
+      setTimeout(() => {
+        panelToolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [showPanelTool]);
+
+  // Handle panel deletion/restoration toggle
+  const togglePanelDeleted = useCallback((panelId: string) => {
+    setDeletedPanelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(panelId)) {
+        next.delete(panelId);
+      } else {
+        next.add(panelId);
+      }
+      return next;
     });
-    const [selectedZoneId, setSelectedZoneId] = useState<string>('root');
+  }, []);
 
-    useEffect(() => {
-        if (useAdvancedMode) {
-            setSelectedZoneId('root');
+  // Handle panel selection (deselects zones when a panel is selected)
+  const handlePanelSelect = useCallback((panelId: string | null) => {
+    setSelectedPanelId(panelId);
+    if (panelId) {
+      setSelectedZoneIds([]);
+    }
+  }, []);
+
+  // Gérer la sélection intelligente (clic 1 -> clic 2)
+  const handleZoneSelect = useCallback(
+    (zoneId: string | null) => {
+      // Deselect panel when selecting a zone
+      setSelectedPanelId(null);
+      
+      if (!zoneId) {
+        setSelectedZoneIds([]);
+        return;
+      }
+
+      // Si aucune zone n'est sélectionnée, on sélectionne la première
+      if (selectedZoneIds.length === 0) {
+        setSelectedZoneIds([zoneId]);
+        return;
+      }
+
+      // Si on clique sur une zone déjà sélectionnée
+      if (selectedZoneIds.includes(zoneId)) {
+        // Si c'est la racine et qu'elle est seule, on ne désélectionne pas
+        if (zoneId === 'root' && selectedZoneIds.length === 1) return;
+        
+        // Sinon on désélectionne tout (comportement intuitif pour "éteindre" ce qui est orange)
+        setSelectedZoneIds([]);
+        return;
+      }
+
+      // Logique de sélection de plage (entre le premier sélectionné et le nouveau clic)
+      const firstId = selectedZoneIds[0];
+      const secondId = zoneId;
+
+      // Fonction utilitaire pour trouver une zone et son parent
+      const findZoneWithParent = (current: Zone, targetId: string, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
+        if (current.id === targetId) return { zone: current, parent };
+        if (!current.children) return null;
+        for (const child of current.children) {
+          const result = findZoneWithParent(child, targetId, current);
+          if (result) return result;
         }
-    }, [useAdvancedMode]);
+        return null;
+      };
 
-    // Contrôles de la base (planches principales)
-    const [basePlanches, setBasePlanches] = useState({
-        b: false,  // Bas (désactivé par défaut)
-        h: true,  // Haut
-        g: true,  // Gauche
-        d: true,  // Droite
-        f: false,  // Fond (désactivé par défaut)
+      const firstInfo = findZoneWithParent(rootZone, firstId);
+      const secondInfo = findZoneWithParent(rootZone, secondId);
+
+      if (firstInfo && secondInfo && firstInfo.parent === secondInfo.parent && firstInfo.parent !== null) {
+        const parent = firstInfo.parent;
+        const children = parent.children || [];
+        const firstIndex = children.findIndex(c => c.id === firstId);
+        const secondIndex = children.findIndex(c => c.id === secondId);
+
+        if (firstIndex !== -1 && secondIndex !== -1) {
+          const start = Math.min(firstIndex, secondIndex);
+          const end = Math.max(firstIndex, secondIndex);
+          const rangeIds = children.slice(start, end + 1).map(c => c.id);
+          setSelectedZoneIds(rangeIds);
+          return;
+        }
+      }
+
+      // Si pas le même parent ou autre cas, on remplace la sélection
+      setSelectedZoneIds([zoneId]);
+    },
+    [selectedZoneIds, rootZone]
+  );
+  
+  // Vérifier s'il y a des portes spécifiques dans les zones
+  const hasZoneSpecificDoors = useMemo(() => {
+    const checkZone = (zone: Zone): boolean => {
+      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double')) {
+        return true;
+      }
+      if (zone.children) {
+        return zone.children.some(child => checkZone(child));
+      }
+      return false;
+    };
+    return checkZone(rootZone);
+  }, [rootZone]);
+
+  // Fonctions de manipulation des zones
+  const findZone = useCallback((zone: Zone, targetId: string | null): Zone | null => {
+    if (!targetId) return null;
+    if (zone.id === targetId) return zone;
+    if (zone.children) {
+      for (const child of zone.children) {
+        const found = findZone(child, targetId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, []);
+
+  const selectedZone = useMemo(() => findZone(rootZone, selectedZoneIds[0] || null), [rootZone, selectedZoneIds, findZone]);
+
+  const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId) {
+        return {
+          ...z,
+          type: direction,
+          content: undefined,
+          splitRatio: 50,
+          children: Array.from({ length: count }, (_, i) => ({
+            id: `${zoneId}-${i}`,
+            type: 'leaf' as const,
+            content: 'empty' as ZoneContent,
+          })),
+        };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+    setSelectedZoneIds([zoneId]);
+  }, [rootZone]);
+
+  const setZoneContent = useCallback((zoneId: string, content: ZoneContent) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, content };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const toggleZoneLight = useCallback((zoneId: string) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, hasLight: !z.hasLight };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const toggleZoneCableHole = useCallback((zoneId: string) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, hasCableHole: !z.hasCableHole };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const toggleZoneDressing = useCallback((zoneId: string) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId && z.type === 'leaf') {
+        return { ...z, hasDressing: !z.hasDressing };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const groupZones = useCallback((zoneIds: string[], forceContent?: ZoneContent) => {
+    if (zoneIds.length <= 1) return;
+
+    // Trouver le parent commun et les index des zones
+    const findParentAndIndices = (current: Zone, targetIds: string[]): { parent: Zone, indices: number[] } | null => {
+      if (!current.children) return null;
+      
+      const indices = targetIds.map(id => current.children!.findIndex(c => c.id === id)).filter(idx => idx !== -1);
+      
+      if (indices.length === targetIds.length) {
+        return { parent: current, indices: indices.sort((a, b) => a - b) };
+      }
+
+      for (const child of current.children) {
+        const found = findParentAndIndices(child, targetIds);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const result = findParentAndIndices(rootZone, zoneIds);
+    if (!result) {
+      toast.error("Les zones doivent faire partie du même groupe.");
+      return;
+    }
+
+    const { parent, indices } = result;
+    
+    // Vérifier si consécutives
+    for (let i = 0; i < indices.length - 1; i++) {
+      if (indices[i+1] !== indices[i] + 1) {
+        toast.error("Les zones doivent être côte à côte pour être groupées.");
+        return;
+      }
+    }
+
+    let createdGroupId = "";
+
+    const updateZoneTree = (z: Zone): Zone => {
+      if (z.id === parent.id) {
+        const newChildren: Zone[] = [];
+        const groupedChildren: Zone[] = [];
+        const groupedRatios: number[] = [];
+        
+        const currentRatios = z.splitRatios || (z.children!.length === 2 ? [z.splitRatio!, 100 - z.splitRatio!] : z.children!.map(() => 100 / z.children!.length));
+        
+        let groupedRatioSum = 0;
+        
+        z.children!.forEach((child, idx) => {
+          if (indices.includes(idx)) {
+            groupedChildren.push(child);
+            groupedRatioSum += currentRatios[idx];
+            groupedRatios.push(currentRatios[idx]);
+          } else {
+            if (groupedChildren.length > 0 && newChildren.every(c => !c.id.startsWith('group-'))) {
+              // Créer le groupe
+              const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
+              createdGroupId = groupId;
+              const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
+              
+              newChildren.push({
+                id: groupId,
+                type: z.type, // même type que le parent
+                children: groupedChildren.map(c => ({...c})),
+                splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
+                splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
+                doorContent: forceContent || undefined,
+              });
+              groupedChildren.length = 0; // Clear
+            }
+            newChildren.push(child);
+          }
+        });
+
+        // Si le groupe est à la fin
+        if (groupedChildren.length > 0) {
+          const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
+          createdGroupId = groupId;
+          const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
+          
+          newChildren.push({
+            id: groupId,
+            type: z.type,
+            children: groupedChildren.map(c => ({...c})),
+            splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
+            splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
+            doorContent: forceContent || undefined,
+          });
+        }
+
+        // Calculer les nouveaux ratios du parent
+        const newParentRatios: number[] = [];
+        let groupAdded = false;
+        z.children!.forEach((_, idx) => {
+          if (indices.includes(idx)) {
+            if (!groupAdded) {
+              newParentRatios.push(groupedRatioSum);
+              groupAdded = true;
+            }
+          } else {
+            newParentRatios.push(currentRatios[idx]);
+          }
+        });
+
+        return {
+          ...z,
+          children: newChildren,
+          splitRatio: newChildren.length === 2 ? newParentRatios[0] : undefined,
+          splitRatios: newChildren.length > 2 ? newParentRatios : undefined,
+        };
+      }
+      
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZoneTree) };
+      }
+      return z;
+    };
+
+    const newRoot = updateZoneTree(rootZone);
+    setRootZone(newRoot);
+    
+    if (createdGroupId) {
+      setSelectedZoneIds([createdGroupId]);
+    } else {
+      setSelectedZoneIds([]);
+    }
+    
+    if (forceContent) {
+      toast.success("Porte ajoutée sur l'ensemble sélectionné");
+    } else {
+      toast.success("Zones groupées avec succès");
+    }
+  }, [rootZone]);
+
+  const setZoneDoorContent = useCallback((zoneId: string, content: ZoneContent) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId) {
+        return { ...z, doorContent: content === 'empty' ? undefined : content };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  const setZoneHandleType = useCallback((zoneId: string, handleType: 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed') => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId) {
+        return { ...z, handleType };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  // Modifier la couleur d'une zone spécifique (tiroir, porte)
+  const setZoneColor = useCallback((zoneId: string, zoneColor: ZoneColor) => {
+    const updateZone = (z: Zone): Zone => {
+      if (z.id === zoneId) {
+        // Si la couleur est nulle, on supprime la propriété zoneColor
+        if (!zoneColor.hex) {
+          const { zoneColor: _, ...rest } = z;
+          return rest as Zone;
+        }
+        return { ...z, zoneColor };
+      }
+      if (z.children) {
+        return { ...z, children: z.children.map(updateZone) };
+      }
+      return z;
+    };
+    setRootZone(updateZone(rootZone));
+  }, [rootZone]);
+
+  // Vérifier si la zone sélectionnée est un tiroir ou une porte (pour afficher le color picker)
+  const isSelectedZoneColorizable = useMemo(() => {
+    if (!selectedZone) return false;
+
+    // Contenus colorisables (feuilles)
+    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right'];
+
+    if (selectedZone.type === 'leaf' && colorableContents.includes(selectedZone.content || '')) {
+      return true;
+    }
+
+    // Portes sur groupes (parents)
+    if (selectedZone.doorContent && colorableContents.includes(selectedZone.doorContent as string)) {
+      return true;
+    }
+
+    return false;
+  }, [selectedZone]);
+
+  // UI
+  // Compter les étagères à partir de la rootZone pour Three.js
+  const shelfCount = useMemo(() => {
+    if (!rootZone || !rootZone.children) return 0;
+    // On compte le nombre de divisions horizontales
+    const countHorizontalDivisions = (zone: Zone): number => {
+      if (zone.type === 'horizontal' && zone.children) {
+        return zone.children.length - 1;
+      }
+      if (zone.children) {
+        return zone.children.reduce((sum, child) => sum + countHorizontalDivisions(child), 0);
+      }
+      return 0;
+    };
+    return countHorizontalDivisions(rootZone);
+  }, [rootZone]);
+
+  // Parsing du prompt pour extraire la structure du meuble pour Three.js
+  const furnitureStructure = useMemo(() => {
+    if (!glbUrl) return null;
+    
+    // On essaie d'extraire les infos du prompt ou de la rootZone
+    // Pour Three.js, on a besoin de savoir si c'est une bibliothèque, un buffet, etc.
+    const isBuffet = templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3');
+    
+    return {
+      isBuffet,
+      shelfCount: shelfCount,
+      // On peut ajouter d'autres infos extraites du prompt ici
+    };
+  }, [glbUrl, templatePrompt, shelfCount]);
+
+  const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Derived state
+  const selectedMaterialKey = useMemo(() => normalizeMaterialKey(finish), [finish]);
+  
+  // Trouve la clé réelle dans materialsMap qui correspond au matériau sélectionné
+  const selectedMaterialLabel = useMemo(() => {
+    if (!finish) return '';
+    if (materialsMap[finish]) return finish;
+    
+    // Recherche insensible à la casse/accents si pas de correspondance directe
+    const keys = Object.keys(materialsMap);
+    const normalizedFinish = finish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const match = keys.find(k => k.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() === normalizedFinish);
+    
+    return match || finish;
+  }, [materialsMap, finish]);
+
+  const materialTypesForSelection = useMemo<SampleType[]>(() => {
+    return materialsMap[selectedMaterialLabel] || [];
+  }, [materialsMap, selectedMaterialLabel]);
+
+  const colorsForMaterial = useMemo<SampleColor[]>(() => {
+    const list: SampleColor[] = [];
+    const seen = new Set<number>();
+    for (const type of materialTypesForSelection) {
+      for (const colorOption of type.colors || []) {
+        if (seen.has(colorOption.id)) continue;
+        seen.add(colorOption.id);
+        list.push(colorOption);
+      }
+    }
+    return list;
+  }, [materialTypesForSelection]);
+
+  const selectedColorOption = useMemo<SampleColor | null>(() => {
+    if (selectedColorId == null) return null;
+    return colorsForMaterial.find((option) => option.id === selectedColorId) || null;
+  }, [colorsForMaterial, selectedColorId]);
+
+  // Options d'affichage du prix depuis les paramètres de pricing
+  const priceDisplaySettings = useMemo(() => {
+    const displayConfig = pricingParams?.display?.price;
+    return {
+      mode: Number(displayConfig?.display_mode) || 0,
+      range: Number(displayConfig?.deviation_range) || 0
+    };
+  }, [pricingParams]);
+
+  // Sauvegarder automatiquement dans localStorage
+  useEffect(() => {
+    if (!id || loading || isViewMode || !initialConfigApplied || showRestoreDialog) return;
+
+    const configToSave = {
+      width,
+      height,
+      depth,
+      socle,
+      rootZone,
+      finish,
+      color,
+      colorLabel,
+      colorImage: selectedColorImage,
+      selectedColorId,
+      useMultiColor,
+      componentColors,
+      doorType,
+      doorSide,
+      mountingStyle,
+      doorsOpen,
+      showDecorations,
+      deletedPanelIds: Array.from(deletedPanelIds),
+      timestamp: Date.now(), // Pour savoir quand la config a été sauvegardée
+    };
+
+    try {
+      localStorage.setItem(localStorageKey, JSON.stringify(configToSave));
+      // console.log('✅ Configuration sauvegardée automatiquement');
+    } catch (e) {
+      console.warn('❌ Impossible de sauvegarder dans localStorage', e);
+    }
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
+
+  // Charger les matériaux
+  useEffect(() => {
+    let cancelled = false;
+    const loadMaterials = async () => {
+      try {
+        setMaterialsLoading(true);
+        const data = await apiClient.samples.listPublic();
+        if (!cancelled) setMaterialsMap(data);
+      } catch (error) {
+        console.warn('Impossible de récupérer les matériaux', error);
+      } finally {
+        if (!cancelled) setMaterialsLoading(false);
+      }
+    };
+    loadMaterials();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sélectionner le premier matériau disponible si le matériau actuel n'existe pas
+  useEffect(() => {
+    const materialKeys = Object.keys(materialsMap);
+    if (materialKeys.length === 0) return; // Pas encore chargé
+
+    // Vérifier si le matériau actuel existe dans la map (insensible à la casse)
+    const currentFinish = finish || '';
+    const normalizedCurrent = currentFinish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    
+    const exactMatch = materialKeys.find(k => k === currentFinish);
+    const caseMatch = materialKeys.find(k => k.toLowerCase() === currentFinish.toLowerCase());
+    const normalizedMatch = materialKeys.find(k => k.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() === normalizedCurrent);
+    
+    const bestMatch = exactMatch || caseMatch || normalizedMatch;
+
+    if (!bestMatch) {
+      // Le matériau actuel n'existe vraiment pas dans les données de l'API
+      const firstMaterial = materialKeys[0];
+      console.log('[DEBUG] Matériau actuel non trouvé, sélection du premier disponible:', firstMaterial);
+      setFinish(firstMaterial);
+    } else if (bestMatch !== finish) {
+      // Si on a trouvé une correspondance mais avec une casse/accentuation différente
+      // on met à jour pour s'aligner sur la clé exacte de l'API
+      console.log('[DEBUG] Alignement du matériau sur la clé API:', bestMatch);
+      setFinish(bestMatch);
+    }
+  }, [materialsMap, finish]);
+
+  // Charger les paramètres de pricing configurables depuis l'API
+  useEffect(() => {
+    let cancelled = false;
+    const loadPricing = async () => {
+      try {
+        const paramsResponse = await fetch('/backend/api/pricing-config/index.php');
+        const paramsData = await paramsResponse.json();
+
+        if (!cancelled && paramsData.success && paramsData.data) {
+          // Transformer les données en objet structuré pour un accès facile
+          const params: any = {
+            materials: {},
+            drawers: {},
+            shelves: {},
+            lighting: {},
+            cables: {},
+            bases: {},
+            hinges: {},
+            doors: {},
+            columns: {},
+            casing: {},
+            wardrobe: {},
+            handles: {},
+          };
+
+          paramsData.data.forEach((param: any) => {
+            if (!params[param.category]) params[param.category] = {};
+            if (!params[param.category][param.item_type]) {
+              params[param.category][param.item_type] = {};
+            }
+            params[param.category][param.item_type][param.param_name] = param.param_value;
+          });
+
+          setPricingParams(params);
+          console.log('✅ Paramètres de pricing chargés:', params);
+        }
+      } catch (error) {
+        console.warn('Impossible de récupérer les paramètres de pricing, utilisation des valeurs par défaut', error);
+      }
+    };
+    loadPricing();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Synchroniser la couleur sélectionnée
+  useEffect(() => {
+    if (!colorsForMaterial.length || !initialConfigApplied) {
+      // Ne pas réinitialiser si on est en train de charger
+      return;
+    }
+    if (selectedColorId !== null && colorsForMaterial.some((o) => o.id === selectedColorId)) return;
+    const fallback = colorsForMaterial.find((o) => o.name?.toLowerCase() === colorLabel.toLowerCase());
+    const nextColor = fallback || colorsForMaterial[0];
+    setSelectedColorId(nextColor.id);
+  }, [colorsForMaterial, selectedColorId, colorLabel, initialConfigApplied]);
+
+  // Map plate pour accéder rapidement aux prix des échantillons par ID
+  const samplePricesMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    Object.values(materialsMap).forEach(types => {
+      types.forEach(type => {
+        type.colors?.forEach(color => {
+          if (color.id !== null && color.id !== undefined) {
+            map[color.id] = color.price_per_m2 || 0;
+          }
+        });
+      });
     });
+    return map;
+  }, [materialsMap]);
 
-    const orderedMaterialLabels = useMemo(() => {
-        const collected = new Set<string>();
-        const ordered: string[] = [];
-
-        for (const label of MATERIAL_ORDER) {
-            if (!collected.has(label)) {
-                ordered.push(label);
-                collected.add(label);
-            }
-        }
-
-        Object.keys(materialsMap)
-            .filter((label) => !collected.has(label))
-            .sort((a, b) => a.localeCompare(b, 'fr'))
-            .forEach((label) => {
-                ordered.push(label);
-                collected.add(label);
-            });
-
-        return ordered;
-    }, [materialsMap]);
-
-    const selectedMaterialKey = useMemo(() => normalizeMaterialKey(finish), [finish]);
-
-    const selectedMaterialLabel = useMemo(
-        () => materialLabelFromKey(selectedMaterialKey),
-        [selectedMaterialKey]
-    );
-
-    const materialTypesForSelection = useMemo<SampleType[]>(() => {
-        if (!selectedMaterialLabel) {
-            return [];
-        }
-        return materialsMap[selectedMaterialLabel] || [];
-    }, [materialsMap, selectedMaterialLabel]);
-
-    const colorsForMaterial = useMemo<SampleColor[]>(() => {
-        const list: SampleColor[] = [];
-        const seen = new Set<number>();
-        for (const type of materialTypesForSelection) {
-            for (const colorOption of type.colors || []) {
-                if (seen.has(colorOption.id)) {
-                    continue;
-                }
-                seen.add(colorOption.id);
-                list.push(colorOption);
-            }
-        }
-        return list;
-    }, [materialTypesForSelection]);
-
-    const selectedColorOption = useMemo<SampleColor | null>(() => {
-        if (selectedColorId == null) {
-            return null;
-        }
-        return colorsForMaterial.find((option) => option.id === selectedColorId) || null;
-    }, [colorsForMaterial, selectedColorId]);
-
-    useEffect(() => {
-        if (!colorsForMaterial.length) {
-            if (selectedColorId !== null) {
-                setSelectedColorId(null);
-            }
-            return;
-        }
-
-        if (selectedColorId !== null && colorsForMaterial.some((option) => option.id === selectedColorId)) {
-            return;
-        }
-
-        const fallback = colorsForMaterial.find((option) => option.name && option.name.toLowerCase() === colorLabel.toLowerCase());
-        const nextColor = fallback || colorsForMaterial[0];
-        setSelectedColorId(nextColor.id);
-    }, [colorsForMaterial, selectedColorId, colorLabel]);
-
-    useEffect(() => {
-        if (selectedColorOption) {
-            setColor(selectedColorOption.hex || DEFAULT_COLOR_HEX);
-            setColorLabel(selectedColorOption.name || selectedMaterialLabel);
-            setSelectedColorImage(selectedColorOption.image_url || null);
-            return;
-        }
-
-        // Aucun échantillon sélectionné : conserver la couleur actuelle mais mettre à jour l'étiquette matériau
+  useEffect(() => {
+    if (!initialConfigApplied || !colorsForMaterial.length) return;
+    
+    if (selectedColorOption) {
+      setColor(selectedColorOption.hex || DEFAULT_COLOR_HEX);
+      setColorLabel(selectedColorOption.name || selectedMaterialLabel);
+      setSelectedColorImage(selectedColorOption.image_url || null);
+    } else {
+      // Seulement si on a vraiment aucune option sélectionnée alors qu'on devrait
+      if (selectedColorId === null && !useMultiColor) {
         setColor(DEFAULT_COLOR_HEX);
         setColorLabel(selectedMaterialLabel);
-        if (!colorsForMaterial.length) {
-            setSelectedColorImage(null);
-        }
-    }, [selectedColorOption, colorsForMaterial.length, selectedMaterialLabel]);
-
-    // Auth modal
-    const [showAuthModal, setShowAuthModal] = useState(false);
-    const [userEmail, setUserEmail] = useState<string | null>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-
-    // Vérifier si l'utilisateur est admin au chargement
-    useEffect(() => {
-        const checkAdminSession = async () => {
-            try {
-                const response = await fetch('/api/admin/session');
-                if (response.ok) {
-                    const data = await response.json();
-                    setIsAdmin(!!data.admin);
-                }
-            } catch (error) {
-                // Pas admin ou erreur
-                setIsAdmin(false);
-            }
-        };
-        checkAdminSession();
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const loadMaterials = async () => {
-            try {
-                setMaterialsLoading(true);
-                const data = await apiClient.samples.listPublic();
-                if (cancelled) {
-                    return;
-                }
-                setMaterialsMap(data);
-            } catch (error) {
-                if (!cancelled) {
-                    console.warn('Impossible de récupérer les matériaux disponibles', error);
-                }
-            } finally {
-                if (!cancelled) {
-                    setMaterialsLoading(false);
-                }
-            }
-        };
-
-        loadMaterials();
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!router.isReady) {
-            return;
-        }
-
-        const modeParam = Array.isArray(router.query.mode) ? router.query.mode[0] : router.query.mode;
-        const configIdParam = Array.isArray(router.query.configId) ? router.query.configId[0] : router.query.configId;
-
-        if (modeParam === 'edit' && configIdParam) {
-            const parsedId = Number(configIdParam);
-            if (!Number.isNaN(parsedId)) {
-                setEditingConfigId(parsedId);
-                setInitialConfigApplied(false);
-                setSkipNextAutoGenerate(false);
-            }
-        } else {
-            setEditingConfigId(null);
-            setEditingConfigName('');
-            setInitialConfigApplied(true);
-            setSkipNextAutoGenerate(false);
-        }
-    }, [router.isReady, router.query.mode, router.query.configId]);
-
-    // loadModel: récupère un modèle depuis l'API si id numérique,
-    // sinon utilise le paramètre prompt fourni (par ex. depuis la page /configurator/select)
-    const loadModel = useCallback(async () => {
-        try {
-            // Si id est numérique -> fetch modèle existant
-            if (id && !isNaN(Number(id))) {
-                const modelData = await apiClient.models.getById(Number(id));
-                setModel(modelData);
-
-                if (modelData.prompt) {
-                    setTemplatePrompt(modelData.prompt);
-                    parsePromptToConfig(modelData.prompt);
-                }
-
-                if (modelData.prompt) {
-                    // modelData.prompt will be handled by the top-level generateModel
-                }
-            } else {
-                // id non numérique : lecture du prompt depuis la query string
-                const qsPrompt = (router.query.prompt as string) || null;
-                if (qsPrompt) {
-                    setTemplatePrompt(qsPrompt);
-                    parsePromptToConfig(qsPrompt);
-                    // ne crée pas d'objet model depuis API, créer un modèle temporaire pour UI
-                    setModel({
-                        id: 0,
-                        name: `Template ${id}`,
-                        description: null,
-                        prompt: qsPrompt,
-                        price: 0,
-                        image_url: null,
-                        created_at: new Date().toISOString(),
-                    } as any);
-                    // top-level generateModel will be invoked after loadModel via effect
-                }
-            }
-        } catch (error) {
-            console.error('Error loading model:', error);
-        } finally {
-            setLoading(false);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id]);
-
-    useEffect(() => {
-        if (id) {
-            loadModel();
-        }
-    }, [id, loadModel]);
-
-    const parsePromptToConfig = useCallback((prompt: string) => {
-        // Format attendu (exemples):
-        // M2(2000,450,700)EbFP2H3(T,,)D, S2, etc.
-        // 1) Dimensions
-        const dims = prompt.match(/\((\d+),(\d+),(\d+)\)/);
-        if (dims) {
-            const largeur = parseInt(dims[1]);
-            const profondeur = parseInt(dims[2]);
-            const hauteur = parseInt(dims[3]);
-            setModules(Math.max(1, Math.round(largeur / 500)));
-            setDepth(profondeur);
-            setHeight(hauteur);
-        }
-
-        // 2) Planches de base: E = enveloppe (h, g, d), F = fond, b = base
-        const compact = prompt.replace(/\s+/g, '');
-        const hasE = /E/.test(compact); // Enveloppe = h + g + d
-        const hasF = /F/.test(compact); // Fond
-        const hasB = /b/.test(compact); // Base
-
-        if (hasE && hasF && hasB) {
-            // E + F + b = toutes les planches
-            setBasePlanches({ b: true, h: true, g: true, d: true, f: true });
-        } else {
-            // Parser individuellement
-            setBasePlanches({
-                b: hasB,
-                h: hasE || /h/.test(compact), // E inclut h, g, d
-                g: hasE || /g/.test(compact),
-                d: hasE || /d/.test(compact),
-                f: hasF,
-            });
-        }
-
-        // 3) Socle: S (metal) / S2 (wood)
-        if (/S2/.test(compact)) setSocle('wood');
-        else if (/S(?!\d)/.test(compact)) setSocle('metal');
-        else setSocle('none');
-
-        // 4) Portes: P / P2
-        const doorsCount = /P2/.test(compact) ? 2 : (/P(?!\d)/.test(compact) ? 1 : 0);
-        setDoors(doorsCount);
-
-        // 5) Structure Hn(...) ou Vn(...): shelves et drawers (T)
-        const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
-        const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
-
-        if (hStruct) {
-            const n = parseInt(hStruct[1]);
-            const inner = hStruct[2];
-            const drawersCount = (inner.match(/T/g) || []).length;
-            const shelvesCount = Math.max(0, n - 1);
-
-            setDrawers(drawersCount);
-            setShelves(shelvesCount);
-
-            // Stocker les valeurs initiales du template
-            setInitialSliderValues({
-                shelves: shelvesCount,
-                drawers: drawersCount,
-                doors: doorsCount
-            });
-
-            // Créer l'arbre de zones pour le mode avancé (horizontal)
-            const children = inner.split(',').map((content, idx) => ({
-                id: `zone-${idx}`,
-                type: 'leaf' as const,
-                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent
-            }));
-
-            setRootZone({
-                id: 'root',
-                type: 'horizontal',
-                children
-            });
-        } else if (vStruct) {
-            const n = parseInt(vStruct[1]);
-            const inner = vStruct[2];
-            const drawersCount = (inner.match(/T/g) || []).length;
-            const shelvesCount = 0;
-
-            setDrawers(drawersCount);
-            setShelves(shelvesCount); // Pas d'étagères horizontales pour V
-
-            // Stocker les valeurs initiales du template
-            setInitialSliderValues({
-                shelves: shelvesCount,
-                drawers: drawersCount,
-                doors: doorsCount
-            });
-
-            // Créer l'arbre de zones pour le mode avancé (vertical)
-            const children = inner.split(',').map((content, idx) => ({
-                id: `zone-${idx}`,
-                type: 'leaf' as const,
-                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : 'empty') as ZoneContent
-            }));
-
-            setRootZone({
-                id: 'root',
-                type: 'vertical',
-                children
-            });
-        } else {
-            setShelves(0);
-            setDrawers(0);
-
-            // Stocker les valeurs initiales du template
-            setInitialSliderValues({
-                shelves: 0,
-                drawers: 0,
-                doors: doorsCount
-            });
-        }
-
-        // 6) Penderie/Dressing
-        setHasDressing(/D/.test(compact));
-    }, []);
-
-    useEffect(() => {
-        if (!router.isReady || !editingConfigId) {
-            return;
-        }
-
-        let cancelled = false;
-
-        const resolveGlbUrl = (url: string | null | undefined) => {
-            if (!url || typeof url !== 'string') {
-                return null;
-            }
-
-            if (url.startsWith('http://') || url.startsWith('https://')) {
-                return url;
-            }
-
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-            if (url.startsWith('/')) {
-                return `${baseUrl}${url}`;
-            }
-            return `${baseUrl}/${url}`;
-        };
-
-        const loadSavedConfiguration = async () => {
-            let configuration: any = null;
-
-            if (typeof window !== 'undefined') {
-                const stored =
-                    window.localStorage.getItem(`archimeuble:configuration:${editingConfigId}`) ??
-                    window.localStorage.getItem('archimeuble:configuration:last');
-
-                if (stored) {
-                    try {
-                        configuration = JSON.parse(stored);
-                    } catch (error) {
-                        console.warn('Impossible de parser la configuration stockée', error);
-                    }
-                }
-            }
-
-            if (!configuration) {
-                try {
-                    const response = await fetch(`/backend/api/configurations/list.php?id=${editingConfigId}`, {
-                        credentials: 'include'
-                    });
-
-                    if (response.ok) {
-                        const payload = await response.json();
-                        configuration = payload.configuration ?? null;
-                    }
-                } catch (error) {
-                    console.error('Erreur lors du chargement de la configuration existante:', error);
-                }
-            }
-
-            if (!configuration) {
-                setInitialConfigApplied(true);
-                return;
-            }
-
-            if (cancelled) {
-                return;
-            }
-
-            let configData = configuration.config_data ?? null;
-            if (!configData && configuration.config_string) {
-                try {
-                    configData = JSON.parse(configuration.config_string);
-                } catch (error) {
-                    console.warn('Configuration config_string invalide', error);
-                }
-            }
-
-            const promptSource = configuration.prompt || (typeof router.query.prompt === 'string' ? router.query.prompt : null);
-            if (promptSource) {
-                setTemplatePrompt(promptSource);
-                parsePromptToConfig(promptSource);
-            }
-
-            if (cancelled) {
-                return;
-            }
-
-            if (configData && typeof configData === 'object') {
-                if (configData.dimensions) {
-                    if (typeof configData.dimensions.modules === 'number' && configData.dimensions.modules > 0) {
-                        setModules(configData.dimensions.modules);
-                    } else if (typeof configData.dimensions.width === 'number') {
-                        setModules(Math.max(1, Math.round(configData.dimensions.width / 500)));
-                    }
-
-                    if (typeof configData.dimensions.depth === 'number') {
-                        setDepth(configData.dimensions.depth);
-                    }
-
-                    if (typeof configData.dimensions.height === 'number') {
-                        setHeight(configData.dimensions.height);
-                    }
-                }
-
-                if (configData.styling) {
-                    const savedMaterialKey = normalizeMaterialKey(
-                        (configData.styling as any).materialKey ||
-                        (configData.styling as any).material ||
-                        configData.styling.finish ||
-                        null
-                    );
-                    const savedMaterialLabel = typeof (configData.styling as any).materialLabel === 'string'
-                        ? (configData.styling as any).materialLabel
-                        : materialLabelFromKey(savedMaterialKey);
-                    setFinish(savedMaterialLabel);
-
-                    if (configData.styling.colorId !== undefined && configData.styling.colorId !== null) {
-                        const numericColorId = Number(configData.styling.colorId);
-                        if (!Number.isNaN(numericColorId)) {
-                            setSelectedColorId(numericColorId);
-                        }
-                    }
-
-                    if (typeof configData.styling.color === 'string') {
-                        setColor(configData.styling.color);
-                    }
-
-                    if (typeof configData.styling.colorLabel === 'string') {
-                        setColorLabel(configData.styling.colorLabel);
-                    } else {
-                        setColorLabel(savedMaterialLabel);
-                    }
-
-                    if (typeof (configData.styling as any).colorImage === 'string') {
-                        setSelectedColorImage((configData.styling as any).colorImage);
-                    }
-
-                    if (typeof configData.styling.socle === 'string') {
-                        setSocle(configData.styling.socle);
-                    }
-                }
-
-                if (configData.features) {
-                    if (typeof configData.features.doorsOpen === 'boolean') {
-                        setDoorsOpen(configData.features.doorsOpen);
-                    }
-                    if (typeof configData.features.doors === 'number') {
-                        setDoors(configData.features.doors);
-                    }
-                    if (typeof configData.features.drawers === 'number') {
-                        setDrawers(configData.features.drawers);
-                    }
-                    if (typeof configData.features.shelves === 'number') {
-                        setShelves(configData.features.shelves);
-                    }
-                    if (typeof configData.features.hasDressing === 'boolean') {
-                        setHasDressing(configData.features.hasDressing);
-                    }
-                }
-
-                const defaultBasePlanches = { b: false, h: true, g: true, d: true, f: false };
-                if (configData.basePlanches) {
-                    setBasePlanches({
-                        b: typeof configData.basePlanches.b === 'boolean' ? configData.basePlanches.b : defaultBasePlanches.b,
-                        h: typeof configData.basePlanches.h === 'boolean' ? configData.basePlanches.h : defaultBasePlanches.h,
-                        g: typeof configData.basePlanches.g === 'boolean' ? configData.basePlanches.g : defaultBasePlanches.g,
-                        d: typeof configData.basePlanches.d === 'boolean' ? configData.basePlanches.d : defaultBasePlanches.d,
-                        f: typeof configData.basePlanches.f === 'boolean' ? configData.basePlanches.f : defaultBasePlanches.f
-                    });
-                } else {
-                    setBasePlanches(defaultBasePlanches);
-                }
-
-                if (configData.mode) {
-                    setIsExpertMode(!!configData.mode.isExpertMode);
-                    setUseAdvancedMode(!!configData.mode.useAdvancedMode);
-
-                    if (configData.mode.isExpertMode && promptSource) {
-                        setCustomPrompt(promptSource);
-                    }
-                } else {
-                    setIsExpertMode(false);
-                    setUseAdvancedMode(false);
-                }
-
-                if (configData.advancedZones) {
-                    setRootZone(configData.advancedZones);
-                } else {
-                    setRootZone({
-                        id: 'root',
-                        type: 'leaf',
-                        content: 'empty'
-                    });
-                }
-            }
-
-            if (cancelled) {
-                return;
-            }
-
-            if (typeof configuration.price !== 'undefined') {
-                setPrice(Number(configuration.price));
-            }
-
-            const derivedName = (configData && configData.name) ? String(configData.name) : (configuration.name ?? `Configuration #${configuration.id}`);
-            setEditingConfigName(derivedName);
-
-            const resolvedGlb = resolveGlbUrl(configuration.glb_url ?? (configData ? configData.thumbnail_url : null));
-            setGlbUrl(resolvedGlb);
-
-            if (!cancelled && resolvedGlb) {
-                setSkipNextAutoGenerate(true);
-            }
-
-            if (!cancelled) {
-                setInitialConfigApplied(true);
-            }
-        };
-
-        loadSavedConfiguration();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [router.isReady, router.query.prompt, editingConfigId, parsePromptToConfig]);
-
-    // ========== FONCTIONS DE GESTION DES ZONES/COMPARTIMENTS ==========
-
-    const findZoneWithParent = useCallback((current: Zone, targetId: string, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
-        if (current.id === targetId) {
-            return { zone: current, parent };
-        }
-
-        if (!current.children) {
-            return null;
-        }
-
-        for (const child of current.children) {
-            const result = findZoneWithParent(child, targetId, current);
-            if (result) {
-                return result;
-            }
-        }
-
-        return null;
-    }, []);
-
-    const selectedZoneInfo = useMemo(() => findZoneWithParent(rootZone, selectedZoneId), [findZoneWithParent, rootZone, selectedZoneId]);
-
-    useEffect(() => {
-        if (!selectedZoneInfo) {
-            setSelectedZoneId('root');
-        }
-    }, [selectedZoneInfo]);
-
-    // Générer un prompt à partir de l'arbre de zones
-    const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
-        if (zone.type === 'leaf') {
-            // Zone feuille : contenu direct
-            switch (zone.content) {
-                case 'drawer': return 'T';
-                case 'dressing': return 'D';
-                case 'shelf': return ''; // Étagère = zone vide
-                case 'empty': return '';
-                default: return '';
-            }
-        } else if (zone.type === 'horizontal') {
-            // Division horizontale : H[prop1,prop2,...](seq1,seq2,...)
-            const childPrompts = zone.children?.map(c => buildPromptFromZoneTree(c)) || [];
-
-            // Si splitRatio est défini, calculer les proportions
-            let proportions = '';
-            if (zone.splitRatio !== undefined && zone.children && zone.children.length === 2) {
-                const ratio1 = Math.round(zone.splitRatio);
-                const ratio2 = 100 - ratio1;
-                proportions = `[${ratio1},${ratio2}]`;
-            } else {
-                proportions = `${childPrompts.length}`; // Division égale par défaut
-            }
-
-            return `H${proportions}(${childPrompts.join(',')})`;
-        } else if (zone.type === 'vertical') {
-            // Division verticale : V[prop1,prop2,...](seq1,seq2,...)
-            const childPrompts = zone.children?.map(c => buildPromptFromZoneTree(c)) || [];
-
-            // Si splitRatio est défini, calculer les proportions
-            let proportions = '';
-            if (zone.splitRatio !== undefined && zone.children && zone.children.length === 2) {
-                const ratio1 = Math.round(zone.splitRatio);
-                const ratio2 = 100 - ratio1;
-                proportions = `[${ratio1},${ratio2}]`;
-            } else {
-                proportions = `${childPrompts.length}`; // Division égale par défaut
-            }
-
-            return `V${proportions}(${childPrompts.join(',')})`;
-        }
-        return '';
-    }, []);
-
-    // Diviser une zone en sous-zones
-    const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
-        setRootZone((previous) => {
-            const updateZone = (z: Zone): Zone => {
-                if (z.id === zoneId) {
-                    return {
-                        ...z,
-                        type: direction,
-                        content: undefined,
-                        splitRatio: 50,
-                        children: Array.from({ length: count }, (_, i) => ({
-                            id: `${zoneId}-${i}`,
-                            type: 'leaf' as const,
-                            content: 'empty' as ZoneContent
-                        }))
-                    };
-                }
-                if (z.children) {
-                    return { ...z, children: z.children.map(updateZone) };
-                }
-                return z;
-            };
-
-            return updateZone(previous);
-        });
-
-        setSelectedZoneId(`${zoneId}-0`);
-    }, []);
-
-    // Modifier le contenu d'une zone
-    const setZoneContent = useCallback((zoneId: string, content: ZoneContent) => {
-        setRootZone((previous) => {
-            const updateZone = (z: Zone): Zone => {
-                if (z.id === zoneId && z.type === 'leaf') {
-                    return { ...z, content };
-                }
-                if (z.children) {
-                    return { ...z, children: z.children.map(updateZone) };
-                }
-                return z;
-            };
-
-            return updateZone(previous);
-        });
-
-        setSelectedZoneId(zoneId);
-    }, []);
-
-    // Supprimer les subdivisions d'une zone (revenir à leaf)
-    const resetZone = useCallback((zoneId: string) => {
-        setRootZone((previous) => {
-            const updateZone = (z: Zone): Zone => {
-                if (z.id === zoneId) {
-                    return {
-                        ...z,
-                        type: 'leaf',
-                        content: 'empty',
-                        children: undefined,
-                        splitRatio: undefined
-                    };
-                }
-                if (z.children) {
-                    return { ...z, children: z.children.map(updateZone) };
-                }
-                return z;
-            };
-
-            return updateZone(previous);
-        });
-
-        setSelectedZoneId(zoneId);
-    }, []);
-
-    // Modifier le ratio de division d'une zone
-    const setSplitRatio = useCallback((zoneId: string, ratio: number) => {
-        setRootZone((previous) => {
-            const updateZone = (z: Zone): Zone => {
-                if (z.id === zoneId && (z.type === 'horizontal' || z.type === 'vertical')) {
-                    return { ...z, splitRatio: ratio };
-                }
-                if (z.children) {
-                    return { ...z, children: z.children.map(updateZone) };
-                }
-                return z;
-            };
-
-            return updateZone(previous);
-        });
-    }, []);
-
-    // ========== FIN GESTION DES ZONES ==========
-
-    // Fonction pour modifier uniquement les dimensions du prompt (comme modifyPromptDimensions)
-    const modifyPromptDimensions = (prompt: string, largeur: number, profondeur: number, hauteur: number): string => {
-        const regex = /^(M[1-5])\((\d+),(\d+),(\d+)\)(.*)$/;
-        const match = prompt.match(regex);
-
-        if (match) {
-            const meubleType = match[1];
-            const reste = match[5];
-            return `${meubleType}(${largeur},${profondeur},${hauteur})${reste}`;
-        }
-
-        console.warn('Impossible de parser le prompt:', prompt);
-        return prompt;
-    };
-
-    // Fonction pour construire un prompt complet avec toutes les options (tiroirs, portes, étagères, socle)
-    const buildPromptFromConfig = (basePrompt: string, config: {
-        shelves: number;
-        drawers: number;
-        doors: number;
-        socle: string;
-        basePlanches?: { b: boolean; h: boolean; g: boolean; d: boolean; f: boolean };
-        hasDressing?: boolean;
-        preserveOriginalStructure?: boolean;
-    }): string => {
-        console.log('🔍 buildPromptFromConfig INPUT:', { basePrompt, config });
-
-        // Extraire le type de meuble et les dimensions du prompt de base
-        const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
-        const match = basePrompt.match(regex);
-
-        if (!match) {
-            console.warn('Format de prompt invalide:', basePrompt);
-            return basePrompt;
-        }
-
-        const meubleType = match[1];
-        const dimensions = match[2];
-        const resteDuPrompt = match[3] || '';
-
-        // Si preserveOriginalStructure est true, on garde la structure complexe du template
-        if (config.preserveOriginalStructure && resteDuPrompt) {
-            // On doit extraire et remplacer les planches tout en gardant la structure (H/V)
-            // Format: EFbS2V3(,T,) -> extraire "EFbS2" (planches+socle), garder "V3(,T,)" (structure)
-
-            // Regex pour extraire: planches+socle puis structure
-            const structureRegex = /^([EbhgdFPS2]+)?([HV]\d+\([^)]*\).*)$/;
-            const structureMatch = resteDuPrompt.match(structureRegex);
-
-            if (structureMatch) {
-                // On a une structure complexe (H ou V)
-                const structurePart = structureMatch[2]; // Ex: V3(,T,)
-
-                // Construire les nouvelles planches
-                let newPlanches = '';
-                if (config.basePlanches) {
-                    const planches = [];
-                    if (config.basePlanches.b) planches.push('b');
-                    if (config.basePlanches.h) planches.push('h');
-                    if (config.basePlanches.g) planches.push('g');
-                    if (config.basePlanches.d) planches.push('d');
-                    if (config.basePlanches.f) planches.push('F');
-
-                    if (planches.length === 5) {
-                        newPlanches = 'EbF';
-                    } else if (planches.length > 0) {
-                        newPlanches = planches.join('');
-                    } else {
-                        newPlanches = 'E';
-                    }
-                } else {
-                    newPlanches = 'EbF';
-                }
-
-                // Ajouter le socle
-                if (config.socle !== 'none') {
-                    newPlanches += 'S';
-                    if (config.socle === 'wood') {
-                        newPlanches += '2';
-                    }
-                }
-
-                const result = `${meubleType}(${dimensions})${newPlanches}${structurePart}`;
-                console.log('🔍 buildPromptFromConfig OUTPUT (structure préservée, planches mises à jour):', result);
-                return result;
-            } else {
-                // Pas de structure H/V détectée, garder tel quel
-                const result = `${meubleType}(${dimensions})${resteDuPrompt}`;
-                console.log('🔍 buildPromptFromConfig OUTPUT (structure préservée):', result);
-                return result;
-            }
-        }
-
-        // Construire le nouveau prompt avec la syntaxe Python attendue
-        // Format de base: M1(dimensions) + planches de base
-        let prompt = `${meubleType}(${dimensions})`;
-
-        // Ajouter les planches de base (b, h, g, d, F)
-        // Si basePlanches fourni, utiliser les valeurs, sinon mettre E (toutes les planches)
-        if (config.basePlanches) {
-            const planches = [];
-            if (config.basePlanches.b) planches.push('b');
-            if (config.basePlanches.h) planches.push('h');
-            if (config.basePlanches.g) planches.push('g');
-            if (config.basePlanches.d) planches.push('d');
-            if (config.basePlanches.f) planches.push('F'); // F majuscule pour le fond
-
-            console.log('🔍 Planches sélectionnées:', planches);
-
-            // Ajouter les planches une par une ou utiliser E si toutes sélectionnées
-            if (planches.length === 5) {
-                prompt += 'EbF'; // E = droite+gauche+haut, b = bas, F = fond
-                console.log('🔍 Utilisation de EbF (toutes les planches)');
-            } else if (planches.length > 0) {
-                prompt += planches.join(''); // Ex: bdgF
-                console.log('🔍 Planches individuelles:', planches.join(''));
-            } else {
-                prompt += 'E'; // Par défaut, au moins E
-                console.log('🔍 Aucune planche sélectionnée, utilisation de E par défaut');
-            }
-        } else {
-            prompt += 'EbF'; // Par défaut toutes les planches
-            console.log('🔍 basePlanches non fourni, utilisation de E par défaut');
-        }
-
-        // Ajouter le socle si nécessaire (S ou S2)
-        if (config.socle !== 'none') {
-            prompt += 'S'; // S = socle simple
-            if (config.socle === 'wood') {
-                prompt += '2'; // S2 = socle avec côtés
-            }
-        }
-
-        // IMPORTANT: Les portes doivent être ajoutées AVANT les structures H/V
-        // Sinon elles s'appliquent uniquement à la dernière sous-zone
-        // Ordre correct: M1(dims) + planches + S + P + H (pas M1(dims) + planches + S + H + P)
-
-        // Ajouter les portes AVANT la structure (si on a des étagères ou tiroirs)
-        const hasStructure = config.shelves > 0 || config.drawers > 0;
-        if (hasStructure && config.doors > 0) {
-            if (config.doors === 2 || config.doors > 2) {
-                prompt += 'P2'; // 2 portes
-            } else if (config.doors === 1) {
-                prompt += 'P'; // 1 porte
-            }
-        }
-
-        // Cas 1: étagères + tiroirs
-        if (config.shelves > 0) {
-            // H[n] crée n zones horizontales
-            const nbZones = config.shelves + 1;
-            prompt += `H${nbZones}`;
-
-            // Créer les sous-séquences pour chaque zone
-            // Les tiroirs vont dans les zones du bas
-            const zones: string[] = [];
-            for (let i = 0; i < nbZones; i++) {
-                if (i < config.drawers) {
-                    zones.push('T'); // Zone avec tiroir
-                } else {
-                    zones.push(''); // Zone vide (étagère simple)
-                }
-            }
-
-            // Ajouter les sous-séquences
-            prompt += `(${zones.join(',')})`;
-        }
-        // Cas 2: tiroirs uniquement (sans étagères)
-        else if (config.drawers > 0) {
-            prompt += `H${config.drawers}`;
-            const zones = Array(config.drawers).fill('T');
-            prompt += `(${zones.join(',')})`;
-        }
-        // Cas 3: portes uniquement (sans étagères ni tiroirs)
-        else if (config.doors > 0) {
-            if (config.doors === 2 || config.doors > 2) {
-                prompt += 'P2';
-            } else if (config.doors === 1) {
-                prompt += 'P';
-            }
-        }
-
-        // Ajouter la penderie/dressing si activée (caractère D)
-        if (config.hasDressing) {
-            prompt += 'D';
-        }
-
-        console.log('🔍 buildPromptFromConfig OUTPUT:', prompt);
-        return prompt;
-    };
-
-    // Fonction pour calculer le prix (comme calculatePrice)
-    const calculatePrice = (config: any): number => {
-        let price = 580; // Prix de base incluant EbF
-
-        // Ajouter le prix des modules (150€ par module)
-        price += config.modules * 150;
-
-        // Ajouter le prix de la hauteur (2€ par cm au-dessus de 60cm)
-        const hauteurCm = Math.round(config.height / 10);
-        if (hauteurCm > 60) {
-            price += (hauteurCm - 60) * 2;
-        }
-
-        // Ajouter le prix de la profondeur (3€ par cm)
-        const profondeurCm = Math.round(config.depth / 10);
-        price += profondeurCm * 3;
-
-        // Ajouter le prix du matériau sélectionné
-        const materialKey = normalizeMaterialKey(config.finish);
-        price += MATERIAL_PRICE_BY_KEY[materialKey] || 0;
-
-        // Ajouter le prix du socle (CORRIGÉ)
-        const soclePrices: { [key: string]: number } = {
-            'none': 0,
-            'metal': 40,
-            'wood': 60
-        };
-        price += soclePrices[config.socle] || 0;
-
-        // Ajouter le prix des étagères (15€ par étagère)
-        if (config.shelves) {
-            price += config.shelves * 15;
-        }
-
-        // Ajouter le prix des tiroirs (35€ par tiroir)
-        if (config.drawers) {
-            price += config.drawers * 35;
-        }
-
-        // Ajouter le prix des portes (45€ par porte)
-        if (config.doors) {
-            price += config.doors * 45;
-        }
-
-        return Math.round(price);
-    };
-
-    // Génère le modèle 3D avec le prompt (utilisée par les effets et loadModel)
-    const generateModel = useCallback(async (prompt: string) => {
-        console.log('🚀 Génération du modèle 3D avec prompt:', prompt, 'doorsOpen:', doorsOpen);
-        console.log('🔍 Planches dans le prompt:', {
-            hasB: prompt.includes('b'),
-            hasH: prompt.includes('h'),
-            hasG: prompt.includes('g'),
-            hasD: prompt.includes('d'),
-            hasFond: prompt.includes('F'),
-            hasE: prompt.includes('E')
-        });
-        setGenerating(true);
-
-        try {
-            let colors: FurnitureColors | undefined;
-            let singleColor: string | undefined;
-
-            if (useMultiColor) {
-                // Mode multi-couleurs : construire l'objet colors
-                colors = {};
-                if (componentColors.structure.hex) colors.structure = componentColors.structure.hex;
-                if (componentColors.drawers.hex) colors.drawers = componentColors.drawers.hex;
-                if (componentColors.doors.hex) colors.doors = componentColors.doors.hex;
-                if (componentColors.base.hex) colors.base = componentColors.base.hex;
-
-                console.log('🎨 Couleurs multi-composants:', colors);
-            } else {
-                // Mode couleur unique
-                singleColor = selectedColorOption?.hex || undefined;
-                console.log('🎨 Couleur unique:', singleColor);
-            }
-
-            const result = await apiClient.generate.generate(
-                prompt,
-                !doorsOpen, // closed = !doorsOpen
-                singleColor,
-                colors
-            );
-            console.log('✓ Modèle 3D généré:', result.glb_url);
-            if (result.dxf_url) {
-                console.log('✓ Fichier DXF généré:', result.dxf_url);
-            } else {
-                console.log('⚠️ Fichier DXF non généré');
-            }
-            if (result.execution_time) {
-                console.log('⏱️ Temps d\'exécution Python:', result.execution_time);
-            }
-
-            // Si l'URL est relative, la convertir en URL absolue vers le backend
-            let glbUrlAbsolute = result.glb_url;
-            if (glbUrlAbsolute.startsWith('/')) {
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-                glbUrlAbsolute = `${API_URL}${glbUrlAbsolute}`;
-            }
-
-            setGlbUrl(glbUrlAbsolute);
-
-            // Stocker le dxf_url (déjà relatif, pas besoin de conversion)
-            setDxfUrl(result.dxf_url || null);
-        } catch (error) {
-            console.error('❌ Erreur lors de la génération:', error);
-            alert('Erreur lors de la génération du meuble 3D');
-        } finally {
-            setGenerating(false);
-        }
-    }, [doorsOpen, selectedColorOption, useMultiColor, componentColors]);
-    // NOTE: generateModel is declared below (moved) to avoid hook dependency issues
-
-    // useEffect pour régénérer quand la configuration change (MODE EZ)
-    useEffect(() => {
-        console.log('  useEffect MODE EZ déclenché');
-        console.log('🔍 basePlanches actuel:', JSON.stringify(basePlanches));
-        console.log('🔍 useAdvancedMode:', useAdvancedMode);
-        console.log('🔍 isExpertMode:', isExpertMode);
-
-        if (!templatePrompt || isExpertMode || !initialConfigApplied) return; // Ne pas régénérer tant que la configuration initiale n'est pas appliquée
-
-        if (skipNextAutoGenerate) {
-            setSkipNextAutoGenerate(false);
-            return;
-        }
-
-        // Construire le prompt complet avec toutes les options
-        const largeur = modules * 500; // 500mm par module
-        const basePrompt = modifyPromptDimensions(templatePrompt, largeur, depth, height);
-
-        let fullPrompt: string;
-
-        if (useAdvancedMode) {
-            // Mode avancé : utiliser l'arbre de zones
-            const zonePrompt = buildPromptFromZoneTree(rootZone);
-
-            // Si l'arbre de zones est vide (pas encore configuré), utiliser le prompt original
-            if (!zonePrompt || zonePrompt.trim() === '') {
-                fullPrompt = templatePrompt;
-                console.log('🏗️ Mode Avancé - Zones vides, utilisation du prompt original:', fullPrompt);
-            } else {
-                // L'utilisateur a configuré des zones, construire le prompt
-                const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
-                const match = basePrompt.match(regex);
-                if (!match) {
-                    console.warn('Format de prompt invalide:', basePrompt);
-                    return;
-                }
-                const meubleType = match[1];
-                const dimensions = match[2];
-
-                // Construire avec planches + socle + portes + structure de zones
-                let prompt = `${meubleType}(${dimensions})`;
-
-                // Planches de base
-                if (basePlanches) {
-                    const planches = [];
-                    if (basePlanches.b) planches.push('b');
-                    if (basePlanches.h) planches.push('h');
-                    if (basePlanches.g) planches.push('g');
-                    if (basePlanches.d) planches.push('d');
-                    if (basePlanches.f) planches.push('F'); // F majuscule pour le fond
-                    prompt += planches.length === 5 ? 'EbF' : (planches.join('') || 'E');
-                } else {
-                    prompt += 'EbF';
-                }
-
-                // Socle
-                if (socle !== 'none') {
-                    prompt += 'S';
-                    if (socle === 'wood') prompt += '2';
-                }
-
-                // Portes (avant structure)
-                if (doors > 0) {
-                    prompt += doors >= 2 ? 'P2' : 'P';
-                }
-
-                // Structure de zones
-                prompt += zonePrompt;
-
-                fullPrompt = prompt;
-                console.log('🏗️ Mode Avancé - Prompt généré avec zones:', fullPrompt);
-            }
-        } else {
-            // Mode simple : vérifier si les sliders de structure ont changé
-            const structureSlidersUnchanged = initialSliderValues &&
-                shelves === initialSliderValues.shelves &&
-                drawers === initialSliderValues.drawers &&
-                doors === initialSliderValues.doors;
-
-            // Si la structure n'a pas changé, préserver la structure originale du template
-            const shouldPreserveStructure = templatePrompt && structureSlidersUnchanged;
-
-            fullPrompt = buildPromptFromConfig(basePrompt, {
-                shelves,
-                drawers,
-                doors,
-                socle,
-                basePlanches,
-                hasDressing,
-                preserveOriginalStructure: shouldPreserveStructure
-            });
-            console.log('📊 Mode Simple - Prompt généré:', fullPrompt, shouldPreserveStructure ? '(structure préservée)' : '(structure générée)');
-        }
-
-        // Calculer le prix (inclut socle, étagères, tiroirs, portes)
-        const newPrice = calculatePrice({
-            modules,
-            height,
-            depth,
-            finish,
-            socle,
-            shelves,
-            drawers,
-            doors
-        });
-        setPrice(newPrice);
-
-        // Générer le modèle 3D avec un délai pour debounce
-        const timer = setTimeout(() => {
-            generateModel(fullPrompt);
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [templatePrompt, modules, height, depth, socle, finish, shelves, drawers, doors, basePlanches, hasDressing, useAdvancedMode, rootZone, isExpertMode, generateModel, buildPromptFromZoneTree, initialConfigApplied, skipNextAutoGenerate]); // Dépendances
-
-    // useEffect séparé pour le mode EXPERT (régénération manuelle du customPrompt)
-    useEffect(() => {
-        if (!isExpertMode || !customPrompt || !initialConfigApplied) return;
-
-        // En mode Expert, utiliser directement le customPrompt
-        const newPrice = calculatePrice({
-            modules,
-            height,
-            depth,
-            finish,
-            socle,
-            shelves,
-            drawers,
-            doors
-        });
-        setPrice(newPrice);
-
-        // Générer le modèle 3D avec le prompt personnalisé
-        const timer = setTimeout(() => {
-            console.log('🔧 Mode Expert: génération avec prompt personnalisé:', customPrompt);
-            generateModel(customPrompt);
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [customPrompt, isExpertMode, modules, height, depth, finish, socle, shelves, drawers, doors, generateModel, initialConfigApplied]); // Dépendances mode Expert
-
-    // Handlers pour les changements de contrôles
-    const handleModulesChange = (newModules: number) => {
-        setModules(newModules);
-    };
-
-    const handleHeightChange = (newHeight: number) => {
-        setHeight(newHeight);
-    };
-
-    const handleDepthChange = (newDepth: number) => {
-        setDepth(newDepth);
-    };
-
-    const handleSocleChange = (newSocle: string) => {
-        setSocle(newSocle);
-    };
-
-    const handleFinishChange = (newFinish: string) => {
-        const label = materialLabelFromKey(newFinish);
-        setFinish(label);
-        setColor(DEFAULT_COLOR_HEX);
-        setColorLabel(label);
-    };
-
-    const toggleDoors = () => {
-        setDoorsOpen(!doorsOpen);
-    };
-
-    const handleSelectColorOption = (option: SampleColor) => {
-        setSelectedColorId(option.id);
-        setColor(option.hex || DEFAULT_COLOR_HEX);
-        setColorLabel(option.name || selectedMaterialLabel);
-        setSelectedColorImage(option.image_url || null);
-    };
-
-    // Enregistrer la configuration (création d'une Configuration côté backend)
-    const saveConfiguration = async () => {
-        // Vérifier l'authentification
-        if (!isAuthenticated || !customer) {
-            // Rediriger vers la page de connexion avec retour au configurateur
-            const redirectTarget = encodeURIComponent(router.asPath || `/configurator/${id}`);
-            router.push(`/auth/login?redirect=${redirectTarget}`);
-            return;
-        }
-
-        // Demander un nom pour la configuration
-        const isEdit = !!editingConfigId;
-        const promptLabel = isEdit ? 'Mettre à jour le nom de cette configuration :' : 'Nom de cette configuration :';
-        const configNameInput = prompt(promptLabel, editingConfigName || '');
-        if (configNameInput === null) {
-            return;
-        }
-
-        const configName = configNameInput.trim();
-        if (!configName) {
-            alert('❌ Le nom de la configuration ne peut pas être vide.');
-            return;
-        }
-
-        try {
-            const largeur = modules * 500;
-            const basePrompt = templatePrompt ? modifyPromptDimensions(templatePrompt, largeur, depth, height) : `M1(${largeur},${depth},${height})`;
-
-            // Construire le prompt complet basé sur le mode
-            let fullPrompt: string;
-            if (useAdvancedMode) {
-                const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
-                const match = basePrompt.match(regex);
-                if (!match) {
-                    alert('Erreur: format de prompt invalide');
-                    return;
-                }
-                const meubleType = match[1];
-                const dimensions = match[2];
-
-                let prompt = `${meubleType}(${dimensions})`;
-
-                // Planches de base
-                const planches = [];
-                if (basePlanches.b) planches.push('b');
-                if (basePlanches.h) planches.push('h');
-                if (basePlanches.g) planches.push('g');
-                if (basePlanches.d) planches.push('d');
-                if (basePlanches.f) planches.push('F');
-                prompt += planches.length === 5 ? 'EbF' : (planches.join('') || 'E');
-
-                // Socle
-                if (socle !== 'none') {
-                    prompt += 'S';
-                    if (socle === 'wood') prompt += '2';
-                }
-
-                // Portes
-                if (doors > 0) {
-                    prompt += doors >= 2 ? 'P2' : 'P';
-                }
-
-                // Structure de zones
-                const zonePrompt = buildPromptFromZoneTree(rootZone);
-                if (zonePrompt) {
-                    prompt += zonePrompt;
-                }
-
-                fullPrompt = prompt;
-            } else {
-                fullPrompt = buildPromptFromConfig(basePrompt, {
-                    shelves,
-                    drawers,
-                    doors,
-                    socle,
-                    basePlanches,
-                    hasDressing
-                });
-            }
-
-            // Configuration complète pour l'API
-            const configData = {
-                dimensions: {
-                    modules,
-                    width: largeur,
-                    depth,
-                    height
-                },
-                styling: {
-                    materialKey: selectedMaterialKey,
-                    materialLabel: selectedMaterialLabel,
-                    finish,
-                    color,
-                    colorLabel,
-                    colorId: selectedColorId,
-                    colorImage: selectedColorImage,
-                    socle
-                },
-                features: {
-                    doorsOpen,
-                    doors,
-                    drawers,
-                    shelves,
-                    hasDressing
-                },
-                mode: {
-                    isExpertMode,
-                    useAdvancedMode
-                },
-                basePlanches: { ...basePlanches },
-                advancedZones: useAdvancedMode ? rootZone : null
-            };
-
-            const payload: Record<string, any> = {
-                id: editingConfigId ?? undefined,
-                name: configName,
-                model_id: model?.id || null,
-                prompt: fullPrompt,
-                config_data: configData,
-                glb_url: glbUrl,
-                dxf_url: dxfUrl,
-                price: price,
-                thumbnail_url: glbUrl
-            };
-
-            // Appel à l'API
-            const response = await fetch('/backend/api/configurations/save.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                let errorMessage = 'Erreur lors de la sauvegarde';
-                try {
-                    const error = await response.json();
-                    errorMessage = error.error || errorMessage;
-                } catch (_) {
-                    // ignore parsing errors
-                }
-                throw new Error(errorMessage);
-            }
-
-            const result = await response.json();
-            setEditingConfigName(configName);
-
-            // Ajouter automatiquement au panier après sauvegarde
-            if (result.configuration) {
-                try {
-                    const addToCartResponse = await fetch('/backend/api/cart/index.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            configuration_id: result.configuration.id,
-                            quantity: 1
-                        })
-                    });
-
-                    if (addToCartResponse.ok) {
-                        // Rediriger vers le panier
-                        router.push('/cart');
-                    } else {
-                        throw new Error('Erreur lors de l\'ajout au panier');
-                    }
-                } catch (cartError) {
-                    console.error('Erreur ajout au panier:', cartError);
-                    alert(`✅ Configuration "${configName}" enregistrée, mais erreur lors de l'ajout au panier`);
-                }
-            }
-        } catch (err: any) {
-            console.error('Erreur saveConfiguration:', err);
-            alert(`❌ Erreur lors de l'enregistrement:\n${err.message}`);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div className="spinner"></div>
-                    <p style={{ marginTop: '24px', color: '#6B6B6B' }}>Chargement...</p>
-                </div>
-            </div>
-        );
+      }
+    }
+  }, [selectedColorOption, selectedMaterialLabel, initialConfigApplied, colorsForMaterial.length, selectedColorId, useMultiColor]);
+
+  // Parse du prompt
+  const parsePromptToConfig = useCallback((prompt: string) => {
+    const dims = prompt.match(/\((\d+),(\d+),(\d+)\)/);
+    if (dims) {
+      setWidth(parseInt(dims[1]));
+      setDepth(parseInt(dims[2]));
+      setHeight(parseInt(dims[3]));
     }
 
-    if (!model) {
-        return (
-            <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#2C2C2C' }}>Modèle non trouvé</h1>
-                    <button
-                        onClick={() => router.push('/')}
-                        className="btn btn-primary"
-                        style={{ marginTop: '24px' }}
-                    >
-                        Retour à l&apos;accueil
-                    </button>
-                </div>
-            </div>
-        );
+    const compact = prompt.replace(/\s+/g, '');
+    if (/S2/.test(compact)) setSocle('wood');
+    else if (/S(?!\d)/.test(compact)) setSocle('metal');
+    else setSocle('none');
+
+    // Détecter les portes globales dans les flags (avant H/V)
+    const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+    if (/P2/.test(flagsPart)) setDoorType('double');
+    else if (/P/.test(flagsPart)) {
+      setDoorType('single');
+      if (flagsPart.includes('Pd')) setDoorSide('right');
+      else setDoorSide('left');
+    } else {
+      setDoorType('none');
     }
 
-    // ========== COMPOSANTS D'INTERFACE POUR LES ZONES ==========
-    const zoneContentMeta: Record<ZoneContent, { label: string; shortLabel: string; icon: string; badge: { text: string; className: string } }> = {
-        empty: {
-            label: 'Compartiment libre',
-            shortLabel: 'Vide',
-            icon: '📦',
-            badge: { text: 'Vide', className: 'bg-emerald-100 text-emerald-700' }
-        },
-        drawer: {
-            label: 'Tiroir',
-            shortLabel: 'Tiroir',
-            icon: '🗄️',
-            badge: { text: 'Tiroir', className: 'bg-blue-100 text-blue-700' }
-        },
-        dressing: {
-            label: 'Penderie',
-            shortLabel: 'Penderie',
-            icon: '👔',
-            badge: { text: 'Penderie', className: 'bg-purple-100 text-purple-700' }
-        },
-        shelf: {
-            label: 'Étagère',
-            shortLabel: 'Étagère',
-            icon: '🪵',
-            badge: { text: 'Étagère', className: 'bg-amber-100 text-amber-700' }
+    // Parse structure récursivement
+    const parseZones = (str: string, idPrefix: string): Zone => {
+      const hMatch = str.match(/^H(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
+      const vMatch = str.match(/^V(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
+      const gMatch = str.match(/^(G|P|P2|Pm|Po|Pd|Pg)(?:\[([^\]]+)\])?\((.*)\)$/);
+      
+      if (hMatch || vMatch || gMatch) {
+        const isH = !!hMatch;
+        const isV = !!vMatch;
+        const isG = !!gMatch && !isH && !isV;
+        
+        const match = hMatch || vMatch || gMatch;
+        const ratiosStr = match![1] && (isH || isV) ? match![1] : (isG ? match![2] : undefined);
+        const countValue = match![2] && (isH || isV) ? parseInt(match![2]) : undefined;
+        const inner = isG ? match![3] : match![3];
+        
+        // Splitting inner content while respecting parentheses
+        const parts: string[] = [];
+        let current = '';
+        let depth = 0;
+        for (let i = 0; i < inner.length; i++) {
+          if (inner[i] === '(') depth++;
+          if (inner[i] === ')') depth--;
+          if (inner[i] === ',' && depth === 0) {
+            parts.push(current);
+            current = '';
+          } else {
+            current += inner[i];
+          }
         }
+        parts.push(current);
+
+        const ratios = ratiosStr ? ratiosStr.split(',').map(r => parseFloat(r)) : undefined;
+
+        const orderedParts = isH ? [...parts].reverse() : parts;
+        const orderedRatios = isH && ratios ? [...ratios].reverse() : ratios;
+
+        const zoneType = isH ? 'horizontal' : (isV ? 'vertical' : 'leaf');
+        
+        // Pour un groupe (G, P2, etc.), on détecte si c'est horizontal ou vertical à partir du premier enfant
+        let detectedType: 'horizontal' | 'vertical' | 'leaf' = zoneType;
+        if (isG) {
+          if (inner.startsWith('H')) detectedType = 'horizontal';
+          else if (inner.startsWith('V')) detectedType = 'vertical';
+          else detectedType = 'leaf';
+        }
+
+        return {
+          id: idPrefix,
+          type: detectedType,
+          doorContent: isG ? (
+            str.startsWith('P2') ? 'door_double' : 
+            str.startsWith('Pm') ? 'mirror_door' :
+            str.startsWith('Po') ? 'push_door' :
+            str.startsWith('Pd') ? 'door_right' : 
+            (str.startsWith('P') || str.startsWith('Pg')) ? 'door' : 
+            undefined
+          ) : undefined,
+          children: orderedParts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
+          splitRatio: (orderedRatios && orderedRatios.length === 2) ? orderedRatios[0] : undefined,
+          splitRatios: (orderedRatios && orderedRatios.length > 2) ? orderedRatios : undefined,
+        };
+      }
+
+      // Leaf node
+      const isGlassShelf = str.includes('v');
+      const glassShelfMatch = str.match(/v(\d+)/);
+      const glassShelfCount = glassShelfMatch ? parseInt(glassShelfMatch[1]) : (isGlassShelf ? 1 : undefined);
+
+      return {
+        id: idPrefix,
+        type: 'leaf',
+        content: (
+          str.includes('To') ? 'push_drawer' :
+          str.includes('T') ? 'drawer' :
+          str.includes('D') ? 'dressing' :
+          str.includes('P2') ? 'door_double' :
+          str.includes('Pm') ? 'mirror_door' :
+          str.includes('Po') ? 'push_door' :
+          str.includes('Pd') ? 'door_right' :
+          (str.includes('P') || str.includes('Pg')) ? 'door' :
+          isGlassShelf ? 'glass_shelf' :
+          str.includes('p') ? 'pegboard' :
+          'empty'
+        ) as ZoneContent,
+        handleType: (() => {
+          const m = str.match(/(?:T|Pg|Pd|P2|Pm)(\d)/);
+          if (!m) return undefined;
+          return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
+        })(),
+        glassShelfCount,
+      };
     };
 
-    const zoneContentOptions: Array<{ value: ZoneContent; label: string; helper: string }> = [
-        { value: 'empty', label: 'Espace libre', helper: 'Laisser la zone vide ou avec des étagères' },
-        { value: 'drawer', label: 'Tiroir', helper: 'Ajoute un module coulissant' },
-        { value: 'dressing', label: 'Penderie', helper: 'Ajoute une tringle de penderie' }
-    ];
+    // Extraire la partie structure du prompt (tout ce qui suit EbF, E, etc.)
+    const structurePart = compact.replace(/M\d+\([^)]+\)[^HVD]*/, '');
+    if (structurePart && !['P', 'P2', 'Pg', 'Pd'].includes(structurePart)) {
+      setRootZone(parseZones(structurePart, 'root'));
+    } else {
+      // Si c'est juste une porte globale, la rootZone est une feuille vide 
+      // car la porte est gérée par doorType
+      setRootZone({ id: 'root', type: 'leaf', content: 'empty' });
+    }
+  }, []);
 
-    const getContentMeta = (content?: ZoneContent) => zoneContentMeta[content ?? 'empty'];
+  // Charger le modèle
+  const loadModel = useCallback(async () => {
+    setLoading(true);
+    try {
+      let configDataToUse: any = null;
+      let configToRestore: any = null;
 
-    const getZoneTitle = (zone: Zone) => {
-        if (zone.type === 'leaf') {
-            return getContentMeta(zone.content).label;
-        }
-        return zone.type === 'horizontal' ? 'Division horizontale' : 'Division verticale';
-    };
+      // 1. Charger la configuration si on est en mode édition ou vue
+      if ((isEditMode || isViewMode) && configIdToEdit) {
+        console.log(`🔄 Mode ${isViewMode ? 'vue' : 'édition'} détecté, chargement de la configuration #${configIdToEdit}`);
 
-    const getZoneSubtitle = (zone: Zone) => {
-        if (zone.type === 'leaf') {
-            switch (zone.content) {
-                case 'drawer':
-                    return 'Ajoutez ou retirez un tiroir pour ce compartiment.';
-                case 'dressing':
-                    return 'Transformez cette zone en penderie avec tringle.';
-                case 'shelf':
-                    return 'Zone dédiée aux étagères fixes.';
-                default:
-                    return 'Laissez vide pour une niche ouverte ou ajoutez un élément.';
+        // D'abord essayer de charger depuis localStorage (uniquement pour l'édition client, pas pour l'admin)
+        const savedConfigKey = `archimeuble:configuration:${configIdToEdit}`;
+        // Skip localStorage si vue OU si accès depuis admin dashboard (pour voir les vraies données)
+        const savedConfigStr = (!isViewMode && fromAdmin !== 'true') ? localStorage.getItem(savedConfigKey) : null;
+
+        if (savedConfigStr) {
+          configDataToUse = JSON.parse(savedConfigStr);
+          console.log('📦 Configuration trouvée dans localStorage:', configDataToUse);
+        } else {
+          // Sinon, charger depuis l'API (indispensable pour l'admin)
+          console.log('📡 Chargement de la configuration via l\'API...');
+          try {
+            const response = await fetch(`/backend/api/admin/configurations.php?id=${configIdToEdit}`, { credentials: 'include' });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.configuration) {
+                configDataToUse = data.configuration;
+                console.log('📦 Configuration chargée via l\'API admin:', configDataToUse);
+              }
+            } else {
+              // Essayer l'API client si l'API admin échoue (cas client recharge la page)
+              const resClient = await fetch(`/backend/api/configurations/list.php?id=${configIdToEdit}`, { credentials: 'include' });
+              if (resClient.ok) {
+                const data = await resClient.json();
+                if (data.configuration) {
+                  configDataToUse = data.configuration;
+                  console.log('📦 Configuration chargée via l\'API client:', configDataToUse);
+                }
+              }
             }
+          } catch (apiErr) {
+            console.warn('❌ Erreur lors du chargement API:', apiErr);
+          }
         }
-        const childCount = zone.children?.length ?? 0;
-        if (zone.type === 'horizontal') {
-            return childCount > 0 ? `${childCount} étage${childCount > 1 ? 's' : ''}` : 'Division horizontale';
+
+        if (configDataToUse) {
+          // La config sauvegardée contient config_data avec toutes les infos
+          // config_data peut être une chaîne JSON ou un objet
+          let configDataObj = configDataToUse.config_data || configDataToUse.config_string;
+          if (typeof configDataObj === 'string') {
+            try {
+              configDataObj = JSON.parse(configDataObj);
+              console.log('📦 config_data était une chaîne, parsé en objet:', configDataObj);
+            } catch (e) {
+              console.warn('❌ Impossible de parser config_data:', e);
+            }
+          }
+
+          if (configDataObj) {
+            configToRestore = {
+              width: configDataObj.dimensions?.width,
+              height: configDataObj.dimensions?.height,
+              depth: configDataObj.dimensions?.depth,
+              socle: configDataObj.styling?.socle || 'none',
+              rootZone: configDataObj.advancedZones,
+              finish: configDataObj.styling?.finish,
+              color: configDataObj.styling?.color,
+              colorImage: configDataObj.styling?.colorImage,
+              selectedColorId: configDataObj.styling?.selectedColorId,
+              useMultiColor: configDataObj.useMultiColor,
+              componentColors: configDataObj.componentColors,
+              doorType: configDataObj.features?.doorType,
+              doorSide: configDataObj.features?.doorSide,
+              prompt: configDataToUse.prompt || configDataObj.prompt,
+              name: configDataToUse.name || configDataObj.name
+            };
+
+            setEditingConfiguration(configDataToUse);
+            setEditingConfigId(configIdToEdit);
+            if (configToRestore.name) {
+              setEditingConfigName(configToRestore.name);
+            }
+          }
         }
-        return childCount > 0 ? `${childCount} colonne${childCount > 1 ? 's' : ''}` : 'Division verticale';
-    };
+      }
 
-    type ZoneNodeProps = {
-        zone: Zone;
-        selectedZoneId: string;
-        onSelect: (zoneId: string) => void;
-    };
+      // 2. Initialiser le modèle (soit via ID numérique, soit via Template key)
+      let modelData = null;
+      if (isAdminEditModel && modelId) {
+        console.log(`🛠️ Mode édition de modèle détecté, chargement du modèle #${modelId}`);
+        modelData = await apiClient.models.getById(Number(modelId));
+      } else if (id && !isNaN(Number(id))) {
+        modelData = await apiClient.models.getById(Number(id));
+      }
 
-    const ZoneNode = ({ zone, selectedZoneId, onSelect }: ZoneNodeProps) => {
-        const isSelected = zone.id === selectedZoneId;
+      if (modelData) {
+        setModel(modelData);
+        
+        // Mettre à jour le formulaire pour l'édition admin
+        if (isAdminEditModel) {
+          setModelForm({
+            name: modelData.name || '',
+            description: modelData.description || '',
+            category: modelData.category || 'dressing',
+            price: modelData.price || 890,
+            imageUrl: modelData.image_url || ''
+          });
+        }
 
-        const handleClick = (event: SyntheticEvent) => {
-            event.stopPropagation();
-            onSelect(zone.id);
+        // Si le modèle a des données de config riches, les utiliser en priorité pour la restauration
+        if (modelData.config_data && !configToRestore) {
+          try {
+            const dataObj = typeof modelData.config_data === 'string' ? JSON.parse(modelData.config_data) : modelData.config_data;
+            configToRestore = {
+              width: dataObj.dimensions?.width,
+              height: dataObj.dimensions?.height,
+              depth: dataObj.dimensions?.depth,
+              socle: dataObj.styling?.socle || 'none',
+              rootZone: dataObj.advancedZones,
+              finish: dataObj.styling?.finish,
+              color: dataObj.styling?.color,
+              colorImage: dataObj.styling?.colorImage,
+              selectedColorId: dataObj.styling?.selectedColorId,
+              useMultiColor: dataObj.useMultiColor,
+              componentColors: dataObj.componentColors,
+              doorType: dataObj.features?.doorType,
+              doorSide: dataObj.features?.doorSide,
+              prompt: modelData.prompt,
+              name: modelData.name
+            };
+            console.log('💎 Configuration riche restaurée depuis le modèle catalogue');
+            
+            // Initialiser rootZone immédiatement pour éviter le bloc vide
+            if (configToRestore.rootZone) {
+              setRootZone(configToRestore.rootZone);
+            }
+          } catch (e) {
+            console.warn('⚠️ Erreur lors du parsing de config_data du modèle:', e);
+          }
+        }
+
+        if (modelData.prompt) {
+          setTemplatePrompt(modelData.prompt);
+
+          // Parser le prompt pour obtenir la config par défaut (seulement si pas de restauration)
+          if (!configToRestore) {
+            parsePromptToConfig(modelData.prompt);
+          }
+
+          // Sauvegarder la config initiale pour réinitialisation
+          // On utilise configToRestore si disponible pour la config initiale
+          const dims = modelData.prompt.match(/\((\d+),(\d+),(\d+)\)/);
+          
+          if (configToRestore) {
+            setInitialConfig({
+              width: configToRestore.width || (dims ? parseInt(dims[1]) : 1000),
+              height: configToRestore.height || (dims ? parseInt(dims[3]) : 2000),
+              depth: configToRestore.depth || (dims ? parseInt(dims[2]) : 400),
+              socle: configToRestore.socle || 'none',
+              rootZone: JSON.parse(JSON.stringify(configToRestore.rootZone)),
+              finish: configToRestore.finish || 'Aggloméré',
+              doorType: configToRestore.doorType || 'none',
+              doorSide: configToRestore.doorSide || 'left',
+            });
+          } else {
+            const compact = modelData.prompt.replace(/\s+/g, '');
+            let initSocle = 'none';
+            if (/S2/.test(compact)) initSocle = 'wood';
+            else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
+
+            const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+            let initDoorType: 'none' | 'single' | 'double' = 'none';
+            let initDoorSide: 'left' | 'right' = 'left';
+            
+            if (/P2/.test(flagsPart)) initDoorType = 'double';
+            else if (/P/.test(flagsPart)) {
+              initDoorType = 'single';
+              initDoorSide = flagsPart.includes('Pd') ? 'right' : 'left';
+            }
+
+            let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
+            const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+            const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+
+            if (hStruct) {
+              const inner = hStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'horizontal', children };
+            } else if (vStruct) {
+              const inner = vStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'vertical', children };
+            }
+
+            setInitialConfig({
+              width: dims ? parseInt(dims[1]) : 1500,
+              height: dims ? parseInt(dims[3]) : 1130,
+              depth: dims ? parseInt(dims[2]) : 350,
+              socle: initSocle,
+              rootZone: JSON.parse(JSON.stringify(initRootZone)),
+              finish: 'Aggloméré',
+              doorType: initDoorType,
+              doorSide: initDoorSide,
+            });
+          }
+        }
+      } else {
+        // C'est un template (M1, M2...)
+        let promptToUse = (router.query.prompt as string) || configToRestore?.prompt || null;
+        
+        // Mode création de modèle : si pas de prompt, utiliser un prompt par défaut (caisson vide)
+        if (isAdminCreateModel && !promptToUse) {
+          const type = String(id).toUpperCase();
+          if (type === 'M1') promptToUse = 'M1(1000,400,2000)bFS';
+          else if (type === 'M2') promptToUse = 'M2(1200,400,2000)bFS';
+          else if (type === 'M3') promptToUse = 'M3(1500,400,2000)bFS';
+          else if (type === 'M4') promptToUse = 'M4(1800,400,2000)bFS';
+          else if (type === 'M5') promptToUse = 'M5(2000,400,2000)bFS';
+          else promptToUse = 'M1(1000,400,2000)bFS';
+        }
+
+        if (promptToUse || configToRestore) {
+          const virtualModel = {
+            id: 0,
+            name: configToRestore?.name || `Template ${id}`,
+            description: null,
+            prompt: promptToUse || configToRestore?.prompt,
+            price: 0,
+            image_url: null,
+            created_at: new Date().toISOString(),
+          } as FurnitureModel;
+          
+          setModel(virtualModel);
+
+          if (promptToUse) {
+            setTemplatePrompt(promptToUse);
+            if (!configToRestore) {
+              parsePromptToConfig(promptToUse);
+            }
+
+            // Calculer la config initiale pour les templates aussi
+            const dims = promptToUse.match(/\((\d+),(\d+),(\d+)\)/);
+            const compact = promptToUse.replace(/\s+/g, '');
+            let initSocle = 'none';
+            if (/S2/.test(compact)) initSocle = 'wood';
+            else if (/S(?!\d)/.test(compact)) initSocle = 'metal';
+
+            const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+            let initDoorType: 'none' | 'single' | 'double' = 'none';
+            let initDoorSide: 'left' | 'right' = 'left';
+            
+            if (/P2/.test(flagsPart)) initDoorType = 'double';
+            else if (/P/.test(flagsPart)) {
+              initDoorType = 'single';
+              initDoorSide = flagsPart.includes('Pd') ? 'right' : 'left';
+            }
+
+            let initRootZone: Zone = { id: 'root', type: 'leaf', content: 'empty' };
+            const hStruct = compact.match(/H(\d+)\(([^)]*)\)/);
+            const vStruct = compact.match(/V(\d+)\(([^)]*)\)/);
+
+            if (hStruct) {
+              const inner = hStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'horizontal', children };
+            } else if (vStruct) {
+              const inner = vStruct[2];
+              const children = inner.split(',').map((content, idx) => ({
+                id: `zone-${idx}`,
+                type: 'leaf' as const,
+                content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
+              }));
+              initRootZone = { id: 'root', type: 'vertical', children };
+            }
+
+            setInitialConfig({
+              width: dims ? parseInt(dims[1]) : 1500,
+              height: dims ? parseInt(dims[3]) : 1130,
+              depth: dims ? parseInt(dims[2]) : 350,
+              socle: initSocle,
+              rootZone: JSON.parse(JSON.stringify(initRootZone)),
+              finish: 'Aggloméré',
+              doorType: initDoorType,
+              doorSide: initDoorSide,
+            });
+          }
+        }
+      }
+
+      // 3. Appliquer la configuration restaurée si trouvée
+      if (configToRestore) {
+        console.log('🔧 Application de la configuration restaurée:', configToRestore);
+        if (configToRestore.width) setWidth(configToRestore.width);
+        if (configToRestore.height) setHeight(configToRestore.height);
+        if (configToRestore.depth) setDepth(configToRestore.depth);
+        if (configToRestore.socle) setSocle(configToRestore.socle);
+        if (configToRestore.rootZone) setRootZone(configToRestore.rootZone);
+        if (configToRestore.finish) setFinish(configToRestore.finish);
+        if (configToRestore.color) setColor(configToRestore.color);
+        if (configToRestore.colorLabel) setColorLabel(configToRestore.colorLabel);
+        if (configToRestore.colorImage !== undefined) setSelectedColorImage(configToRestore.colorImage);
+        if (configToRestore.selectedColorId !== undefined) setSelectedColorId(configToRestore.selectedColorId);
+        if (configToRestore.useMultiColor !== undefined) setUseMultiColor(configToRestore.useMultiColor);
+        if (configToRestore.componentColors) setComponentColors(configToRestore.componentColors);
+        if (configToRestore.doorType) setDoorType(configToRestore.doorType);
+        if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
+        if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
+        if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
+        console.log('✅ Configuration restaurée avec succès');
+        setInitialConfigApplied(true);
+      } else {
+        // Fallback local pour template ou modèle (IGNORÉ en mode création de modèle admin pour éviter les résidus)
+        let restoreFound = false;
+        if (!isAdminCreateModel && !isViewMode) {
+          const savedConfigStr = localStorage.getItem(localStorageKey);
+          if (savedConfigStr) {
+            try {
+              const localRestore = JSON.parse(savedConfigStr);
+              // On ne restaure pas automatiquement, on demande
+              // Session valide si moins de 24h
+              if (localRestore.timestamp && (Date.now() - localRestore.timestamp < 24 * 60 * 60 * 1000)) {
+                setPendingRestoreDialog(localRestore);
+                setShowRestoreDialog(true);
+                restoreFound = true;
+              }
+            } catch (e) {
+              console.warn('Erreur parsing localStorage restore:', e);
+            }
+          }
+        }
+        
+        if (!restoreFound) {
+          setInitialConfigApplied(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading model:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey, isEditMode, isViewMode, configIdToEdit, isAdminEditModel, modelId, fromAdmin]);
+
+  useEffect(() => {
+    // Attendre que le router soit prêt (important pour les query params)
+    if (!router.isReady) return;
+    if (id) loadModel();
+  }, [id, loadModel, router.isReady]);
+
+  // Fonction de réinitialisation de la configuration
+  const resetConfiguration = useCallback(() => {
+    if (!initialConfig) {
+      console.warn('⚠️ Aucune configuration initiale disponible');
+      return;
+    }
+
+    console.log('🔄 Réinitialisation à la configuration par défaut...');
+
+    // Restaurer la config initiale
+    setWidth(initialConfig.width);
+    setHeight(initialConfig.height);
+    setDepth(initialConfig.depth);
+    setSocle(initialConfig.socle);
+    setRootZone(JSON.parse(JSON.stringify(initialConfig.rootZone))); // Deep copy
+    setFinish(initialConfig.finish);
+    setDoorType(initialConfig.doorType || 'none');
+    setDoorSide(initialConfig.doorSide || 'left');
+    setSelectedZoneIds(['root']);
+    setDeletedPanelIds(new Set()); // Réinitialiser les panneaux supprimés
+    setSelectedPanelId(null); // Désélectionner le panneau
+    setShowPanelTool(false); // Fermer l'outil de suppression
+
+    // Supprimer la sauvegarde localStorage
+    try {
+      localStorage.removeItem(localStorageKey);
+      console.log('✅ Configuration réinitialisée et sauvegarde supprimée');
+    } catch (e) {
+      console.warn('❌ Erreur lors de la suppression de localStorage', e);
+    }
+  }, [initialConfig, localStorageKey]);
+
+  // Actions pour le dialogue de restauration
+  const applyPendingRestore = () => {
+    if (!pendingRestoreConfig) return;
+    const c = pendingRestoreConfig;
+    console.log('🔄 Application de la configuration restaurée depuis localStorage:', c);
+    
+    // Désactiver temporairement la régénération auto pour grouper les changements
+    setSkipNextAutoGenerate(false); 
+    setInitialConfigApplied(false);
+
+    if (c.width) setWidth(c.width);
+    if (c.height) setHeight(c.height);
+    if (c.depth) setDepth(c.depth);
+    if (c.socle) setSocle(c.socle);
+    if (c.rootZone) {
+      console.log('📦 Restauration de la zone racine:', c.rootZone);
+      setRootZone(JSON.parse(JSON.stringify(c.rootZone)));
+    }
+    if (c.finish) setFinish(c.finish);
+    if (c.color) setColor(c.color);
+    if (c.colorLabel) setColorLabel(c.colorLabel);
+    if (c.colorImage !== undefined) setSelectedColorImage(c.colorImage);
+    if (c.selectedColorId !== undefined) setSelectedColorId(c.selectedColorId);
+    if (c.useMultiColor !== undefined) setUseMultiColor(c.useMultiColor);
+    if (c.componentColors) setComponentColors(JSON.parse(JSON.stringify(c.componentColors)));
+    if (c.doorType) setDoorType(c.doorType);
+    if (c.doorSide) setDoorSide(c.doorSide);
+    if (c.mountingStyle) setMountingStyle(c.mountingStyle);
+    if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
+    if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
+    if (c.deletedPanelIds) setDeletedPanelIds(new Set(c.deletedPanelIds));
+    
+    // Réactiver la régénération et forcer l'application
+    setTimeout(() => {
+      setInitialConfigApplied(true);
+      setShowRestoreDialog(false);
+      setPendingRestoreDialog(null);
+      toast.success('Configuration restaurée');
+    }, 100);
+  };
+
+  const discardPendingRestore = () => {
+    localStorage.removeItem(localStorageKey);
+    setShowRestoreDialog(false);
+    setPendingRestoreDialog(null);
+    setInitialConfigApplied(true);
+  };
+
+  // Construction du prompt depuis l'arbre de zones
+  const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
+    let doorCode = '';
+    const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
+
+    if (currentDoor) {
+      switch (currentDoor) {
+        case 'door': doorCode = zone.id === 'root' ? '' : 'Pg'; break;
+        case 'door_right': doorCode = 'Pd'; break;
+        case 'door_double': doorCode = 'P2'; break;
+        case 'mirror_door': doorCode = 'Pm'; break;
+        case 'push_door': doorCode = 'Po'; break;
+      }
+      
+      // Ajouter le code de poignée si c'est une porte
+      if (doorCode && ['door', 'door_right', 'door_double', 'mirror_door'].includes(currentDoor)) {
+        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
+        if (hCode) doorCode += hCode;
+      }
+    }
+
+    if (zone.type === 'leaf') {
+      let leafChar = '';
+      switch (zone.content) {
+        case 'drawer': leafChar = 'T'; break;
+        case 'push_drawer': leafChar = 'To'; break;
+        case 'dressing': leafChar = 'D'; break;
+        case 'glass_shelf':
+          // Inclure le nombre d'étagères (v2, v3, etc.) si > 1
+          const shelfCount = zone.glassShelfCount || 1;
+          leafChar = shelfCount > 1 ? `v${shelfCount}` : 'v';
+          break;
+        case 'shelf': leafChar = ''; break; // étagère standard
+        default: leafChar = '';
+      }
+
+      // Ajouter le code de poignée si c'est un tiroir
+      if (zone.content === 'drawer') {
+        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
+        if (hCode) leafChar += hCode;
+      }
+
+      // Combiner avec le code de porte si présent sur la feuille
+      // Note: doorCode contient déjà Pg, Pd, etc.
+      // Si on a un contenu interne (T, v, D) ET une porte sur la même feuille
+      let finalLeaf = leafChar;
+      if (doorCode) {
+        // Le prompt accepte PgT (Porte Gauche + Tiroir)
+        finalLeaf = doorCode + leafChar;
+      }
+
+      if (zone.hasCableHole) {
+        finalLeaf += 'c';
+      }
+      if (zone.hasDressing && zone.content !== 'dressing') {
+        finalLeaf += 'D';
+      }
+      return finalLeaf;
+    }
+
+    const isHorizontal = zone.type === 'horizontal';
+    const children = zone.children || [];
+    const childCount = children.length;
+
+    const orderedChildren = isHorizontal ? [...children].reverse() : children;
+    const childPrompts = orderedChildren.map((c) => buildPromptFromZoneTree(c));
+
+    const prefix = isHorizontal ? 'H' : 'V';
+    let zoneCode = '';
+
+    // Pour 2 enfants avec splitRatio
+    if (zone.splitRatio !== undefined && childCount === 2) {
+      const r1 = Math.round(zone.splitRatio);
+      const r2 = 100 - r1;
+      const ratios = isHorizontal ? [r2, r1] : [r1, r2];
+      zoneCode = `${prefix}[${ratios[0]},${ratios[1]}](${childPrompts.join(',')})`;
+    } else if (zone.splitRatios && zone.splitRatios.length === childCount && childCount > 2) {
+      // Pour 3+ enfants avec splitRatios
+      const ratios = isHorizontal ? [...zone.splitRatios].reverse() : zone.splitRatios;
+      const ratiosStr = ratios.map(r => Math.round(r)).join(',');
+      zoneCode = `${prefix}[${ratiosStr}](${childPrompts.join(',')})`;
+    } else {
+      zoneCode = `${prefix}${childCount}(${childPrompts.join(',')})`;
+    }
+
+    // Si on a une porte sur ce groupe (parent)
+    if (doorCode) {
+      // Syntaxe : Pg(V2(T,T)) -> Porte sur le groupe
+      return doorCode + '(' + zoneCode + ')';
+    }
+
+    return zoneCode;
+  }, []);
+
+  // Calcul du prix basé sur la surface totale du meuble
+  const calculatePrice = useCallback((config: {
+    width: number;
+    height: number;
+    depth: number;
+    finish: string;
+    socle: string;
+    rootZone: Zone;
+    doorType?: 'none' | 'single' | 'double';
+    selectedSample?: SampleColor | null;
+    selectedColorId?: number | null;
+    useMultiColor?: boolean;
+    componentColors?: ComponentColors;
+  }): number => {
+    let p = 0;
+
+    // Normalisation du nom du matériau pour correspondre aux clés API (ex: "Aggloméré" -> "agglomere")
+    const normalizedFinish = config.finish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '_');
+    
+    // Le prix du matériau est maintenant directement le prix de l'échantillon (price_per_m2)
+    // Plus de prix de base séparé - l'échantillon contient le prix complet du matériau
+
+    // Déterminer le prix de l'échantillon (= prix du matériau) en mode coloration unie
+    let samplePriceUnie = 0;
+    if (config.selectedSample && config.selectedSample.price_per_m2 !== undefined) {
+      samplePriceUnie = Number(config.selectedSample.price_per_m2);
+    } else if (config.selectedColorId && samplePricesMap[config.selectedColorId] !== undefined) {
+      samplePriceUnie = Number(samplePricesMap[config.selectedColorId]);
+    }
+
+    console.log(`[PRICING] Calcul en cours: ${config.finish} (${normalizedFinish})`, {
+      samplePriceUnie,
+      selectedColorId: config.selectedColorId,
+      hasSample: !!config.selectedSample,
+      useMultiColor: config.useMultiColor
+    });
+
+    // Déclarer les prix échantillon en dehors du bloc if pour qu'ils soient accessibles dans countExtraPrice
+    let samplePriceStructure = 0;
+    let samplePriceBack = 0;
+    let samplePriceDoors = 0;
+    let samplePriceDrawers = 0;
+
+    if (pricingParams?.casing?.full) {
+      const w = config.width / 1000;
+      const h = config.height / 1000;
+      const d = config.depth / 1000;
+
+      const backSurface = w * h;
+      const sidesSurface = (d * h) * 2;
+      const topBottomSurface = (w * d) * 2;
+      const casingSurface = sidesSurface + topBottomSurface;
+
+      // Coefficient de fabrication (coût main d'œuvre/complexité)
+      const casingCoefficient = Number(pricingParams.casing.full.coefficient) || 1.2;
+
+      // Déterminer les prix du matériau (= prix échantillon) selon le mode
+      if (config.useMultiColor && config.componentColors) {
+        const structColorId = config.componentColors.structure.colorId;
+        const backColorId = config.componentColors.back.colorId;
+        const doorsColorId = config.componentColors.doors?.colorId;
+        const drawersColorId = config.componentColors.drawers?.colorId;
+        samplePriceStructure = structColorId ? (Number(samplePricesMap[structColorId]) || 0) : 0;
+        samplePriceBack = backColorId ? (Number(samplePricesMap[backColorId]) || 0) : 0;
+        samplePriceDoors = doorsColorId ? (Number(samplePricesMap[doorsColorId]) || 0) : samplePriceStructure;
+        samplePriceDrawers = drawersColorId ? (Number(samplePricesMap[drawersColorId]) || 0) : samplePriceStructure;
+      } else {
+        samplePriceStructure = samplePriceUnie;
+        samplePriceBack = samplePriceUnie;
+        samplePriceDoors = samplePriceUnie;
+        samplePriceDrawers = samplePriceUnie;
+      }
+
+      // Calcul : Prix matériau (€/m²) × Surface × Coefficient fabrication
+      const priceCasing = samplePriceStructure * casingSurface * casingCoefficient;
+      const priceBack = samplePriceBack * backSurface * casingCoefficient;
+
+      p = priceCasing + priceBack;
+
+      console.log('💰 [STRUCTURE] Calcul détaillé:', {
+        mode: config.useMultiColor ? 'multi' : 'single',
+        surfaceCasing: `${casingSurface.toFixed(3)} m²`,
+        surfaceBack: `${backSurface.toFixed(3)} m²`,
+        prixM2Structure: `${samplePriceStructure}€/m²`,
+        prixM2Back: `${samplePriceBack}€/m²`,
+        coefficient: casingCoefficient,
+        total: `${p.toFixed(2)}€`
+      });
+    } else {
+      const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
+      p = volumeM3 * 1500;
+      // Initialiser les prix échantillon au prix unie pour le fallback
+      samplePriceStructure = samplePriceUnie;
+      samplePriceBack = samplePriceUnie;
+      samplePriceDoors = samplePriceUnie;
+      samplePriceDrawers = samplePriceUnie;
+      console.log('⚠️ Fallback prix structure (Volume):', p);
+    }
+
+    // Note: Le prix de l'échantillon s'applique au caisson ET aux surfaces visibles (portes, tiroirs)
+    // Les étagères/séparateurs et socle ont leurs propres prix fixes dans l'admin
+
+    // 2. Ajouter le prix du socle
+    if (pricingParams?.bases) {
+      if (config.socle === 'none') {
+        const nonePrice = Number(pricingParams.bases.none?.fixed_price) || 0;
+        p += nonePrice;
+        if (nonePrice > 0) console.log('👞 [SOCLE] Aucun:', nonePrice + '€');
+      } else if (config.socle === 'metal') {
+        const pricePerFoot = Number(pricingParams.bases.metal?.price_per_foot) || 20;
+        const footInterval = Number(pricingParams.bases.metal?.foot_interval) || 2000;
+        const totalFeet = Math.ceil(config.width / footInterval) * 2;
+        const metalPrice = pricePerFoot * totalFeet;
+        p += metalPrice;
+        console.log('👞 [SOCLE] Métal:', {
+          pieds: totalFeet,
+          prixParPied: pricePerFoot,
+          total: metalPrice + '€'
+        });
+      } else if (config.socle === 'wood') {
+        const woodParams = pricingParams.bases.wood;
+        if (woodParams?.price_per_m3 && woodParams?.height) {
+          // Formule : Volume × Prix/m³ (prix propre du socle, pas de prix échantillon)
+          const h = Number(woodParams.height);
+          const volumeM3 = (config.width * config.depth * h) / 1_000_000_000;
+          const woodPrice = Number(woodParams.price_per_m3) * volumeM3;
+
+          p += woodPrice;
+          console.log('👞 [SOCLE] Bois:', {
+            volume: volumeM3.toFixed(4) + ' m³',
+            prixM3: woodParams.price_per_m3 + '€/m³',
+            total: woodPrice.toFixed(2) + '€'
+          });
+        } else if (woodParams?.coefficient) {
+          // Ancienne formule (fallback) : Coef × L × P
+          const woodPrice = Number(woodParams.coefficient) * config.width * config.depth;
+          p += woodPrice;
+          console.log('👞 [SOCLE] Bois (Coef):', woodPrice.toFixed(2) + '€');
+        } else {
+          p += 60; // Fallback hardcodé
+        }
+      }
+    } else {
+      const soclePrices: Record<string, number> = { none: 0, metal: 40, wood: 60 };
+      p += Number(soclePrices[config.socle] || 0);
+    }
+
+    // 4. Compter tiroirs et penderies dans les zones
+    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number): number => {
+      let extra = 0;
+
+      // Prix de la porte sur cette zone (feuille ou parent)
+      const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
+      if (door && pricingParams?.doors) {
+        // Utiliser les prix configurables pour les portes
+        const getDoorPrice = (doorType: string, w: number, h: number) => {
+          // Vérifier si le contenu est bien une porte
+          const isDoor = [
+            'door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right', 'glass_door', 'push_door', 'push_door_right'
+          ].includes(doorType);
+
+          if (!isDoor) return 0;
+
+          // Mapping vers les clés de configuration admin
+          let typeKey = 'simple';
+          if (pricingParams.doors[doorType]) {
+            // Si une clé exacte existe dans l'admin (ex: "door_right"), on l'utilise
+            typeKey = doorType;
+          } else if (doorType === 'door_double') {
+            typeKey = 'double';
+          } else if (doorType === 'mirror_door' || doorType === 'mirror_door_right' || doorType === 'glass_door') {
+            typeKey = 'glass';
+          } else if (doorType === 'push_door' || doorType === 'push_door_right') {
+            typeKey = 'push';
+          } else {
+            // Par défaut pour door, door_right, etc.
+            typeKey = 'simple';
+          }
+
+          const doorConfig = pricingParams.doors[typeKey];
+          if (!doorConfig) return 0;
+
+          const coefficient = Number(doorConfig.coefficient) || 0.00004;
+          const hingeCount = Number(doorConfig.hinge_count) || 2;
+          const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
+          const surfaceDoorM2 = (w * h) / 1_000_000;
+
+          // Calcul : (Coef × L × H) + (Prix Charnière × Nb) + (Prix Échantillon × Surface)
+          const doorPrice = (coefficient * w * h) + (hingePrice * hingeCount) + (samplePriceDoors * surfaceDoorM2);
+
+          console.log(`🚪 [PORTE] Calcul (${doorType} -> ${typeKey}):`, {
+            dimensions: `${w.toFixed(0)}x${h.toFixed(0)}mm`,
+            surface: `${surfaceDoorM2.toFixed(4)}m²`,
+            prixEchantillon: `${samplePriceDoors}€/m²`,
+            formule: `(${coefficient} × ${w.toFixed(0)} × ${h.toFixed(0)}) + (${hingePrice} × ${hingeCount}) + (${samplePriceDoors} × ${surfaceDoorM2.toFixed(4)})`,
+            total: `${doorPrice.toFixed(2)}€`
+          });
+
+          return doorPrice;
         };
 
-        if (zone.type === 'leaf') {
-            const meta = getContentMeta(zone.content);
-            return (
-                <button
-                    type="button"
-                    onClick={handleClick}
-                    className={`flex h-full w-full items-center justify-center rounded-[14px] border border-[#E4C792] bg-white px-3 text-[12px] font-semibold text-[#61451C] transition ${
-                        isSelected ? 'border-[#DFA94C] shadow-[0_4px_14px_rgba(223,169,76,0.18)]' : 'hover:border-[#DFA94C] hover:text-[#7B571F]'
-                    }`}
-                >
-                    {meta.shortLabel}
-                </button>
-            );
+        extra += getDoorPrice(door, zoneWidth, zoneHeight);
+      } else if (door) {
+        // Fallback sur valeurs hardcodées
+        switch (door) {
+          case 'door':
+          case 'door_right': extra += 40; break;
+          case 'push_door': extra += 50; break;
+          case 'door_double': extra += 80; break;
+          case 'mirror_door': extra += 95; break;
+        }
+      }
+
+      // Prix de la poignée (si une porte existe et qu'une poignée est définie)
+      if (door && zone.handleType && pricingParams?.handles) {
+        const handleConfig = pricingParams.handles[zone.handleType];
+        if (handleConfig) {
+          extra += Number(handleConfig.price_per_unit) || 0;
+        }
+      }
+
+      if (zone.type === 'leaf') {
+        if (pricingParams?.drawers && (zone.content === 'drawer' || zone.content === 'push_drawer')) {
+          // Prix des tiroirs : base_price + (coef × L × P) + (prix_échantillon × surface_façade)
+          const drawerType = zone.content === 'push_drawer' ? 'push' : 'standard';
+          const drawerConfig = pricingParams.drawers[drawerType];
+          if (drawerConfig) {
+            const basePrice = Number(drawerConfig.base_price) || 35;
+            const coefficient = Number(drawerConfig.coefficient) || 0.0001;
+            const surfaceFacadeM2 = (zoneWidth * zoneHeight) / 1_000_000;
+            const drawerPrice = basePrice + (coefficient * zoneWidth * config.depth) + (samplePriceDrawers * surfaceFacadeM2);
+            extra += drawerPrice;
+
+            console.log(`📥 [TIROIR] Calcul détaillé (${drawerType}):`, {
+              dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
+              facade: `${zoneWidth.toFixed(0)}x${zoneHeight.toFixed(0)}mm = ${surfaceFacadeM2.toFixed(4)}m²`,
+              prixEchantillon: `${samplePriceDrawers}€/m²`,
+              formule: `${basePrice} + (${coefficient} × ${zoneWidth.toFixed(0)} × ${config.depth.toFixed(0)}) + (${samplePriceDrawers} × ${surfaceFacadeM2.toFixed(4)})`,
+              total: `${drawerPrice.toFixed(2)}€`
+            });
+          } else {
+            extra += zone.content === 'drawer' ? 35 : 45;
+          }
+        } else if (zone.content === 'glass_shelf' && pricingParams?.shelves?.glass) {
+          // Prix étagère verre: prix_m² × surface × nombre d'étagères
+          const pricePerM2 = Number(pricingParams.shelves.glass.price_per_m2) || 250;
+          const shelfSurfaceM2 = (zoneWidth * config.depth) / 1000000;
+          const shelfCount = zone.glassShelfCount || 1;
+          const shelfPrice = pricePerM2 * shelfSurfaceM2 * shelfCount;
+
+          console.log('💎 [ETAGERE VERRE] Calcul détaillée:', {
+            dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
+            surface: `${shelfSurfaceM2.toFixed(3)} m²`,
+            nombre: shelfCount,
+            prixUnitaire: `${(pricePerM2 * shelfSurfaceM2).toFixed(2)}€`,
+            total: `${shelfPrice.toFixed(2)}€`
+          });
+
+          extra += shelfPrice;
+        } else if (zone.content === 'glass_shelf') {
+          const shelfCount = zone.glassShelfCount || 1;
+          extra += 25 * shelfCount; // Fallback
+        } else if (zone.content === 'dressing') {
+          // Prix penderie = prix par mètre × largeur de la zone
+          if (pricingParams?.wardrobe?.rod) {
+            const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
+            const widthInMeters = zoneWidth / 1000;
+            extra += pricePerMeter * widthInMeters;
+          } else {
+            extra += 20; // Fallback
+          }
         }
 
-        const orientationLabel = zone.type === 'horizontal' ? 'Division horizontale' : 'Division verticale';
-        const children = zone.children ?? [];
-        const weights = children.length === 2 && zone.splitRatio !== undefined
-            ? [Math.max(1, zone.splitRatio), Math.max(1, 100 - zone.splitRatio)]
-            : children.map(() => 1);
-        const totalWeight = weights.reduce((sum, value) => sum + value, 0);
-        const showPercentages = isSelected && children.length === 2;
+        // Ajouter le prix de la penderie si l'option toggle est activée
+        if (zone.hasDressing && zone.content !== 'dressing') {
+          if (pricingParams?.wardrobe?.rod) {
+            const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
+            const widthInMeters = zoneWidth / 1000;
+            extra += pricePerMeter * widthInMeters;
+          } else {
+            extra += 20; // Fallback
+          }
+        }
 
-        const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelect(zone.id);
+        // Ajouter le prix du passe-câble si activé
+        if (zone.hasCableHole) {
+          if (pricingParams?.cables?.pass_cable) {
+            extra += Number(pricingParams.cables.pass_cable.fixed_price) || 10;
+          } else {
+            extra += 10; // Fallback
+          }
+        }
+
+        // Ajouter le prix de l'éclairage LED si activé
+        if (zone.hasLight) {
+          if (pricingParams?.lighting?.led) {
+            // Prix LED = prix par mètre linéaire × largeur (en mètres)
+            const pricePerMeter = Number(pricingParams.lighting.led.price_per_linear_meter) || 15;
+            const widthInMeters = zoneWidth / 1000;
+            extra += pricePerMeter * widthInMeters;
+          } else {
+            // Fallback: estimation basée sur la largeur
+            extra += (zoneWidth / 1000) * 15;
+          }
+        }
+      } else if (zone.children) {
+        // Calculer les dimensions des enfants
+        zone.children.forEach((child, index) => {
+          let childWidth = zoneWidth;
+          let childHeight = zoneHeight;
+
+          // Calcul du ratio pour chaque enfant (aligné sur ThreeCanvas.tsx)
+          let ratio: number;
+          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
+            ratio = zone.splitRatios[index] / 100;
+          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
+            ratio = (index === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
+          } else {
+            ratio = 1 / zone.children!.length;
+          }
+
+          if (zone.type === 'horizontal') {
+            // Les enfants partagent la hauteur
+            childHeight = zoneHeight * ratio;
+
+            // Ajouter le prix de la séparation horizontale (étagère bois)
+            // Prix fixe par étagère défini dans l'admin, ou calcul basé sur la surface
+            if (index < zone.children!.length - 1) {
+              const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
+              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+              const shelfPrice = pricePerM2 * surfaceShelfM2;
+              extra += shelfPrice;
+              console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
             }
-        };
+          } else if (zone.type === 'vertical') {
+            // Les enfants partagent la largeur
+            childWidth = zoneWidth * ratio;
 
-        return (
-            <div
-                role="button"
-                tabIndex={0}
-                onClick={handleClick}
-                onKeyDown={handleKeyDown}
-                className={`relative flex h-full w-full gap-[4px] rounded-[16px] border border-[#E4C792] bg-white p-[6px] transition ${
-                    isSelected ? 'border-[#DFA94C] ring-1 ring-[#F2C878]' : 'hover:border-[#DFA94C]'
-                }`}
-                style={{ flexDirection: zone.type === 'horizontal' ? 'column' : 'row' }}
-                aria-label={orientationLabel}
-            >
-                {children.map((child, index) => (
-                    <div
-                        key={child.id}
-                        className="relative flex flex-1"
-                        style={{ flexGrow: weights[index] ?? 1, flexBasis: 0 }}
-                    >
-                        <ZoneNode zone={child} selectedZoneId={selectedZoneId} onSelect={onSelect} />
-                        {showPercentages ? (
-                            <span className="pointer-events-none absolute bottom-1 right-1 rounded-full border border-[#EDD5AA] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#7A4D00]">
-                {Math.round((weights[index] / totalWeight) * 100)}%
-              </span>
-                        ) : null}
-                    </div>
-                ))}
-            </div>
-        );
+            // Ajouter le prix de la séparation verticale (montant bois)
+            // Prix fixe défini dans l'admin, ou calcul basé sur la surface
+            if (index < zone.children!.length - 1) {
+              const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
+              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+              const verticalPrice = pricePerM2 * surfaceVerticalM2;
+              extra += verticalPrice;
+              console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
+            }
+          }
+
+          extra += countExtraPrice(child, childWidth, childHeight);
+        });
+      }
+
+      return extra;
     };
-    const ZoneCanvas = ({ zone, selectedZoneId, onSelect }: { zone: Zone; selectedZoneId: string; onSelect: (zoneId: string) => void }) => (
-        <div className="relative w-full overflow-hidden rounded-[26px] border border-[#E8D7BB] bg-[#FFFDF8] p-4">
-            <div className="relative h-[200px] w-full">
-                <ZoneNode zone={zone} selectedZoneId={selectedZoneId} onSelect={onSelect} />
-            </div>
-        </div>
-    );
+    p += countExtraPrice(config.rootZone, config.width, config.height);
 
-    const selectedZone = selectedZoneInfo?.zone ?? rootZone;
-    const parentZone = selectedZoneInfo?.parent ?? null;
-    const canSplitSelected = selectedZone.type === 'leaf';
-    // Permettre l'ajustement soit sur la division sélectionnée, soit sur la division parente si la zone courante est une feuille
-    const divisionCandidate = selectedZone.type !== 'leaf' ? selectedZone : (parentZone && parentZone.type !== 'leaf' ? parentZone : null);
-    const adjustTarget = divisionCandidate && (divisionCandidate.children?.length ?? 0) === 2 ? divisionCandidate : null;
-    const canAdjustRatio = !!adjustTarget;
-    const sliderRatio = adjustTarget?.splitRatio ?? 50;
-    const selectedZoneMeta = getContentMeta(selectedZone.content);
+    // 5. Ajouter le prix des portes globales (si configuré)
+    if (pricingParams?.doors && config.doorType && config.doorType !== 'none') {
+      const doorTypeKey = config.doorType === 'double' ? 'double' : 'simple';
+      const doorConfig = pricingParams.doors[doorTypeKey];
+      if (doorConfig) {
+        const coefficient = Number(doorConfig.coefficient) || 0.00004;
+        const hingeCount = Number(doorConfig.hinge_count) || 2;
+        const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
+        const surfaceGlobalDoorM2 = (config.width * config.height) / 1_000_000;
 
+        // Déterminer le prix échantillon pour les portes globales
+        let globalDoorSamplePrice = samplePriceUnie;
+        if (config.useMultiColor && config.componentColors?.doors?.colorId) {
+          globalDoorSamplePrice = Number(samplePricesMap[config.componentColors.doors.colorId]) || samplePriceUnie;
+        }
+
+        const globalDoorPrice = (coefficient * config.width * config.height) + (hingePrice * hingeCount) + (globalDoorSamplePrice * surfaceGlobalDoorM2);
+        p += globalDoorPrice;
+        console.log(`🚪 Prix porte globale (${config.doorType}):`, {
+          dimensions: `${config.width}x${config.height}mm`,
+          surface: `${surfaceGlobalDoorM2.toFixed(4)}m²`,
+          prixEchantillon: `${globalDoorSamplePrice}€/m²`,
+          formule: `(${coefficient} × ${config.width} × ${config.height}) + (${hingePrice} × ${hingeCount}) + (${globalDoorSamplePrice} × ${surfaceGlobalDoorM2.toFixed(4)})`,
+          total: `${globalDoorPrice.toFixed(2)}€`
+        });
+      } else {
+        // Fallback
+        const fallbackPrice = config.doorType === 'single' ? 40 : 80;
+        p += fallbackPrice;
+        console.log(`🚪 Prix porte globale (Fallback ${config.doorType}):`, fallbackPrice + '€');
+      }
+    }
+
+    if (isNaN(p)) {
+      console.warn('⚠️ Le calcul du prix a retourné NaN, retour à 0');
+      p = 0;
+    }
+
+    console.log('💰 PRIX TOTAL CALCULÉ:', Math.round(p) + '€');
+    return Math.round(p);
+  }, [pricingParams, samplePricesMap]);
+
+  // Génération du modèle 3D
+  const generateModel = useCallback(async (prompt: string) => {
+    setGenerating(true);
+    try {
+      let singleColor: string | undefined;
+      let furnitureColors: FurnitureColors | undefined;
+
+      if (useMultiColor) {
+        // Mode multi-couleurs : passer les couleurs par composant
+        furnitureColors = {
+          structure: componentColors.structure.hex || DEFAULT_COLOR_HEX,
+          drawers: componentColors.drawers.hex || DEFAULT_COLOR_HEX,
+          doors: componentColors.doors.hex || DEFAULT_COLOR_HEX,
+          base: componentColors.base.hex || DEFAULT_COLOR_HEX,
+          shelves: componentColors.shelves.hex || DEFAULT_COLOR_HEX,
+          back: componentColors.back.hex || DEFAULT_COLOR_HEX,
+        };
+      } else {
+        // Mode couleur unique
+        singleColor = selectedColorOption?.hex || undefined;
+      }
+
+      const excludeDoors = !doorsOpenRef.current || doorType === 'none';
+
+      // Convertir les panneaux supprimés en tableau pour l'API
+      const deletedPanelsArray = Array.from(deletedPanelIds);
+
+      // Préparer la structure des zones pour la segmentation (si des panneaux sont supprimés)
+      const zonesForSegmentation = deletedPanelsArray.length > 0 ? rootZone : undefined;
+
+      const result = await apiClient.generate.generate(
+        prompt,
+        excludeDoors,
+        singleColor,
+        furnitureColors,
+        deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined,
+        zonesForSegmentation
+      );
+
+      let glbUrlAbsolute = result.glb_url;
+      // On utilise maintenant le proxy configuré dans next.config.js
+      setGlbUrl(glbUrlAbsolute);
+      setDxfUrl(result.dxf_url || null);
+    } catch (error) {
+      console.error('Erreur génération:', error);
+    } finally {
+      setGenerating(false);
+    }
+  }, [selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds, rootZone]);
+
+  // Effet de régénération
+  useEffect(() => {
+    if (!templatePrompt || !initialConfigApplied) return;
+    if (skipNextAutoGenerate) {
+      setSkipNextAutoGenerate(false);
+      return;
+    }
+
+    // Construire le prompt
+    const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
+    const match = templatePrompt.match(regex);
+    if (!match) return;
+
+    const meubleType = match[1];
+    let prompt = `${meubleType}(${width},${depth},${height})`;
+
+    // Garder les flags originaux (E, b, F, S, S2) mais nettoyer les contenus (P, T, D)
+    // On extrait uniquement ce qui précède la structure (H, V, ou [ )
+    const rest = match[3] || '';
+    const flagsMatch = rest.match(/^([^HV\[]*)/);
+    const originalFlags = flagsMatch ? flagsMatch[1] : '';
+    let flags = originalFlags.replace(/[PTD]/g, '');
+    
+    // S'assurer que le socle est correctement reflété dans les flags
+    // S = socle métal, S2 = socle bois
+    flags = flags.replace(/S2?/g, ''); // On enlève les anciens socles
+    if (socle === 'metal') flags += 'S';
+    else if (socle === 'wood') flags += 'S2';
+
+    // Ajouter les portes globales si activées (uniquement s'il n'y a pas de portes de compartiment)
+    if (!hasZoneSpecificDoors) {
+      if (doorType === 'double') flags += 'P2';
+      else if (doorType === 'single') flags += doorSide === 'left' ? 'Pg' : 'Pd';
+    }
+    
+    prompt += flags;
+
+    // Structure de zones
+    const zonePrompt = buildPromptFromZoneTree(rootZone);
+    if (zonePrompt && zonePrompt.trim()) {
+      prompt += zonePrompt;
+    }
+
+    console.log('🚀 Génération du modèle avec le prompt:', prompt);
+
+    // Calculer le prix
+    setPrice(calculatePrice({ 
+      width, height, depth, finish, socle, rootZone, doorType, 
+      selectedSample: selectedColorOption,
+      selectedColorId,
+      useMultiColor,
+      componentColors
+    }));
+
+    // Générer
+    const timer = setTimeout(() => generateModel(prompt), 300);
+    return () => clearTimeout(timer);
+  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId]);
+
+  // Handlers
+  const handleToggleDoors = useCallback(() => {
+    setDoorsOpen(prev => !prev);
+  }, []);
+
+  const handleMaterialChange = (key: string) => {
+    // On utilise directement la clé (qui est le label du matériau venant de l'API)
+    setFinish(key);
+    setSelectedColorId(null);
+    setSelectedColorImage(null);
+  };
+
+  const handleColorChange = (option: SampleColor) => {
+    setSelectedColorId(option.id);
+    setColor(option.hex || DEFAULT_COLOR_HEX);
+    setColorLabel(option.name || selectedMaterialLabel);
+    setSelectedColorImage(option.image_url || null);
+  };
+
+  const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string, imageUrl?: string | null) => {
+    setComponentColors((prev) => ({
+      ...prev,
+      [component]: { colorId, hex, imageUrl },
+    }));
+  };
+
+  // Gestion du changement de mode multi-couleurs
+  const handleUseMultiColorChange = (value: boolean) => {
+    setUseMultiColor(value);
+
+    // Quand on active le mode multi-couleurs, initialiser tous les composants avec la couleur actuelle
+    if (value) {
+      const currentHex = color || '#D8C7A1';
+      const currentImageUrl = selectedColorImage;
+      const currentColorId = selectedColorId;
+
+      setComponentColors({
+        structure: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        drawers: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        doors: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        shelves: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        back: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+        base: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
+      });
+    }
+  };
+
+  // Fonction pour enregistrer comme modèle de catalogue
+  const saveAsModel = async () => {
+    console.log('🔵 FONCTION saveAsModel APPELEE !');
+    console.log('🔵 isAdmin:', isAdmin);
+    console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
+    console.log('🔵 isAdminEditModel:', isAdminEditModel);
+    console.log('🔵 modelForm:', modelForm);
+
+    if (!isAdminCreateModel && !isAdminEditModel) {
+      toast.error("Vous devez être en mode administration pour effectuer cette action.");
+      return;
+    }
+
+    try {
+      setIsSavingModel(true);
+      console.log('--- DEBUT SAUVEGARDE MODELE ---');
+
+      // 1. Utiliser l'URL de l'image déjà uploadée
+      const finalImageUrl = modelForm.imageUrl;
+      console.log('URL Image:', finalImageUrl);
+
+      // 2. Préparation du prompt
+      const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
+      const match = templatePrompt?.match(regex);
+      const meubleType = match?.[1] || (id as string)?.split('(')[0] || 'M1';
+
+      let fullPrompt = `${meubleType}(${width},${depth},${height})bF`;
+      if (socle === 'metal') fullPrompt += 'S';
+      else if (socle === 'wood') fullPrompt += 'S2';
+      
+      const zonePrompt = buildPromptFromZoneTree(rootZone);
+      if (zonePrompt) {
+        fullPrompt += zonePrompt;
+      }
+      console.log('Prompt généré:', fullPrompt);
+
+      // 3. Préparation des données techniques
+      const currentConfigData = {
+        dimensions: { width, depth, height },
+        styling: {
+          materialKey: selectedMaterialKey,
+          materialLabel: selectedMaterialLabel,
+          finish,
+          color,
+          colorLabel,
+          colorId: selectedColorId,
+          colorImage: selectedColorImage,
+          selectedColorId,
+          socle,
+        },
+        features: { doorsOpen, doorType, doorSide, mountingStyle },
+        advancedZones: JSON.parse(JSON.stringify(rootZone)),
+        useMultiColor,
+        componentColors,
+      };
+
+      // 4. Payload final
+      const payload = {
+        name: modelForm.name,
+        description: modelForm.description,
+        prompt: fullPrompt,
+        category: modelForm.category,
+        price: modelForm.price,
+        image_url: finalImageUrl || '/images/accueil image/meubletv.jpg',
+        config_data: currentConfigData,
+      };
+      
+      console.log('Payload prêt pour envoi:', payload);
+
+      // 5. Envoi final au backend
+      const url = isAdminEditModel ? `/backend/api/models.php?id=${modelId}` : '/backend/api/models.php';
+      const method = isAdminEditModel ? 'PUT' : 'POST';
+
+      console.log(`Appel API ${method} ${url}...`);
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      console.log('Réponse API (Status):', response.status);
+
+      if (response.status === 401 || response.status === 403) {
+        toast.error("Session admin expirée ou accès refusé (Status: " + response.status + ")");
+        throw new Error('Votre session administrateur a expiré. Veuillez vous reconnecter au tableau de bord.');
+      }
+
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors de la création du modèle';
+        try {
+          const errData = await response.json();
+          errorMessage = errData.error || errorMessage;
+          console.error('API Error Data:', errData);
+        } catch (e) {
+          console.error('Failed to parse error response', e);
+          const text = await response.text();
+          console.error('API Raw response:', text);
+          errorMessage += " (Status: " + response.status + ")";
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('Résultat final API:', result);
+
+      toast.success(isAdminEditModel ? 'Le modèle a été mis à jour avec succès !' : 'Le modèle a été ajouté au catalogue avec succès !');
+      setIsCreateModelDialogOpen(false);
+      setShowModelCreatedModal(true);
+      console.log('--- FIN SAUVEGARDE MODELE (SUCCES) ---');
+      
+    } catch (err: any) {
+      console.error('CRITICAL ERROR saveAsModel:', err);
+      toast.error(err.message || 'Erreur lors de l\'enregistrement du modèle');
+    } finally {
+      setIsSavingModel(false);
+    }
+  };
+
+  // Sauvegarde
+  const saveConfiguration = async () => {
+    // En mode édition admin (venant du dashboard), on utilise le nom existant
+    const isAdminEditingConfig = isEditMode && editingConfigId;
+
+    // Si pas admin ET pas client connecté, on demande de se connecter
+    // Exception: en mode édition admin, on essaie quand même de sauvegarder (le backend vérifiera la session)
+    if (!isAdmin && !isAdminEditingConfig && (!isAuthenticated || !customer)) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    let configNameInput = editingConfigName;
+
+    // Si ce n'est pas un admin qui édite une config existante, on demande le nom
+    // En mode édition admin, on garde le nom existant
+    if (!isAdminEditingConfig && !(isAdmin && editingConfigId)) {
+      const promptedName = prompt('Nom de cette configuration :', editingConfigName || '');
+      if (promptedName === null) return; // Annulation
+      if (!promptedName.trim()) {
+        setErrorMessage('Veuillez donner un nom à la configuration');
+        setShowErrorModal(true);
+        return;
+      }
+      configNameInput = promptedName;
+    }
+
+    try {
+      const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
+      const match = templatePrompt?.match(regex);
+      const meubleType = match?.[1] || 'M1';
+
+      let fullPrompt = `${meubleType}(${width},${depth},${height})EbF`;
+      if (socle === 'metal') fullPrompt += 'S';
+      else if (socle === 'wood') fullPrompt += 'S2';
+      fullPrompt += buildPromptFromZoneTree(rootZone);
+
+      const configData = {
+        dimensions: { width, depth, height },
+        styling: {
+          materialKey: selectedMaterialKey,
+          materialLabel: selectedMaterialLabel,
+          finish,
+          color,
+          colorLabel,
+          colorId: selectedColorId,
+          colorImage: selectedColorImage,
+          selectedColorId,
+          socle,
+        },
+        features: { doorsOpen, doorType, doorSide, mountingStyle },
+        advancedZones: rootZone,
+        useMultiColor,
+        componentColors,
+        deletedPanelIds: Array.from(deletedPanelIds),
+      };
+
+      const payload = {
+        id: editingConfigId ?? undefined,
+        name: configNameInput.trim(),
+        model_id: model?.id ? Number(model.id) : null,
+        prompt: fullPrompt,
+        config_data: configData,
+        glb_url: glbUrl,
+        dxf_url: dxfUrl,
+        price,
+        thumbnail_url: glbUrl,
+        status: isAdmin ? (editingConfiguration?.status || 'en_attente_validation') : 'en_attente_validation',
+      };
+
+      const response = await fetch('/backend/api/configurations/save.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        // Récupérer le message d'erreur du backend
+        const errorData = await response.json().catch(() => ({}));
+        const backendError = errorData.error || 'Erreur lors de la sauvegarde';
+
+        // Gestion des erreurs 401
+        if (response.status === 401) {
+          if (isAdminEditingConfig) {
+            // Admin en mode édition mais session expirée ou invalide
+            setErrorMessage('Votre session admin a expiré.\n\nVeuillez vous reconnecter au panel admin puis réessayer.');
+          } else if (isAdmin) {
+            // Admin qui essaie de créer une nouvelle configuration
+            setErrorMessage('Un administrateur ne peut pas créer de configuration.\n\nPour créer une configuration, vous devez :\n1. Vous déconnecter du panel admin\n2. Vous connecter en tant que client\n3. Puis créer votre configuration');
+          } else {
+            setErrorMessage(backendError);
+          }
+          setShowErrorModal(true);
+        } else {
+          setErrorMessage(backendError);
+          setShowErrorModal(true);
+        }
+        throw new Error(backendError);
+      }
+
+      const result = await response.json();
+      
+      // Nettoyer localStorage après une sauvegarde réussie
+      localStorage.removeItem(localStorageKey);
+      
+      setEditingConfigName(configNameInput.trim());
+
+      // Afficher le modal de confirmation au lieu de rediriger vers le panier
+      if (result.configuration) {
+        setShowConfirmationModal(true);
+      }
+    } catch (err: unknown) {
+      console.error('Erreur saveConfiguration:', err);
+      // Ne rien faire ici car l'erreur a déjà été affichée dans le modal
+    }
+  };
+
+  // Fonction pour passer en mode édition admin
+  const handleAdminEdit = useCallback(() => {
+    const { mode, ...rest } = router.query;
+    router.push({
+      pathname: router.pathname,
+      query: { ...rest, mode: 'edit' },
+    }, undefined, { shallow: true });
+  }, [router]);
+
+  // Fonction pour qu'un client puisse modifier sa propre configuration
+  const handleOwnerEdit = useCallback(() => {
+    // Rediriger vers le configurateur sans mode (mode normal de configuration)
+    const { mode, configId, ...rest } = router.query;
+    router.push({
+      pathname: router.pathname,
+      query: { ...rest, configId, mode: 'edit' },
+    }, undefined, { shallow: false });
+  }, [router]);
+
+  // Vérifier si le client connecté est propriétaire de la configuration
+  const isConfigOwner = useMemo(() => {
+    // Si pas de client connecté, pas propriétaire
+    if (!customer) return false;
+
+    // Si on est en mode vue avec un configId et le client est connecté,
+    // on suppose qu'il est propriétaire (l'API refuse l'accès sinon)
+    if (isViewMode && configIdToEdit && isAuthenticated) {
+      return true;
+    }
+
+    // Sinon vérifier explicitement avec user_id/customer_id
+    if (!editingConfiguration) return false;
+    const configUserId = editingConfiguration.user_id || editingConfiguration.customer_id;
+    return configUserId && String(configUserId) === String(customer.id);
+  }, [customer, editingConfiguration, isViewMode, configIdToEdit, isAuthenticated]);
+
+  if (loading) {
     return (
-        <>
-            <Head>
-                <title>Configurateur - {model.name} | ArchiMeuble</title>
-            </Head>
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+          <p className="mt-4 text-sm text-[#706F6C]">Chargement de la configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Navigation */}
-            <nav className="navbar">
-                <div className="nav-container">
-                    <div className="logo">
-                        <Link href="/">ArchiMeuble</Link>
-                    </div>
-                    <ul className="nav-links">
-                        <li><Link href="/">Accueil</Link></li>
-                        <li><a href="#" className="active">Configurer</a></li>
-                    </ul>
+  const modelCategories = availableCategories.length > 0 
+    ? availableCategories.map(cat => ({ id: cat.slug, label: cat.name }))
+    : [
+        { id: "dressing", label: "Dressings" },
+        { id: "bibliotheque", label: "Bibliothèques" },
+        { id: "buffet", label: "Buffets" },
+        { id: "bureau", label: "Bureaux" },
+        { id: "meuble-tv", label: "Meubles TV" },
+        { id: "sous-escalier", label: "Sous-escaliers" },
+        { id: "tete-de-lit", label: "Têtes de lit" },
+      ];
+
+  // Message si le modèle ou la configuration n'existe pas
+  if (!model) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6 text-center">
+        <IconInfoCircle className="h-12 w-12 text-[#8B7355] mb-4" />
+        <h1 className="font-serif text-2xl text-[#1A1917] mb-2">Configuration introuvable</h1>
+        <p className="text-[#706F6C] max-w-md mb-8">
+          Désolé, nous ne parvenons pas à charger cette configuration. Elle n'existe peut-être plus ou le lien est incorrect.
+        </p>
+        <button 
+          onClick={() => router.push('/')}
+          className="bg-[#1A1917] text-white px-8 py-3 text-sm font-medium hover:bg-[#2A2927] transition-colors"
+          style={{ borderRadius: '2px' }}
+        >
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
+
+  // Message mobile
+  if (isMobile && showMobileWarning) {
+    return (
+      <>
+        <Head>
+          <title>Configurateur - {model?.name || 'ArchiMeuble'} | ArchiMeuble</title>
+        </Head>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center bg-[#1A1917]" style={{ borderRadius: '4px' }}>
+              <Monitor className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="font-serif text-2xl text-[#1A1917]">
+              Configuration sur ordinateur recommandée
+            </h1>
+            <p className="mt-4 text-base text-[#706F6C]">
+              Pour une meilleure expérience de configuration de votre meuble sur mesure,
+              nous vous recommandons d'utiliser un ordinateur.
+            </p>
+            <p className="mt-2 text-sm text-[#706F6C]">
+              Le configurateur 3D est optimisé pour les écrans larges et l'utilisation de la souris.
+            </p>
+            <div className="mt-8 space-y-3">
+              <button
+                onClick={() => setShowMobileWarning(false)}
+                className="w-full border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                style={{ borderRadius: '2px' }}
+              >
+                Continuer sur mobile quand même
+              </button>
+              <Link
+                href="/models"
+                className="block w-full bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                style={{ borderRadius: '2px' }}
+              >
+                Voir les modèles
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!model) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
+        <div className="text-center">
+          <h1 className="font-serif text-2xl text-[#1A1917]">Modèle non trouvé</h1>
+          <button
+            onClick={() => router.push('/')}
+            className="mt-6 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white"
+            style={{ borderRadius: '2px' }}
+          >
+            Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const TABS: { id: ConfigTab; label: string; icon: typeof Settings }[] = [
+    { id: 'dimensions', label: 'Dimensions', icon: Settings },
+    { id: 'materials', label: 'Finitions', icon: Palette },
+  ];
+
+  return (
+    <>
+      <Head>
+        <title>Configurateur - {model.name} | ArchiMeuble</title>
+      </Head>
+
+      {/* Modal création modèle (Admin) */}
+      <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isAdminEditModel ? 'Mettre à jour le modèle' : 'Enregistrer comme modèle de catalogue'}
+            </DialogTitle>
+            <DialogDescription>
+              {isAdminEditModel 
+                ? 'Les modifications seront appliquées à ce modèle dans le catalogue.'
+                : 'Ce meuble sera ajouté à la liste des modèles disponibles pour tous les clients.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nom du modèle</Label>
+              <Input
+                id="name"
+                value={modelForm.name}
+                onChange={(e) => {
+                  console.log('🟢 Changement du nom du modèle:', e.target.value);
+                  setModelForm({ ...modelForm, name: e.target.value });
+                }}
+                placeholder="Ex: Dressing Élégance"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">Catégorie</Label>
+              <Select 
+                value={modelForm.category} 
+                onValueChange={(value) => setModelForm({ ...modelForm, category: value })}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Choisir une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {modelCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="price">Prix calculé (€)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="price"
+                  type="number"
+                  value={modelForm.price}
+                  readOnly
+                  className="bg-gray-50 font-semibold"
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  Auto-calculé
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                Ce prix est calculé automatiquement selon les dimensions et options choisies.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="image">Photo du modèle</Label>
+              <div className="flex flex-col gap-3">
+                {modelForm.imageUrl && (
+                  <div className="relative aspect-video w-full overflow-hidden rounded-md border">
+                    <img 
+                      src={modelForm.imageUrl} 
+                      alt="Aperçu" 
+                      className="h-full w-full object-cover"
+                    />
+                    <button 
+                      onClick={() => setModelForm({ ...modelForm, imageUrl: '' })}
+                      className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                    >
+                      <IconTablerX className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="cursor-pointer"
+                  />
+                  {isUploading && <IconRefresh className="h-4 w-4 animate-spin text-[#8B7355]" />}
                 </div>
-            </nav>
+                <p className="text-[10px] text-muted-foreground italic">
+                  Format JPG, PNG ou WEBP. Max 20Mo.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={modelForm.description}
+                onChange={(e) => setModelForm({ ...modelForm, description: e.target.value })}
+                placeholder="Description du meuble..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModelDialogOpen(false)}>Annuler</Button>
+            <Button
+              onClick={() => {
+                console.log('🟡 CLICK SUR BOUTON DIALOG - modelForm.name:', modelForm.name);
+                console.log('🟡 Bouton désactivé?', !modelForm.name);
+                saveAsModel();
+              }}
+              disabled={!modelForm.name}
+              className="bg-[#1A1917] text-white"
+            >
+              {isAdminEditModel ? 'Mettre à jour' : 'Enregistrer le modèle'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            {/* Configurator Container */}
-            <div className="configurator-container">
-                {/* Left: 3D Viewer */}
-                <div className="viewer-section">
-                    <div className="viewer-wrapper">
-                        <Viewer glb={glbUrl || undefined} />
-                        {generating && (
-                            <div className="loading-overlay" id="loading-overlay">
-                                <div className="spinner"></div>
-                                <p>Génération du meuble 3D...</p>
-                            </div>
-                        )}
-                    </div>
+      <div className="flex h-screen flex-col overflow-hidden bg-[#FAFAF9]">
+        {/* Header compact */}
+        <header className="flex-shrink-0 border-b border-[#E8E6E3] bg-white">
+          <div className="mx-auto flex h-14 items-center justify-between px-4 lg:h-16 lg:max-w-screen-2xl lg:px-6">
+            <div className="flex items-center gap-3 lg:gap-4">
+              <Link
+                href="/models"
+                className="flex h-9 w-9 items-center justify-center border border-[#E8E6E3] text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] lg:h-10 lg:w-10"
+                style={{ borderRadius: '2px' }}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
+                  {isViewMode && isAdmin && (
+                    <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
+                  )}
+                  {isViewMode && !isAdmin && isConfigOwner && (
+                    <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Ma configuration</span>
+                  )}
+                  {isEditMode && editingConfigId && isAdmin && (
+                    <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Édition Admin</span>
+                  )}
+                  {isEditMode && editingConfigId && !isAdmin && isConfigOwner && (
+                    <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Modification</span>
+                  )}
+                  {editingConfigName && (isEditMode || isViewMode) && (
+                    <span className="text-[11px] text-[#706F6C] font-medium">&quot;{editingConfigName}&quot;</span>
+                  )}
                 </div>
-
-                {/* Right: Configuration Panel */}
-                <div className="config-panel">
-                    <div className="panel-header">
-                        <h1>Personnalisez votre meuble</h1>
-                        <p className="subtitle">Configurez chaque détail selon vos préférences</p>
-
-                        {/* Indicateur de connexion */}
-                        {userEmail && (
-                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm">
-                                ✓ Connecté en tant que <strong>{userEmail}</strong>
-                            </div>
-                        )}
-
-                    </div>
-
-                    <div className="panel-content">
-                        {/* Mode Expert: Éditeur de Prompt */}
-                        {isExpertMode && (
-                            <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-300">
-                                <h3 className="text-lg font-bold mb-2">Éditeur de Prompt (Expert)</h3>
-                                <p className="text-sm text-gray-600 mb-3">
-                                    Modifiez directement le prompt pour un contrôle total.
-                                    Format: <code className="bg-gray-200 px-1">M1(width,depth,height)finishCode...</code>
-                                </p>
-                                <textarea
-                                    className="w-full h-32 p-3 border border-gray-300 rounded font-mono text-sm"
-                                    value={customPrompt || templatePrompt || ''}
-                                    onChange={(e) => setCustomPrompt(e.target.value)}
-                                    placeholder="Ex: M1(1500,400,800)M,#8B4513,D2,socle"
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                        className="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex-1"
-                                        onClick={() => {
-                                            if (customPrompt) {
-                                                // Déclencher la régénération immédiate en forçant un changement
-                                                console.log('🔧 Application du prompt Expert:', customPrompt);
-                                                generateModel(customPrompt);
-                                            }
-                                        }}
-                                    >
-                                        🚀 Générer avec ce prompt
-                                    </button>
-                                    <button
-                                        className="mt-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-                                        onClick={() => {
-                                            setCustomPrompt(templatePrompt || '');
-                                        }}
-                                    >
-                                        Réinitialiser
-                                    </button>
-                                </div>
-                                <div className="mt-3 text-xs text-gray-500">
-                                    <strong>Documentation:</strong>
-                                    <ul className="list-disc ml-5 mt-1">
-                                        <li>M1-M5: Type de meuble</li>
-                                        <li>(width,depth,height): Dimensions en mm</li>
-                                        <li>Finish: M=Mat, B=Brillant, S=Satiné</li>
-                                        <li>Color: Code hex (#FFFFFF)</li>
-                                        <li>D[n]: Nombre de portes</li>
-                                        <li>socle/nosocle: Avec ou sans socle</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Toggle Mode Avancé (Gestion de zones) - Visible uniquement en mode EZ */}
-                        {!isExpertMode && (
-                            <div className="mb-6 rounded-xl border border-[#E4D6C0] bg-[#FFFBF4] p-4">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                        <span className="font-bold text-[#2F2817]">🏗️ Mode Construction Avancée</span>
-                                        <p className="text-xs text-[#6A5A3D] mt-1">
-                                            Diviser le meuble en compartiments et placer précisément chaque élément (tiroir, penderie, étagère)
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        role="switch"
-                                        aria-checked={useAdvancedMode}
-                                        onClick={() => setUseAdvancedMode(!useAdvancedMode)}
-                                        className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#E2B66B] ${
-                                            useAdvancedMode ? 'bg-[#E2B66B]' : 'bg-gray-300'
-                                        }`}
-                                    >
-                                        <span className="sr-only">Basculer le mode Construction Avancée</span>
-                                        <span
-                                            className={`inline-block h-7 w-7 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                                useAdvancedMode ? 'translate-x-7' : 'translate-x-1'
-                                            }`}
-                                        />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Interface de Gestion des Zones - Visible en mode avancé uniquement */}
-                        {!isExpertMode && useAdvancedMode && (() => {
-                            const getZoneStats = (zone: Zone): { depth: number; leaves: number } => {
-                                if (!zone.children || zone.children.length === 0) {
-                                    return { depth: 1, leaves: 1 };
-                                }
-                                const childStats = zone.children.map((child) => getZoneStats(child));
-                                const depth = 1 + Math.max(...childStats.map((stat) => stat.depth));
-                                const leaves = childStats.reduce((total, stat) => total + stat.leaves, 0);
-                                return { depth, leaves };
-                            };
-
-                            const { depth, leaves } = getZoneStats(rootZone);
-                            // Hauteur initiale plus petite; croissance maintenue quand on ajoute des divisions
-                            const baseHeight = 140;
-                            const dynamicHeight = Math.min(
-                                700,
-                                baseHeight + Math.max(0, depth - 1) * 100 + Math.max(0, leaves - 1) * 12
-                            );
-
-                            // Calcule la taille réelle (mm) de la zone sélectionnée suivant l'axe de sa division
-                            const getSelectedZoneAxisSizeMM = (): { sizeMM: number; axis: 'width' | 'height' } => {
-                                const axis: 'width' | 'height' = selectedZone.type === 'vertical' ? 'width' : 'height';
-                                const targetId = selectedZone.id;
-
-                                // Parcours pour récupérer le chemin root -> selectedZone avec l'index du child
-                                const findPath = (node: Zone, acc: Array<{ node: Zone; childIndex: number | null }>): Array<{ node: Zone; childIndex: number | null }> | null => {
-                                    if (node.id === targetId) return [...acc, { node, childIndex: null }];
-                                    if (!node.children || node.children.length === 0) return null;
-                                    for (let i = 0; i < node.children.length; i++) {
-                                        const child = node.children[i];
-                                        const res = findPath(child, [...acc, { node, childIndex: i }]);
-                                        if (res) return res;
-                                    }
-                                    return null;
-                                };
-
-                                const path = findPath(rootZone, []);
-                                let sizeMM = axis === 'width' ? modules * 500 : height; // largeur en mm (modules*500) ou hauteur en mm
-                                if (!path) return { sizeMM, axis };
-
-                                // Multiplie par les ratios rencontrés sur le chemin, seulement quand l'orientation correspond à l'axe
-                                for (let i = 0; i < path.length - 1; i++) {
-                                    const { node, childIndex } = path[i];
-                                    if (childIndex == null) continue;
-                                    const affectsAxis = (axis === 'width' && node.type === 'vertical') || (axis === 'height' && node.type === 'horizontal');
-                                    if (!affectsAxis) continue;
-                                    const childCount = node.children?.length ?? 0;
-                                    if (childCount === 0) continue;
-                                    if (childCount === 2 && typeof node.splitRatio === 'number') {
-                                        const first = Math.max(1, node.splitRatio);
-                                        const second = Math.max(1, 100 - node.splitRatio);
-                                        const fractions = [first / (first + second), second / (first + second)];
-                                        sizeMM *= fractions[childIndex] ?? 0.5;
-                                    } else {
-                                        sizeMM *= 1 / childCount; // fallback divisions égales
-                                    }
-                                }
-
-                                return { sizeMM, axis };
-                            };
-
-                            const renderSimpleZone = (zone: Zone): JSX.Element => {
-                                const isLeaf = zone.type === 'leaf';
-                                const isSelected = zone.id === selectedZoneId;
-
-                                const handleSelect = (event: SyntheticEvent) => {
-                                    event.stopPropagation();
-                                    setSelectedZoneId(zone.id);
-                                };
-
-                                if (isLeaf) {
-                                    const meta = getContentMeta(zone.content);
-                                    return (
-                                        <button
-                                            type="button"
-                                            onClick={handleSelect}
-                                            className={`flex h-full w-full items-center justify-center rounded-[14px] border text-[13px] font-semibold transition ${
-                                                isSelected
-                                                    ? 'border-[#E2B66B] bg-[#FFF4DC] text-[#6E4B0A] shadow-[0_4px_12px_rgba(226,182,107,0.22)]'
-                                                    : 'border-[#E8DCC5] bg-white text-[#6C5634] hover:border-[#E2B66B] hover:text-[#7B5F24]'
-                                            }`}
-                                        >
-                                            {meta.shortLabel}
-                                        </button>
-                                    );
-                                }
-
-                                const isHorizontal = zone.type === 'horizontal';
-                                const direction = isHorizontal ? 'column' : 'row';
-                                const children = zone.children ?? [];
-                                const rawWeights = children.length === 2 && zone.splitRatio !== undefined
-                                    ? [Math.max(1, zone.splitRatio), Math.max(1, 100 - zone.splitRatio)]
-                                    : children.map(() => 1);
-                                // Fix inversion haut/bas: inverser l'ordre d'affichage pour les divisions horizontales
-                                const orderedChildren = isHorizontal ? [...children].reverse() : children;
-                                const orderedWeights = isHorizontal ? [...rawWeights].reverse() : rawWeights;
-
-                                const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        setSelectedZoneId(zone.id);
-                                    }
-                                };
-
-                                return (
-                                    <div
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={handleSelect}
-                                        onKeyDown={handleKeyDown}
-                                        className={`flex flex-1 rounded-[18px] ${isSelected ? 'ring-1 ring-[#E2B66B] bg-[#FFF7EB]' : ''}`}
-                                        style={{ flexDirection: direction, gap: '6px', padding: '6px', cursor: 'pointer' }}
-                                    >
-                                        {orderedChildren.map((child, index) => (
-                                            <div
-                                                key={child.id}
-                                                style={{ flexGrow: orderedWeights[index] ?? 1, flexBasis: 0, display: 'flex' }}
-                                            >
-                                                {renderSimpleZone(child)}
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            };
-
-                            return (
-                                <div className="mb-6 rounded-[28px] border border-[#E9DFCE] bg-white p-6 shadow-[0_16px_36px_rgba(212,196,167,0.28)]">
-                                    <div className="space-y-6">
-                                        <div>
-                                            <h3 className="flex items-center gap-2 text-lg font-semibold text-[#2F2817]">
-                                                <span>🎯</span>
-                                                <span>Construction par Compartiments</span>
-                                            </h3>
-                                            <p className="mt-1 text-sm text-[#6A5A3D]">
-                                                Sélectionnez une zone sur le plan, puis ajustez son contenu ci-dessous.
-                                            </p>
-                                        </div>
-
-                                        <div className="rounded-[22px] border border-[#E4D6C0] bg-[#FFFBF4] p-4">
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B48A3C]">Plan du meuble</p>
-                                                <div className="relative group inline-block">
-                                                    <button
-                                                        type="button"
-                                                        aria-label="Afficher l'astuce de construction"
-                                                        className="h-7 w-7 rounded-full border border-[#E4D6C0] bg-white text-[#A06A14] font-bold leading-none flex items-center justify-center hover:bg-[#FFF3DB]"
-                                                    >
-                                                        i
-                                                    </button>
-                                                    <div className="pointer-events-none absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border border-[#EADFCB] bg-white p-3 text-xs text-[#5B4A30] shadow-[0_8px_18px_rgba(0,0,0,0.08)] opacity-0 invisible transition-opacity duration-150 group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible">
-                                                        <p className="font-semibold text-[#2F2817] mb-1">Astuce</p>
-                                                        <p>
-                                                            Divisez d’abord la zone racine, puis sélectionnez chaque sous-zone pour placer tiroir,
-                                                            penderie ou espace libre.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="mt-3">
-                                                <div className="rounded-[22px] border border-[#F0DEC4] bg-white p-5">
-                                                    <div className="flex h-full w-full" style={{ height: dynamicHeight }}>
-                                                        {renderSimpleZone(rootZone)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Info tip moved to hover next to the title above */}
-
-                                        <div className="rounded-[24px] border border-[#E1D4C0] bg-[#FFFBF4] p-5 space-y-4">
-                                            <div className="border-b border-[#EADFCB] pb-4">
-                                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B48A3C]">Compartiment actif</p>
-                                                <h4 className="text-[16px] font-semibold text-[#2F2817]">{getZoneTitle(selectedZone)}</h4>
-                                                <p className="text-xs text-[#877050]">ID: {selectedZone.id}</p>
-                                                <p className="text-[13px] leading-relaxed text-[#5B4A30]">{getZoneSubtitle(selectedZone)}</p>
-                                            </div>
-
-                                            {canSplitSelected && (
-                                                <div className="border-b border-[#EADFCB] pb-4">
-                                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B48A3C]">Contenu de la zone</p>
-                                                    <div className="mt-3 grid grid-cols-1 gap-2">
-                                                        {zoneContentOptions.map((option) => {
-                                                            const meta = getContentMeta(option.value);
-                                                            const isActive = (selectedZone.content || 'empty') === option.value;
-                                                            return (
-                                                                <button
-                                                                    key={option.value}
-                                                                    type="button"
-                                                                    onClick={() => setZoneContent(selectedZone.id, option.value)}
-                                                                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                                                                        isActive
-                                                                            ? 'border-[#F2B84B] bg-[#FFF3DB] text-[#704909] shadow-sm'
-                                                                            : 'border-[#E5D8C3] bg-white text-[#5B4A30] hover:border-[#F2B84B] hover:bg-[#FFF7E8]'
-                                                                    }`}
-                                                                >
-                                <span className="flex items-center gap-2">
-                                  <span className="text-lg">{meta.icon}</span>
-                                    {option.label}
-                                </span>
-                                                                    <span className="max-w-[150px] text-[10px] font-normal leading-snug text-[#8C7B60]">{option.helper}</span>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    {(() => {
-                                                        const parentHasAdjustable = parentZone && parentZone.type !== 'leaf' && (parentZone.children?.length ?? 0) === 2;
-                                                        return parentHasAdjustable ? (
-                                                            <div className="mt-3">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => parentZone && setSelectedZoneId(parentZone.id)}
-                                                                    className="inline-flex items-center gap-2 rounded-lg border border-[#E2B66B] bg-[#FFF7EB] px-3 py-1.5 text-[12px] font-semibold text-[#704909] shadow-sm hover:bg-[#FFF2DB]"
-                                                                    title="Régler précisément la position de la division en pourcentage ou en centimètres"
-                                                                >
-                                                                    <span>🎚️</span>
-                                                                    <span>Régler la division parente</span>
-                                                                    <span className="text-[11px] font-normal text-[#8C7B60]">(% / cm)</span>
-                                                                </button>
-                                                            </div>
-                                                        ) : null;
-                                                    })()}
-                                                </div>
-                                            )}
-
-                                            <div className="border-b border-[#EADFCB] pb-4">
-                                                {canSplitSelected ? (
-                                                    <div>
-                                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B48A3C]">Diviser cette zone</p>
-                                                        <div className="mt-3 grid grid-cols-2 gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => splitZone(selectedZone.id, 'vertical', 2)}
-                                                                className="flex items-center justify-center gap-2 rounded-xl border border-[#E5D8C3] bg-[#FFF9EF] px-3 py-2 text-[13px] font-semibold hover:border-[#F2B84B] hover:bg-[#FFF2DB]"
-                                                            >
-                                                                ↔️ Colonnes
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => splitZone(selectedZone.id, 'horizontal', 2)}
-                                                                className="flex items-center justify-center gap-2 rounded-xl border border-[#E5D8C3] bg-[#FFF9EF] px-3 py-2 text-[13px] font-semibold hover:border-[#F2B84B] hover:bg-[#FFF2DB]"
-                                                            >
-                                                                ↕️ Étagères
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B48A3C]">Réglage de la division</p>
-                                                        {canAdjustRatio ? (
-                                                            <div className="mt-3 space-y-2 text-[#5B4A30]">
-                                                                {(() => {
-                                                                    const { sizeMM, axis } = getSelectedZoneAxisSizeMM();
-                                                                    const totalCm = Math.max(1, Math.round(sizeMM / 10));
-                                                                    const currentCm = Math.min(
-                                                                        Math.max(1, Math.round(((sliderRatio / 100) * sizeMM) / 10)),
-                                                                        Math.max(1, totalCm - 1)
-                                                                    );
-                                                                    const maxCm = Math.max(1, totalCm - 1);
-                                                                    return (
-                                                                        <>
-                                                                            <div className="flex items-center gap-3">
-                                                                                <span className="text-xs font-semibold">0 cm</span>
-                                                                                <input
-                                                                                    type="range"
-                                                                                    min={1}
-                                                                                    max={maxCm}
-                                                                                    step={1}
-                                                                                    value={currentCm}
-                                                                                    onChange={(e) => {
-                                                                                        const cm = Number(e.target.value);
-                                                                                        const percent = (cm * 10 / sizeMM) * 100;
-                                                                                        adjustTarget && setSplitRatio(
-                                                                                            adjustTarget.id,
-                                                                                            Math.max(1, Math.min(99, Math.round(percent)))
-                                                                                        );
-                                                                                    }}
-                                                                                    className="flex-1 accent-[#F2B84B]"
-                                                                                />
-                                                                                <span className="text-xs font-semibold">{totalCm} cm</span>
-                                                                            </div>
-                                                                            <div className="flex items-center justify-between text-[11px] text-[#8C7B60]">
-                                                                                <span>Position {axis === 'width' ? '↔︎' : '↕︎'}</span>
-                                                                                <span>{currentCm} cm / total {totalCm} cm</span>
-                                                                            </div>
-                                                                        </>
-                                                                    );
-                                                                })()}
-                                                            </div>
-                                                        ) : (
-                                                            <p className="mt-3 text-[11px] text-[#8C7B60]">Division égale.</p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="pt-1 space-y-2">
-                                                {selectedZone.type !== 'leaf' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => resetZone(selectedZone.id)}
-                                                        className="w-full rounded-xl border border-[#F0B4B4] bg-[#FFECEC] px-3 py-2 text-[13px] font-semibold text-[#B43B3B]"
-                                                    >
-                                                        🗑️ Supprimer cette division
-                                                    </button>
-                                                )}
-                                                {parentZone && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => resetZone(parentZone.id)}
-                                                        className="w-full rounded-xl border border-[#F2D0A8] bg-[#FFF3E2] px-3 py-2 text-[13px] font-semibold text-[#9B6513]"
-                                                    >
-                                                        ↩️ Supprimer la division parente
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-
-                        {/* Controls Section (dimensions sliders) - Visible dans les deux modes */}
-                        <Controls width={modules * 500} depth={depth} height={height} setWidth={(w) => handleModulesChange(Math.max(1, Math.round(w / 500)))} setDepth={handleDepthChange} setHeight={handleHeightChange} />
-
-                        {/* Socle Section */}
-                        <div className="control-group">
-                            <label className="control-label" htmlFor="socle-select">Socle</label>
-                            <select
-                                id="socle-select"
-                                className="select-input"
-                                value={socle}
-                                onChange={(e) => handleSocleChange(e.target.value)}
-                            >
-                                <option value="none">Sans socle</option>
-                                <option value="metal">Métal</option>
-                                <option value="wood">Bois</option>
-                            </select>
-                        </div>
-
-                        {/* Planches de Base (Structure) - Visible uniquement en mode simple */}
-                        {!isExpertMode && !useAdvancedMode && (
-                            <div className="control-group">
-                                <label className="control-label">Structure de Base (Planches)</label>
-                                <p className="text-xs text-gray-500 mb-2">
-                                    Sélectionnez les planches qui composent la structure du meuble
-                                </p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { key: 'b' as const, label: 'Bas', icon: '⬇️', desc: 'Planche du bas' },
-                                        { key: 'h' as const, label: 'Haut', icon: '⬆️', desc: 'Planche du haut' },
-                                        { key: 'g' as const, label: 'Gauche', icon: '⬅️', desc: 'Côté gauche' },
-                                        { key: 'd' as const, label: 'Droite', icon: '➡️', desc: 'Côté droit' },
-                                        { key: 'f' as const, label: 'Fond', icon: '🔲', desc: 'Planche arrière' }
-                                    ].map((planche) => (
-                                        <label
-                                            key={planche.key}
-                                            className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition ${
-                                                basePlanches[planche.key]
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'border-gray-300 bg-white hover:border-gray-400'
-                                            }`}
-                                            title={planche.desc}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={basePlanches[planche.key]}
-                                                onChange={(e) => {
-                                                    const newValue = e.target.checked;
-                                                    console.log('🔧 Changement planche', planche.key, ':', newValue);
-                                                    console.log('🔧 État AVANT:', JSON.stringify(basePlanches));
-                                                    const newState = {
-                                                        ...basePlanches,
-                                                        [planche.key]: newValue
-                                                    };
-                                                    console.log('🔧 État APRÈS:', JSON.stringify(newState));
-                                                    setBasePlanches(newState);
-                                                }}
-                                                className="w-5 h-5"
-                                            />
-                                            <span className="text-2xl">{planche.icon}</span>
-                                            <span className="font-medium">{planche.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                                <div className="mt-2 flex gap-2">
-                                    <button
-                                        onClick={() => {
-                                            console.log('🔧 Tout sélectionner');
-                                            setBasePlanches({ b: true, h: true, g: true, d: true, f: true });
-                                        }}
-                                        className="flex-1 px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                                    >
-                                        ✅ Tout sélectionner
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            console.log('🔧 Tout désélectionner');
-                                            setBasePlanches({ b: false, h: false, g: false, d: false, f: false });
-                                        }}
-                                        className="flex-1 px-3 py-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
-                                    >
-                                        ❌ Tout désélectionner
-                                    </button>
-                                </div>
-                                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                                    <p className="text-yellow-800">
-                                        💡 <strong>Astuce:</strong> Décochez des planches pour créer des meubles ouverts.
-                                        Par exemple, sans fond (f) pour un meuble encastré, ou sans haut (h) pour une étagère ouverte.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Matériaux Section */}
-                        <div className="control-group">
-                            <label className="control-label">Matériaux</label>
-                            <p className="text-xs text-gray-500 mb-3">
-                                Sélectionnez d&apos;abord la structure. Les teintes disponibles s&apos;adapteront automatiquement.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {orderedMaterialLabels.length === 0 && (
-                                    <span className="col-span-full text-xs text-gray-500">Aucun matériau disponible pour le moment.</span>
-                                )}
-                                {orderedMaterialLabels.map((label) => {
-                                    const key = normalizeMaterialKey(label);
-                                    const isActive = selectedMaterialKey === key;
-                                    const abbr = MATERIAL_ABBR_BY_KEY[key] || label.split(' ').map((word) => word.charAt(0)).join('').slice(0, 3).toUpperCase();
-                                    return (
-                                        <button
-                                            key={label}
-                                            type="button"
-                                            onClick={() => {
-                                                if (selectedMaterialKey !== key) {
-                                                    handleFinishChange(key);
-                                                    setSelectedColorId(null);
-                                                    setSelectedColorImage(null);
-                                                }
-                                            }}
-                                            className={`flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition ${
-                                                isActive
-                                                    ? 'border-amber-500 bg-white text-ink shadow-sm'
-                                                    : 'border-[#E3E3E3] bg-[#F7F7F7] text-ink/70 hover:border-amber-300'
-                                            }`}
-                                        >
-                      <span
-                          className={`flex h-7 w-7 items-center justify-center rounded-full border ${
-                              isActive ? 'border-amber-400 bg-white text-ink/80' : 'border-[#DDDDDD] bg-white text-ink/60'
-                          } text-[11px] font-semibold uppercase`}
-                      >
-                        {abbr}
-                      </span>
-                                            <span className="leading-snug text-[13px] font-semibold text-ink">{label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Toggle Multi-couleurs */}
-                        <div className="control-group">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <label className="control-label">Mode de coloration</label>
-                                    <p className="text-xs text-gray-500">
-                                        {useMultiColor
-                                            ? 'Couleurs personnalisées par composant'
-                                            : 'Couleur unique pour tout le meuble'}
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setUseMultiColor(!useMultiColor)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                                        useMultiColor ? 'bg-amber-500' : 'bg-gray-300'
-                                    }`}
-                                >
-                                    <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                            useMultiColor ? 'translate-x-6' : 'translate-x-1'
-                                        }`}
-                                    />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Couleurs / Teintes Section */}
-                        <div className="control-group">
-                            <label className="control-label">
-                                {useMultiColor ? 'Couleurs par composant' : 'Couleurs'}
-                            </label>
-                            <p className="text-xs text-gray-500 mb-3">
-                                {useMultiColor
-                                    ? 'Sélectionnez une couleur différente pour chaque partie du meuble'
-                                    : 'Choisissez ensuite la finition précise correspondant au matériau sélectionné.'}
-                            </p>
-
-                            {materialsLoading ? (
-                                <div className="text-sm text-gray-500">Chargement des échantillons…</div>
-                            ) : colorsForMaterial.length === 0 ? (
-                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-                                    Aucune teinte n&apos;est encore disponible pour {selectedMaterialLabel}.
-                                </div>
-                            ) : useMultiColor ? (
-                                /* MODE MULTI-COULEURS : Sélecteurs par composant */
-                                <div className="space-y-6">
-                                    {[
-                                        { key: 'structure' as const, label: 'Structure', icon: '🏗️', desc: 'Corps du meuble' },
-                                        { key: 'drawers' as const, label: 'Tiroirs', icon: '📦', desc: 'Façades de tiroirs' },
-                                        { key: 'doors' as const, label: 'Portes', icon: '🚪', desc: 'Portes battantes' },
-                                        { key: 'base' as const, label: 'Socle', icon: '⬛', desc: 'Base du meuble' },
-                                    ].map(({ key, label, icon, desc }) => (
-                                        <div key={key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                            <div className="mb-3 flex items-center gap-2">
-                                                <span className="text-xl">{icon}</span>
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-ink">{label}</h4>
-                                                    <p className="text-xs text-gray-500">{desc}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {colorsForMaterial.map((option) => {
-                                                    const isActive = componentColors[key].colorId === option.id;
-                                                    return (
-                                                        <button
-                                                            key={option.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setComponentColors(prev => ({
-                                                                    ...prev,
-                                                                    [key]: { colorId: option.id, hex: option.hex }
-                                                                }));
-                                                            }}
-                                                            className={`group flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-left text-xs transition ${
-                                                                isActive ? 'border-amber-500 bg-white text-ink shadow-sm' : 'border-gray-300 bg-white text-ink/70 hover:border-amber-300'
-                                                            }`}
-                                                        >
-                                                            <span
-                                                                className="inline-flex h-6 w-6 flex-shrink-0 overflow-hidden rounded-full border border-gray-300"
-                                                                style={{ backgroundColor: option.image_url ? undefined : (option.hex || DEFAULT_COLOR_HEX) }}
-                                                            >
-                                                                {option.image_url && (
-                                                                    <img src={option.image_url} alt={option.name || ''} className="h-full w-full object-cover" />
-                                                                )}
-                                                            </span>
-                                                            <span className="text-xs font-medium">{option.name}</span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                /* MODE COULEUR UNIQUE : Sélecteur classique */
-                                <div className="flex flex-col gap-6 md:flex-row md:items-start">
-                                    <div className="flex flex-1 flex-wrap gap-2">
-                                        {colorsForMaterial.map((option) => {
-                                            const isActive = selectedColorId === option.id;
-                                            const isBestseller = option.name ? BESTSELLER_COLOR_LABELS.has(option.name.trim()) : false;
-                                            return (
-                                                <button
-                                                    key={option.id}
-                                                    type="button"
-                                                    onClick={() => handleSelectColorOption(option)}
-                                                    className={`group flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-left text-sm transition ${
-                                                        isActive ? 'border-amber-500 bg-white text-ink shadow-sm' : 'border-[#E3E3E3] bg-[#F7F7F7] text-ink/80 hover:border-amber-300'
-                                                    }`}
-                                                >
-                          <span
-                              className="inline-flex h-7 w-7 flex-shrink-0 overflow-hidden rounded-full border border-[#D8D8D8]"
-                              style={{ backgroundColor: option.image_url ? undefined : (option.hex || DEFAULT_COLOR_HEX) }}
-                          >
-                            {option.image_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={option.image_url}
-                                    alt={option.name || 'Échantillon matériau'}
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : null}
-                          </span>
-                                                    <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                            {option.name || 'Teinte personnalisée'}
-                                                        {isBestseller && (
-                                                            <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase text-white">Bestseller</span>
-                                                        )}
-                          </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {selectedColorOption && (
-                                        <div className="w-full max-w-xs rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Sélectionné</p>
-                                            <h4 className="mt-1 text-sm font-semibold text-ink">
-                                                {selectedColorOption.name || colorLabel}
-                                            </h4>
-                                            <p className="text-xs text-gray-500">{selectedMaterialLabel}</p>
-                                            <div
-                                                className="mt-3 h-36 w-full overflow-hidden rounded-xl border border-gray-100"
-                                                style={{ backgroundColor: selectedColorOption.image_url ? undefined : (selectedColorOption.hex || DEFAULT_COLOR_HEX) }}
-                                            >
-                                                {selectedColorOption.image_url ? (
-                                                    // eslint-disable-next-line @next/next/no-img-element
-                                                    <img src={selectedColorOption.image_url} alt={selectedColorOption.name || colorLabel} className="h-full w-full object-cover" />
-                                                ) : null}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className="mt-4 w-full rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-ink/80 transition hover:border-ink/40 hover:text-ink"
-                                                onClick={() => {
-                                                    if (typeof window !== 'undefined') {
-                                                        window.open('/samples', '_blank');
-                                                    }
-                                                }}
-                                            >
-                                                Besoin d&apos;aide ? Voir tous les échantillons
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Nombre de Portes */}
-                        {!isExpertMode && (
-                            <div className="control-group">
-                                <label className="control-label" htmlFor="doors-count">
-                                    Nombre de Portes
-                                    <span className="ml-2 text-sm text-gray-500">({doors} porte{doors > 1 ? 's' : ''})</span>
-                                </label>
-                                <input
-                                    type="range"
-                                    id="doors-count"
-                                    min="0"
-                                    max="6"
-                                    value={doors}
-                                    onChange={(e) => setDoors(parseInt(e.target.value))}
-                                    className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                    <span>0</span>
-                                    <span>1</span>
-                                    <span>2</span>
-                                    <span>3</span>
-                                    <span>4</span>
-                                    <span>5</span>
-                                    <span>6</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Nombre de Tiroirs */}
-                        {!isExpertMode && (
-                            <div className="control-group">
-                                <label className="control-label" htmlFor="drawers-count">
-                                    Nombre de Tiroirs
-                                    <span className="ml-2 text-sm text-gray-500">({drawers} tiroir{drawers > 1 ? 's' : ''})</span>
-                                </label>
-                                <input
-                                    type="range"
-                                    id="drawers-count"
-                                    min="0"
-                                    max="4"
-                                    value={drawers}
-                                    onChange={(e) => setDrawers(parseInt(e.target.value))}
-                                    className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                    <span>0</span>
-                                    <span>1</span>
-                                    <span>2</span>
-                                    <span>3</span>
-                                    <span>4</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Nombre d'Étagères */}
-                        {!isExpertMode && (
-                            <div className="control-group">
-                                <label className="control-label" htmlFor="shelves-count">
-                                    Nombre d&apos;Étagères
-                                    <span className="ml-2 text-sm text-gray-500">({shelves} étagère{shelves > 1 ? 's' : ''})</span>
-                                </label>
-                                <input
-                                    type="range"
-                                    id="shelves-count"
-                                    min="0"
-                                    max="8"
-                                    value={shelves}
-                                    onChange={(e) => setShelves(parseInt(e.target.value))}
-                                    className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                    <span>0</span>
-                                    <span>2</span>
-                                    <span>4</span>
-                                    <span>6</span>
-                                    <span>8</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Penderie / Dressing */}
-                        {!isExpertMode && (
-                            <div className="control-group">
-                                <label className="control-label flex items-center gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={hasDressing}
-                                        onChange={(e) => setHasDressing(e.target.checked)}
-                                        className="w-5 h-5"
-                                    />
-                                    <span className="flex items-center gap-2">
-                    <span className="text-2xl">👔</span>
-                    <span>Penderie (tringle)</span>
-                  </span>
-                                </label>
-                                <p className="text-xs text-gray-500 mt-1 ml-8">
-                                    Ajoute une barre horizontale pour suspendre les vêtements
-                                </p>
-                            </div>
-                        )}
-
-                        {/* État Portes/Tiroirs */}
-                        <div className="control-group">
-                            <label className="control-label">État d&apos;Affichage</label>
-                            <div className="button-group">
-                                <button
-                                    className={`toggle-btn ${doorsOpen ? 'active' : ''}`}
-                                    onClick={toggleDoors}
-                                    title="Afficher avec portes et tiroirs ouverts"
-                                >
-                                    🔓 Ouverts
-                                </button>
-                                <button
-                                    className={`toggle-btn ${!doorsOpen ? 'active' : ''}`}
-                                    onClick={toggleDoors}
-                                    title="Masquer les portes et fermer les tiroirs"
-                                >
-                                    🔒 Fermés
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="divider"></div>
-
-                        {/* Prix Section */}
-                        <div className="price-section">
-                            <Price base={580} modules={modules} height={height} depth={depth} />
-                        </div>
-
-                        {/* Actions */}
-                        <div className="actions space-y-2">
-                            {/* Bouton Enregistrer la configuration */}
-                            <button
-                                className="btn btn-primary"
-                                onClick={saveConfiguration}
-                                title="Ajouter cette configuration au panier"
-                            >
-                                🛒 Ajouter au panier
-                            </button>
-
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => router.push('/')}
-                            >
-                                Retour à l&apos;accueil
-                            </button>
-
-                            {/* Bouton admin uniquement */}
-                            {isAdmin && (
-                                <button
-                                    className="btn btn-outline"
-                                    onClick={async () => {
-                                        try {
-                                            const largeur = modules * 500;
-                                            const promptToPublish = templatePrompt ? modifyPromptDimensions(templatePrompt, largeur, depth, height) : `M1(${largeur},${depth},${height})`;
-                                            const res = await apiClient.models.create({ name: `Template ${id || 'custom'}`, prompt: promptToPublish, price });
-                                            if (res && res.success) {
-                                                alert('Template publié (id: ' + res.id + ')');
-                                            }
-                                        } catch (err: any) {
-                                            if (err && err.statusCode === 401) {
-                                                alert('Action réservée aux administrateurs. Veuillez vous connecter.');
-                                            } else {
-                                                console.error(err);
-                                                alert('Erreur lors de la publication du template.');
-                                            }
-                                        }
-                                    }}
-                                >
-                                    Publier le template (admin)
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <p className="hidden text-xs text-[#706F6C] sm:block">
+                  {isViewMode
+                    ? (isAdmin ? 'Consultation de la configuration client' : 'Aperçu de votre configuration')
+                    : (isEditMode && editingConfigId
+                        ? (isAdmin ? 'Modification de la configuration client' : 'Modifier votre configuration')
+                        : 'Configurateur sur mesure')}
+                </p>
+              </div>
             </div>
 
-            {/* Modal d'authentification */}
-            <AuthModal
-                isOpen={showAuthModal}
-                onClose={() => setShowAuthModal(false)}
-                onSuccess={(email) => {
-                    setUserEmail(email);
-                    // Sauvegarder automatiquement après connexion
-                    setTimeout(() => saveConfiguration(), 500);
-                }}
-            />
+            <div className="flex items-center gap-3">
+              {!isAdminCreateModel && !isAdminEditModel && isAuthenticated && customer && (
+                <span className="hidden text-xs text-[#706F6C] md:block">
+                  {customer.first_name} {customer.last_name}
+                </span>
+              )}
+              <Link
+                href="/"
+                className="font-serif text-base text-[#1A1917] lg:text-lg"
+              >
+                ArchiMeuble
+              </Link>
+            </div>
+          </div>
+        </header>
 
-        </>
-    );
+        {/* Main content - Desktop: side by side, Mobile: stacked */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+          {/* Viewer - Mobile: fixed height, Desktop: flex-1 */}
+          <div className="viewer-section relative flex flex-col bg-[#FAFAF9] lg:flex-1">
+            {/* Viewer wrapper - prend l'espace disponible */}
+            <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
+              <div className="absolute inset-0">
+                <ThreeViewer
+                  width={width}
+                  height={height}
+                  depth={depth}
+                  color={color}
+                  imageUrl={selectedColorImage}
+                  hasSocle={socle !== 'none'}
+                  socle={socle}
+                  rootZone={rootZone}
+                  selectedZoneIds={isViewMode ? [] : selectedZoneIds}
+                  onSelectZone={isViewMode ? undefined : handleZoneSelect}
+                  isBuffet={furnitureStructure?.isBuffet}
+                  doorsOpen={doorsOpen}
+                  showDecorations={showDecorations}
+                  onToggleDoors={isViewMode ? undefined : handleToggleDoors}
+                  componentColors={componentColors}
+                  useMultiColor={useMultiColor}
+                  doorType={doorType}
+                  doorSide={doorSide}
+                  mountingStyle={mountingStyle}
+                  selectedPanelId={isViewMode || !showPanelTool ? null : selectedPanelId}
+                  onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
+                  deletedPanelIds={deletedPanelIds}
+                />
+
+                {/* Sélecteur de couleur pour la zone (tiroir/porte) - apparaît quand une zone colorisable est sélectionnée */}
+                {!isViewMode && isSelectedZoneColorizable && selectedZone && (
+                  <ZoneColorPicker
+                    zone={selectedZone}
+                    materialsMap={materialsMap}
+                    selectedMaterialKey={selectedMaterialLabel}
+                    defaultColor={color}
+                    defaultImageUrl={selectedColorImage}
+                    onColorChange={setZoneColor}
+                    onClose={() => setSelectedZoneIds([])}
+                  />
+                )}
+
+                {/* Boutons flottants pour le viewer (Desktop) */}
+                <div className="absolute bottom-4 right-4 z-20 hidden flex-col gap-2 lg:flex">
+                  {/* TODO: Bouton capture d'écran - désactivé temporairement
+                  <button
+                    type="button"
+                    onClick={handleCaptureScreenshot}
+                    className="flex h-10 items-center gap-2 border border-[#E8E6E3] bg-white px-4 text-sm font-medium text-[#706F6C] shadow-sm transition-all hover:border-[#1A1917] hover:text-[#1A1917]"
+                    style={{ borderRadius: '2px' }}
+                    title="Télécharger une image du meuble"
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span>Capturer</span>
+                  </button>
+                  */}
+
+                  {/* Bouton outil suppression planches */}
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPanelTool(!showPanelTool);
+                        if (showPanelTool) {
+                          setSelectedPanelId(null);
+                        }
+                      }}
+                      className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                        showPanelTool
+                          ? 'border-[#E64A19] bg-[#E64A19] text-white'
+                          : 'border-[#FF8A65] bg-[#FFF3E0] text-[#E64A19] hover:border-[#E64A19] hover:bg-[#E64A19] hover:text-white'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title={showPanelTool ? "Fermer l'outil" : "Retirer des planches"}
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="4" width="20" height="4" rx="0.5" />
+                        <line x1="6" y1="12" x2="18" y2="12" strokeDasharray="2 2" opacity="0.5" />
+                        <rect x="2" y="16" width="20" height="4" rx="0.5" />
+                      </svg>
+                      <span>Retirer planches</span>
+                      {deletedPanelIds.size > 0 && (
+                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-[#E64A19]">
+                          {deletedPanelIds.size}
+                        </span>
+                      )}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowDecorations(!showDecorations)}
+                    className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                      showDecorations
+                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                    title={showDecorations ? "Cacher les décorations" : "Afficher les décorations"}
+                  >
+                    <Sparkles className={`h-4 w-4 ${showDecorations ? 'text-yellow-400' : ''}`} />
+                    <span>Décorations</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleDoors}
+                    className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                      doorsOpen
+                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    <Box className="h-4 w-4" />
+                    <span>{doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}</span>
+                  </button>
+                </div>
+
+                {/* Boutons Undo/Redo flottants (Desktop) */}
+                {!isViewMode && (
+                  <div className="absolute top-4 left-4 z-20 hidden flex-row gap-2 lg:flex">
+                    <button
+                      type="button"
+                      onClick={undoZone}
+                      disabled={!canUndoZone}
+                      className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
+                        canUndoZone
+                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title="Annuler (Ctrl+Z)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoZone}
+                      disabled={!canRedoZone}
+                      className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
+                        canRedoZone
+                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title="Rétablir (Ctrl+Y)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Panel selection indicator */}
+                {selectedPanelId && !isViewMode && showPanelTool && (
+                  <div className="absolute top-4 right-4 z-20 hidden lg:block">
+                    <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className={`h-3 w-3 rounded-full ${deletedPanelIds.has(selectedPanelId) ? 'bg-[#FF5722]' : 'bg-[#2196F3]'}`} />
+                      <span className={`text-sm font-medium ${deletedPanelIds.has(selectedPanelId) ? 'text-[#706F6C] line-through' : 'text-[#1A1917]'}`}>
+                        {(() => {
+                          const panelInfo = stringToPanelId(selectedPanelId);
+                          if (panelInfo) {
+                            if (panelInfo.type === 'separator') {
+                              const isHorizontal = selectedPanelId.includes('-h-');
+                              return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                            }
+                            const baseLabel = PANEL_META[panelInfo.type]?.label || selectedPanelId;
+                            if (panelInfo.index !== undefined) {
+                              return `${baseLabel} (segment ${panelInfo.index + 1})`;
+                            }
+                            return baseLabel;
+                          }
+                          return selectedPanelId;
+                        })()}
+                      </span>
+                      {/* Delete/restore panel button */}
+                      <button
+                        type="button"
+                        onClick={() => togglePanelDeleted(selectedPanelId)}
+                        className={`ml-1 ${deletedPanelIds.has(selectedPanelId) ? 'text-[#4CAF50] hover:text-[#388E3C]' : 'text-[#FF5722] hover:text-[#E64A19]'}`}
+                        title={deletedPanelIds.has(selectedPanelId) ? 'Restaurer ce panneau' : 'Retirer ce panneau'}
+                      >
+                        {deletedPanelIds.has(selectedPanelId) ? (
+                          <RotateCcw className="h-4 w-4" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPanelId(null)}
+                        className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
+                        title="Désélectionner"
+                      >
+                        <IconTablerX className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {generating && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/40 backdrop-blur-[1px] z-10">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+                      <p className="text-sm text-[#706F6C]">Mise à jour de la fabrication...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action bar - sous le viewer */}
+            {!isViewMode && (
+              <div className="hidden flex-shrink-0 lg:block">
+                <ActionBar
+                  selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneIds[0] : null}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Panel de configuration - Mobile: scrollable, Desktop: fixed width 620px pour contenir le grand canvas */}
+          <div className="flex min-h-0 flex-1 flex-col border-t border-[#E8E6E3] bg-white lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
+            {isViewMode ? (
+              <ConfigurationSummary
+                width={width}
+                height={height}
+                depth={depth}
+                finish={finish}
+                color={color}
+                colorLabel={colorLabel}
+                socle={socle}
+                rootZone={rootZone}
+                price={price}
+                modelName={model?.name}
+                isAdmin={isAdmin}
+                onEdit={handleAdminEdit}
+                priceDisplaySettings={priceDisplaySettings}
+                mountingStyle={mountingStyle}
+                isOwner={isConfigOwner}
+                onEditOwn={handleOwnerEdit}
+              />
+            ) : (
+              <>
+                {/* Tabs - Toujours visibles avec labels */}
+                <div className="flex flex-shrink-0 border-b border-[#E8E6E3]">
+                  {TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-medium transition-colors sm:gap-2 sm:py-4 sm:text-sm ${
+                        activeTab === tab.id
+                          ? 'border-[#1A1917] text-[#1A1917]'
+                          : 'border-transparent text-[#706F6C] hover:text-[#1A1917]'
+                      }`}
+                    >
+                      <tab.icon className="h-4 w-4" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Content - Scrollable */}
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+                  {activeTab === 'dimensions' && (
+                    <div className="space-y-4 pb-32 lg:pb-0">
+                      {/* Bouton réinitialiser */}
+                      {initialConfig && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={resetConfiguration}
+                            className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                            style={{ borderRadius: '2px' }}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Réinitialiser au modèle par défaut
+                          </button>
+                        </div>
+                      )}
+
+                      <ZoneEditor
+                        rootZone={rootZone}
+                        selectedZoneIds={selectedZoneIds}
+                        onRootZoneChange={setRootZone}
+                        onSelectedZoneIdsChange={setSelectedZoneIds}
+                        onToggleLight={toggleZoneLight}
+                        onToggleCableHole={toggleZoneCableHole}
+                        onToggleDressing={toggleZoneDressing}
+                        onGroupZones={groupZones}
+                        onSetDoorContent={setZoneDoorContent}
+                        onSetHandleType={setZoneHandleType}
+                        width={width}
+                        height={height}
+                        onSelectZone={handleZoneSelect}
+                        isAdminCreateModel={isAdminCreateModel}
+                        renderAfterCanvas={
+                          <DimensionsPanel
+                            width={width}
+                            depth={depth}
+                            height={height}
+                            onWidthChange={setWidth}
+                            onDepthChange={setDepth}
+                            onHeightChange={setHeight}
+                          />
+                        }
+                      />
+
+                      {/* Outil de suppression de panneaux - affiché quand actif via bouton flottant */}
+                      {showPanelTool && (
+                        <div ref={panelToolRef}>
+                          <PanelPlanCanvas
+                            zone={rootZone}
+                            width={width}
+                            height={height}
+                            selectedPanelId={selectedPanelId}
+                            onSelectPanel={handlePanelSelect}
+                            deletedPanelIds={deletedPanelIds}
+                          />
+                        </div>
+                      )}
+
+                      {/* DoorSelector supprimé - Les options de portes sont maintenant dans ZoneControls */}
+                      <SocleSelector
+                        value={socle}
+                        onChange={setSocle}
+                      />
+
+                      {/* Sélecteur du style de montage portes/tiroirs */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
+                          <h3 className="font-serif text-xs text-[#1A1917]">Montage façades</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setMountingStyle('applique')}
+                            className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
+                              mountingStyle === 'applique'
+                                ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                            }`}
+                            style={{ borderRadius: '4px' }}
+                          >
+                            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" className="opacity-80">
+                              <rect x="2" y="4" width="28" height="16" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                              <rect x="0" y="2" width="12" height="20" fill="currentColor" opacity="0.3"/>
+                              <rect x="0" y="2" width="12" height="20" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                            </svg>
+                            <span className="text-[11px] font-medium">Applique</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMountingStyle('encastre')}
+                            className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
+                              mountingStyle === 'encastre'
+                                ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                            }`}
+                            style={{ borderRadius: '4px' }}
+                          >
+                            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" className="opacity-80">
+                              <rect x="2" y="4" width="28" height="16" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                              <rect x="4" y="6" width="10" height="12" fill="currentColor" opacity="0.3"/>
+                              <rect x="4" y="6" width="10" height="12" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                            </svg>
+                            <span className="text-[11px] font-medium">Encastré</span>
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-[#706F6C]">
+                          {mountingStyle === 'applique'
+                            ? 'Portes et tiroirs en saillie sur le cadre'
+                            : 'Portes et tiroirs affleurant avec le cadre'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'materials' && (
+                    <div className="pb-32 lg:pb-0">
+                      <MaterialSelector
+                        materialsMap={materialsMap}
+                        selectedMaterialKey={selectedMaterialLabel}
+                        selectedColorId={selectedColorId}
+                        onMaterialChange={handleMaterialChange}
+                        onColorChange={handleColorChange}
+                        loading={materialsLoading}
+                        useMultiColor={useMultiColor}
+                        onUseMultiColorChange={handleUseMultiColorChange}
+                        componentColors={componentColors}
+                        onComponentColorChange={handleComponentColorChange}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer avec prix - Desktop: dans le panel */}
+                <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
+                  <PriceDisplay
+                    price={price}
+                    onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
+                    isAuthenticated={isAuthenticated}
+                    isAdmin={isAdmin}
+                    isAdminCreateModel={isAdminCreateModel}
+                    isAdminEditModel={isAdminEditModel}
+                    displayMode={priceDisplaySettings.mode}
+                    deviationRange={priceDisplaySettings.range}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile bottom bar - Fixed with price and CTA */}
+        {!isViewMode && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E8E6E3] bg-white px-4 py-3 lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              {/* Prix compact */}
+              <div className="flex-shrink-0">
+                <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
+                <div className="font-serif text-xl text-[#1A1917]">
+                  {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
+                    `${new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(Math.max(0, price - priceDisplaySettings.range))} - ${new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(price + priceDisplaySettings.range)}`
+                  ) : (
+                    new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(price)
+                  )}
+                </div>
+              </div>
+              {/* Undo/Redo mobile */}
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={undoZone}
+                  disabled={!canUndoZone}
+                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
+                    canUndoZone
+                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
+                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
+                  }`}
+                  style={{ borderRadius: '2px' }}
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={redoZone}
+                  disabled={!canRedoZone}
+                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
+                    canRedoZone
+                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
+                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
+                  }`}
+                  style={{ borderRadius: '2px' }}
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
+              {/* Toggle portes */}
+              <button
+                type="button"
+                onClick={handleToggleDoors}
+                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
+                style={{ borderRadius: '2px' }}
+              >
+                <span>{doorsOpen ? '🚪' : '📦'}</span>
+                <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
+              </button>
+              {/* Toggle déco */}
+              <button
+                type="button"
+                onClick={() => setShowDecorations(!showDecorations)}
+                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${showDecorations ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
+                style={{ borderRadius: '2px' }}
+              >
+                <span>{showDecorations ? '🏺' : '✨'}</span>
+                <span className="hidden sm:inline">Déco</span>
+              </button>
+              {/* CTA */}
+              {(!isAdminCreateModel && !isAdminEditModel) ? (
+                <button
+                  type="button"
+                  onClick={saveConfiguration}
+                  className="flex h-11 flex-1 max-w-[180px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <Box className="h-4 w-4" />
+                  <span>
+                    {(isEditMode && editingConfigId) ? 'Enregistrer' : (isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider' : 'Enregistrer'))}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModelDialogOpen(true)}
+                  className="flex h-11 flex-1 max-w-[200px] items-center justify-center gap-2 bg-[#8B7355] text-sm font-medium text-white transition-colors hover:bg-[#705D45]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <IconPlus className="h-4 w-4" />
+                  <span>{isAdminEditModel ? 'Mettre à jour le modèle' : 'Enregistrer le modèle'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Dialogue de restauration */}
+      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle>Reprendre votre session ?</DialogTitle>
+            <DialogDescription>
+              Une configuration non enregistrée a été trouvée pour ce modèle. 
+              Voulez-vous la restaurer pour reprendre là où vous en étiez ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={discardPendingRestore}
+              className="border-[#E8E6E3] text-[#706F6C] hover:bg-[#F5F5F5] hover:text-[#1A1917]"
+            >
+              Ignorer
+            </Button>
+            <Button 
+              onClick={applyPendingRestore}
+              className="bg-[#1A1917] text-white hover:bg-[#333]"
+            >
+              Restaurer ma session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setTimeout(() => saveConfiguration(), 500);
+        }}
+      />
+
+      {/* Modal de confirmation après création de modèle (Admin) */}
+      {showModelCreatedModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
+            <div className="p-6 sm:p-8">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-amber-100" style={{ borderRadius: '50%' }}>
+                {isAdminEditModel ? <IconEdit className="h-8 w-8 text-amber-600" /> : <IconPlus className="h-8 w-8 text-amber-600" />}
+              </div>
+
+              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                {isAdminEditModel ? 'Modèle mis à jour !' : 'Modèle créé avec succès !'}
+              </h2>
+              <p className="mb-6 text-center text-base text-[#706F6C]">
+                {isAdminEditModel 
+                  ? <>Le modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été mis à jour avec succès dans le catalogue.</>
+                  : <>Votre nouveau modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
+                }
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push('/admin/dashboard?section=models')}
+                  className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  Retour au catalogue
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModelCreatedModal(false);
+                      if (!isAdminEditModel) {
+                        setModelForm({
+                          name: '',
+                          description: '',
+                          category: 'dressing',
+                          price: 890,
+                          imageUrl: ''
+                        });
+                        resetConfiguration();
+                      }
+                    }}
+                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {isAdminEditModel ? 'Continuer à modifier' : 'Créer un autre'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/admin/dashboard')}
+                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation après configuration */}
+      {showConfirmationModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
+            <div className="p-6 sm:p-8">
+              {/* Icône de succès */}
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-green-100" style={{ borderRadius: '50%' }}>
+                <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              {/* Message personnalisé - différent pour admin vs client */}
+              {(isEditMode && editingConfigId) ? (
+                <>
+                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                    Configuration mise à jour !
+                  </h2>
+                  <p className="mb-6 text-center text-base text-[#706F6C]">
+                    La configuration <span className="font-semibold text-[#1A1917]">&quot;{editingConfigName}&quot;</span> a été modifiée avec succès.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                    Configuration enregistrée !
+                  </h2>
+                  <p className="mb-6 text-center text-base text-[#706F6C]">
+                    {customer?.civility === 'M' ? 'Monsieur' : customer?.civility === 'Mme' ? 'Madame' : ''}{' '}
+                    <span className="font-semibold text-[#1A1917]">
+                      {customer?.last_name}
+                    </span>
+                    , un menuisier va vous rappeler au plus vite pour valider votre projet et finaliser votre commande.
+                  </p>
+                </>
+              )}
+
+              {/* Informations complémentaires - seulement pour les clients */}
+              {!(isEditMode && editingConfigId) && !isAdmin && (
+                <div className="mb-6 border-t border-[#E8E6E3] pt-4">
+                  <p className="text-sm text-[#706F6C]">
+                    <strong className="text-[#1A1917]">Prochaines étapes :</strong>
+                  </p>
+                  <ul className="mt-2 space-y-2 text-sm text-[#706F6C]">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5">📞</span>
+                      <span>Notre menuisier vous contactera pour valider les détails du projet</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5">💳</span>
+                      <span>Un lien de paiement sécurisé vous sera envoyé après validation</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5">🚚</span>
+                      <span>Votre meuble sera fabriqué sur-mesure et livré chez vous</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Boutons - différents pour admin vs client */}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {(isEditMode && editingConfigId) ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Rediriger vers le bon endroit selon le type d'utilisateur
+                        router.push(isAdmin ? '/admin/dashboard?tab=configurations' : '/account?section=configurations');
+                      }}
+                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      Retour aux configurations
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmationModal(false)}
+                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      Continuer à modifier
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Utiliser isAdmin (session réelle) au lieu de localStorage
+                        router.push(isAdmin ? '/admin/dashboard' : '/account?section=configurations');
+                      }}
+                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {isAdmin ? 'Retour au Dashboard' : 'Mes configurations'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/')}
+                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      Retour à l'accueil
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'erreur */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+          <div className="max-w-md w-full bg-white shadow-2xl" style={{ borderRadius: '4px' }}>
+            <div className="p-6 sm:p-8">
+              {/* Icône d'erreur */}
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center bg-red-100" style={{ borderRadius: '50%' }}>
+                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+
+              {/* Message d'erreur */}
+              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                Erreur
+              </h2>
+              <div className="mb-6 text-center text-base text-[#706F6C] whitespace-pre-line">
+                {errorMessage}
+              </div>
+
+              {/* Bouton */}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowErrorModal(false)}
+                  className="bg-[#1A1917] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

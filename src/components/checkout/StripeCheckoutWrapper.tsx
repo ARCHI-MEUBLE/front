@@ -26,8 +26,16 @@ export default function StripeCheckoutWrapper({
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentAmount, setCurrentAmount] = useState(amount);
+  const [currentInstallments, setCurrentInstallments] = useState(installments);
 
   useEffect(() => {
+    // Si le montant ou les échéances changent, reset le clientSecret pour forcer une nouvelle création
+    if (amount !== currentAmount || installments !== currentInstallments) {
+      setClientSecret('');
+      setCurrentAmount(amount);
+      setCurrentInstallments(installments);
+    }
     createPaymentIntent();
   }, [amount, installments]);
 

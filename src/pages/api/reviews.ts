@@ -1,12 +1,12 @@
 /**
  * PROXY - Cette route redirige vers le backend PHP
- * GET /api/reviews -> GET http://localhost:8000/api/avis
- * POST /api/reviews -> POST http://localhost:8000/api/avis
+ * GET /api/reviews -> GET http://127.0.0.1:8000/api/avis
+ * POST /api/reviews -> POST http://127.0.0.1:8000/api/avis
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   try {
     const response = await fetch(`${API_URL}/api/avis`, {

@@ -3,6 +3,11 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useCustomer } from '@/context/CustomerContext';
 import Head from 'next/head';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
 
 export default function Login() {
   const router = useRouter();
@@ -62,77 +67,141 @@ export default function Login() {
       <Head>
         <title>Connexion | ArchiMeuble</title>
       </Head>
-      <div className="min-h-screen bg-bg-light flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-text-primary mb-2">
-              Connexion
-            </h1>
-            <p className="text-text-secondary">
-              Accédez à vos configurations sauvegardées
-            </p>
-          </div>
+      <div className="relative flex min-h-screen flex-col items-center justify-center font-sans lg:max-w-none lg:grid lg:grid-cols-2 lg:px-0">
+        {/* Header mobile (visible uniquement sur mobile) */}
+        <div className="flex w-full items-center justify-between p-6 lg:hidden">
+          <Link href="/">
+            <img
+              src="/images/logo site .png"
+              alt="ArchiMeuble"
+              className="h-10 w-auto"
+            />
+          </Link>
+          <Link
+            href="/auth/register"
+            className="text-sm font-medium text-[#8B7355] hover:underline"
+          >
+            S'inscrire
+          </Link>
+        </div>
 
-          {error && (
-            <div className="alert alert-error mb-6">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="label mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="input"
-                placeholder="votre@email.com"
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
+          <div
+            className="absolute inset-0 bg-zinc-900"
+            style={{
+              backgroundImage: 'url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?ixlib=rb-4.0.3&auto=format&fit=crop&w=1632&q=80")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="relative z-20 flex items-center text-lg font-medium">
+            <Link href="/">
+              <img
+                src="/images/logo site .png"
+                alt="ArchiMeuble"
+                className="h-10 w-auto brightness-0 invert"
               />
-            </div>
-
-            <div>
-              <label className="label mb-2">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="input"
-                placeholder="Votre mot de passe"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full"
-            >
-              {isLoading ? 'Connexion en cours...' : 'Se connecter'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-text-secondary">
-              Pas encore de compte ?{' '}
-              <Link href="/auth/register" className="text-primary hover:text-primary-hover font-semibold">
-                Créer un compte
-              </Link>
-            </p>
-          </div>
-
-          <div className="mt-4 text-center">
-            <Link href="/" className="text-sm text-text-tertiary hover:text-text-secondary">
-              ← Retour à l&apos;accueil
             </Link>
           </div>
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                &ldquo;ArchiMeuble m&apos;a permis de concevoir le meuble de mes rêves en quelques clics. 
+                La qualité de fabrication lilloise est exceptionnelle.&rdquo;
+              </p>
+              <footer className="text-sm">Sofia Davis</footer>
+            </blockquote>
+          </div>
+        </div>
+        <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-black lg:p-8 h-full w-full">
+          <Card className="w-full max-w-md border-none shadow-none bg-transparent lg:shadow-none dark:bg-transparent">
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-3xl font-bold tracking-tight text-[#1A1917] dark:text-white">
+                Connexion
+              </CardTitle>
+              <CardDescription className="text-zinc-500 dark:text-zinc-400">
+                Accédez à vos configurations sauvegardées
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="grid gap-4 mt-4">
+              {error && (
+                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="grid gap-5">
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-[#1A1917] dark:text-zinc-200">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="nom@exemple.com"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917] dark:bg-zinc-800 dark:border-zinc-700"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" title="Mot de passe" className="text-sm font-medium text-[#1A1917] dark:text-zinc-200">Mot de passe</Label>
+                    <Link 
+                      href="/auth/forgot-password" 
+                      className="text-xs text-[#8B7355] hover:underline"
+                    >
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917] dark:bg-zinc-800 dark:border-zinc-700"
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connexion en cours...
+                    </>
+                  ) : (
+                    'Se connecter'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-6 text-center mt-4">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Pas encore de compte ?{' '}
+                <Link href="/auth/register" className="font-semibold text-[#1A1917] hover:underline dark:text-white">
+                  Créer un compte
+                </Link>
+              </p>
+              <Link 
+                href="/" 
+                className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] dark:text-zinc-400 dark:hover:text-white transition-colors group"
+              >
+                <IconArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                Retour à l&apos;accueil
+              </Link>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     </>
