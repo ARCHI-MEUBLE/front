@@ -138,6 +138,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, code }),
     });
 
+    // Vérifier si la réponse est du JSON valide
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Erreur serveur. Veuillez réessayer.');
+    }
+
     const result = await res.json();
 
     if (!res.ok) {
@@ -154,8 +160,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     const res = await fetch(`${API_BASE_URL}/customers/resend-code.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email }),
     });
+
+    // Vérifier si la réponse est du JSON valide
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Erreur serveur. Veuillez réessayer.');
+    }
 
     const data = await res.json();
     if (!res.ok) {

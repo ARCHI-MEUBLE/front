@@ -144,18 +144,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Handle non-JSON responses
     const responseContentType = response.headers.get('content-type');
 
+    // Forward cookies
+    const backendCookies = response.headers.getSetCookie?.() || [];
+    if (backendCookies.length > 0) {
+      backendCookies.forEach(cookie => {
+        res.setHeader('Set-Cookie', cookie);
+      });
+    }
+
     if (responseContentType?.includes('application/json')) {
       const data = await response.json();
-
-      // Forward cookies
-      const backendCookies = response.headers.getSetCookie?.() || [];
-      if (backendCookies.length > 0) {
-        backendCookies.forEach(cookie => {
-          res.setHeader('Set-Cookie', cookie);
-        });
-      }
-
       res.status(response.status).json(data);
+    } else if (responseContentType?.includes('text/html')) {
+      // Si le backend renvoie du HTML (erreur), le convertir en JSON
+      const text = await response.text();
+      console.error('Backend returned HTML:', text.substring(0, 500));
+      res.status(response.status).json({
+        error: 'Erreur serveur',
+        details: 'Le serveur a renvoyé une réponse inattendue'
+      });
     } else {
       // For non-JSON responses (like file downloads), stream the response
       const buffer = await response.arrayBuffer();
@@ -168,9 +175,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const errorStack = error instanceof Error ? error.stack : '';
     console.error('Error details:', { message: errorMessage, stack: errorStack });
     res.status(500).json({
-      error: 'Proxy failed',
-      details: errorMessage,
-      url: API_URL
+      error: 'Erreur de connexion au serveur',
+      details: errorMessage
     });
   }
 }
