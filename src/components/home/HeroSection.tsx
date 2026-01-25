@@ -46,11 +46,58 @@ export function HeroSection() {
             {/* Titre */}
             <h1
               data-animate
-              className="mt-5 font-sans text-[32px] font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] opacity-0 sm:text-4xl"
+              className="mt-5 font-sans text-[32px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1A1917] opacity-0 sm:text-4xl"
             >
-              Meubles sur mesure,
+              Meubles{" "}
+              {/* Style: Surlignage fluo jaune avec bords irréguliers */}
+              <span className="relative inline-block whitespace-nowrap">
+                <svg
+                  className="absolute -inset-x-2 -inset-y-1 -z-10 h-[calc(100%+8px)] w-[calc(100%+16px)]"
+                  viewBox="0 0 120 50"
+                  preserveAspectRatio="none"
+                  fill="none"
+                >
+                  <path
+                    d="M8,12 Q2,8 4,18 L2,25 Q0,32 6,38 L12,42 Q18,46 25,44 L95,46 Q105,48 110,42 L116,35 Q120,28 118,20 L115,12 Q112,4 105,6 L20,4 Q12,2 8,12 Z"
+                    fill="#FDE047"
+                    opacity="0.55"
+                  />
+                  <path
+                    d="M12,14 Q6,12 8,20 L6,26 Q4,33 10,36 L16,40 Q22,43 30,41 L90,43 Q100,44 104,39 L110,32 Q114,26 112,19 L109,13 Q106,7 98,9 L25,7 Q16,6 12,14 Z"
+                    fill="#FACC15"
+                    opacity="0.35"
+                  />
+                </svg>
+                <span className="relative">sur mesure</span>
+              </span>
+              ,
               <br />
-              <span className="text-[#8B7355]">faits pour durer</span>
+              faits pour{" "}
+              {/* Style: Pinceau orange */}
+              <span className="relative inline-block">
+                <svg
+                  className="absolute -inset-x-1 inset-y-0 -z-10 h-full w-[calc(100%+8px)]"
+                  viewBox="0 0 120 40"
+                  preserveAspectRatio="none"
+                  fill="none"
+                >
+                  <path
+                    d="M8,20 Q15,8 35,22 T65,18 T95,22 Q110,20 115,18"
+                    stroke="#FF6B4A"
+                    strokeWidth="20"
+                    strokeLinecap="round"
+                    opacity="0.5"
+                  />
+                  <path
+                    d="M5,22 Q20,12 40,24 T70,19 T100,23 Q112,21 118,19"
+                    stroke="#FF8566"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                    opacity="0.35"
+                  />
+                </svg>
+                <span className="relative">durer</span>
+              </span>
             </h1>
 
             {/* Paragraphe */}
@@ -140,11 +187,58 @@ export function HeroSection() {
             {/* Titre */}
             <h1
               data-animate
-              className="mt-8 font-sans text-6xl font-bold leading-[0.95] tracking-[-0.02em] text-[#1A1917] opacity-0 xl:text-7xl"
+              className="mt-8 font-sans text-6xl font-bold leading-[1.1] tracking-[-0.02em] text-[#1A1917] opacity-0 xl:text-7xl"
             >
-              Meubles sur mesure,
+              Meubles{" "}
+              {/* Style: Surlignage fluo jaune avec bords irréguliers */}
+              <span className="relative inline-block whitespace-nowrap">
+                <svg
+                  className="absolute -inset-x-3 -inset-y-2 -z-10 h-[calc(100%+16px)] w-[calc(100%+24px)]"
+                  viewBox="0 0 120 50"
+                  preserveAspectRatio="none"
+                  fill="none"
+                >
+                  <path
+                    d="M8,12 Q2,8 4,18 L2,25 Q0,32 6,38 L12,42 Q18,46 25,44 L95,46 Q105,48 110,42 L116,35 Q120,28 118,20 L115,12 Q112,4 105,6 L20,4 Q12,2 8,12 Z"
+                    fill="#FDE047"
+                    opacity="0.55"
+                  />
+                  <path
+                    d="M12,14 Q6,12 8,20 L6,26 Q4,33 10,36 L16,40 Q22,43 30,41 L90,43 Q100,44 104,39 L110,32 Q114,26 112,19 L109,13 Q106,7 98,9 L25,7 Q16,6 12,14 Z"
+                    fill="#FACC15"
+                    opacity="0.35"
+                  />
+                </svg>
+                <span className="relative">sur mesure</span>
+              </span>
+              ,
               <br />
-              <span className="text-[#8B7355]">faits pour durer</span>
+              faits pour{" "}
+              {/* Style: Pinceau orange */}
+              <span className="relative inline-block">
+                <svg
+                  className="absolute -inset-x-2 inset-y-0 -z-10 h-full w-[calc(100%+16px)]"
+                  viewBox="0 0 120 40"
+                  preserveAspectRatio="none"
+                  fill="none"
+                >
+                  <path
+                    d="M8,20 Q15,8 35,22 T65,18 T95,22 Q110,20 115,18"
+                    stroke="#FF6B4A"
+                    strokeWidth="20"
+                    strokeLinecap="round"
+                    opacity="0.5"
+                  />
+                  <path
+                    d="M5,22 Q20,12 40,24 T70,19 T100,23 Q112,21 118,19"
+                    stroke="#FF8566"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                    opacity="0.35"
+                  />
+                </svg>
+                <span className="relative">durer</span>
+              </span>
             </h1>
 
             {/* Paragraphe */}

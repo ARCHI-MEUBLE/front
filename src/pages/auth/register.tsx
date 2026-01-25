@@ -85,10 +85,15 @@ export default function Register() {
         country: formData.country,
       };
 
-      await register(dataToSend);
+      const result = await register(dataToSend);
 
-      // Rediriger vers l'accueil après inscription
-      router.push('/');
+      // Si vérification email requise, rediriger vers la page de vérification
+      if (result.requiresVerification) {
+        router.push(`/auth/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
+      } else {
+        // Ancien flux : rediriger vers l'accueil
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');
     } finally {

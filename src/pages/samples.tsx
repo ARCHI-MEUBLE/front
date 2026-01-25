@@ -1,13 +1,14 @@
+"use client";
+
 import Head from "next/head";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { apiClient, type SampleType } from "@/lib/apiClient";
 import { SampleCard } from "@/components/samples/SampleCard";
 import { useRouter } from "next/router";
 import { useCustomer } from "@/context/CustomerContext";
-import { motion, AnimatePresence } from "framer-motion";
-import { Package, Truck, CheckCircle } from "lucide-react";
+import { IconPackage, IconTruck, IconCircleCheck, IconChevronRight } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 
 const Toaster = dynamic(
@@ -15,9 +16,34 @@ const Toaster = dynamic(
   { ssr: false }
 );
 
+// Composant pour l'effet peinture
+function PaintHighlight({ children, color = "#FDE047" }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span className="relative inline-block whitespace-nowrap">
+      <svg
+        className="absolute -inset-x-2 -inset-y-1 -z-10 h-[calc(100%+8px)] w-[calc(100%+16px)]"
+        viewBox="0 0 120 50"
+        preserveAspectRatio="none"
+        fill="none"
+      >
+        <path
+          d="M8,12 Q2,8 4,18 L2,25 Q0,32 6,38 L12,42 Q18,46 25,44 L95,46 Q105,48 110,42 L116,35 Q120,28 118,20 L115,12 Q112,4 105,6 L20,4 Q12,2 8,12 Z"
+          fill={color}
+          opacity="0.55"
+        />
+        <path
+          d="M12,14 Q6,12 8,20 L6,26 Q4,33 10,36 L16,40 Q22,43 30,41 L90,43 Q100,44 104,39 L110,32 Q114,26 112,19 L109,13 Q106,7 98,9 L25,7 Q16,6 12,14 Z"
+          fill={color}
+          opacity="0.35"
+        />
+      </svg>
+      <span className="relative">{children}</span>
+    </span>
+  );
+}
+
 type MaterialsMap = Record<string, SampleType[]>;
 
-// Descriptions par défaut pour les matériaux connus (optionnel)
 const MATERIAL_DESCRIPTIONS: Record<string, string> = {
   "Aggloméré": "Économique et polyvalent, idéal pour les intérieurs de meubles",
   "MDF + revêtement (mélaminé)": "Surface lisse et résistante, large choix de finitions",
@@ -27,6 +53,7 @@ const MATERIAL_DESCRIPTIONS: Record<string, string> = {
 export default function SamplesPage() {
   const router = useRouter();
   const { isAuthenticated } = useCustomer();
+  const sectionRef = useRef<HTMLElement>(null);
   const [materials, setMaterials] = useState<MaterialsMap>({});
   const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
@@ -35,13 +62,20 @@ export default function SamplesPage() {
   const [freeSamplesInCart, setFreeSamplesInCart] = useState(0);
 
   useEffect(() => {
+    const elements = sectionRef.current?.querySelectorAll("[data-animate]");
+    elements?.forEach((el, i) => {
+      (el as HTMLElement).style.animationDelay = `${i * 80}ms`;
+      el.classList.add("animate-in");
+    });
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     apiClient.samples
       .listPublic()
       .then((data) => {
         if (!mounted) return;
         setMaterials(data);
-        // Sélectionner le premier matériau qui a des échantillons
         const first = Object.keys(data).find((m) => data[m]?.length) || null;
         setSelectedMaterial(first);
       })
@@ -70,7 +104,7 @@ export default function SamplesPage() {
         const items = data.items || [];
         const ids = new Set(items.map((item: any) => item.sample_color_id));
         setSamplesInCartIds(ids);
-        
+
         const freeCount = items.filter((item: any) => (item.unit_price ?? 0) <= 0).length;
         setFreeSamplesInCart(freeCount);
       }
@@ -85,7 +119,7 @@ export default function SamplesPage() {
   }, [materials, selectedMaterial]);
 
   const colorsForMaterial = useMemo(() => {
-    const list = typesForSelected.flatMap((t) => 
+    const list = typesForSelected.flatMap((t) =>
       (t.colors || []).map(c => ({
         ...c,
         price_per_m2: c.price_per_m2 ?? 0,
@@ -127,231 +161,288 @@ export default function SamplesPage() {
     }
   };
 
-  // Liste de tous les matériaux disponibles, triés alphabétiquement
   const materialList = Object.keys(materials)
     .filter(m => materials[m]?.length)
     .sort((a, b) => a.localeCompare(b, 'fr'));
+
+  const features = [
+    { icon: IconPackage, title: "Échantillons", desc: "Découvrez nos finitions" },
+    { icon: IconTruck, title: "Livraison rapide", desc: "Sous 3-5 jours ouvrés" },
+    { icon: IconCircleCheck, title: "Qualité garantie", desc: "Matériaux de nos ateliers" },
+  ];
 
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
       <Head>
         <title>Échantillons — ArchiMeuble</title>
-        <meta name="description" content="Commandez vos échantillons de nos matériaux pour découvrir nos finitions." />
+        <meta name="description" content="Commandez nos échantillons de matériaux et découvrez les textures et finitions de nos meubles sur mesure." />
       </Head>
       <Header />
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden bg-[#1A1917] py-24 lg:py-32">
-          {/* Background pattern */}
-          <div className="absolute inset-0 opacity-[0.03]">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }} />
+        <section
+          ref={sectionRef}
+          className="relative bg-[#1A1917] py-16 sm:py-20 lg:py-28 overflow-hidden"
+        >
+          {/* Background elements */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-[20%] left-[10%] w-[400px] h-[400px] bg-[#8B7355]/20 blur-[120px] rounded-full" />
+            <div className="absolute bottom-[10%] right-[5%] w-[300px] h-[300px] bg-[#5B4D3A]/15 blur-[100px] rounded-full" />
+            <div
+              className="absolute inset-0 opacity-[0.03]"
+              style={{
+                backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
+                backgroundSize: "60px 60px",
+              }}
+            />
           </div>
 
-          <div className="relative mx-auto max-w-7xl px-6">
+          <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
-              <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="inline-block text-xs font-medium uppercase tracking-[0.3em] text-[#8B7355]"
+              {/* Eyebrow */}
+              <div
+                data-animate
+                className="flex items-center gap-3 opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
               >
-                Échantillons gratuits
-              </motion.span>
+                <div className="h-px w-8 bg-[#8B7355]" />
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-[#8B7355]">
+                  Nos matériaux
+                </span>
+              </div>
 
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mt-6 font-serif text-4xl leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl"
+              {/* Title */}
+              <h1
+                data-animate
+                className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-[-0.02em] text-white opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
               >
-                Touchez la qualité
+                Touchez la{" "}
+                <PaintHighlight color="#FF6B4A">qualité</PaintHighlight>
                 <br />
-                <span className="text-[#8B7355]">avant de commander</span>
-              </motion.h1>
+                avant de commander
+              </h1>
 
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="mt-6 max-w-xl text-lg leading-relaxed text-white/70"
+              {/* Description */}
+              <p
+                data-animate
+                className="mt-6 text-base sm:text-lg font-medium leading-relaxed text-[#A8A7A3] max-w-xl opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
               >
-                Recevez nos échantillons de matériaux.
-                Découvrez les textures, les couleurs et la qualité de nos finitions.
-                Certains coloris premium peuvent être payants.
-              </motion.p>
+                Commandez nos échantillons de matériaux. Découvrez les textures, les couleurs
+                et la qualité de nos finitions avant de finaliser votre projet.
+              </p>
 
-              {/* Progress indicator */}
+              {/* Stats */}
+              <div
+                data-animate
+                className="mt-10 flex items-center gap-6 lg:gap-8 opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+                  <span className="text-2xl font-black text-[#8B7355]">3-5j</span>
+                  <span className="text-xs text-[#706F6C] uppercase tracking-wider">Livraison</span>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+                  <span className="text-2xl font-black text-[#8B7355]">100%</span>
+                  <span className="text-xs text-[#706F6C] uppercase tracking-wider">Qualité</span>
+                </div>
+                <div className="w-px h-8 bg-white/10 hidden sm:block" />
+                <div className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+                  <span className="text-2xl font-black text-[#8B7355]">Atelier</span>
+                  <span className="text-xs text-[#706F6C] uppercase tracking-wider">Lillois</span>
+                </div>
+              </div>
+
+              {/* Cart indicator */}
               {isAuthenticated && samplesInCart > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-10"
+                <div
+                  data-animate
+                  className="mt-8 opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
                 >
-                  <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-3 backdrop-blur-sm">
+                  <div className="inline-flex items-center gap-3 border border-white/10 bg-white/5 px-4 py-2.5 backdrop-blur-sm">
+                    <div className="w-2 h-2 bg-[#22C55E] rounded-full animate-pulse" />
                     <span className="text-sm text-white/80">
                       {samplesInCart} échantillon{samplesInCart > 1 ? 's' : ''} dans votre sélection
                     </span>
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
           </div>
         </section>
 
         {/* Features */}
-        <section className="border-b border-[#E8E4DE] bg-white py-12">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="grid gap-8 sm:grid-cols-3">
-              {[
-                { icon: Package, title: "Échantillons", desc: "Offerts pour votre projet" },
-                { icon: Truck, title: "Livraison gratuite", desc: "Sous 3-5 jours ouvrés" },
-                { icon: CheckCircle, title: "Qualité garantie", desc: "Matériaux de nos ateliers" },
-              ].map((feature, i) => (
-                <motion.div
+        <section className="border-b border-[#E8E6E3] bg-white py-10 lg:py-12">
+          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+            <div className="grid gap-6 sm:grid-cols-3">
+              {features.map((feature, i) => (
+                <div
                   key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * i }}
                   className="flex items-center gap-4"
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F5F3F0]">
-                    <feature.icon className="h-5 w-5 text-[#1A1917]" strokeWidth={1.5} />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#F5F5F4]">
+                    <feature.icon className="h-5 w-5 text-[#1A1917]" stroke={1.5} />
                   </div>
                   <div>
-                    <h3 className="font-medium text-[#1A1917]">{feature.title}</h3>
-                    <p className="text-sm text-[#6B6560]">{feature.desc}</p>
+                    <h3 className="font-bold text-[#1A1917]">{feature.title}</h3>
+                    <p className="text-sm text-[#706F6C]">{feature.desc}</p>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
         </section>
 
         {/* Material Selection */}
-        <section className="py-16">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center">
-              <h2 className="font-serif text-3xl text-[#1A1917]">Choisissez votre matériau</h2>
-              <p className="mt-3 text-[#6B6560]">Sélectionnez le type de finition qui correspond à votre projet</p>
+        <section className="py-12 lg:py-20">
+          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7355]">
+                Étape 1
+              </span>
+              <h2 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1A1917]">
+                Choisissez votre matériau
+              </h2>
+              <p className="mt-3 text-[#706F6C]">
+                Sélectionnez le type de finition qui correspond à votre projet
+              </p>
             </div>
 
             {/* Material Cards */}
-            <div className="mt-12 grid gap-4 sm:grid-cols-3">
-              {materialList.map((m, i) => (
-                <motion.button
-                  key={m}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  onClick={() => setSelectedMaterial(m)}
-                  className={`group relative overflow-hidden rounded-2xl border-2 p-6 text-left transition-all duration-300 ${
-                    selectedMaterial === m
-                      ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                      : 'border-[#E8E4DE] bg-white hover:border-[#1A1917]/20 hover:shadow-lg'
-                  }`}
-                >
-                  <div className="relative z-10">
-                    <h3 className={`text-lg font-semibold ${
-                      selectedMaterial === m ? 'text-white' : 'text-[#1A1917]'
-                    }`}>
-                      {m}
-                    </h3>
-                    <p className={`mt-2 text-sm leading-relaxed ${
-                      selectedMaterial === m ? 'text-white/70' : 'text-[#6B6560]'
-                    }`}>
-                      {MATERIAL_DESCRIPTIONS[m] || "Découvrez nos finitions disponibles"}
-                    </p>
-                    <div className={`mt-4 text-xs font-medium uppercase tracking-wider ${
-                      selectedMaterial === m ? 'text-[#8B7355]' : 'text-[#8B7355]'
-                    }`}>
-                      {(materials[m]?.flatMap(t => t.colors) || []).length} coloris
-                    </div>
-                  </div>
+            <div className="mt-10 lg:mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {materialList.map((m, i) => {
+                const colorCount = (materials[m]?.flatMap(t => t.colors) || []).length;
+                const isSelected = selectedMaterial === m;
 
-                  {/* Decorative element */}
-                  <div className={`absolute -right-6 -bottom-6 h-24 w-24 rounded-full transition-transform duration-500 ${
-                    selectedMaterial === m
-                      ? 'bg-[#8B7355]/20 scale-150'
-                      : 'bg-[#F5F3F0] scale-100 group-hover:scale-125'
-                  }`} />
-                </motion.button>
-              ))}
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setSelectedMaterial(m)}
+                    className={`group relative overflow-hidden border-2 p-6 text-left transition-all duration-300 ${
+                      isSelected
+                        ? 'border-[#1A1917] bg-[#1A1917]'
+                        : 'border-[#E8E6E3] bg-white hover:border-[#1A1917]'
+                    }`}
+                  >
+                    {/* Corner accent */}
+                    <div className={`absolute right-0 top-0 h-10 w-10 origin-top-right transition-transform duration-200 ${
+                      isSelected ? 'scale-100 bg-[#8B7355]' : 'scale-0 bg-[#1A1917] group-hover:scale-100'
+                    }`} />
+
+                    <div className="relative z-10">
+                      <div className={`text-[10px] font-bold uppercase tracking-[0.15em] ${
+                        isSelected ? 'text-[#8B7355]' : 'text-[#8B7355]'
+                      }`}>
+                        {colorCount} coloris
+                      </div>
+
+                      <h3 className={`mt-2 text-lg font-bold ${
+                        isSelected ? 'text-white' : 'text-[#1A1917]'
+                      }`}>
+                        {m}
+                      </h3>
+
+                      <p className={`mt-2 text-sm leading-relaxed ${
+                        isSelected ? 'text-white/70' : 'text-[#706F6C]'
+                      }`}>
+                        {MATERIAL_DESCRIPTIONS[m] || "Découvrez nos finitions disponibles"}
+                      </p>
+
+                      <div className={`mt-4 inline-flex items-center gap-1 text-sm font-medium ${
+                        isSelected ? 'text-[#8B7355]' : 'text-[#1A1917]'
+                      }`}>
+                        Voir les coloris
+                        <IconChevronRight size={16} className={`transition-transform ${isSelected ? 'translate-x-1' : 'group-hover:translate-x-1'}`} />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>
 
         {/* Colors Grid */}
-        <section className="bg-white py-16">
-          <div className="mx-auto max-w-7xl px-6">
-            <AnimatePresence mode="wait">
-              {loading ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex h-64 items-center justify-center"
-                >
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
-                </motion.div>
-              ) : colorsForMaterial.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex h-64 flex-col items-center justify-center text-center"
-                >
-                  <p className="text-lg text-[#6B6560]">Aucun coloris disponible pour ce matériau.</p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={selectedMaterial}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="mb-8 flex items-center justify-between">
-                    <h3 className="text-xl font-medium text-[#1A1917]">
-                      {colorsForMaterial.length} coloris disponibles
+        <section className="bg-white py-12 lg:py-20 border-t border-[#E8E6E3]">
+          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+            {loading ? (
+              <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+              </div>
+            ) : colorsForMaterial.length === 0 ? (
+              <div className="flex h-64 flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 mb-4 bg-[#F5F5F4] rounded-full flex items-center justify-center">
+                  <IconPackage size={28} className="text-[#D4D4D4]" />
+                </div>
+                <p className="text-lg font-bold text-[#1A1917]">Aucun coloris disponible</p>
+                <p className="mt-1 text-[#706F6C]">Ce matériau n'a pas encore de coloris.</p>
+              </div>
+            ) : (
+              <div>
+                {/* Section header */}
+                <div className="mb-8 lg:mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7355]">
+                      Étape 2
+                    </span>
+                    <h3 className="mt-2 text-xl lg:text-2xl font-bold text-[#1A1917]">
+                      Sélectionnez vos échantillons
                     </h3>
+                    <p className="mt-1 text-sm text-[#706F6C]">
+                      {colorsForMaterial.length} coloris disponibles pour {selectedMaterial}
+                    </p>
                   </div>
+                </div>
 
-                  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {colorsForMaterial.map((c, i) => (
-                      <SampleCard
-                        key={c.id}
-                        color={c}
-                        material={selectedMaterial || ''}
-                        pricePerM2={c.price_per_m2}
-                        unitPrice={c.unit_price}
-                        onAddToCart={handleAddToCart}
-                        isInCart={samplesInCartIds.has(c.id)}
-                        isLimitReached={false}
-                        index={i}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                {/* Grid */}
+                <div className="grid gap-4 lg:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {colorsForMaterial.map((c, i) => (
+                    <SampleCard
+                      key={c.id}
+                      color={c}
+                      material={selectedMaterial || ''}
+                      pricePerM2={c.price_per_m2}
+                      unitPrice={c.unit_price}
+                      onAddToCart={handleAddToCart}
+                      isInCart={samplesInCartIds.has(c.id)}
+                      isLimitReached={false}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </main>
 
       <Footer />
+
       <Toaster
         position="bottom-center"
         toastOptions={{
           style: {
             background: '#1A1917',
             color: '#fff',
-            borderRadius: '12px',
+            borderRadius: '0',
           },
         }}
       />
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(24px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-in {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
     </div>
   );
 }

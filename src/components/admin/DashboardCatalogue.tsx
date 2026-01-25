@@ -100,6 +100,10 @@ export function DashboardCatalogue() {
   const [varFile, setVarFile] = useState<File | null>(null);
   const [varPreview, setVarPreview] = useState<string | null>(null);
 
+  // État pour nouvelle catégorie
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
   const fetchItems = async () => {
     try {
       setIsLoading(true);
@@ -161,6 +165,8 @@ export function DashboardCatalogue() {
     setFile(null);
     setPreview(null);
     setIsDialogOpen(false);
+    setIsAddingNewCategory(false);
+    setNewCategoryName('');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -168,6 +174,13 @@ export function DashboardCatalogue() {
     setIsSubmitting(true);
 
     try {
+      // Validation de la nouvelle catégorie
+      if (isAddingNewCategory && !newCategoryName.trim()) {
+        toast.error("Veuillez saisir le nom de la nouvelle catégorie");
+        setIsSubmitting(false);
+        return;
+      }
+
       let imageUrl = editingId ? items.find(it => it.id === editingId)?.image_url : null;
 
       if (file) {
@@ -185,8 +198,12 @@ export function DashboardCatalogue() {
         }
       }
 
+      // Utiliser la nouvelle catégorie si elle est en cours de création
+      const categoryToUse = isAddingNewCategory ? newCategoryName.trim() : formState.category;
+
       const payload = {
         ...formState,
+        category: categoryToUse,
         unit_price: parseFloat(formState.unit_price),
         stock_quantity: parseInt(formState.stock_quantity),
         min_order_quantity: parseInt(formState.min_order_quantity),
@@ -234,6 +251,8 @@ export function DashboardCatalogue() {
       variation_label: item.variation_label || 'Couleur / Finition',
     });
     setPreview(item.image_url);
+    setIsAddingNewCategory(false);
+    setNewCategoryName('');
     setIsDialogOpen(true);
   };
 
@@ -419,24 +438,47 @@ export function DashboardCatalogue() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Catégorie</Label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={formState.category}
-                    onChange={handleInputChange}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                    <option value="NEW">+ Nouvelle catégorie...</option>
-                  </select>
-                  {formState.category === 'NEW' && (
-                    <Input 
-                      className="mt-2" 
-                      placeholder="Nom de la catégorie" 
-                      onBlur={(e) => setFormState(p => ({...p, category: e.target.value}))}
-                    />
+                  {isAddingNewCategory ? (
+                    <div className="flex gap-2">
+                      <Input
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Nom de la nouvelle catégorie"
+                        className="flex-1"
+                        autoFocus
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setIsAddingNewCategory(false);
+                          setNewCategoryName('');
+                        }}
+                        title="Annuler"
+                      >
+                        <IconX size={16} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <select
+                      id="category"
+                      name="category"
+                      value={formState.category}
+                      onChange={(e) => {
+                        if (e.target.value === 'NEW') {
+                          setIsAddingNewCategory(true);
+                        } else {
+                          handleInputChange(e);
+                        }
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      <option value="NEW">+ Nouvelle catégorie...</option>
+                    </select>
                   )}
                 </div>
                 <div className="space-y-2">
