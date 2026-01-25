@@ -506,7 +506,7 @@ export default function Account() {
     }
 
     const query = new URLSearchParams();
-    query.set('mode', 'edit');
+    query.set('mode', 'view'); // Mode vue (lecture seule) pour les clients
     query.set('configId', String(config.id));
     if (config.prompt) query.set('prompt', config.prompt);
 
@@ -788,26 +788,56 @@ export default function Account() {
                           <div className="divide-y divide-[#E8E6E3]">
                             {/* Configurations */}
                             {selectedOrder.items && selectedOrder.items.length > 0 && (
-                              selectedOrder.items.map((item, idx) => (
-                                <div key={`config-${item.id || idx}`} className="flex items-center gap-4 p-4">
-                                  <div className="flex h-16 w-16 items-center justify-center bg-[#F5F5F4]">
-                                    <IconBox size={24} className="text-[#A8A7A3]" stroke={1.5} />
+                              selectedOrder.items.map((item, idx) => {
+                                // Parser config_data si c'est une string
+                                const configData = typeof item.config_data === 'string'
+                                  ? (() => { try { return JSON.parse(item.config_data); } catch { return null; } })()
+                                  : item.config_data;
+
+                                return (
+                                  <div key={`config-${item.id || idx}`} className="p-4">
+                                    {/* Aperçu 3D */}
+                                    {configData ? (
+                                      <div className="h-40 bg-[#FAFAF9] border border-[#E8E6E3] mb-3 overflow-hidden">
+                                        <ThreeViewer
+                                          width={configData.dimensions?.width || 1500}
+                                          height={configData.dimensions?.height || 730}
+                                          depth={configData.dimensions?.depth || 500}
+                                          hexColor={configData.styling?.color || '#D8C7A1'}
+                                          imageUrl={configData.styling?.colorImage}
+                                          hasSocle={configData.styling?.socle && configData.styling?.socle !== 'none'}
+                                          socle={configData.styling?.socle || 'none'}
+                                          rootZone={configData.advancedZones || { id: 'root', type: 'leaf', content: 'empty' } as Zone}
+                                          selectedZoneIds={[]}
+                                          componentColors={configData.componentColors}
+                                          useMultiColor={configData.useMultiColor || false}
+                                          doorType={configData.features?.doorType || 'none'}
+                                          doorSide={configData.features?.doorSide || 'left'}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="flex h-40 items-center justify-center bg-[#F5F5F4] border border-[#E8E6E3] mb-3">
+                                        <IconBox size={32} className="text-[#A8A7A3]" stroke={1.5} />
+                                      </div>
+                                    )}
+                                    {/* Infos */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="min-w-0">
+                                        <p className="font-medium text-[#1A1917] truncate">
+                                          {item.configuration_name || `Configuration #${item.configuration_id || idx + 1}`}
+                                        </p>
+                                        <p className="text-sm text-[#706F6C]">
+                                          {configData?.dimensions ? `${configData.dimensions.width}×${configData.dimensions.height}×${configData.dimensions.depth} mm · ` : ''}
+                                          Quantité : {item.quantity}
+                                        </p>
+                                      </div>
+                                      <p className="font-bold text-[#1A1917]">
+                                        {item.total_price?.toLocaleString('fr-FR') || item.unit_price?.toLocaleString('fr-FR')}€
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-[#1A1917] truncate">
-                                      {item.configuration_name || `Configuration #${item.configuration_id || idx + 1}`}
-                                    </p>
-                                    <p className="text-sm text-[#706F6C]">
-                                      Meuble sur mesure · Quantité : {item.quantity}
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="font-bold text-[#1A1917]">
-                                      {item.total_price?.toLocaleString('fr-FR') || item.unit_price?.toLocaleString('fr-FR')}€
-                                    </p>
-                                  </div>
-                                </div>
-                              ))
+                                );
+                              })
                             )}
 
                             {/* Échantillons */}

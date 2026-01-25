@@ -127,7 +127,7 @@ function materialLabelFromKey(key: string): string {
 
 function ConfigurationSummary({
   width, height, depth, finish, color, socle, rootZone, price, modelName,
-  isAdmin, onEdit, priceDisplaySettings, mountingStyle, colorLabel
+  isAdmin, onEdit, priceDisplaySettings, mountingStyle, colorLabel, isOwner, onEditOwn
 }: any) {
   const analyzeConfiguration = (zone: Zone) => {
     const handleTypes = new Set<string>();
@@ -206,7 +206,7 @@ function ConfigurationSummary({
             <h2 className="font-serif text-xl text-[#1A1917]">Fiche technique</h2>
             <p className="text-xs text-[#706F6C] mt-0.5">{modelName || 'Configuration client'}</p>
           </div>
-          {isAdmin && (
+          {isAdmin && onEdit && (
             <Button
               onClick={onEdit}
               size="sm"
@@ -214,6 +214,16 @@ function ConfigurationSummary({
             >
               <IconEdit className="h-3.5 w-3.5 mr-1.5" />
               Modifier
+            </Button>
+          )}
+          {!isAdmin && isOwner && onEditOwn && (
+            <Button
+              onClick={onEditOwn}
+              size="sm"
+              className="bg-[#1A1917] text-white hover:bg-[#2A2927] h-8 px-4 text-xs"
+            >
+              <IconEdit className="h-3.5 w-3.5 mr-1.5" />
+              Modifier ma configuration
             </Button>
           )}
         </div>
@@ -347,7 +357,7 @@ type ConfigTab = 'dimensions' | 'materials';
 
 export default function ConfiguratorPage() {
   const router = useRouter();
-  const { id, mode, configId: queryConfigId, adminMode, modelId } = router.query;
+  const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
   const { customer, isAuthenticated } = useCustomer();
   const [isAdmin, setIsAdmin] = useState(false);
   const isAdminCreateModel = adminMode === 'createModel';
@@ -438,6 +448,13 @@ export default function ConfiguratorPage() {
   // Vérifier la session admin au chargement
   useEffect(() => {
     const checkAdmin = async () => {
+      // Si fromAdmin=true dans l'URL, on est venu du dashboard admin
+      if (fromAdmin === 'true') {
+        setIsAdmin(true);
+        console.log('👑 Accès depuis le dashboard admin (fromAdmin=true)');
+        return;
+      }
+
       try {
         console.log('🔍 Vérification session admin...');
         const data = await apiClient.adminAuth.getSession();
@@ -453,7 +470,7 @@ export default function ConfiguratorPage() {
       }
     };
     checkAdmin();
-  }, []);
+  }, [fromAdmin]);
 
   // Clé localStorage unique par modèle
   const localStorageKey = useMemo(() => `configurator_config_${id}`, [id]);
@@ -967,18 +984,19 @@ export default function ConfiguratorPage() {
   // Vérifier si la zone sélectionnée est un tiroir ou une porte (pour afficher le color picker)
   const isSelectedZoneColorizable = useMemo(() => {
     if (!selectedZone) return false;
-    
+
     // Contenus colorisables (feuilles)
-    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'mirror_door'];
+    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right'];
+
     if (selectedZone.type === 'leaf' && colorableContents.includes(selectedZone.content || '')) {
       return true;
     }
-    
+
     // Portes sur groupes (parents)
     if (selectedZone.doorContent && colorableContents.includes(selectedZone.doorContent as string)) {
       return true;
     }
-    
+
     return false;
   }, [selectedZone]);
 
@@ -1375,9 +1393,10 @@ export default function ConfiguratorPage() {
       if ((isEditMode || isViewMode) && configIdToEdit) {
         console.log(`🔄 Mode ${isViewMode ? 'vue' : 'édition'} détecté, chargement de la configuration #${configIdToEdit}`);
 
-        // D'abord essayer de charger depuis localStorage (uniquement pour l'édition client)
+        // D'abord essayer de charger depuis localStorage (uniquement pour l'édition client, pas pour l'admin)
         const savedConfigKey = `archimeuble:configuration:${configIdToEdit}`;
-        const savedConfigStr = !isViewMode ? localStorage.getItem(savedConfigKey) : null;
+        // Skip localStorage si vue OU si accès depuis admin dashboard (pour voir les vraies données)
+        const savedConfigStr = (!isViewMode && fromAdmin !== 'true') ? localStorage.getItem(savedConfigKey) : null;
 
         if (savedConfigStr) {
           configDataToUse = JSON.parse(savedConfigStr);
@@ -1716,7 +1735,7 @@ export default function ConfiguratorPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey, isEditMode, isViewMode, configIdToEdit, isAdminEditModel, modelId]);
+  }, [id, router.query.prompt, parsePromptToConfig, localStorageKey, isEditMode, isViewMode, configIdToEdit, isAdminEditModel, modelId, fromAdmin]);
 
   useEffect(() => {
     // Attendre que le router soit prêt (important pour les query params)
@@ -2699,6 +2718,33 @@ export default function ConfiguratorPage() {
     }, undefined, { shallow: true });
   }, [router]);
 
+  // Fonction pour qu'un client puisse modifier sa propre configuration
+  const handleOwnerEdit = useCallback(() => {
+    // Rediriger vers le configurateur sans mode (mode normal de configuration)
+    const { mode, configId, ...rest } = router.query;
+    router.push({
+      pathname: router.pathname,
+      query: { ...rest, configId, mode: 'edit' },
+    }, undefined, { shallow: false });
+  }, [router]);
+
+  // Vérifier si le client connecté est propriétaire de la configuration
+  const isConfigOwner = useMemo(() => {
+    // Si pas de client connecté, pas propriétaire
+    if (!customer) return false;
+
+    // Si on est en mode vue avec un configId et le client est connecté,
+    // on suppose qu'il est propriétaire (l'API refuse l'accès sinon)
+    if (isViewMode && configIdToEdit && isAuthenticated) {
+      return true;
+    }
+
+    // Sinon vérifier explicitement avec user_id/customer_id
+    if (!editingConfiguration) return false;
+    const configUserId = editingConfiguration.user_id || editingConfiguration.customer_id;
+    return configUserId && String(configUserId) === String(customer.id);
+  }, [customer, editingConfiguration, isViewMode, configIdToEdit, isAuthenticated]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
@@ -2953,18 +2999,28 @@ export default function ConfiguratorPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
-                  {isViewMode && (
+                  {isViewMode && isAdmin && (
                     <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
                   )}
-                  {isEditMode && editingConfigId && (
+                  {isViewMode && !isAdmin && isConfigOwner && (
+                    <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Ma configuration</span>
+                  )}
+                  {isEditMode && editingConfigId && isAdmin && (
                     <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Édition Admin</span>
                   )}
-                  {editingConfigName && isEditMode && (
+                  {isEditMode && editingConfigId && !isAdmin && isConfigOwner && (
+                    <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Modification</span>
+                  )}
+                  {editingConfigName && (isEditMode || isViewMode) && (
                     <span className="text-[11px] text-[#706F6C] font-medium">&quot;{editingConfigName}&quot;</span>
                   )}
                 </div>
                 <p className="hidden text-xs text-[#706F6C] sm:block">
-                  {isViewMode ? 'Consultation de la configuration client' : (isEditMode && editingConfigId ? 'Modification de la configuration client' : 'Configurateur sur mesure')}
+                  {isViewMode
+                    ? (isAdmin ? 'Consultation de la configuration client' : 'Aperçu de votre configuration')
+                    : (isEditMode && editingConfigId
+                        ? (isAdmin ? 'Modification de la configuration client' : 'Modifier votre configuration')
+                        : 'Configurateur sur mesure')}
                 </p>
               </div>
             </div>
@@ -3227,6 +3283,8 @@ export default function ConfiguratorPage() {
                 onEdit={handleAdminEdit}
                 priceDisplaySettings={priceDisplaySettings}
                 mountingStyle={mountingStyle}
+                isOwner={isConfigOwner}
+                onEditOwn={handleOwnerEdit}
               />
             ) : (
               <>
@@ -3674,7 +3732,10 @@ export default function ConfiguratorPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => router.push('/admin/dashboard?tab=configurations')}
+                      onClick={() => {
+                        // Rediriger vers le bon endroit selon le type d'utilisateur
+                        router.push(isAdmin ? '/admin/dashboard?tab=configurations' : '/account?section=configurations');
+                      }}
                       className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
                       style={{ borderRadius: '2px' }}
                     >
@@ -3694,13 +3755,13 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const isAdminUser = typeof window !== 'undefined' && localStorage.getItem('admin_email');
-                        router.push(isAdminUser ? '/admin/dashboard' : '/account?section=configurations');
+                        // Utiliser isAdmin (session réelle) au lieu de localStorage
+                        router.push(isAdmin ? '/admin/dashboard' : '/account?section=configurations');
                       }}
                       className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
                       style={{ borderRadius: '2px' }}
                     >
-                      {typeof window !== 'undefined' && localStorage.getItem('admin_email') ? 'Retour au Dashboard' : 'Mes configurations'}
+                      {isAdmin ? 'Retour au Dashboard' : 'Mes configurations'}
                     </button>
                     <button
                       type="button"

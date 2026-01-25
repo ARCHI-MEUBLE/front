@@ -2,10 +2,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Head from "next/head";
+import dynamic from "next/dynamic";
 import { CheckCircle, Package, Home, Layers, ShoppingBag, Box } from "lucide-react";
 import { UserNavigation } from "@/components/UserNavigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { useCustomer } from "@/context/CustomerContext";
+
+// Import dynamique du viewer 3D pour éviter les erreurs SSR
+const ThreeViewer = dynamic(() => import("@/components/configurator/ThreeViewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-gray-100">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+    </div>
+  ),
+});
 
 interface OrderItem {
   id: number;
@@ -309,22 +320,48 @@ export default function OrderConfirmationPage() {
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2 bg-gray-100 p-2 -mx-4 px-4">
                     Meubles sur mesure ({order.items!.length})
                   </p>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {order.items!.map((item, index) => {
                       const configData = typeof item.config_data === 'string' ? JSON.parse(item.config_data) : item.config_data;
-                      const itemName = configData?.name || item.name || `Configuration #${index + 1}`;
+                      const itemName = configData?.name || item.name || `Configuration #${item.configuration_id || index + 1}`;
+
+                      // Extraire les données pour le viewer 3D
+                      const dimensions = configData?.dimensions || {};
+                      const styling = configData?.styling || {};
+                      const advancedZones = configData?.advancedZones;
+
                       return (
-                        <div key={`config-${item.id || index}`} className="border border-gray-200 p-3 flex items-center gap-3">
-                          <div className="h-12 w-12 bg-gray-100 flex items-center justify-center border border-gray-200">
-                            <Box className="h-5 w-5 text-gray-500" />
+                        <div key={`config-${item.id || index}`} className="border border-gray-200 overflow-hidden">
+                          {/* Aperçu 3D */}
+                          <div className="h-48 bg-[#FAFAF9] relative">
+                            <ThreeViewer
+                              width={dimensions.width || 1000}
+                              height={dimensions.height || 2000}
+                              depth={dimensions.depth || 400}
+                              hexColor={styling.color || '#D8C7A1'}
+                              imageUrl={styling.colorImage}
+                              hasSocle={styling.socle && styling.socle !== 'none'}
+                              socle={styling.socle || 'none'}
+                              rootZone={advancedZones}
+                              selectedZoneIds={[]}
+                              componentColors={configData?.componentColors}
+                              useMultiColor={configData?.useMultiColor}
+                              doorType={configData?.features?.doorType || 'none'}
+                              doorSide={configData?.features?.doorSide || 'left'}
+                            />
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-sm text-gray-900">{itemName}</p>
-                            <p className="text-xs text-gray-600">Quantité: {item.quantity}</p>
+                          {/* Infos */}
+                          <div className="p-3 flex items-center justify-between border-t border-gray-200">
+                            <div>
+                              <p className="font-medium text-sm text-gray-900">{itemName}</p>
+                              <p className="text-xs text-gray-600">
+                                {dimensions.width || '?'} × {dimensions.height || '?'} × {dimensions.depth || '?'} mm · Quantité: {item.quantity}
+                              </p>
+                            </div>
+                            <p className="font-semibold text-sm text-gray-900">
+                              {(item.total_price || item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                            </p>
                           </div>
-                          <p className="font-semibold text-sm text-gray-900">
-                            {(item.total_price || item.unit_price * item.quantity).toLocaleString('fr-FR')} €
-                          </p>
                         </div>
                       );
                     })}

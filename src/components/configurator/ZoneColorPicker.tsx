@@ -21,7 +21,9 @@ const CONTENT_LABELS: Record<string, string> = {
   door_right: 'Porte',
   door_double: 'Portes',
   push_door: 'Porte',
+  push_door_right: 'Porte',
   mirror_door: 'Porte vitrée',
+  mirror_door_right: 'Porte vitrée',
 };
 
 export default function ZoneColorPicker({

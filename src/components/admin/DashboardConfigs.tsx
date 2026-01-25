@@ -355,7 +355,7 @@ export function DashboardConfigs() {
                                     onClick={() => {
                                       const match = config.prompt?.match(/^(M[1-5])\(/);
                                       const templateKey = config.model_id ? String(config.model_id) : (match ? match[1] : 'M1');
-                                      window.open(`/configurator/${templateKey}?mode=view&configId=${config.id}`, '_blank');
+                                      window.open(`/configurator/${templateKey}?mode=view&configId=${config.id}&fromAdmin=true`, '_blank');
                                     }}
                                     variant="outline"
                                     size="sm"
@@ -423,7 +423,7 @@ export function DashboardConfigs() {
                       onClick={() => {
                         const match = selectedConfig.prompt?.match(/^(M[1-5])\(/);
                         const templateKey = selectedConfig.model_id ? String(selectedConfig.model_id) : (match ? match[1] : 'M1');
-                        window.open(`/configurator/${templateKey}?mode=view&configId=${selectedConfig.id}`, '_blank');
+                        window.open(`/configurator/${templateKey}?mode=view&configId=${selectedConfig.id}&fromAdmin=true`, '_blank');
                       }}
                       variant="outline"
                       className="w-full h-10"
@@ -435,7 +435,7 @@ export function DashboardConfigs() {
                       onClick={() => {
                         const match = selectedConfig.prompt?.match(/^(M[1-5])\(/);
                         const templateKey = selectedConfig.model_id ? String(selectedConfig.model_id) : (match ? match[1] : 'M1');
-                        window.open(`/configurator/${templateKey}?mode=edit&configId=${selectedConfig.id}`, '_blank');
+                        window.open(`/configurator/${templateKey}?mode=edit&configId=${selectedConfig.id}&fromAdmin=true`, '_blank');
                       }}
                       className="w-full h-10 bg-blue-600 hover:bg-blue-700"
                     >
