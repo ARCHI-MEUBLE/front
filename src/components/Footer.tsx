@@ -23,8 +23,12 @@ export function Footer() {
         <div className="lg:hidden">
           {/* Brand */}
           <div className="text-center">
-            <Link href="/Archimeuble/front/public" className="font-sans text-xl font-black tracking-tighter text-white">
-              ArchiMeuble
+            <Link href="/" className="inline-block">
+              <img
+                src="/images/logo site .png"
+                alt="ArchiMeuble"
+                className="h-8 w-auto mx-auto brightness-0 invert"
+              />
             </Link>
             <p className="mx-auto mt-3 max-w-xs text-sm font-medium leading-relaxed text-gray-400">
               Menuisiers à Lille, nous fabriquons des meubles sur mesure durables.
@@ -118,8 +122,12 @@ export function Footer() {
           <div className="grid gap-12 lg:grid-cols-12">
             {/* Brand */}
             <div className="lg:col-span-5">
-              <Link href="/Archimeuble/front/public" className="font-sans text-2xl font-black tracking-tighter text-white">
-                ArchiMeuble
+              <Link href="/" className="inline-block">
+                <img
+                  src="/images/logo site .png"
+                  alt="ArchiMeuble"
+                  className="h-10 w-auto brightness-0 invert"
+                />
               </Link>
               <p className="mt-4 max-w-sm text-sm font-medium leading-relaxed text-gray-400">
                 Menuisiers à Lille, nous concevons et fabriquons des meubles sur mesure

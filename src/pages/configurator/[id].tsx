@@ -3695,7 +3695,7 @@ export default function ConfiguratorPage() {
                       type="button"
                       onClick={() => {
                         const isAdminUser = typeof window !== 'undefined' && localStorage.getItem('admin_email');
-                        router.push(isAdminUser ? '/admin/dashboard' : '/my-configurations');
+                        router.push(isAdminUser ? '/admin/dashboard' : '/account?section=configurations');
                       }}
                       className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
                       style={{ borderRadius: '2px' }}

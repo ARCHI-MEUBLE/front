@@ -39,10 +39,14 @@ export function UserNavigation() {
         {/* Logo */}
         <Link
           href="/"
-          className="font-serif text-[28px] font-semibold tracking-tight text-ink"
+          className="flex items-center"
           aria-label="ArchiMeuble"
         >
-          ArchiMeuble
+          <img
+            src="/images/logo site .png"
+            alt="ArchiMeuble"
+            className="h-9 w-auto"
+          />
         </Link>
 
         {/* Navigation principale */}
@@ -68,9 +72,9 @@ export function UserNavigation() {
               </Link>
 
               <Link
-                href="/my-orders"
+                href="/account?section=orders"
                 className={`transition ${
-                  isActive("/my-orders") ? "text-ink" : "hover:text-ink"
+                  isActive("/account?section=orders") ? "text-ink" : "hover:text-ink"
                 }`}
               >
                 Mes commandes

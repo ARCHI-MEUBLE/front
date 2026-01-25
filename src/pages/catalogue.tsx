@@ -201,8 +201,8 @@ export default function Catalogue() {
               data-animate
               className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-[-0.02em] text-white opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
             >
-              Portes &{" "}
-              <PaintHighlight color="#FDE047">Façades</PaintHighlight>
+              Notre{" "}
+              <PaintHighlight color="#FDE047">Boutique</PaintHighlight>
             </h1>
 
             {/* Description */}
@@ -210,7 +210,7 @@ export default function Catalogue() {
               data-animate
               className="mt-6 text-base sm:text-lg font-medium leading-relaxed text-[#A8A7A3] max-w-xl opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
             >
-              Découvrez notre sélection de portes, façades et quincailleries haut de gamme pour vos projets d'aménagement.
+              Découvrez notre sélection de produits et accessoires haut de gamme pour vos projets d'aménagement.
             </p>
 
             {/* Stats */}

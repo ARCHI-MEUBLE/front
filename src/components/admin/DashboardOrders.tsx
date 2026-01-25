@@ -13,6 +13,8 @@ import {
   IconEye,
   IconLink,
   IconTrendingUp,
+  IconSquare,
+  IconDownload,
 } from '@tabler/icons-react';
 import PaymentLinkModal from '@/components/admin/PaymentLinkModal';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +37,38 @@ interface CatalogueOrderItem {
   name: string;
   variation_name: string | null;
   image_url: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+interface FacadeOrderItem {
+  id: number;
+  config_data: string;
+  config?: {
+    width: number;
+    height: number;
+    depth: number;
+    material?: {
+      id: number;
+      name: string;
+      color_hex: string;
+      texture_url?: string;
+    };
+    hinges?: {
+      type: string;
+      count: number;
+      direction: string;
+    };
+    drillings?: Array<{
+      id: string;
+      type: string;
+      typeName: string;
+      x: number;
+      y: number;
+      diameter?: number;
+    }>;
+  };
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -71,6 +105,7 @@ interface Order {
   created_at: string;
   items?: OrderItem[];
   catalogue_items?: CatalogueOrderItem[];
+  facade_items?: FacadeOrderItem[];
 }
 
 const STATUS_CONFIG: {
@@ -86,6 +121,18 @@ const STATUS_CONFIG: {
   shipped: { label: 'Expédiée', Icon: IconTruck, variant: 'secondary' },
   delivered: { label: 'Livrée', Icon: IconPackage, variant: 'secondary' },
   cancelled: { label: 'Annulée', Icon: IconX, variant: 'destructive' },
+};
+
+// Labels pour les types de charnières
+const HINGE_TYPE_LABELS: { [key: string]: string } = {
+  'no-hole-no-hinge': 'Sans trou, sans charnière',
+  'hole-hinge-overlay': 'Trou + charnière fournie porte en applique',
+  'hole-hinge-twin': 'Trou + charnière fournie porte jumelée',
+  'hole-hinge-inset': 'Trou + charnière fournie porte encastrée',
+};
+
+const getHingeTypeLabel = (hingeType: string): string => {
+  return HINGE_TYPE_LABELS[hingeType] || hingeType;
 };
 
 export function DashboardOrders() {
@@ -556,13 +603,91 @@ export function DashboardOrders() {
                   </Card>
                 )}
 
+                {/* Facade Items */}
+                {selectedOrder.facade_items && selectedOrder.facade_items.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <IconSquare className="w-4 h-4" />
+                        Façades sur mesure
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedOrder.facade_items.map((facade, index) => {
+                        const config = facade.config || (typeof facade.config_data === 'string' ? JSON.parse(facade.config_data) : facade.config_data);
+                        const width = config?.width ? (config.width / 10) : 0;
+                        const height = config?.height ? (config.height / 10) : 0;
+                        const depth = config?.depth || 19;
+                        const materialName = config?.material?.name || 'Matériau';
+                        const hingeType = config?.hinges?.type || 'Aucune';
+                        const hingeCount = config?.hinges?.count || 0;
+                        const hingeDirection = config?.hinges?.direction || '';
+                        const drillings = config?.drillings || [];
+
+                        return (
+                          <div key={index} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-start gap-4">
+                              {/* Material preview */}
+                              <div
+                                className="h-16 w-16 flex-shrink-0 border rounded"
+                                style={{
+                                  backgroundColor: config?.material?.color_hex || '#E5E7EB',
+                                  backgroundImage: config?.material?.texture_url ? `url(${config.material.texture_url})` : undefined,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                }}
+                              />
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">
+                                  Façade {width} × {height} cm · {depth} mm
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Matériau: {materialName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Type: {getHingeTypeLabel(hingeType)}
+                                </p>
+                                {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Charnières: {hingeCount} ({hingeDirection === 'left' ? 'gauche' : hingeDirection === 'right' ? 'droite' : hingeDirection})
+                                  </p>
+                                )}
+                                {drillings.length > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Perçages supplémentaires: {drillings.length} trou(s)
+                                  </p>
+                                )}
+                                <p className="text-xs font-semibold text-primary mt-2">
+                                  {facade.quantity} × {facade.unit_price.toFixed(2)}€ = {facade.total_price.toFixed(2)}€
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* DXF Download */}
+                            <Button asChild variant="outline" size="sm" className="w-full">
+                              <a
+                                href={`/backend/api/facades/dxf.php?facade_id=${facade.id}`}
+                                download={`facade_${facade.id}.dxf`}
+                              >
+                                <IconDownload className="w-4 h-4 mr-2" />
+                                Télécharger DXF de la façade
+                              </a>
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Order Items */}
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Articles à produire</CardTitle>
+                    <CardTitle className="text-base">Meubles sur mesure</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {selectedOrder.items?.map((item, index) => (
+                    {selectedOrder.items.map((item, index) => (
                       <div key={index} className="border rounded-lg p-4 space-y-3">
                         <div className="flex justify-between items-start">
                           <div>
@@ -596,6 +721,7 @@ export function DashboardOrders() {
                     ))}
                   </CardContent>
                 </Card>
+                )}
 
                 {/* Shipping Address */}
                 <Card>

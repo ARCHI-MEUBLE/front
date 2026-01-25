@@ -13,6 +13,14 @@ const Toaster = dynamic(
   { ssr: false }
 );
 
+const FacadeCartPreview = dynamic(
+  () => import('@/components/facades/FacadeCartPreview'),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-[#F5F5F4] animate-pulse" />
+  }
+);
+
 interface CartItem {
   id: number;
   configuration_id: number;
@@ -71,6 +79,16 @@ interface CatalogueCartData {
   items: CatalogueCartItem[];
 }
 
+interface FacadeDrilling {
+  id: string;
+  type: string;
+  typeName: string;
+  x: number;
+  y: number;
+  diameter: number;
+  price: number;
+}
+
 interface FacadeCartItem {
   id: number;
   config: {
@@ -81,12 +99,14 @@ interface FacadeCartItem {
       id: number;
       name: string;
       color_hex: string;
+      texture_url?: string | null;
     };
     hinges: {
       type: string;
       count: number;
       direction: string;
     };
+    drillings?: FacadeDrilling[];
   };
   quantity: number;
   unit_price: number;
@@ -109,6 +129,7 @@ export default function Cart() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
+  const [selectedFacade, setSelectedFacade] = useState<FacadeCartItem | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -553,36 +574,50 @@ export default function Cart() {
                           key={facade.id}
                           className="group relative flex items-center gap-6 border border-[#E8E6E3] bg-white p-5 transition-colors hover:border-[#1A1917]/20"
                         >
-                          {/* Color preview */}
-                          <div
-                            className="h-20 w-20 flex-shrink-0 border border-[#E8E6E3]"
-                            style={{ backgroundColor: facade.config.material?.color_hex || '#EEE' }}
-                          />
+                          {/* Clickable area for details */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFacade(facade)}
+                            className="flex flex-1 items-center gap-6 text-left"
+                          >
+                            {/* 3D Preview */}
+                            <div className="h-20 w-20 flex-shrink-0 border border-[#E8E6E3] overflow-hidden">
+                              <FacadeCartPreview
+                                width={facade.config.width}
+                                height={facade.config.height}
+                                depth={facade.config.depth}
+                                colorHex={facade.config.material?.color_hex || '#CCCCCC'}
+                                textureUrl={facade.config.material?.texture_url}
+                                drillings={facade.config.drillings}
+                              />
+                            </div>
 
-                          {/* Info */}
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-medium text-[#1A1917]">
-                              Façade {facade.config.material?.name || 'Sur mesure'}
-                            </h3>
-                            <p className="mt-1 text-xs text-[#706F6C]">
-                              {facade.config.width / 10} × {facade.config.height / 10} cm · {facade.config.depth} mm
-                            </p>
-                            {facade.config.hinges?.type !== 'no-hole-no-hinge' && (
+                            {/* Info */}
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-medium text-[#1A1917]">
+                                Façade {facade.config.material?.name || 'Sur mesure'}
+                              </h3>
                               <p className="mt-1 text-xs text-[#706F6C]">
-                                {facade.config.hinges?.count} charnières · Ouverture {facade.config.hinges?.direction === 'left' ? 'gauche' : 'droite'}
+                                {facade.config.width / 10} × {facade.config.height / 10} cm · {facade.config.depth} mm
                               </p>
-                            )}
-                          </div>
+                              {facade.config.hinges?.type !== 'no-hole-no-hinge' && (
+                                <p className="mt-1 text-xs text-[#706F6C]">
+                                  {facade.config.hinges?.count} charnières · Ouverture {facade.config.hinges?.direction === 'left' ? 'gauche' : 'droite'}
+                                </p>
+                              )}
+                              <p className="mt-2 text-xs text-[#8B7355] underline">Voir les détails</p>
+                            </div>
 
-                          {/* Quantity & Price */}
-                          <div className="text-right">
-                            <p className="font-mono text-lg text-[#1A1917]">
-                              {(facade.unit_price * facade.quantity).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                            </p>
-                            <p className="mt-1 text-xs text-[#706F6C]">
-                              {facade.quantity > 1 ? `${facade.quantity} × ${facade.unit_price.toFixed(2)} €` : `${facade.unit_price.toFixed(2)} € / unité`}
-                            </p>
-                          </div>
+                            {/* Quantity & Price */}
+                            <div className="text-right">
+                              <p className="font-mono text-lg text-[#1A1917]">
+                                {(facade.unit_price * facade.quantity).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                              </p>
+                              <p className="mt-1 text-xs text-[#706F6C]">
+                                {facade.quantity > 1 ? `${facade.quantity} × ${facade.unit_price.toFixed(2)} €` : `${facade.unit_price.toFixed(2)} € / unité`}
+                              </p>
+                            </div>
+                          </button>
 
                           {/* Remove button */}
                           <button
@@ -914,6 +949,214 @@ export default function Cart() {
           },
         }}
       />
+
+      {/* Modal détails façade */}
+      {selectedFacade && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setSelectedFacade(null)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-white shadow-xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 flex items-center justify-between border-b border-[#E8E6E3] bg-white p-6">
+              <h3 className="font-serif text-xl text-[#1A1917]">Détails de la façade</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedFacade(null)}
+                className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {(() => {
+                const materialObj = selectedFacade.config.material;
+                const materialName = materialObj?.name || 'Matériau';
+                const hinges = selectedFacade.config.hinges;
+                const hingeCount = hinges?.count || 0;
+                const hingeType = hinges?.type || '';
+                const hingeSide = hinges?.direction || '';
+                const drillings = selectedFacade.config.drillings || [];
+
+                return (
+                  <div className="space-y-6">
+                    {/* 3D Preview */}
+                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-[#E8E6E3] overflow-hidden bg-[#F5F5F4]">
+                      <FacadeCartPreview
+                        width={selectedFacade.config.width}
+                        height={selectedFacade.config.height}
+                        depth={selectedFacade.config.depth || 19}
+                        colorHex={materialObj?.color_hex || '#CCCCCC'}
+                        textureUrl={materialObj?.texture_url}
+                        drillings={drillings}
+                      />
+                    </div>
+
+                    {/* Info Grid */}
+                    <div className="grid gap-4">
+                      {/* Dimensions */}
+                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
+                        <span className="text-sm text-[#706F6C]">Dimensions</span>
+                        <span className="text-sm font-medium text-[#1A1917]">
+                          {selectedFacade.config.width / 10} × {selectedFacade.config.height / 10} cm · {selectedFacade.config.depth || 19} mm
+                        </span>
+                      </div>
+
+                      {/* Matériau */}
+                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
+                        <span className="text-sm text-[#706F6C]">Matériau</span>
+                        <div className="flex items-center gap-2">
+                          {materialObj?.texture_url ? (
+                            <div className="h-5 w-5 border border-[#E8E6E3] overflow-hidden">
+                              <img src={materialObj.texture_url} alt="" className="h-full w-full object-cover" />
+                            </div>
+                          ) : materialObj?.color_hex ? (
+                            <div className="h-5 w-5 border border-[#E8E6E3]" style={{ backgroundColor: materialObj.color_hex }} />
+                          ) : null}
+                          <span className="text-sm font-medium text-[#1A1917]">{materialName}</span>
+                        </div>
+                      </div>
+
+                      {/* Type de charnière */}
+                      <div className="py-3 border-b border-[#E8E6E3]">
+                        <span className="text-sm text-[#706F6C] block mb-3">Charnières</span>
+                        <div className="flex items-center gap-3 p-3 bg-[#FAFAF9] rounded-lg">
+                          {/* Icône du type de charnière */}
+                          <div className="flex-shrink-0">
+                            {hingeType === 'no-hole-no-hinge' && (
+                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+                                <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
+                                <circle cx="40" cy="32" r="2" fill="#6B7280"/>
+                                <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
+                                <line x1="52" y1="12" x2="12" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
+                              </svg>
+                            )}
+                            {hingeType === 'hole-with-applied-hinge' && (
+                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+                                <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+                                <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+                                <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
+                                <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+                                <circle cx="22" cy="24" r="1.5" fill="#374151"/>
+                                <circle cx="22" cy="29" r="1.5" fill="#374151"/>
+                                <circle cx="17" cy="26" r="1.5" fill="#374151"/>
+                                <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+                              </svg>
+                            )}
+                            {hingeType === 'hole-with-twin-hinge' && (
+                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+                                <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+                                <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+                                <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+                                <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
+                                <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+                                <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
+                                <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+                                <circle cx="29" cy="24" r="1.2" fill="#374151"/>
+                                <circle cx="35" cy="24" r="1.2" fill="#374151"/>
+                                <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
+                                <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
+                              </svg>
+                            )}
+                            {hingeType === 'hole-with-integrated-hinge' && (
+                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+                                <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+                                <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+                                <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+                                <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+                                <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+                                <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+                                <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+                                <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+                                <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+                                <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-[#1A1917]">
+                              {hingeType === 'no-hole-no-hinge' && 'Sans trou, sans charnière'}
+                              {hingeType === 'hole-with-applied-hinge' && 'Trou + charnière fournie porte en applique'}
+                              {hingeType === 'hole-with-twin-hinge' && 'Trou + charnière fournie porte jumelée'}
+                              {hingeType === 'hole-with-integrated-hinge' && 'Trou + charnière fournie porte encastrée'}
+                            </p>
+                            {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
+                              <p className="text-xs text-[#706F6C] mt-1">
+                                {hingeCount} charnières · Ouverture {hingeSide === 'left' ? 'gauche' : hingeSide === 'right' ? 'droite' : hingeSide}
+                              </p>
+                            )}
+                            <p className="text-xs text-[#8B7355] mt-1">
+                              Prix unit. {hingeType === 'no-hole-no-hinge' ? '0.00' : '34.20'} € TTC
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Perçages */}
+                      {drillings.length > 0 && (
+                        <div className="py-3 border-b border-[#E8E6E3]">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-[#706F6C]">Perçages</span>
+                            <span className="text-sm font-medium text-[#1A1917]">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="space-y-1 pl-4">
+                            {drillings.map((drill, idx) => (
+                              <div key={drill.id} className="flex justify-between text-xs">
+                                <span className="text-[#706F6C]">
+                                  {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
+                                </span>
+                                {drill.price > 0 && (
+                                  <span className="text-[#1A1917]">+{drill.price.toFixed(2)} €</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quantité */}
+                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
+                        <span className="text-sm text-[#706F6C]">Quantité</span>
+                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacade.quantity}</span>
+                      </div>
+
+                      {/* Prix unitaire */}
+                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
+                        <span className="text-sm text-[#706F6C]">Prix unitaire</span>
+                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacade.unit_price.toLocaleString('fr-FR')} €</span>
+                      </div>
+
+                      {/* Total */}
+                      <div className="flex justify-between items-center py-3 bg-[#F5F5F4] px-4 -mx-4">
+                        <span className="text-sm font-medium text-[#1A1917]">Total</span>
+                        <span className="text-lg font-medium text-[#1A1917]">
+                          {(selectedFacade.unit_price * selectedFacade.quantity).toLocaleString('fr-FR')} €
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 border-t border-[#E8E6E3] bg-white p-6">
+              <button
+                type="button"
+                onClick={() => setSelectedFacade(null)}
+                className="w-full h-12 bg-[#1A1917] text-white text-sm font-medium transition-colors hover:bg-[#2D2B28]"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
