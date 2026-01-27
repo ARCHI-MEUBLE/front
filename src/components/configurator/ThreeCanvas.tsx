@@ -1163,7 +1163,24 @@ function Furniture({
         ): SeparatorInfo[] => {
             const separators: SeparatorInfo[] = [];
 
-            if (!zone.children || zone.children.length <= 1) {
+            // Si pas d'enfants, retourner vide
+            if (!zone.children || zone.children.length === 0) {
+                return separators;
+            }
+
+            // Si un seul enfant, pas de séparateurs à ce niveau mais on doit quand même
+            // récurser dans l'enfant pour collecter ses séparateurs internes
+            if (zone.children.length === 1) {
+                const child = zone.children[0];
+                const childSeparators = collectSeparators(
+                    child,
+                    x,
+                    y,
+                    width,
+                    height,
+                    `${path}c0-`
+                );
+                separators.push(...childSeparators);
                 return separators;
             }
 
@@ -1233,9 +1250,10 @@ function Furniture({
 
                     // Ajouter séparateur horizontal après chaque rangée sauf la dernière
                     if (i < zone.children!.length - 1) {
+                        const sepY = currentY - rowHeight - thickness / 2;
                         separators.push({
                             x: x,
-                            y: currentY - rowHeight - thickness / 2,
+                            y: sepY,
                             width: width,
                             height: thickness,
                             orientation: 'horizontal',
@@ -1704,11 +1722,11 @@ function Furniture({
                 const furnitureRightInner = innerWidth / 2;
 
                 // Vérifier si le séparateur lui-même touche les bords du meuble
-                const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.01;
-                const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.01;
+                const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.05;
+                const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.05;
 
                 const adjacentCells = allCells.filter(cell =>
-                    Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.02
+                    Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.05
                 );
 
                 if (adjacentCells.length > 0) {

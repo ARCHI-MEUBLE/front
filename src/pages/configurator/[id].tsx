@@ -1456,6 +1456,7 @@ export default function ConfiguratorPage() {
               componentColors: configDataObj.componentColors,
               doorType: configDataObj.features?.doorType,
               doorSide: configDataObj.features?.doorSide,
+              deletedPanelIds: configDataObj.deletedPanelIds,
               prompt: configDataToUse.prompt || configDataObj.prompt,
               name: configDataToUse.name || configDataObj.name
             };
@@ -1510,6 +1511,7 @@ export default function ConfiguratorPage() {
               componentColors: dataObj.componentColors,
               doorType: dataObj.features?.doorType,
               doorSide: dataObj.features?.doorSide,
+              deletedPanelIds: dataObj.deletedPanelIds,
               prompt: modelData.prompt,
               name: modelData.name
             };
@@ -1824,7 +1826,7 @@ export default function ConfiguratorPage() {
   };
 
   // Construction du prompt depuis l'arbre de zones
-  const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
+  const buildPromptFromZoneTree = useCallback((zone: Zone, currentPath: string = ''): string => {
     let doorCode = '';
     const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
 
@@ -1888,9 +1890,41 @@ export default function ConfiguratorPage() {
     const childCount = children.length;
 
     const orderedChildren = isHorizontal ? [...children].reverse() : children;
-    const childPrompts = orderedChildren.map((c) => buildPromptFromZoneTree(c));
+    const childPrompts = orderedChildren.map((c, i) => {
+        const childIdx = isHorizontal ? (childCount - 1 - i) : i;
+        const nextPath = isHorizontal ? `${currentPath}r${childIdx}-` : `${currentPath}c${childIdx}-`;
+        return buildPromptFromZoneTree(c, nextPath);
+    });
 
-    const prefix = isHorizontal ? 'H' : 'V';
+    let prefix = isHorizontal ? 'H' : 'V';
+    
+    // Règle automatique : pas de séparateurs horizontaux entre les tiroirs
+    const allChildrenAreDrawers = childCount >= 2 && children.every(c => c.content === 'drawer' || c.content === 'push_drawer');
+    
+    // Vérifier si des séparateurs sont supprimés pour cette division
+    if (isHorizontal && allChildrenAreDrawers) {
+        prefix += 'I';
+    } else if (childCount === 2) {
+        const sepId = isHorizontal ? `separator-h-${currentPath}h0-0` : `separator-v-${currentPath}v0-0`;
+        if (deletedPanelIds.has(sepId)) {
+            prefix += 'I';
+        }
+    } else if (childCount > 2) {
+        // Pour plus de 2 enfants, on vérifie si TOUS les séparateurs sont supprimés
+        // (Le prompt ne supporte pas facilement les mélanges sans nesting complexe)
+        let allDeleted = true;
+        for (let i = 0; i < childCount - 1; i++) {
+            const sepId = isHorizontal ? `separator-h-${currentPath}h${i}-0` : `separator-v-${currentPath}v${i}-0`;
+            if (!deletedPanelIds.has(sepId)) {
+                allDeleted = false;
+                break;
+            }
+        }
+        if (allDeleted) {
+            prefix += 'I';
+        }
+    }
+
     let zoneCode = '';
 
     // Pour 2 enfants avec splitRatio
@@ -1915,7 +1949,7 @@ export default function ConfiguratorPage() {
     }
 
     return zoneCode;
-  }, []);
+  }, [deletedPanelIds]);
 
   // Calcul du prix basé sur la surface totale du meuble
   const calculatePrice = useCallback((config: {
@@ -2065,8 +2099,13 @@ export default function ConfiguratorPage() {
     }
 
     // 4. Compter tiroirs et penderies dans les zones
-    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number): number => {
+    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number, currentPath: string = ''): number => {
       let extra = 0;
+
+      const isDrawer = (z: Zone) => z.content === 'drawer' || z.content === 'push_drawer';
+      const shouldHideHorizontalSeparators = (z: Zone) => {
+        return z.type === 'horizontal' && z.children && z.children.length >= 2 && z.children.every(isDrawer);
+      };
 
       // Prix de la porte sur cette zone (feuille ou parent)
       const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
@@ -2238,35 +2277,51 @@ export default function ConfiguratorPage() {
             ratio = 1 / zone.children!.length;
           }
 
+          let nextPath = currentPath;
+
           if (zone.type === 'horizontal') {
             // Les enfants partagent la hauteur
             childHeight = zoneHeight * ratio;
+            const childIdx = zone.children!.length - 1 - index;
+            nextPath = `${currentPath}r${childIdx}-`;
 
             // Ajouter le prix de la séparation horizontale (étagère bois)
-            // Prix fixe par étagère défini dans l'admin, ou calcul basé sur la surface
             if (index < zone.children!.length - 1) {
-              const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
-              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-              const shelfPrice = pricePerM2 * surfaceShelfM2;
-              extra += shelfPrice;
-              console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
+              const sepId = `separator-h-${currentPath}h${index}-0`;
+              const isAutomaticInvisible = shouldHideHorizontalSeparators(zone);
+              const isDeleted = deletedPanelIds.has(sepId);
+
+              if (!isDeleted && !isAutomaticInvisible) {
+                const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
+                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+                const shelfPrice = pricePerM2 * surfaceShelfM2;
+                extra += shelfPrice;
+                console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
+              } else {
+                console.log(`📏 [ETAGERE BOIS] Ignorée car ${isDeleted ? 'supprimée' : 'automatiquement invisible (tiroirs)'}`);
+              }
             }
           } else if (zone.type === 'vertical') {
             // Les enfants partagent la largeur
             childWidth = zoneWidth * ratio;
+            nextPath = `${currentPath}c${index}-`;
 
             // Ajouter le prix de la séparation verticale (montant bois)
-            // Prix fixe défini dans l'admin, ou calcul basé sur la surface
             if (index < zone.children!.length - 1) {
-              const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
-              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-              const verticalPrice = pricePerM2 * surfaceVerticalM2;
-              extra += verticalPrice;
-              console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
+              const sepId = `separator-v-${currentPath}v${index}-0`;
+              if (!deletedPanelIds.has(sepId)) {
+                const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
+                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+                const verticalPrice = pricePerM2 * surfaceVerticalM2;
+                extra += verticalPrice;
+                console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
+              } else {
+                console.log(`📏 [MONTANT VERTICAL] Ignoré car supprimé`);
+              }
             }
           }
 
-          extra += countExtraPrice(child, childWidth, childHeight);
+          extra += countExtraPrice(child, childWidth, childHeight, nextPath);
         });
       }
 
