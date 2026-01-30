@@ -596,7 +596,7 @@ export default function ConfiguratorPage() {
   const [doors, setDoors] = useState(0);
   
   // Panel selection and deletion states
-  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  const [selectedPanelIds, setSelectedPanelIds] = useState<Set<string>>(new Set());
   const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
   const [showPanelTool, setShowPanelTool] = useState(false);
   const panelToolRef = useRef<HTMLDivElement>(null);
@@ -610,7 +610,7 @@ export default function ConfiguratorPage() {
     }
   }, [showPanelTool]);
 
-  // Handle panel deletion/restoration toggle
+  // Handle panel deletion/restoration toggle for a single panel
   const togglePanelDeleted = useCallback((panelId: string) => {
     setDeletedPanelIds(prev => {
       const next = new Set(prev);
@@ -623,19 +623,44 @@ export default function ConfiguratorPage() {
     });
   }, []);
 
-  // Handle panel selection (deselects zones when a panel is selected)
+  // Handle deletion/restoration of all selected panels
+  const toggleSelectedPanelsDeleted = useCallback((action: 'delete' | 'restore') => {
+    setDeletedPanelIds(prev => {
+      const next = new Set(prev);
+      selectedPanelIds.forEach(panelId => {
+        if (action === 'delete') {
+          next.add(panelId);
+        } else {
+          next.delete(panelId);
+        }
+      });
+      return next;
+    });
+  }, [selectedPanelIds]);
+
+  // Handle panel selection with multi-select support (toggle)
   const handlePanelSelect = useCallback((panelId: string | null) => {
-    setSelectedPanelId(panelId);
-    if (panelId) {
-      setSelectedZoneIds([]);
+    if (!panelId) {
+      setSelectedPanelIds(new Set());
+      return;
     }
+    setSelectedPanelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(panelId)) {
+        next.delete(panelId);
+      } else {
+        next.add(panelId);
+      }
+      return next;
+    });
+    setSelectedZoneIds([]);
   }, []);
 
   // Gérer la sélection intelligente (clic 1 -> clic 2)
   const handleZoneSelect = useCallback(
     (zoneId: string | null) => {
-      // Deselect panel when selecting a zone
-      setSelectedPanelId(null);
+      // Deselect panels when selecting a zone
+      setSelectedPanelIds(new Set());
       
       if (!zoneId) {
         setSelectedZoneIds([]);
@@ -3123,7 +3148,7 @@ export default function ConfiguratorPage() {
                   doorType={doorType}
                   doorSide={doorSide}
                   mountingStyle={mountingStyle}
-                  selectedPanelId={isViewMode || !showPanelTool ? null : selectedPanelId}
+                  selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
                   onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
                   deletedPanelIds={deletedPanelIds}
                 />
@@ -3252,46 +3277,56 @@ export default function ConfiguratorPage() {
                   </div>
                 )}
 
-                {/* Panel selection indicator */}
-                {selectedPanelId && !isViewMode && showPanelTool && (
+                {/* Panel selection indicator - Multi-select support */}
+                {selectedPanelIds.size > 0 && !isViewMode && showPanelTool && (
                   <div className="absolute top-4 right-4 z-20 hidden lg:block">
                     <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
-                      <div className={`h-3 w-3 rounded-full ${deletedPanelIds.has(selectedPanelId) ? 'bg-[#FF5722]' : 'bg-[#2196F3]'}`} />
-                      <span className={`text-sm font-medium ${deletedPanelIds.has(selectedPanelId) ? 'text-[#706F6C] line-through' : 'text-[#1A1917]'}`}>
-                        {(() => {
-                          const panelInfo = stringToPanelId(selectedPanelId);
-                          if (panelInfo) {
-                            if (panelInfo.type === 'separator') {
-                              const isHorizontal = selectedPanelId.includes('-h-');
-                              return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                      <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
+                      <span className="text-sm font-medium text-[#1A1917]">
+                        {selectedPanelIds.size === 1 ? (
+                          (() => {
+                            const panelId = Array.from(selectedPanelIds)[0];
+                            const panelInfo = stringToPanelId(panelId);
+                            if (panelInfo) {
+                              if (panelInfo.type === 'separator') {
+                                const isHorizontal = panelId.includes('-h-');
+                                return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                              }
+                              const baseLabel = PANEL_META[panelInfo.type]?.label || panelId;
+                              if (panelInfo.index !== undefined) {
+                                return `${baseLabel} (segment ${panelInfo.index + 1})`;
+                              }
+                              return baseLabel;
                             }
-                            const baseLabel = PANEL_META[panelInfo.type]?.label || selectedPanelId;
-                            if (panelInfo.index !== undefined) {
-                              return `${baseLabel} (segment ${panelInfo.index + 1})`;
-                            }
-                            return baseLabel;
-                          }
-                          return selectedPanelId;
-                        })()}
+                            return panelId;
+                          })()
+                        ) : (
+                          `${selectedPanelIds.size} panneaux sélectionnés`
+                        )}
                       </span>
-                      {/* Delete/restore panel button */}
+                      {/* Delete all selected panels */}
                       <button
                         type="button"
-                        onClick={() => togglePanelDeleted(selectedPanelId)}
-                        className={`ml-1 ${deletedPanelIds.has(selectedPanelId) ? 'text-[#4CAF50] hover:text-[#388E3C]' : 'text-[#FF5722] hover:text-[#E64A19]'}`}
-                        title={deletedPanelIds.has(selectedPanelId) ? 'Restaurer ce panneau' : 'Retirer ce panneau'}
+                        onClick={() => toggleSelectedPanelsDeleted('delete')}
+                        className="ml-1 text-[#FF5722] hover:text-[#E64A19]"
+                        title={`Retirer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
                       >
-                        {deletedPanelIds.has(selectedPanelId) ? (
-                          <RotateCcw className="h-4 w-4" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      {/* Restore all selected panels */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSelectedPanelsDeleted('restore')}
+                        className="ml-1 text-[#4CAF50] hover:text-[#388E3C]"
+                        title={`Restaurer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
+                      >
+                        <RotateCcw className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSelectedPanelId(null)}
+                        onClick={() => setSelectedPanelIds(new Set())}
                         className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
-                        title="Désélectionner"
+                        title="Désélectionner tout"
                       >
                         <IconTablerX className="h-4 w-4" />
                       </button>
@@ -3414,7 +3449,7 @@ export default function ConfiguratorPage() {
                             zone={rootZone}
                             width={width}
                             height={height}
-                            selectedPanelId={selectedPanelId}
+                            selectedPanelIds={selectedPanelIds}
                             onSelectPanel={handlePanelSelect}
                             deletedPanelIds={deletedPanelIds}
                           />

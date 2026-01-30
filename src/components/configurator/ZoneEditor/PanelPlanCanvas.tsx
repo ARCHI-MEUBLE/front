@@ -5,7 +5,7 @@ interface PanelPlanCanvasProps {
     zone: Zone;
     width: number;
     height: number;
-    selectedPanelId: string | null;
+    selectedPanelIds: Set<string>;
     onSelectPanel: (panelId: string | null) => void;
     deletedPanelIds?: Set<string>;
 }
@@ -26,7 +26,7 @@ export default function PanelPlanCanvas({
     zone,
     width,
     height,
-    selectedPanelId,
+    selectedPanelIds,
     onSelectPanel,
     deletedPanelIds = new Set(),
 }: PanelPlanCanvasProps) {
@@ -626,7 +626,7 @@ export default function PanelPlanCanvas({
                 >
                     {/* Segments du panneau arrière (divisés selon les zones) */}
                     {backPanels.map((segment) => {
-                        const isSelected = selectedPanelId === segment.id;
+                        const isSelected = selectedPanelIds.has(segment.id);
                         const isDeleted = deletedPanelIds.has(segment.id);
                         
                         // Si supprimé et non sélectionné, rendre complètement transparent
@@ -688,7 +688,7 @@ export default function PanelPlanCanvas({
 
                     {/* Segments de panneaux latéraux */}
                     {borderPanels.map((segment) => {
-                        const isSelected = selectedPanelId === segment.id;
+                        const isSelected = selectedPanelIds.has(segment.id);
                         const isDeleted = deletedPanelIds.has(segment.id);
                         const panelMeta = PANEL_META[segment.type];
                         
@@ -751,7 +751,7 @@ export default function PanelPlanCanvas({
 
                     {/* Séparateurs (verticaux et horizontaux) */}
                     {separatorPanels.map((segment) => {
-                        const isSelected = selectedPanelId === segment.id;
+                        const isSelected = selectedPanelIds.has(segment.id);
                         const isDeleted = deletedPanelIds.has(segment.id);
                         const isVertical = segment.orientation === 'vertical';
                         
@@ -836,9 +836,9 @@ export default function PanelPlanCanvas({
 
             {/* Instruction */}
             <p className="mt-4 text-center text-base text-[#706F6C]">
-                {selectedPanelId 
-                    ? "Panneau sélectionné - Cliquez ailleurs pour désélectionner"
-                    : "Cliquez sur un panneau pour le sélectionner"}
+                {selectedPanelIds.size > 0
+                    ? `${selectedPanelIds.size} panneau${selectedPanelIds.size > 1 ? 'x' : ''} sélectionné${selectedPanelIds.size > 1 ? 's' : ''} - Cliquez ailleurs pour tout désélectionner`
+                    : "Cliquez sur les panneaux pour les sélectionner (multi-sélection)"}
             </p>
 
             {/* Légende */}
