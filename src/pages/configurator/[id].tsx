@@ -1790,7 +1790,7 @@ export default function ConfiguratorPage() {
     setDoorSide(initialConfig.doorSide || 'left');
     setSelectedZoneIds(['root']);
     setDeletedPanelIds(new Set()); // Réinitialiser les panneaux supprimés
-    setSelectedPanelId(null); // Désélectionner le panneau
+    setSelectedPanelIds(new Set()); // Désélectionner les panneaux
     setShowPanelTool(false); // Fermer l'outil de suppression
 
     // Supprimer la sauvegarde localStorage
@@ -3188,7 +3188,7 @@ export default function ConfiguratorPage() {
                       onClick={() => {
                         setShowPanelTool(!showPanelTool);
                         if (showPanelTool) {
-                          setSelectedPanelId(null);
+                          setSelectedPanelIds(new Set());
                         }
                       }}
                       className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
