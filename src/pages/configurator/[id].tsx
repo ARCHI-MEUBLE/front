@@ -355,6 +355,28 @@ function ConfigurationSummary({
 
 type ConfigTab = 'dimensions' | 'materials';
 
+// Fonction utilitaire pour normaliser les splitRatios (somme = 100%)
+const normalizeZoneSplitRatios = (zone: Zone): Zone => {
+  let normalizedZone = { ...zone };
+
+  // Si la zone a des splitRatios, s'assurer qu'ils somment à 100
+  if (normalizedZone.splitRatios && normalizedZone.splitRatios.length > 0) {
+    const sum = normalizedZone.splitRatios.reduce((a, b) => a + b, 0);
+    if (sum !== 100) {
+      const newRatios = [...normalizedZone.splitRatios];
+      newRatios[newRatios.length - 1] += 100 - sum;
+      normalizedZone.splitRatios = newRatios;
+    }
+  }
+
+  // Récursion sur les enfants
+  if (normalizedZone.children) {
+    normalizedZone.children = normalizedZone.children.map(normalizeZoneSplitRatios);
+  }
+
+  return normalizedZone;
+};
+
 export default function ConfiguratorPage() {
   const router = useRouter();
   const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
@@ -754,11 +776,22 @@ export default function ConfiguratorPage() {
   const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
     const updateZone = (z: Zone): Zone => {
       if (z.id === zoneId) {
+        // Calculer les splitRatios qui somment à 100%
+        let splitRatios: number[] | undefined = undefined;
+        if (count > 2) {
+          const equalRatio = 100 / count;
+          const ratios = Array(count).fill(Math.round(equalRatio));
+          const sum = ratios.reduce((a: number, b: number) => a + b, 0);
+          ratios[ratios.length - 1] += 100 - sum;
+          splitRatios = ratios;
+        }
+
         return {
           ...z,
           type: direction,
           content: undefined,
-          splitRatio: 50,
+          splitRatio: count === 2 ? 50 : undefined,
+          splitRatios,
           children: Array.from({ length: count }, (_, i) => ({
             id: `${zoneId}-${i}`,
             type: 'leaf' as const,
@@ -1543,8 +1576,9 @@ export default function ConfiguratorPage() {
             console.log('💎 Configuration riche restaurée depuis le modèle catalogue');
             
             // Initialiser rootZone immédiatement pour éviter le bloc vide
+            // Normaliser les splitRatios pour éviter les gaps (ex: [33,33,33]=99% → [33,33,34]=100%)
             if (configToRestore.rootZone) {
-              setRootZone(configToRestore.rootZone);
+              setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
             }
           } catch (e) {
             console.warn('⚠️ Erreur lors du parsing de config_data du modèle:', e);
@@ -1718,7 +1752,7 @@ export default function ConfiguratorPage() {
         if (configToRestore.height) setHeight(configToRestore.height);
         if (configToRestore.depth) setDepth(configToRestore.depth);
         if (configToRestore.socle) setSocle(configToRestore.socle);
-        if (configToRestore.rootZone) setRootZone(configToRestore.rootZone);
+        if (configToRestore.rootZone) setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
         if (configToRestore.finish) setFinish(configToRestore.finish);
         if (configToRestore.color) setColor(configToRestore.color);
         if (configToRestore.colorLabel) setColorLabel(configToRestore.colorLabel);
@@ -1784,7 +1818,7 @@ export default function ConfiguratorPage() {
     setHeight(initialConfig.height);
     setDepth(initialConfig.depth);
     setSocle(initialConfig.socle);
-    setRootZone(JSON.parse(JSON.stringify(initialConfig.rootZone))); // Deep copy
+    setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(initialConfig.rootZone)))); // Deep copy + normalize
     setFinish(initialConfig.finish);
     setDoorType(initialConfig.doorType || 'none');
     setDoorSide(initialConfig.doorSide || 'left');
@@ -1818,7 +1852,7 @@ export default function ConfiguratorPage() {
     if (c.socle) setSocle(c.socle);
     if (c.rootZone) {
       console.log('📦 Restauration de la zone racine:', c.rootZone);
-      setRootZone(JSON.parse(JSON.stringify(c.rootZone)));
+      setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(c.rootZone))));
     }
     if (c.finish) setFinish(c.finish);
     if (c.color) setColor(c.color);
