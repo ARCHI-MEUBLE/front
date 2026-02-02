@@ -813,6 +813,7 @@ export default function Account() {
                                           useMultiColor={configData.useMultiColor || false}
                                           doorType={configData.features?.doorType || 'none'}
                                           doorSide={configData.features?.doorSide || 'left'}
+                                          deletedPanelIds={configData.deletedPanelIds ? new Set(configData.deletedPanelIds) : undefined}
                                         />
                                       </div>
                                     ) : (
@@ -1246,6 +1247,7 @@ export default function Account() {
                                   doorType={config.config_data.features?.doorType || 'none'}
                                   doorSide={config.config_data.features?.doorSide || 'left'}
                                   onToggleDoors={() => {}}
+                                  deletedPanelIds={config.config_data.deletedPanelIds ? new Set(config.config_data.deletedPanelIds) : undefined}
                                 />
                               ) : (
                                 <div className="flex items-center justify-center h-full">

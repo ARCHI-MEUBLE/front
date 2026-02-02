@@ -221,7 +221,14 @@ export default function ZoneEditor({
             type: direction,
             content: undefined,
             splitRatio: count === 2 ? 50 : undefined,
-            splitRatios: count > 2 ? Array(count).fill(equalRatio).map(r => Math.round(r)) : undefined,
+            splitRatios: count > 2 ? (() => {
+              // Calculer les ratios arrondis
+              const ratios = Array(count).fill(equalRatio).map(r => Math.round(r));
+              // Ajuster le dernier ratio pour que la somme soit exactement 100
+              const sum = ratios.reduce((a, b) => a + b, 0);
+              ratios[ratios.length - 1] += 100 - sum;
+              return ratios;
+            })() : undefined,
             children: Array.from({ length: count }, (_, i) => ({
               id: `${zoneId}-${i}`,
               type: 'leaf' as const,

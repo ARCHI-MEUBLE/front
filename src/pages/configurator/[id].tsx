@@ -355,6 +355,28 @@ function ConfigurationSummary({
 
 type ConfigTab = 'dimensions' | 'materials';
 
+// Fonction utilitaire pour normaliser les splitRatios (somme = 100%)
+const normalizeZoneSplitRatios = (zone: Zone): Zone => {
+  let normalizedZone = { ...zone };
+
+  // Si la zone a des splitRatios, s'assurer qu'ils somment à 100
+  if (normalizedZone.splitRatios && normalizedZone.splitRatios.length > 0) {
+    const sum = normalizedZone.splitRatios.reduce((a, b) => a + b, 0);
+    if (sum !== 100) {
+      const newRatios = [...normalizedZone.splitRatios];
+      newRatios[newRatios.length - 1] += 100 - sum;
+      normalizedZone.splitRatios = newRatios;
+    }
+  }
+
+  // Récursion sur les enfants
+  if (normalizedZone.children) {
+    normalizedZone.children = normalizedZone.children.map(normalizeZoneSplitRatios);
+  }
+
+  return normalizedZone;
+};
+
 export default function ConfiguratorPage() {
   const router = useRouter();
   const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
@@ -596,7 +618,7 @@ export default function ConfiguratorPage() {
   const [doors, setDoors] = useState(0);
   
   // Panel selection and deletion states
-  const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
+  const [selectedPanelIds, setSelectedPanelIds] = useState<Set<string>>(new Set());
   const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
   const [showPanelTool, setShowPanelTool] = useState(false);
   const panelToolRef = useRef<HTMLDivElement>(null);
@@ -610,7 +632,7 @@ export default function ConfiguratorPage() {
     }
   }, [showPanelTool]);
 
-  // Handle panel deletion/restoration toggle
+  // Handle panel deletion/restoration toggle for a single panel
   const togglePanelDeleted = useCallback((panelId: string) => {
     setDeletedPanelIds(prev => {
       const next = new Set(prev);
@@ -623,19 +645,44 @@ export default function ConfiguratorPage() {
     });
   }, []);
 
-  // Handle panel selection (deselects zones when a panel is selected)
+  // Handle deletion/restoration of all selected panels
+  const toggleSelectedPanelsDeleted = useCallback((action: 'delete' | 'restore') => {
+    setDeletedPanelIds(prev => {
+      const next = new Set(prev);
+      selectedPanelIds.forEach(panelId => {
+        if (action === 'delete') {
+          next.add(panelId);
+        } else {
+          next.delete(panelId);
+        }
+      });
+      return next;
+    });
+  }, [selectedPanelIds]);
+
+  // Handle panel selection with multi-select support (toggle)
   const handlePanelSelect = useCallback((panelId: string | null) => {
-    setSelectedPanelId(panelId);
-    if (panelId) {
-      setSelectedZoneIds([]);
+    if (!panelId) {
+      setSelectedPanelIds(new Set());
+      return;
     }
+    setSelectedPanelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(panelId)) {
+        next.delete(panelId);
+      } else {
+        next.add(panelId);
+      }
+      return next;
+    });
+    setSelectedZoneIds([]);
   }, []);
 
   // Gérer la sélection intelligente (clic 1 -> clic 2)
   const handleZoneSelect = useCallback(
     (zoneId: string | null) => {
-      // Deselect panel when selecting a zone
-      setSelectedPanelId(null);
+      // Deselect panels when selecting a zone
+      setSelectedPanelIds(new Set());
       
       if (!zoneId) {
         setSelectedZoneIds([]);
@@ -729,11 +776,22 @@ export default function ConfiguratorPage() {
   const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
     const updateZone = (z: Zone): Zone => {
       if (z.id === zoneId) {
+        // Calculer les splitRatios qui somment à 100%
+        let splitRatios: number[] | undefined = undefined;
+        if (count > 2) {
+          const equalRatio = 100 / count;
+          const ratios = Array(count).fill(Math.round(equalRatio));
+          const sum = ratios.reduce((a: number, b: number) => a + b, 0);
+          ratios[ratios.length - 1] += 100 - sum;
+          splitRatios = ratios;
+        }
+
         return {
           ...z,
           type: direction,
           content: undefined,
-          splitRatio: 50,
+          splitRatio: count === 2 ? 50 : undefined,
+          splitRatios,
           children: Array.from({ length: count }, (_, i) => ({
             id: `${zoneId}-${i}`,
             type: 'leaf' as const,
@@ -1456,6 +1514,7 @@ export default function ConfiguratorPage() {
               componentColors: configDataObj.componentColors,
               doorType: configDataObj.features?.doorType,
               doorSide: configDataObj.features?.doorSide,
+              deletedPanelIds: configDataObj.deletedPanelIds,
               prompt: configDataToUse.prompt || configDataObj.prompt,
               name: configDataToUse.name || configDataObj.name
             };
@@ -1510,14 +1569,16 @@ export default function ConfiguratorPage() {
               componentColors: dataObj.componentColors,
               doorType: dataObj.features?.doorType,
               doorSide: dataObj.features?.doorSide,
+              deletedPanelIds: dataObj.deletedPanelIds,
               prompt: modelData.prompt,
               name: modelData.name
             };
             console.log('💎 Configuration riche restaurée depuis le modèle catalogue');
             
             // Initialiser rootZone immédiatement pour éviter le bloc vide
+            // Normaliser les splitRatios pour éviter les gaps (ex: [33,33,33]=99% → [33,33,34]=100%)
             if (configToRestore.rootZone) {
-              setRootZone(configToRestore.rootZone);
+              setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
             }
           } catch (e) {
             console.warn('⚠️ Erreur lors du parsing de config_data du modèle:', e);
@@ -1691,7 +1752,7 @@ export default function ConfiguratorPage() {
         if (configToRestore.height) setHeight(configToRestore.height);
         if (configToRestore.depth) setDepth(configToRestore.depth);
         if (configToRestore.socle) setSocle(configToRestore.socle);
-        if (configToRestore.rootZone) setRootZone(configToRestore.rootZone);
+        if (configToRestore.rootZone) setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
         if (configToRestore.finish) setFinish(configToRestore.finish);
         if (configToRestore.color) setColor(configToRestore.color);
         if (configToRestore.colorLabel) setColorLabel(configToRestore.colorLabel);
@@ -1757,13 +1818,13 @@ export default function ConfiguratorPage() {
     setHeight(initialConfig.height);
     setDepth(initialConfig.depth);
     setSocle(initialConfig.socle);
-    setRootZone(JSON.parse(JSON.stringify(initialConfig.rootZone))); // Deep copy
+    setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(initialConfig.rootZone)))); // Deep copy + normalize
     setFinish(initialConfig.finish);
     setDoorType(initialConfig.doorType || 'none');
     setDoorSide(initialConfig.doorSide || 'left');
     setSelectedZoneIds(['root']);
     setDeletedPanelIds(new Set()); // Réinitialiser les panneaux supprimés
-    setSelectedPanelId(null); // Désélectionner le panneau
+    setSelectedPanelIds(new Set()); // Désélectionner les panneaux
     setShowPanelTool(false); // Fermer l'outil de suppression
 
     // Supprimer la sauvegarde localStorage
@@ -1791,7 +1852,7 @@ export default function ConfiguratorPage() {
     if (c.socle) setSocle(c.socle);
     if (c.rootZone) {
       console.log('📦 Restauration de la zone racine:', c.rootZone);
-      setRootZone(JSON.parse(JSON.stringify(c.rootZone)));
+      setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(c.rootZone))));
     }
     if (c.finish) setFinish(c.finish);
     if (c.color) setColor(c.color);
@@ -1824,7 +1885,7 @@ export default function ConfiguratorPage() {
   };
 
   // Construction du prompt depuis l'arbre de zones
-  const buildPromptFromZoneTree = useCallback((zone: Zone): string => {
+  const buildPromptFromZoneTree = useCallback((zone: Zone, currentPath: string = ''): string => {
     let doorCode = '';
     const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
 
@@ -1888,9 +1949,41 @@ export default function ConfiguratorPage() {
     const childCount = children.length;
 
     const orderedChildren = isHorizontal ? [...children].reverse() : children;
-    const childPrompts = orderedChildren.map((c) => buildPromptFromZoneTree(c));
+    const childPrompts = orderedChildren.map((c, i) => {
+        const childIdx = isHorizontal ? (childCount - 1 - i) : i;
+        const nextPath = isHorizontal ? `${currentPath}r${childIdx}-` : `${currentPath}c${childIdx}-`;
+        return buildPromptFromZoneTree(c, nextPath);
+    });
 
-    const prefix = isHorizontal ? 'H' : 'V';
+    let prefix = isHorizontal ? 'H' : 'V';
+    
+    // Règle automatique : pas de séparateurs horizontaux entre les tiroirs
+    const allChildrenAreDrawers = childCount >= 2 && children.every(c => c.content === 'drawer' || c.content === 'push_drawer');
+    
+    // Vérifier si des séparateurs sont supprimés pour cette division
+    if (isHorizontal && allChildrenAreDrawers) {
+        prefix += 'I';
+    } else if (childCount === 2) {
+        const sepId = isHorizontal ? `separator-h-${currentPath}h0-0` : `separator-v-${currentPath}v0-0`;
+        if (deletedPanelIds.has(sepId)) {
+            prefix += 'I';
+        }
+    } else if (childCount > 2) {
+        // Pour plus de 2 enfants, on vérifie si TOUS les séparateurs sont supprimés
+        // (Le prompt ne supporte pas facilement les mélanges sans nesting complexe)
+        let allDeleted = true;
+        for (let i = 0; i < childCount - 1; i++) {
+            const sepId = isHorizontal ? `separator-h-${currentPath}h${i}-0` : `separator-v-${currentPath}v${i}-0`;
+            if (!deletedPanelIds.has(sepId)) {
+                allDeleted = false;
+                break;
+            }
+        }
+        if (allDeleted) {
+            prefix += 'I';
+        }
+    }
+
     let zoneCode = '';
 
     // Pour 2 enfants avec splitRatio
@@ -1915,7 +2008,7 @@ export default function ConfiguratorPage() {
     }
 
     return zoneCode;
-  }, []);
+  }, [deletedPanelIds]);
 
   // Calcul du prix basé sur la surface totale du meuble
   const calculatePrice = useCallback((config: {
@@ -2065,8 +2158,13 @@ export default function ConfiguratorPage() {
     }
 
     // 4. Compter tiroirs et penderies dans les zones
-    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number): number => {
+    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number, currentPath: string = ''): number => {
       let extra = 0;
+
+      const isDrawer = (z: Zone) => z.content === 'drawer' || z.content === 'push_drawer';
+      const shouldHideHorizontalSeparators = (z: Zone) => {
+        return z.type === 'horizontal' && z.children && z.children.length >= 2 && z.children.every(isDrawer);
+      };
 
       // Prix de la porte sur cette zone (feuille ou parent)
       const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
@@ -2238,35 +2336,51 @@ export default function ConfiguratorPage() {
             ratio = 1 / zone.children!.length;
           }
 
+          let nextPath = currentPath;
+
           if (zone.type === 'horizontal') {
             // Les enfants partagent la hauteur
             childHeight = zoneHeight * ratio;
+            const childIdx = zone.children!.length - 1 - index;
+            nextPath = `${currentPath}r${childIdx}-`;
 
             // Ajouter le prix de la séparation horizontale (étagère bois)
-            // Prix fixe par étagère défini dans l'admin, ou calcul basé sur la surface
             if (index < zone.children!.length - 1) {
-              const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
-              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-              const shelfPrice = pricePerM2 * surfaceShelfM2;
-              extra += shelfPrice;
-              console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
+              const sepId = `separator-h-${currentPath}h${index}-0`;
+              const isAutomaticInvisible = shouldHideHorizontalSeparators(zone);
+              const isDeleted = deletedPanelIds.has(sepId);
+
+              if (!isDeleted && !isAutomaticInvisible) {
+                const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
+                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+                const shelfPrice = pricePerM2 * surfaceShelfM2;
+                extra += shelfPrice;
+                console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
+              } else {
+                console.log(`📏 [ETAGERE BOIS] Ignorée car ${isDeleted ? 'supprimée' : 'automatiquement invisible (tiroirs)'}`);
+              }
             }
           } else if (zone.type === 'vertical') {
             // Les enfants partagent la largeur
             childWidth = zoneWidth * ratio;
+            nextPath = `${currentPath}c${index}-`;
 
             // Ajouter le prix de la séparation verticale (montant bois)
-            // Prix fixe défini dans l'admin, ou calcul basé sur la surface
             if (index < zone.children!.length - 1) {
-              const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
-              const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-              const verticalPrice = pricePerM2 * surfaceVerticalM2;
-              extra += verticalPrice;
-              console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
+              const sepId = `separator-v-${currentPath}v${index}-0`;
+              if (!deletedPanelIds.has(sepId)) {
+                const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
+                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
+                const verticalPrice = pricePerM2 * surfaceVerticalM2;
+                extra += verticalPrice;
+                console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
+              } else {
+                console.log(`📏 [MONTANT VERTICAL] Ignoré car supprimé`);
+              }
             }
           }
 
-          extra += countExtraPrice(child, childWidth, childHeight);
+          extra += countExtraPrice(child, childWidth, childHeight, nextPath);
         });
       }
 
@@ -3068,7 +3182,7 @@ export default function ConfiguratorPage() {
                   doorType={doorType}
                   doorSide={doorSide}
                   mountingStyle={mountingStyle}
-                  selectedPanelId={isViewMode || !showPanelTool ? null : selectedPanelId}
+                  selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
                   onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
                   deletedPanelIds={deletedPanelIds}
                 />
@@ -3108,7 +3222,7 @@ export default function ConfiguratorPage() {
                       onClick={() => {
                         setShowPanelTool(!showPanelTool);
                         if (showPanelTool) {
-                          setSelectedPanelId(null);
+                          setSelectedPanelIds(new Set());
                         }
                       }}
                       className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
@@ -3197,46 +3311,56 @@ export default function ConfiguratorPage() {
                   </div>
                 )}
 
-                {/* Panel selection indicator */}
-                {selectedPanelId && !isViewMode && showPanelTool && (
+                {/* Panel selection indicator - Multi-select support */}
+                {selectedPanelIds.size > 0 && !isViewMode && showPanelTool && (
                   <div className="absolute top-4 right-4 z-20 hidden lg:block">
                     <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
-                      <div className={`h-3 w-3 rounded-full ${deletedPanelIds.has(selectedPanelId) ? 'bg-[#FF5722]' : 'bg-[#2196F3]'}`} />
-                      <span className={`text-sm font-medium ${deletedPanelIds.has(selectedPanelId) ? 'text-[#706F6C] line-through' : 'text-[#1A1917]'}`}>
-                        {(() => {
-                          const panelInfo = stringToPanelId(selectedPanelId);
-                          if (panelInfo) {
-                            if (panelInfo.type === 'separator') {
-                              const isHorizontal = selectedPanelId.includes('-h-');
-                              return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                      <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
+                      <span className="text-sm font-medium text-[#1A1917]">
+                        {selectedPanelIds.size === 1 ? (
+                          (() => {
+                            const panelId = Array.from(selectedPanelIds)[0];
+                            const panelInfo = stringToPanelId(panelId);
+                            if (panelInfo) {
+                              if (panelInfo.type === 'separator') {
+                                const isHorizontal = panelId.includes('-h-');
+                                return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                              }
+                              const baseLabel = PANEL_META[panelInfo.type]?.label || panelId;
+                              if (panelInfo.index !== undefined) {
+                                return `${baseLabel} (segment ${panelInfo.index + 1})`;
+                              }
+                              return baseLabel;
                             }
-                            const baseLabel = PANEL_META[panelInfo.type]?.label || selectedPanelId;
-                            if (panelInfo.index !== undefined) {
-                              return `${baseLabel} (segment ${panelInfo.index + 1})`;
-                            }
-                            return baseLabel;
-                          }
-                          return selectedPanelId;
-                        })()}
+                            return panelId;
+                          })()
+                        ) : (
+                          `${selectedPanelIds.size} panneaux sélectionnés`
+                        )}
                       </span>
-                      {/* Delete/restore panel button */}
+                      {/* Delete all selected panels */}
                       <button
                         type="button"
-                        onClick={() => togglePanelDeleted(selectedPanelId)}
-                        className={`ml-1 ${deletedPanelIds.has(selectedPanelId) ? 'text-[#4CAF50] hover:text-[#388E3C]' : 'text-[#FF5722] hover:text-[#E64A19]'}`}
-                        title={deletedPanelIds.has(selectedPanelId) ? 'Restaurer ce panneau' : 'Retirer ce panneau'}
+                        onClick={() => toggleSelectedPanelsDeleted('delete')}
+                        className="ml-1 text-[#FF5722] hover:text-[#E64A19]"
+                        title={`Retirer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
                       >
-                        {deletedPanelIds.has(selectedPanelId) ? (
-                          <RotateCcw className="h-4 w-4" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      {/* Restore all selected panels */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSelectedPanelsDeleted('restore')}
+                        className="ml-1 text-[#4CAF50] hover:text-[#388E3C]"
+                        title={`Restaurer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
+                      >
+                        <RotateCcw className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSelectedPanelId(null)}
+                        onClick={() => setSelectedPanelIds(new Set())}
                         className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
-                        title="Désélectionner"
+                        title="Désélectionner tout"
                       >
                         <IconTablerX className="h-4 w-4" />
                       </button>
@@ -3359,7 +3483,7 @@ export default function ConfiguratorPage() {
                             zone={rootZone}
                             width={width}
                             height={height}
-                            selectedPanelId={selectedPanelId}
+                            selectedPanelIds={selectedPanelIds}
                             onSelectPanel={handlePanelSelect}
                             deletedPanelIds={deletedPanelIds}
                           />

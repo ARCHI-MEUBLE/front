@@ -26,7 +26,7 @@ interface ThreeViewerProps {
     rootZone: Zone | null;
     selectedZoneIds?: string[];
     onSelectZone?: (id: string | null) => void;
-    selectedPanelId?: string | null;
+    selectedPanelIds?: Set<string>;
     onSelectPanel?: (panelId: string | null) => void;
     deletedPanelIds?: Set<string>;
     isBuffet?: boolean;
@@ -826,7 +826,7 @@ function Furniture({
                        mountingStyle = 'applique',
                        selectedZoneIds = [],
                        onSelectZone,
-                       selectedPanelId = null,
+                       selectedPanelIds = new Set(),
                        onSelectPanel,
                        deletedPanelIds = new Set()
                    }: ThreeViewerProps) {
@@ -1163,7 +1163,24 @@ function Furniture({
         ): SeparatorInfo[] => {
             const separators: SeparatorInfo[] = [];
 
-            if (!zone.children || zone.children.length <= 1) {
+            // Si pas d'enfants, retourner vide
+            if (!zone.children || zone.children.length === 0) {
+                return separators;
+            }
+
+            // Si un seul enfant, pas de séparateurs à ce niveau mais on doit quand même
+            // récurser dans l'enfant pour collecter ses séparateurs internes
+            if (zone.children.length === 1) {
+                const child = zone.children[0];
+                const childSeparators = collectSeparators(
+                    child,
+                    x,
+                    y,
+                    width,
+                    height,
+                    `${path}c0-`
+                );
+                separators.push(...childSeparators);
                 return separators;
             }
 
@@ -1233,9 +1250,10 @@ function Furniture({
 
                     // Ajouter séparateur horizontal après chaque rangée sauf la dernière
                     if (i < zone.children!.length - 1) {
+                        const sepY = currentY - rowHeight - thickness / 2;
                         separators.push({
                             x: x,
-                            y: currentY - rowHeight - thickness / 2,
+                            y: sepY,
                             width: width,
                             height: thickness,
                             orientation: 'horizontal',
@@ -1364,9 +1382,10 @@ function Furniture({
 
         // Pour le panneau du haut - segmenter selon les colonnes de premier niveau
         // IMPORTANT: Ne considérer que les cellules qui touchent le bord SUPÉRIEUR
+        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const maxY = Math.max(...allCells.map(c => c.y + c.height / 2));
         const topTouchingCells = allCells.filter(cell =>
-            cell.y + cell.height / 2 >= maxY - 0.01
+            cell.y + cell.height / 2 >= maxY - 0.05
         );
 
         // Identifier les colonnes uniques parmi les cellules touchant le haut
@@ -1424,9 +1443,10 @@ function Furniture({
 
         // Pour le panneau du bas - segmenter selon les colonnes qui touchent le BAS
         // IMPORTANT: Ne considérer que les cellules qui touchent le bord INFÉRIEUR
+        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const minY = Math.min(...allCells.map(c => c.y - c.height / 2));
         const bottomTouchingCells = allCells.filter(cell =>
-            cell.y - cell.height / 2 <= minY + 0.01
+            cell.y - cell.height / 2 <= minY + 0.05
         );
 
         const uniqueBottomColumns = new Map<number, GridCell[]>();
@@ -1477,10 +1497,22 @@ function Furniture({
             });
         }
 
+        // DEBUG: Log bottom panel creation
+        console.log('🔵 BOTTOM PANEL DEBUG:', {
+            allCellsCount: allCells.length,
+            allCellsX: allCells.map(c => ({ x: c.x.toFixed(4), y: c.y.toFixed(4), bottom: (c.y - c.height/2).toFixed(4) })),
+            minY: minY.toFixed(4),
+            bottomTouchingCells: bottomTouchingCells.map(c => ({ x: c.x.toFixed(4), key: Math.round(c.x * 1000) })),
+            uniqueKeys: Array.from(uniqueBottomColumns.keys()),
+            sortedBottomColumnsLength: sortedBottomColumns.length,
+            bottomSegments: bottomSegments.map(s => ({ id: s.id, x: s.x.toFixed(4), width: s.width.toFixed(4) }))
+        });
+
         // Pour le panneau gauche - segmenter selon les rangées de premier niveau
+        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const uniqueLeftRows = new Map<number, GridCell[]>();
         const leftCells = allCells.filter(cell =>
-            cell.x - cell.width / 2 <= -innerWidth / 2 + 0.01
+            cell.x - cell.width / 2 <= -innerWidth / 2 + 0.05
         );
         leftCells.forEach(cell => {
             const key = Math.round(cell.y * 1000);
@@ -1534,9 +1566,10 @@ function Furniture({
         }
 
         // Pour le panneau droit - segmenter selon les rangées de premier niveau
+        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const uniqueRightRows = new Map<number, GridCell[]>();
         const rightCells = allCells.filter(cell =>
-            cell.x + cell.width / 2 >= innerWidth / 2 - 0.01
+            cell.x + cell.width / 2 >= innerWidth / 2 - 0.05
         );
         rightCells.forEach(cell => {
             const key = Math.round(cell.y * 1000);
@@ -1704,11 +1737,11 @@ function Furniture({
                 const furnitureRightInner = innerWidth / 2;
 
                 // Vérifier si le séparateur lui-même touche les bords du meuble
-                const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.01;
-                const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.01;
+                const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.05;
+                const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.05;
 
                 const adjacentCells = allCells.filter(cell =>
-                    Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.02
+                    Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.05
                 );
 
                 if (adjacentCells.length > 0) {
@@ -1720,26 +1753,32 @@ function Furniture({
                         }
                     });
 
-                    Array.from(uniqueCols.values())
-                        .sort((a, b) => a.x - b.x)
-                        .forEach((cell, j) => {
+                    const sortedCols = Array.from(uniqueCols.values()).sort((a, b) => a.x - b.x);
+                    const isSingleColumn = sortedCols.length === 1;
+
+                    sortedCols.forEach((cell, j) => {
                             let segX = cell.x;
                             let segWidth = cell.width;
 
-                            const isLeftmost = cell.x - cell.width / 2 <= sep.x - sep.width / 2 + 0.01;
-                            const isRightmost = cell.x + cell.width / 2 >= sep.x + sep.width / 2 - 0.01;
-
-                            // Vérifier aussi si la cellule touche les bords ABSOLUS du meuble
+                            // Vérifier si la cellule touche les bords ABSOLUS du meuble
                             const touchesFurnitureLeft = cell.x - cell.width / 2 <= furnitureLeftInner + 0.01;
                             const touchesFurnitureRight = cell.x + cell.width / 2 >= furnitureRightInner - 0.01;
 
-                            // Étendre vers la gauche si nécessaire
-                            if (isLeftmost || touchesFurnitureLeft || sepTouchesFurnitureLeft) {
+                            // Vérifier si c'est la première/dernière colonne dans le groupe
+                            const isFirstInGroup = j === 0;
+                            const isLastInGroup = j === sortedCols.length - 1;
+
+                            // Étendre vers la gauche si:
+                            // - La cellule touche le bord gauche du meuble, OU
+                            // - C'est une colonne unique (pas de colonnes adjacentes à gauche)
+                            if (touchesFurnitureLeft || (isSingleColumn && isFirstInGroup)) {
                                 segWidth += thickness;
                                 segX -= thickness / 2;
                             }
-                            // Étendre vers la droite si nécessaire
-                            if (isRightmost || touchesFurnitureRight || sepTouchesFurnitureRight) {
+                            // Étendre vers la droite si:
+                            // - La cellule touche le bord droit du meuble, OU
+                            // - C'est une colonne unique (pas de colonnes adjacentes à droite)
+                            if (touchesFurnitureRight || (isSingleColumn && isLastInGroup)) {
                                 segWidth += thickness;
                                 segX += thickness / 2;
                             }
@@ -2284,7 +2323,7 @@ function Furniture({
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
         openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment,
-        selectedPanelId, onSelectPanel
+        selectedPanelIds, onSelectPanel
     ]);
 
     // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
@@ -2319,7 +2358,7 @@ function Furniture({
                     panelId={segment.id}
                     position={[segment.x, segment.y, 0]}
                     size={[segment.width, segment.height, d]}
-                    isSelected={selectedPanelId === segment.id}
+                    isSelected={selectedPanelIds.has(segment.id)}
                     onSelect={handlePanelSelect}
                     isDeleted={deletedPanelIds.has(segment.id)}
                 />
@@ -2344,7 +2383,7 @@ function Furniture({
                     panelId={segment.id}
                     position={[segment.x, segment.y, 0]}
                     size={[segment.width, segment.height, d]}
-                    isSelected={selectedPanelId === segment.id}
+                    isSelected={selectedPanelIds.has(segment.id)}
                     onSelect={handlePanelSelect}
                     isDeleted={deletedPanelIds.has(segment.id)}
                 />
@@ -2369,7 +2408,7 @@ function Furniture({
                     panelId={segment.id}
                     position={[segment.x, segment.y, 0]}
                     size={[segment.width, segment.height, d]}
-                    isSelected={selectedPanelId === segment.id}
+                    isSelected={selectedPanelIds.has(segment.id)}
                     onSelect={handlePanelSelect}
                     isDeleted={deletedPanelIds.has(segment.id)}
                 />
@@ -2394,8 +2433,10 @@ function Furniture({
             )}
 
             {/* Panneau inférieur - rendu segment par segment pour permettre la suppression individuelle */}
-            {panelSegments.bottomSegments.map((segment) => (
-                !deletedPanelIds.has(segment.id) && (
+            {panelSegments.bottomSegments.map((segment) => {
+                const isDeleted = deletedPanelIds.has(segment.id);
+                console.log('🟢 BOTTOM RENDER:', segment.id, 'isDeleted:', isDeleted, 'deletedPanelIds:', Array.from(deletedPanelIds));
+                return !isDeleted && (
                     <StructuralPanel
                         key={`visual-${segment.id}`}
                         position={[segment.x, segment.y, 0]}
@@ -2403,8 +2444,8 @@ function Furniture({
                         hexColor={finalStructureColor}
                         imageUrl={finalStructureImageUrl}
                     />
-                )
-            ))}
+                );
+            })}
             {/* Hitbox de sélection par segment pour le panneau inférieur */}
             {panelSegments.bottomSegments.map((segment) => (
                 <PanelSegmentHitbox
@@ -2412,7 +2453,7 @@ function Furniture({
                     panelId={segment.id}
                     position={[segment.x, segment.y, 0]}
                     size={[segment.width, segment.height, d]}
-                    isSelected={selectedPanelId === segment.id}
+                    isSelected={selectedPanelIds.has(segment.id)}
                     onSelect={handlePanelSelect}
                     isDeleted={deletedPanelIds.has(segment.id)}
                 />
@@ -2437,7 +2478,7 @@ function Furniture({
                     panelId={segment.id}
                     position={[segment.x, segment.y, 0]}
                     size={[segment.width, segment.height, d]}
-                    isSelected={selectedPanelId === segment.id}
+                    isSelected={selectedPanelIds.has(segment.id)}
                     onSelect={handlePanelSelect}
                     isDeleted={deletedPanelIds.has(segment.id)}
                 />
@@ -2587,7 +2628,7 @@ function Furniture({
                             panelId={segment.id}
                             position={[segment.x, segment.y, -d/2 + 0.002]}
                             size={[segment.width, segment.height, 0.004]}
-                            isSelected={selectedPanelId === segment.id}
+                            isSelected={selectedPanelIds.has(segment.id)}
                             onSelect={handlePanelSelect}
                             isDeleted={deletedPanelIds.has(segment.id)}
                         />
@@ -2599,7 +2640,7 @@ function Furniture({
                 <group
                     onClick={(e) => {
                         e.stopPropagation();
-                        handlePanelSelect(selectedPanelId === 'panel-back' ? null : 'panel-back');
+                        handlePanelSelect(selectedPanelIds.has('panel-back') ? null : 'panel-back');
                     }}
                     onPointerOver={(e) => {
                         e.stopPropagation();
@@ -2618,7 +2659,7 @@ function Furniture({
                         hexColor={finalBackColor}
                         imageUrl={finalBackImageUrl}
                     />
-                    {selectedPanelId === 'panel-back' && (
+                    {selectedPanelIds.has('panel-back') && (
                         <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
                             <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
                             <meshBasicMaterial color="#2196F3" wireframe transparent opacity={0.5} toneMapped={false} />

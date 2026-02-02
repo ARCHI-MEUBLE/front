@@ -40,7 +40,7 @@ export interface ThreeViewerProps {
   mountingStyle?: 'applique' | 'encastre';
   onCaptureReady?: (captureFunction: () => string | null) => void;
   // Panel selection and deletion
-  selectedPanelId?: string | null;
+  selectedPanelIds?: Set<string>;
   onSelectPanel?: (panelId: string | null) => void;
   deletedPanelIds?: Set<string>;
 }

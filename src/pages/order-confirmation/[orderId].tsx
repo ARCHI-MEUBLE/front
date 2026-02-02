@@ -348,6 +348,7 @@ export default function OrderConfirmationPage() {
                               useMultiColor={configData?.useMultiColor}
                               doorType={configData?.features?.doorType || 'none'}
                               doorSide={configData?.features?.doorSide || 'left'}
+                              deletedPanelIds={configData?.deletedPanelIds ? new Set(configData.deletedPanelIds) : undefined}
                             />
                           </div>
                           {/* Infos */}

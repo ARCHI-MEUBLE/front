@@ -161,20 +161,21 @@ export function AdminSidebar({ selectedSection, onSelect, onLogout, adminEmail, 
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
               <div className="cursor-default">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <IconBuildingStore className="size-4" />
-                </div>
-                <span className="text-base font-semibold">ArchiMeuble</span>
+                <img
+                  src="/images/logo.jpg"
+                  alt="ArchiMeuble"
+                  className="h-8 w-auto object-contain"
+                />
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="mt-4">
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {navMain.map((item) => {
                 const Icon = item.icon
                 return (
@@ -196,7 +197,7 @@ export function AdminSidebar({ selectedSection, onSelect, onLogout, adminEmail, 
 
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {navSecondary.map((item) => {
                 const Icon = item.icon
                 return (
