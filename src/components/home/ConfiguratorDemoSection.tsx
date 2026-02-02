@@ -113,34 +113,20 @@ export function ConfiguratorDemoSection() {
                   className="mt-8 lg:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
               >
                 <Link
-                    href="/models"
+                    href="/configurator/M1"
                     className="group relative inline-flex items-center justify-center gap-3 bg-white px-6 sm:px-7 py-3.5 sm:py-4 text-sm font-bold text-[#0D0D0C] overflow-hidden transition-all duration-300 lg:hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                 >
-                  <span className="relative z-10 transition-colors duration-300 lg:group-hover:text-white">Lancer le configurateur</span>
-                  <svg
-                      className="relative z-10 w-4 h-4 transition-all duration-300 lg:group-hover:translate-x-1 lg:group-hover:text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                  >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                    />
-                  </svg>
+                  <span className="relative z-10 transition-colors duration-300 lg:group-hover:text-white">Configurer le modèle M1</span>
                   <div className="absolute inset-0 bg-[#8B7355] translate-y-full lg:group-hover:translate-y-0 transition-transform duration-300" />
                 </Link>
 
                 <Link
-                    href="#demo"
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 sm:py-4 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                    href="/configurator/mansard"
+                    className="group relative inline-flex items-center justify-center gap-3 border border-white/20 px-6 sm:px-7 py-3.5 sm:py-4 text-sm font-bold text-white overflow-hidden transition-all duration-300 hover:border-white/40 hover:bg-white/5"
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  Voir la démo
+                  <span className="relative z-10 flex items-center gap-2">
+                    Nouveau : Meuble Mansarde <span className="text-[10px] bg-[#8B7355] px-1.5 py-0.5 rounded text-white font-black uppercase tracking-tighter">M2</span>
+                  </span>
                 </Link>
               </div>
 

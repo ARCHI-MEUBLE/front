@@ -124,29 +124,33 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
   );
 }
 
-interface DimensionsPanelProps {
+interface MansardDimensionsPanelProps {
   width: number;
   depth: number;
   height: number;
+  heightRight: number;
   onWidthChange: (value: number) => void;
   onDepthChange: (value: number) => void;
   onHeightChange: (value: number) => void;
+  onHeightRightChange: (value: number) => void;
 }
 
-export default function DimensionsPanel({
+export default function MansardDimensionsPanel({
   width,
   depth,
   height,
+  heightRight,
   onWidthChange,
   onDepthChange,
   onHeightChange,
-}: DimensionsPanelProps) {
+  onHeightRightChange,
+}: MansardDimensionsPanelProps) {
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions du meuble</h3>
+        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions du meuble Mansarde</h3>
         <span className="font-mono text-[10px] text-[#706F6C]">
-          {width} × {depth} × {height} mm
+          {width} × {depth} × {height}/{heightRight} mm
         </span>
       </div>
 
@@ -171,9 +175,19 @@ export default function DimensionsPanel({
       />
 
       <DimensionInput
-        label="Hauteur"
+        label="Hauteur Gauche"
         value={height}
         onChange={onHeightChange}
+        min={100}
+        max={2500}
+        step={10}
+        unit="mm"
+      />
+
+      <DimensionInput
+        label="Hauteur Droite"
+        value={heightRight}
+        onChange={onHeightRightChange}
         min={100}
         max={2500}
         step={10}

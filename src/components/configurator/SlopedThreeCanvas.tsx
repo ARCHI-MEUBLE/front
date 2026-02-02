@@ -38,6 +38,7 @@ interface ThreeViewerProps {
     doorSide?: 'left' | 'right';
     useMultiColor?: boolean;
     mountingStyle?: 'applique' | 'encastre';
+    heightRight?: number;
     onCaptureReady?: (captureFunction: () => string | null) => void;
 }
 
@@ -167,6 +168,7 @@ interface PanelSegmentHitboxProps {
     isSelected: boolean;
     onSelect: (panelId: string | null) => void;
     isDeleted?: boolean;
+    rotation?: [number, number, number];
 }
 
 function PanelSegmentHitbox({
@@ -175,10 +177,11 @@ function PanelSegmentHitbox({
                                 size,
                                 isSelected,
                                 onSelect,
-                                isDeleted = false
+                                isDeleted = false,
+                                rotation = [0, 0, 0]
                             }: PanelSegmentHitboxProps) {
     return (
-        <group position={position}>
+        <group position={position} rotation={rotation}>
             {/* Hitbox invisible pour la sélection */}
             <mesh
                 visible={false}
@@ -241,11 +244,65 @@ function StructuralPanel({
                              hexColor,
                              imageUrl,
                              castShadow = true,
-                             receiveShadow = true
-                         }: StructuralPanelProps) {
+                             receiveShadow = true,
+                             isSloped = false,
+                             isTrapezoid = false,
+                             h1 = 1,
+                             h2 = 1,
+                             thickness = 0.019
+                         }: {
+    position: [number, number, number];
+    size: [number, number, number];
+    hexColor: string;
+    imageUrl?: string | null;
+    castShadow?: boolean;
+    receiveShadow?: boolean;
+    isSloped?: boolean;
+    isTrapezoid?: boolean;
+    h1?: number;
+    h2?: number;
+    thickness?: number;
+}) {
+    const geometry = useMemo(() => {
+        if (isTrapezoid) {
+            // Créer une géométrie de trapèze pour les panneaux latéraux asymétriques
+            const depth = size[2];
+            const shape = new THREE.Shape();
+            
+            // On dessine le trapèze en 2D (Y, Z) car le panneau est de profil
+            // Base en bas à 0 (position relative au centre du panneau)
+            shape.moveTo(-depth/2, -h1/2);
+            shape.lineTo(depth/2, -h1/2);
+            shape.lineTo(depth/2, h2/2);
+            shape.lineTo(-depth/2, h2/2);
+            shape.closePath();
+
+            const extrudeSettings = {
+                steps: 1,
+                depth: size[0],
+                bevelEnabled: false
+            };
+            const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geom.rotateY(Math.PI / 2);
+            return geom;
+        }
+
+        if (isSloped) {
+            const width = size[0];
+            const diff = h2 - h1;
+            const actualWidth = Math.sqrt(width * width + diff * diff);
+            const angle = Math.atan2(diff, width);
+
+            const slopedGeometry = new THREE.BoxGeometry(actualWidth, size[1], size[2]);
+            slopedGeometry.rotateZ(angle);
+            return slopedGeometry;
+        }
+
+        return new THREE.BoxGeometry(size[0], size[1], size[2]);
+    }, [isSloped, isTrapezoid, size, h1, h2, thickness]);
+
     return (
-        <mesh position={position} castShadow={castShadow} receiveShadow={receiveShadow}>
-            <boxGeometry args={size} />
+        <mesh position={position} castShadow={castShadow} receiveShadow={receiveShadow} geometry={geometry}>
             <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
         </mesh>
     );
@@ -664,7 +721,8 @@ function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, is
 // Composant pour générer le panneau arrière avec des ouvertures pour les espaces ouverts
 function BackPanelWithOpenings({
                                    totalWidth,
-                                   totalHeight,
+                                   totalHeight1,
+                                   totalHeight2,
                                    yOffset,
                                    zOffset,
                                    openSpaces,
@@ -672,149 +730,45 @@ function BackPanelWithOpenings({
                                    imageUrl
                                }: {
     totalWidth: number;
-    totalHeight: number;
+    totalHeight1: number;
+    totalHeight2: number;
     yOffset: number;
     zOffset: number;
     openSpaces: { x: number; y: number; width: number; height: number }[];
     hexColor: string;
     imageUrl?: string | null;
 }) {
-    // Pour simplifier, on divise le panneau en segments horizontaux
-    // Si un espace ouvert couvre toute la largeur, on crée des panneaux au-dessus et en-dessous
-    // Pour des cas plus complexes (plusieurs colonnes ouvertes), on génère des segments
+    const geometry = useMemo(() => {
+        const shape = new THREE.Shape();
+        const depth = 0.004;
+        
+        // On dessine le trapèze du fond
+        // On se base sur le centre du meuble en X
+        const bottomY = 0; // On travaille en local pour l'extrusion
+        shape.moveTo(-totalWidth/2, bottomY);
+        shape.lineTo(totalWidth/2, bottomY);
+        shape.lineTo(totalWidth/2, totalHeight2);
+        shape.lineTo(-totalWidth/2, totalHeight1);
+        shape.closePath();
 
-    // Trier les espaces ouverts par position Y (de haut en bas)
-    const sortedOpenSpaces = [...openSpaces].sort((a, b) => b.y - a.y);
+        const extrudeSettings = {
+            steps: 1,
+            depth: depth,
+            bevelEnabled: false
+        };
+        const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        // Translation pour aligner avec le yOffset
+        // Le StructuralPanel positionne au centre. Le centre du trapèze est à (totalHeight1+totalHeight2)/4
+        geom.translate(0, yOffset - (totalHeight1 + totalHeight2)/4, zOffset - depth/2);
+        
+        return geom;
+    }, [totalWidth, totalHeight1, totalHeight2, yOffset, zOffset]);
 
-    // Générer les panneaux qui évitent les zones ouvertes
-    const panels: React.ReactNode[] = [];
-
-    // Simplification : créer des panneaux autour de chaque espace ouvert
-    // En utilisant une approche par colonne verticale
-
-    const leftEdge = -totalWidth / 2;
-    const rightEdge = totalWidth / 2;
-    const topEdge = yOffset + totalHeight / 2;
-    const bottomEdge = yOffset - totalHeight / 2;
-
-    // Convertir les espaces ouverts en rectangles exclus
-    const exclusions = openSpaces.map(os => ({
-        left: os.x - os.width / 2,
-        right: os.x + os.width / 2,
-        top: os.y + os.height / 2,
-        bottom: os.y - os.height / 2
-    }));
-
-    // Pour chaque espace ouvert, créer des panneaux à gauche, à droite, au-dessus et en-dessous
-    if (exclusions.length === 1) {
-        const ex = exclusions[0];
-
-        // Panneau à gauche de l'ouverture
-        if (ex.left > leftEdge + 0.01) {
-            const panelWidth = ex.left - leftEdge;
-            panels.push(
-                <mesh key="back-left" position={[leftEdge + panelWidth/2, yOffset, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-
-        // Panneau à droite de l'ouverture
-        if (ex.right < rightEdge - 0.01) {
-            const panelWidth = rightEdge - ex.right;
-            panels.push(
-                <mesh key="back-right" position={[rightEdge - panelWidth/2, yOffset, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-
-        // Panneau au-dessus de l'ouverture (dans la colonne de l'ouverture)
-        if (ex.top < topEdge - 0.01) {
-            const panelHeight = topEdge - ex.top;
-            const panelWidth = ex.right - ex.left;
-            panels.push(
-                <mesh key="back-top" position={[(ex.left + ex.right)/2, topEdge - panelHeight/2, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-
-        // Panneau en-dessous de l'ouverture (dans la colonne de l'ouverture)
-        if (ex.bottom > bottomEdge + 0.01) {
-            const panelHeight = ex.bottom - bottomEdge;
-            const panelWidth = ex.right - ex.left;
-            panels.push(
-                <mesh key="back-bottom" position={[(ex.left + ex.right)/2, bottomEdge + panelHeight/2, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-    } else if (exclusions.length > 1) {
-        // Pour plusieurs ouvertures, utiliser une approche plus générale
-        // On crée un panneau complet puis on "découpe" conceptuellement avec des panneaux par segment
-
-        // Trier par position X
-        const sortedExclusions = [...exclusions].sort((a, b) => a.left - b.left);
-
-        let currentX = leftEdge;
-
-        sortedExclusions.forEach((ex, i) => {
-            // Panneau à gauche de cette exclusion
-            if (ex.left > currentX + 0.01) {
-                const panelWidth = ex.left - currentX;
-                panels.push(
-                    <mesh key={`back-seg-${i}-left`} position={[currentX + panelWidth/2, yOffset, zOffset]} receiveShadow>
-                        <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                        <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                    </mesh>
-                );
-            }
-
-            // Panneau au-dessus de l'ouverture
-            if (ex.top < topEdge - 0.01) {
-                const panelHeight = topEdge - ex.top;
-                const panelWidth = ex.right - ex.left;
-                panels.push(
-                    <mesh key={`back-seg-${i}-top`} position={[(ex.left + ex.right)/2, topEdge - panelHeight/2, zOffset]} receiveShadow>
-                        <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                        <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                    </mesh>
-                );
-            }
-
-            // Panneau en-dessous de l'ouverture
-            if (ex.bottom > bottomEdge + 0.01) {
-                const panelHeight = ex.bottom - bottomEdge;
-                const panelWidth = ex.right - ex.left;
-                panels.push(
-                    <mesh key={`back-seg-${i}-bottom`} position={[(ex.left + ex.right)/2, bottomEdge + panelHeight/2, zOffset]} receiveShadow>
-                        <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                        <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                    </mesh>
-                );
-            }
-
-            currentX = ex.right;
-        });
-
-        // Panneau final à droite
-        if (currentX < rightEdge - 0.01) {
-            const panelWidth = rightEdge - currentX;
-            panels.push(
-                <mesh key="back-seg-final" position={[currentX + panelWidth/2, yOffset, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-    }
-
-    return <group>{panels}</group>;
+    return (
+        <mesh geometry={geometry} receiveShadow>
+            <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
+        </mesh>
+    );
 }
 
 function Furniture({
@@ -824,6 +778,7 @@ function Furniture({
                        doorSide = 'left',
                        useMultiColor = false,
                        mountingStyle = 'applique',
+                       heightRight,
                        selectedZoneIds = [],
                        onSelectZone,
                        selectedPanelIds = new Set(),
@@ -855,12 +810,14 @@ function Furniture({
             [id]: !prev[id]
         }));
     }, []);
-    const { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap } = useMemo(() => {
+    const { w, h, d, sideHeight, sideHeightRight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap } = useMemo(() => {
         const w = (width || 1500) / 1000;
         const h = (height || 730) / 1000;
+        const hr = (heightRight || height || 730) / 1000;
         const d = (depth || 500) / 1000;
         const thickness = 0.019;
         const sideHeight = hasSocle ? h - 0.1 : h;
+        const sideHeightRight = hasSocle ? hr - 0.1 : hr;
         const yOffset = hasSocle ? 0.1 : 0;
         const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
         // En encastré, reculer les portes de 22mm pour que leur face avant soit derrière la face avant des montants
@@ -868,8 +825,8 @@ function Furniture({
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
         // En appliqué, les portes débordent pour recouvrir le cadre (dessus/dessous)
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
-        return { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap };
-    }, [width, height, depth, hasSocle, mountingStyle]);
+        return { w, h, d, sideHeight, sideHeightRight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap };
+    }, [width, height, heightRight, depth, hasSocle, mountingStyle]);
 
     // Couleur par défaut
     const DEFAULT_COLOR = '#D8C7A1';
@@ -1043,8 +1000,8 @@ function Furniture({
             topSegments.push({ id: 'panel-top-0', x: 0, y: h - thickness/2, width: w, height: thickness });
             bottomSegments.push({ id: 'panel-bottom-0', x: 0, y: yOffset + thickness/2, width: w, height: thickness });
             leftSegments.push({ id: 'panel-left-0', x: -w/2 + thickness/2, y: sideHeight/2 + yOffset, width: thickness, height: sideHeight });
-            rightSegments.push({ id: 'panel-right-0', x: w/2 - thickness/2, y: sideHeight/2 + yOffset, width: thickness, height: sideHeight });
-            backSegments.push({ id: 'panel-back-0-0', x: 0, y: sideHeight/2 + yOffset, width: w - 0.01, height: sideHeight - 0.01, colIndex: 0, rowIndex: 0 });
+            rightSegments.push({ id: 'panel-right-0', x: w/2 - thickness/2, y: sideHeightRight/2 + yOffset, width: thickness, height: sideHeightRight });
+            backSegments.push({ id: 'panel-back-0-0', x: 0, y: Math.max(sideHeight, sideHeightRight)/2 + yOffset, width: w - 0.01, height: Math.max(sideHeight, sideHeightRight) - 0.01, colIndex: 0, rowIndex: 0 });
             return { topSegments, bottomSegments, leftSegments, rightSegments, backSegments, separatorSegments };
         }
 
@@ -2289,18 +2246,15 @@ function Furniture({
                     }
                     console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
 
-                    if (zone.type === 'horizontal') {
-                        const childHeight = height * ratio;
-                        // Rendu de haut en bas pour correspondre à l'UI 2D (index 0 = haut)
-                        // Pour les splits horizontaux:
-                        // - Premier enfant (i=0) est en haut: hérite isAtTop du parent, isAtBottom = false (sauf si c'est le seul enfant)
-                        // - Dernier enfant est en bas: isAtTop = false (sauf si c'est le seul enfant), hérite isAtBottom du parent
-                        const isFirst = i === 0;
-                        const isLast = i === zone.children!.length - 1;
-                        const childIsAtTop = isFirst ? isAtTop : false;
-                        const childIsAtBottom = isLast ? isAtBottom : false;
-                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom);
-                        currentPos += childHeight;
+            if (zone.type === 'horizontal') {
+                const childHeight = height * ratio;
+                const isFirst = i === 0;
+                const isLast = i === zone.children!.length - 1;
+                const childIsAtTop = isFirst ? isAtTop : false;
+                const childIsAtBottom = isLast ? isAtBottom : false;
+                
+                parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom);
+                currentPos += childHeight;
                         // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
                         // pour permettre la suppression individuelle de chaque segment
                     } else {
@@ -2348,6 +2302,9 @@ function Furniture({
                         size={[segment.width, segment.height, d]}
                         hexColor={finalStructureColor}
                         imageUrl={finalStructureImageUrl}
+                        isTrapezoid={sideHeight !== sideHeightRight}
+                        h1={sideHeight}
+                        h2={sideHeight}
                     />
                 )
             ))}
@@ -2373,6 +2330,9 @@ function Furniture({
                         size={[segment.width, segment.height, d]}
                         hexColor={finalStructureColor}
                         imageUrl={finalStructureImageUrl}
+                        isTrapezoid={sideHeight !== sideHeightRight}
+                        h1={sideHeight}
+                        h2={sideHeightRight}
                     />
                 )
             ))}
@@ -2394,25 +2354,33 @@ function Furniture({
                 !deletedPanelIds.has(segment.id) && (
                     <StructuralPanel
                         key={`visual-${segment.id}`}
-                        position={[segment.x, segment.y, 0]}
+                        position={[segment.x, yOffset + (sideHeight + sideHeightRight) / 2, 0]}
                         size={[segment.width, segment.height, d]}
                         hexColor={finalStructureColor}
                         imageUrl={finalStructureImageUrl}
+                        isSloped={sideHeight !== sideHeightRight}
+                        h1={sideHeight}
+                        h2={sideHeightRight}
                     />
                 )
             ))}
-            {/* Hitbox de sélection par segment pour le panneau supérieur */}
-            {panelSegments.topSegments.map((segment) => (
-                <PanelSegmentHitbox
-                    key={segment.id}
-                    panelId={segment.id}
-                    position={[segment.x, segment.y, 0]}
-                    size={[segment.width, segment.height, d]}
-                    isSelected={selectedPanelIds.has(segment.id)}
-                    onSelect={handlePanelSelect}
-                    isDeleted={deletedPanelIds.has(segment.id)}
-                />
-            ))}
+            // Hitbox de sélection par segment pour le panneau supérieur
+            {panelSegments.topSegments.map((segment) => {
+                const diff = sideHeightRight - sideHeight;
+                const angle = Math.atan2(diff, w);
+                return (
+                    <PanelSegmentHitbox
+                        key={segment.id}
+                        panelId={segment.id}
+                        position={[segment.x, yOffset + (sideHeight + sideHeightRight) / 2, 0]}
+                        size={[segment.width, segment.height, d]}
+                        isSelected={selectedPanelIds.has(segment.id)}
+                        onSelect={handlePanelSelect}
+                        isDeleted={deletedPanelIds.has(segment.id)}
+                        rotation={[0, 0, angle]}
+                    />
+                );
+            })}
 
             {/* Décorations sur le dessus */}
             {showDecorations && (
@@ -2608,35 +2576,70 @@ function Furniture({
             {openSpaceInfo.length === 0 ? (
                 // Pas d'espaces ouverts : panneaux segmentés avec suppression individuelle
                 <>
-                    {/* Panneaux arrière visuels par segment (peuvent être supprimés individuellement) */}
-                    {panelSegments.backSegments.map((segment) => (
-                        !deletedPanelIds.has(segment.id) && (
-                            <StructuralPanel
-                                key={`visual-${segment.id}`}
-                                position={[segment.x, segment.y, -d/2 + 0.002]}
-                                size={[segment.width, segment.height, 0.004]}
-                                hexColor={finalBackColor}
-                                imageUrl={finalBackImageUrl}
-                                castShadow={false}
-                            />
-                        )
-                    ))}
-                    {/* Hitbox de sélection par segment pour le panneau arrière */}
-                    {panelSegments.backSegments.map((segment) => (
+            {/* Panneaux arrière visuels par segment (peuvent être supprimés individuellement) */}
+            {panelSegments.backSegments.map((segment) => {
+                // Pour le back panel en segment, on doit aussi gérer la forme trapézoïdale
+                // Ici on simplifie en utilisant un seul grand BackPanel si c'est asymétrique
+                const isAsymmetric = sideHeight !== sideHeightRight;
+                if (isAsymmetric && segment.id === 'panel-back-0-0') {
+                    return !deletedPanelIds.has(segment.id) && (
+                        <BackPanelWithOpenings
+                            key={`visual-${segment.id}`}
+                            totalWidth={w - 0.01}
+                            totalHeight1={sideHeight - 0.01}
+                            totalHeight2={sideHeightRight - 0.01}
+                            yOffset={yOffset}
+                            zOffset={-d/2 + 0.002}
+                            openSpaces={[]}
+                            hexColor={finalBackColor}
+                            imageUrl={finalBackImageUrl}
+                        />
+                    );
+                }
+                
+                return !deletedPanelIds.has(segment.id) && (
+                    <StructuralPanel
+                        key={`visual-${segment.id}`}
+                        position={[segment.x, segment.y, -d/2 + 0.002]}
+                        size={[segment.width, segment.height, 0.004]}
+                        hexColor={finalBackColor}
+                        imageUrl={finalBackImageUrl}
+                        castShadow={false}
+                    />
+                );
+            })}
+            {/* Hitbox de sélection par segment pour le panneau arrière */}
+            {panelSegments.backSegments.map((segment) => {
+                const isAsymmetric = sideHeight !== sideHeightRight;
+                if (isAsymmetric && segment.id === 'panel-back-0-0') {
+                    const avgHeight = (sideHeight + sideHeightRight) / 2;
+                    return (
                         <PanelSegmentHitbox
                             key={segment.id}
                             panelId={segment.id}
-                            position={[segment.x, segment.y, -d/2 + 0.002]}
-                            size={[segment.width, segment.height, 0.004]}
+                            position={[segment.x, avgHeight / 2 + yOffset, -d/2 + 0.002]}
+                            size={[segment.width, avgHeight, 0.004]}
                             isSelected={selectedPanelIds.has(segment.id)}
                             onSelect={handlePanelSelect}
                             isDeleted={deletedPanelIds.has(segment.id)}
                         />
-                    ))}
+                    );
+                }
+                return (
+                    <PanelSegmentHitbox
+                        key={segment.id}
+                        panelId={segment.id}
+                        position={[segment.x, segment.y, -d/2 + 0.002]}
+                        size={[segment.width, segment.height, 0.004]}
+                        isSelected={selectedPanelIds.has(segment.id)}
+                        onSelect={handlePanelSelect}
+                        isDeleted={deletedPanelIds.has(segment.id)}
+                    />
+                );
+            })}
                 </>
             ) : (
                 // Avec espaces ouverts : générer des panneaux qui évitent les zones ouvertes
-                // Note: Pour simplifier, le back panel avec ouvertures n'est pas sélectionnable pour l'instant
                 <group
                     onClick={(e) => {
                         e.stopPropagation();
@@ -2652,16 +2655,17 @@ function Furniture({
                 >
                     <BackPanelWithOpenings
                         totalWidth={w - 0.01}
-                        totalHeight={sideHeight - 0.01}
-                        yOffset={sideHeight/2 + yOffset}
+                        totalHeight1={sideHeight - 0.01}
+                        totalHeight2={sideHeightRight - 0.01}
+                        yOffset={yOffset}
                         zOffset={-d/2 + 0.002}
                         openSpaces={openSpaceInfo}
                         hexColor={finalBackColor}
                         imageUrl={finalBackImageUrl}
                     />
                     {selectedPanelIds.has('panel-back') && (
-                        <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
-                            <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
+                        <mesh position={[0, (sideHeight + sideHeightRight)/4 + yOffset, -d/2 + 0.003]}>
+                            <boxGeometry args={[w - 0.005, (sideHeight + sideHeightRight)/2 - 0.005, 0.006]} />
                             <meshBasicMaterial color="#2196F3" wireframe transparent opacity={0.5} toneMapped={false} />
                         </mesh>
                     )}

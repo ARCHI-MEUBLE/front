@@ -7,18 +7,18 @@ import Viewer from '@/components/configurator/Viewer';
 import type { ThreeCanvasHandle } from '@/components/configurator/types';
 
 // Import dynamique pour éviter les erreurs SSR avec R3F
-const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
+const MansardViewer = dynamic(() => import('@/components/configurator/MansardViewer'), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '500px' }}>
       <div className="flex flex-col items-center gap-3">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
-        <p className="text-sm font-medium text-[#706F6C]">Chargement du studio 3D...</p>
+        <p className="text-sm font-medium text-[#706F6C]">Chargement du studio 3D Mansarde...</p>
       </div>
     </div>
   ),
 });
-import DimensionsPanel from '@/components/configurator/DimensionsPanel';
+import MansardDimensionsPanel from '@/components/configurator/MansardDimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
 import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META, PanelPlanCanvas } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
@@ -379,7 +379,8 @@ const normalizeZoneSplitRatios = (zone: Zone): Zone => {
 
 export default function ConfiguratorPage() {
   const router = useRouter();
-  const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
+  const { mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
+  const id = router.query.id || 'M2'; // Fallback sur M2 car c'est la page mansard
   const { customer, isAuthenticated } = useCustomer();
   const [isAdmin, setIsAdmin] = useState(false);
   const isAdminCreateModel = adminMode === 'createModel';
@@ -523,20 +524,21 @@ export default function ConfiguratorPage() {
   const [initialConfigApplied, setInitialConfigApplied] = useState(false);
   const [skipNextAutoGenerate, setSkipNextAutoGenerate] = useState(false);
 
-  // Rediriger le modèle M2 vers le configurateur dédié
-  useEffect(() => {
-    if (id === 'M2' || id === 'mansard') {
-      router.replace('/configurator/mansard' + (router.asPath.includes('?') ? '?' + router.asPath.split('?')[1] : ''));
-    }
-  }, [id, router]);
-
   // Prompt template
   const [templatePrompt, setTemplatePrompt] = useState<string | null>(null);
 
+  // Charger le prompt par défaut pour M2
+  useEffect(() => {
+    if (!templatePrompt) {
+      setTemplatePrompt('M2(1200,400,1200,2000)EFH');
+    }
+  }, [templatePrompt]);
+
   // Configuration
-  const [width, setWidth] = useState(1500);
-  const [height, setHeight] = useState(730);
-  const [depth, setDepth] = useState(500);
+  const [width, setWidth] = useState(1200);
+  const [height, setHeight] = useState(1200);
+  const [heightRight, setHeightRight] = useState(2000); // Pour M2 (asymétrique)
+  const [depth, setDepth] = useState(400);
   const [socle, setSocle] = useState('none');
   const [finish, setFinish] = useState('Aggloméré');
   const [color, setColor] = useState(DEFAULT_COLOR_HEX);
@@ -1157,6 +1159,7 @@ export default function ConfiguratorPage() {
     const configToSave = {
       width,
       height,
+      heightRight,
       depth,
       socle,
       rootZone,
@@ -1319,12 +1322,17 @@ export default function ConfiguratorPage() {
 
   // Parse du prompt
   const parsePromptToConfig = useCallback((prompt: string) => {
-    // Support M1 avec 3 dimensions
-    const dims = prompt.match(/\((\d+),(\d+),(\d+)\)/);
+    // Support M2 avec 4 dimensions ou M1 avec 3
+    const dims = prompt.match(/\((\d+),(\d+),(\d+)(?:,(\d+))?\)/);
     if (dims) {
       setWidth(parseInt(dims[1]));
       setDepth(parseInt(dims[2]));
-      setHeight(parseInt(dims[3]));
+      
+      const h1 = parseInt(dims[3]);
+      const h2 = dims[4] ? parseInt(dims[4]) : h1;
+      
+      setHeight(h1);
+      setHeightRight(h2);
     }
 
     const compact = prompt.replace(/\s+/g, '');
@@ -1511,7 +1519,7 @@ export default function ConfiguratorPage() {
             configToRestore = {
               width: configDataObj.dimensions?.width,
               height: configDataObj.dimensions?.height,
-              depth: configDataObj.dimensions?.depth,
+              heightRight: configDataObj.dimensions?.heightRight,
               socle: configDataObj.styling?.socle || 'none',
               rootZone: configDataObj.advancedZones,
               finish: configDataObj.styling?.finish,
@@ -1566,7 +1574,7 @@ export default function ConfiguratorPage() {
             configToRestore = {
               width: dataObj.dimensions?.width,
               height: dataObj.dimensions?.height,
-              depth: dataObj.dimensions?.depth,
+              heightRight: dataObj.dimensions?.heightRight,
               socle: dataObj.styling?.socle || 'none',
               rootZone: dataObj.advancedZones,
               finish: dataObj.styling?.finish,
@@ -1666,25 +1674,14 @@ export default function ConfiguratorPage() {
             });
           }
         }
-      } else if (id && String(id).toUpperCase().startsWith('M')) {
-        // C'est un template (M1, M2...)
-        let promptToUse = (router.query.prompt as string) || configToRestore?.prompt || null;
+      } else {
+        // C'est un template (M2...)
+        let promptToUse = (router.query.prompt as string) || configToRestore?.prompt || 'M2(1200,400,1200,2000)EFH';
         
-        // Si pas de prompt fourni, utiliser un prompt par défaut selon le type
-        if (!promptToUse) {
-          const type = String(id).toUpperCase();
-          if (type === 'M1') promptToUse = 'M1(1000,400,2000)bFS';
-          else if (type === 'M2') promptToUse = 'M2(1200,400,1200,2000)EFH';
-          else if (type === 'M3') promptToUse = 'M3(1500,400,2000)bFS';
-          else if (type === 'M4') promptToUse = 'M4(1800,400,2000)bFS';
-          else if (type === 'M5') promptToUse = 'M5(2000,400,2000)bFS';
-          else promptToUse = 'M1(1000,400,2000)bFS';
-        }
-
         if (promptToUse || configToRestore) {
           const virtualModel = {
             id: 0,
-            name: configToRestore?.name || `Template ${id}`,
+            name: configToRestore?.name || `Meuble Mansarde M2`,
             description: null,
             prompt: promptToUse || configToRestore?.prompt,
             price: 0,
@@ -1740,9 +1737,9 @@ export default function ConfiguratorPage() {
             }
 
             setInitialConfig({
-              width: dims ? parseInt(dims[1]) : 1500,
-              height: dims ? (dims[4] ? parseInt(dims[4]) : parseInt(dims[3])) : 1130,
-              depth: dims ? parseInt(dims[2]) : 350,
+              width: dims ? parseInt(dims[1]) : 1200,
+              height: dims ? parseInt(dims[3]) : 1200,
+              depth: dims ? parseInt(dims[2]) : 400,
               socle: initSocle,
               rootZone: JSON.parse(JSON.stringify(initRootZone)),
               finish: 'Aggloméré',
@@ -1758,6 +1755,8 @@ export default function ConfiguratorPage() {
         console.log('🔧 Application de la configuration restaurée:', configToRestore);
         if (configToRestore.width) setWidth(configToRestore.width);
         if (configToRestore.height) setHeight(configToRestore.height);
+        if (configToRestore.heightRight) setHeightRight(configToRestore.heightRight);
+        else if (configToRestore.height) setHeightRight(configToRestore.height);
         if (configToRestore.depth) setDepth(configToRestore.depth);
         if (configToRestore.socle) setSocle(configToRestore.socle);
         if (configToRestore.rootZone) setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
@@ -1809,8 +1808,8 @@ export default function ConfiguratorPage() {
   useEffect(() => {
     // Attendre que le router soit prêt (important pour les query params)
     if (!router.isReady) return;
-    if (id) loadModel();
-  }, [id, loadModel, router.isReady]);
+    loadModel();
+  }, [loadModel, router.isReady]);
 
   // Fonction de réinitialisation de la configuration
   const resetConfiguration = useCallback(() => {
@@ -2618,9 +2617,10 @@ export default function ConfiguratorPage() {
             // 2. Préparation du prompt
             const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
             const match = templatePrompt?.match(regex);
-            const meubleType = match?.[1] || (id as string)?.split('(')[0] || 'M1';
+            const meubleType = match?.[1] || (id as string)?.split('(')[0] || 'M2';
 
-            let dimsStr = `${width},${depth},${height}`;
+            // IMPORTANT: Pour M2 (Mansarde), on utilise 4 dimensions
+            let dimsStr = `${width},${depth},${height},${heightRight}`;
 
             let fullPrompt = `${meubleType}(${dimsStr})EbF`;
             if (socle === 'metal') fullPrompt += 'S';
@@ -2634,7 +2634,7 @@ export default function ConfiguratorPage() {
 
       // 3. Préparation des données techniques
       const currentConfigData = {
-        dimensions: { width, depth, height },
+        dimensions: { width, depth, height, heightRight },
         styling: {
           materialKey: selectedMaterialKey,
           materialLabel: selectedMaterialLabel,
@@ -2759,7 +2759,7 @@ export default function ConfiguratorPage() {
       fullPrompt += buildPromptFromZoneTree(rootZone);
 
       const configData = {
-        dimensions: { width, depth, height },
+        dimensions: { width, depth, height, heightRight },
         styling: {
           materialKey: selectedMaterialKey,
           materialLabel: selectedMaterialLabel,
@@ -3178,9 +3178,10 @@ export default function ConfiguratorPage() {
             {/* Viewer wrapper - prend l'espace disponible */}
             <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
               <div className="absolute inset-0">
-                <ThreeViewer
+                <MansardViewer
                   width={width}
                   height={height}
+                  heightRight={heightRight}
                   depth={depth}
                   color={color}
                   imageUrl={selectedColorImage}
@@ -3481,13 +3482,15 @@ export default function ConfiguratorPage() {
                         onSelectZone={handleZoneSelect}
                         isAdminCreateModel={isAdminCreateModel}
                         renderAfterCanvas={
-                          <DimensionsPanel
+                          <MansardDimensionsPanel
                             width={width}
                             depth={depth}
                             height={height}
+                            heightRight={heightRight}
                             onWidthChange={setWidth}
                             onDepthChange={setDepth}
                             onHeightChange={setHeight}
+                            onHeightRightChange={setHeightRight}
                           />
                         }
                       />

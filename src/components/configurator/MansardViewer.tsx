@@ -6,21 +6,22 @@ import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 
 // On utilise dynamic import pour forcer le rendu côté client uniquement
-const ThreeCanvas = dynamic(() => import('./ThreeCanvas'), {
+const SlopedThreeCanvas = dynamic(() => import('./SlopedThreeCanvas'), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '100%' }}>
       <div className="flex flex-col items-center gap-3">
         <div className="h-10 w-10 animate-spin border-4 border-[#1A1917] border-t-transparent rounded-full" />
-        <p className="text-sm font-medium text-[#706F6C]">Initialisation du studio 3D...</p>
+        <p className="text-sm font-medium text-[#706F6C]">Initialisation du studio 3D Mansarde...</p>
       </div>
     </div>
   )
 });
 
-export interface ThreeViewerProps {
+export interface MansardViewerProps {
   width: number;
   height: number;
+  heightRight: number;
   depth: number;
   color: string;
   imageUrl?: string | null;
@@ -45,11 +46,10 @@ export interface ThreeViewerProps {
   deletedPanelIds?: Set<string>;
 }
 
-export default function ThreeViewer(props: ThreeViewerProps) {
-  // On s'assure que le conteneur a une taille explicite
+export default function MansardViewer(props: MansardViewerProps) {
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <ThreeCanvas {...props} />
+      <SlopedThreeCanvas {...props} />
     </div>
   );
 }
