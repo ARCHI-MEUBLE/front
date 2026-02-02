@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { IncomingForm, Files, Fields } from 'formidable';
 import fs from 'fs';
+import path from 'path';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
@@ -24,6 +25,29 @@ const parseForm = (req: NextApiRequest): Promise<{ fields: Fields; files: Files 
   });
 };
 
+// Helper to create multipart body manually (Node.js compatible)
+const createMultipartBody = (fileContent: Buffer, filename: string, mimetype: string): { body: Buffer; boundary: string } => {
+  const boundary = '----FormBoundary' + Math.random().toString(36).substring(2);
+  const parts: Buffer[] = [];
+
+  // Add file part
+  parts.push(Buffer.from(
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="image"; filename="${filename}"\r\n` +
+    `Content-Type: ${mimetype}\r\n\r\n`
+  ));
+  parts.push(fileContent);
+  parts.push(Buffer.from('\r\n'));
+
+  // Add closing boundary
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+  return {
+    body: Buffer.concat(parts),
+    boundary
+  };
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Méthode non autorisée' });
@@ -45,21 +69,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ success: false, error: 'Aucune image fournie' });
     }
 
-    console.log('[UPLOAD IMAGE] File:', imageFile.originalFilename, 'Size:', imageFile.size);
+    const filename = imageFile.originalFilename || 'image.jpg';
+    const mimetype = imageFile.mimetype || 'image/jpeg';
 
-    // Créer le FormData pour le backend
-    const formData = new FormData();
+    console.log('[UPLOAD IMAGE] File:', filename, 'Size:', imageFile.size, 'Type:', mimetype);
+
+    // Lire le fichier et créer le body multipart manuellement
     const fileContent = fs.readFileSync(imageFile.filepath);
-    const blob = new Blob([fileContent], { type: imageFile.mimetype || 'image/jpeg' });
-    formData.append('image', blob, imageFile.originalFilename || 'image.jpg');
+    const { body, boundary } = createMultipartBody(fileContent, filename, mimetype);
 
     // Envoyer au backend
     const backendResponse = await fetch(`${BACKEND_URL}/backend/api/admin/upload-image.php`, {
       method: 'POST',
       headers: {
         'Cookie': req.headers.cookie || '',
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': body.length.toString(),
       },
-      body: formData,
+      body: body,
     });
 
     // Nettoyer le fichier temporaire
