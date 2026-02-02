@@ -144,11 +144,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Handle non-JSON responses
     const responseContentType = response.headers.get('content-type');
 
-    // Forward cookies
+    // Forward cookies - rewrite domain to match frontend
     const backendCookies = response.headers.getSetCookie?.() || [];
     if (backendCookies.length > 0) {
       backendCookies.forEach(cookie => {
-        res.setHeader('Set-Cookie', cookie);
+        // Remove the domain attribute so the cookie is set for the current domain (frontend)
+        // This fixes the issue where backend sets cookie for api-dev.archimeuble.com
+        // but frontend needs it for dev.archimeuble.com
+        let rewrittenCookie = cookie
+          .replace(/;\s*domain=[^;]*/gi, '') // Remove domain attribute
+          .replace(/;\s*secure/gi, process.env.NODE_ENV === 'production' ? '; Secure' : ''); // Keep Secure only in prod
+        res.appendHeader('Set-Cookie', rewrittenCookie);
       });
     }
 
