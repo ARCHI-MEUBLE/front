@@ -21,6 +21,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const [password, setPassword] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [postalCode, setPostalCode] = useState('')
+  const [country, setCountry] = useState('France')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,7 +42,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           email,
           password,
           first_name: firstName,
-          last_name: lastName
+          last_name: lastName,
+          phone,
+          address,
+          city,
+          postal_code: postalCode,
+          country
         })
         onSuccess(email)
         onClose()
@@ -55,7 +65,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border border-[#E8E6E3] shadow-xl bg-white">
+      <Card className="w-full max-w-md border border-[#E8E6E3] shadow-xl bg-white max-h-[90vh] overflow-y-auto">
         <CardHeader className="space-y-1 text-center relative">
           <button
             onClick={onClose}
@@ -111,6 +121,65 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                     className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
                     required
                   />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone" className="text-sm font-medium text-[#1A1917]">
+                    Téléphone
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="0612345678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="address" className="text-sm font-medium text-[#1A1917]">
+                    Adresse
+                  </Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    placeholder="123 rue de Paris"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="city" className="text-sm font-medium text-[#1A1917]">
+                      Ville
+                    </Label>
+                    <Input
+                      id="city"
+                      type="text"
+                      placeholder="Paris"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="postalCode" className="text-sm font-medium text-[#1A1917]">
+                      Code postal
+                    </Label>
+                    <Input
+                      id="postalCode"
+                      type="text"
+                      placeholder="75001"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                      required
+                      maxLength={5}
+                    />
+                  </div>
                 </div>
               </>
             )}
