@@ -96,7 +96,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
               <>
                 <div className="grid gap-2">
                   <Label htmlFor="firstName" className="text-sm font-medium text-[#1A1917]">
-                    Prénom
+                    Prénom <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="firstName"
@@ -110,7 +110,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="lastName" className="text-sm font-medium text-[#1A1917]">
-                    Nom
+                    Nom <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="lastName"
@@ -124,7 +124,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="phone" className="text-sm font-medium text-[#1A1917]">
-                    Téléphone
+                    Téléphone <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="phone"
@@ -138,7 +138,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="address" className="text-sm font-medium text-[#1A1917]">
-                    Adresse
+                    Adresse <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="address"
@@ -153,7 +153,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label htmlFor="city" className="text-sm font-medium text-[#1A1917]">
-                      Ville
+                      Ville <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="city"
@@ -167,7 +167,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="postalCode" className="text-sm font-medium text-[#1A1917]">
-                      Code postal
+                      Code postal <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="postalCode"
@@ -186,7 +186,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
             <div className="grid gap-2">
               <Label htmlFor="email" className="text-sm font-medium text-[#1A1917]">
-                Email
+                Email <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="email"
@@ -201,7 +201,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
             <div className="grid gap-2">
               <Label htmlFor="password" className="text-sm font-medium text-[#1A1917]">
-                Mot de passe
+                Mot de passe <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="password"
