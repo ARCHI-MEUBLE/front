@@ -1180,7 +1180,7 @@ export default function CheckoutStripe() {
                                   {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
                                 </span>
                                 {drill.price > 0 && (
-                                  <span className="text-[#1A1917]">+{drill.price.toFixed(2)} €</span>
+                                  <span className="text-[#1A1917]">+{Number(drill.price).toFixed(2)} €</span>
                                 )}
                               </div>
                             ))}

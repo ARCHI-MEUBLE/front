@@ -658,7 +658,7 @@ export function DashboardOrders() {
                                   </p>
                                 )}
                                 <p className="text-xs font-semibold text-primary mt-2">
-                                  {facade.quantity} × {facade.unit_price.toFixed(2)}€ = {facade.total_price.toFixed(2)}€
+                                  {facade.quantity} × {Number(facade.unit_price).toFixed(2)}€ = {Number(facade.total_price).toFixed(2)}€
                                 </p>
                               </div>
                             </div>

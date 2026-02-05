@@ -233,7 +233,7 @@ export default function FacadeControls({
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-[#706F6C]">Surface ({((config.width / 1000) * (config.height / 1000)).toFixed(2)} m²)</span>
           <span className="text-sm font-medium">
-            {((config.width / 1000) * (config.height / 1000) * (config.material.price_per_m2 || pricingSettings.material_price_per_m2)).toFixed(2)} €
+            {((config.width / 1000) * (config.height / 1000) * Number(config.material.price_per_m2 || pricingSettings.material_price_per_m2)).toFixed(2)} €
           </span>
         </div>
         {config.hinges.type !== 'no-hole-no-hinge' && (
@@ -689,7 +689,7 @@ function HingesPanel({
                     {type.label}
                   </p>
                   <p className="text-xs text-[#706F6C] mt-1">
-                    Prix unit. {type.price.toFixed(2)} € TTC
+                    Prix unit. {Number(type.price).toFixed(2)} € TTC
                   </p>
                 </div>
               </div>
@@ -860,7 +860,7 @@ function DrillingPanel({
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold text-[#1A1917]">
-                  +{type.price.toFixed(2)} €
+                  +{Number(type.price).toFixed(2)} €
                 </p>
                 <button
                   className="mt-1 px-3 py-1 bg-[#1A1917] text-white text-xs rounded hover:bg-[#2A2927] transition-colors"
@@ -895,7 +895,7 @@ function DrillingPanel({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-[#1A1917]">
-                    {drilling.price?.toFixed(2)} €
+                    {Number(drilling.price || 0).toFixed(2)} €
                   </span>
                   <button
                     onClick={() => handleRemoveDrilling(drilling.id)}

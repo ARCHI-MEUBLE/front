@@ -443,7 +443,7 @@ export default function Catalogue() {
                       </h3>
                     </Link>
                     <p className="text-sm lg:text-base font-bold text-[#1A1917]">
-                      {item.unit_price.toFixed(2)}€
+                      {Number(item.unit_price).toFixed(2)}€
                       <span className="text-xs font-normal text-[#706F6C] ml-1">/ {item.unit}</span>
                     </p>
 

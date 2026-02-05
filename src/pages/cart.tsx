@@ -614,7 +614,7 @@ export default function Cart() {
                                 {(facade.unit_price * facade.quantity).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                               </p>
                               <p className="mt-1 text-xs text-[#706F6C]">
-                                {facade.quantity > 1 ? `${facade.quantity} × ${facade.unit_price.toFixed(2)} €` : `${facade.unit_price.toFixed(2)} € / unité`}
+                                {facade.quantity > 1 ? `${facade.quantity} × ${Number(facade.unit_price).toFixed(2)} €` : `${Number(facade.unit_price).toFixed(2)} € / unité`}
                               </p>
                             </div>
                           </button>
@@ -1111,7 +1111,7 @@ export default function Cart() {
                                   {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
                                 </span>
                                 {drill.price > 0 && (
-                                  <span className="text-[#1A1917]">+{drill.price.toFixed(2)} €</span>
+                                  <span className="text-[#1A1917]">+{Number(drill.price).toFixed(2)} €</span>
                                 )}
                               </div>
                             ))}

@@ -211,7 +211,7 @@ export function DashboardFacades() {
                           </TableCell>
                           <TableCell className="font-medium">{material.name}</TableCell>
                           <TableCell className="text-right">
-                            {(material.price_per_m2 || 150).toFixed(2)} €
+                            {Number(material.price_per_m2 || 150).toFixed(2)} €
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant={material.is_active ? 'default' : 'secondary'}>
