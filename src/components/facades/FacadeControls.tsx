@@ -69,7 +69,7 @@ export default function FacadeControls({
     const surfaceM2 = (config.width / 1000) * (config.height / 1000);
     
     // Prix de la surface (utiliser le prix au m² du matériau sélectionné)
-    const surfacePrice = surfaceM2 * (config.material.price_per_m2 || pricingSettings.material_price_per_m2);
+    const surfacePrice = surfaceM2 * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2);
     
     // Prix des charnières (uniquement si des charnières sont choisies)
     const hingesPrice = config.hinges.type !== 'no-hole-no-hinge' 
@@ -248,7 +248,7 @@ export default function FacadeControls({
               <span className="text-sm text-[#706F6C]">Supplément charnières</span>
               <span className="text-sm font-medium">
                 {(
-                  (((config.width / 1000) * (config.height / 1000) * (config.material.price_per_m2 || pricingSettings.material_price_per_m2)) +
+                  (((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2)) +
                   (pricingSettings.hinge_base_price * config.hinges.count)) *
                   (pricingSettings.hinge_coefficient * config.hinges.count)
                 ).toFixed(2)} €
@@ -952,7 +952,7 @@ function SummaryPanel({
   onQuantityChange: (qty: number) => void;
 }) {
   const surfaceM2 = (config.width / 1000) * (config.height / 1000);
-  const pricePerM2 = config.material.price_per_m2 || pricingSettings.material_price_per_m2;
+  const pricePerM2 = Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2;
 
   const getHingeTypeLabel = (type: string) => {
     switch (type) {
