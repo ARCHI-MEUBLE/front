@@ -2828,9 +2828,10 @@ export default function ConfiguratorPage() {
   useEffect(() => {
     if (isAuthenticated && customer && pendingSaveRef.current) {
       pendingSaveRef.current = false;
-      saveConfiguration();
+      // Petit délai pour laisser le state React se stabiliser
+      setTimeout(() => saveConfiguration(), 300);
     }
-  }, [isAuthenticated, customer]);
+  }, [isAuthenticated, customer, showAuthModal]);
 
   // Fonction pour passer en mode édition admin
   const handleAdminEdit = useCallback(() => {
@@ -3731,6 +3732,7 @@ export default function ConfiguratorPage() {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => {
+          setShowAuthModal(false);
           pendingSaveRef.current = true;
         }}
       />
