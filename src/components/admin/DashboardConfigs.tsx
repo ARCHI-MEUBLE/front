@@ -51,11 +51,8 @@ interface AdminConfiguration {
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   en_attente_validation: { label: 'En attente', variant: 'outline' },
   validee: { label: 'Validée', variant: 'secondary' },
-  payee: { label: 'Payée', variant: 'default' },
-  en_production: { label: 'En production', variant: 'default' },
-  livree: { label: 'Livrée', variant: 'secondary' },
-  annulee: { label: 'Annulée', variant: 'destructive' },
   en_commande: { label: 'En commande', variant: 'default' },
+  annulee: { label: 'Annulée', variant: 'destructive' },
 };
 
 export function DashboardConfigs() {

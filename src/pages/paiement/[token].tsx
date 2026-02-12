@@ -95,17 +95,15 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Stripe Payment Element */}
-      {clientSecret && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Informations de paiement</CardTitle>
-            <CardDescription>Entrez vos coordonnées bancaires</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PaymentElement />
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Informations de paiement</CardTitle>
+          <CardDescription>Entrez vos coordonnées bancaires</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PaymentElement />
+        </CardContent>
+      </Card>
 
       {/* Bouton de paiement */}
       <Button
