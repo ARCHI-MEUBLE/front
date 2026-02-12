@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
+import AuthModal from '@/components/auth/AuthModal';
 
 interface FacadeControlsProps {
   config: FacadeConfig;
@@ -272,46 +273,14 @@ export default function FacadeControls({
         </div>
       </div>
 
-      {/* Modal de connexion requise */}
-      {showLoginPrompt && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-[#FAFAF9] rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-[#1A1917]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold text-[#1A1917] text-center mb-2">
-              Connexion requise
-            </h3>
-            <p className="text-sm text-[#706F6C] text-center mb-4">
-              Connectez-vous pour ajouter cette façade à votre panier
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => window.location.href = '/auth/login?redirect=/facades'}
-                className="w-full px-4 py-2.5 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors text-sm font-medium"
-              >
-                Se connecter
-              </button>
-              <button
-                onClick={() => window.location.href = '/auth/register?redirect=/facades'}
-                className="w-full px-4 py-2.5 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-sm font-medium"
-              >
-                Créer un compte
-              </button>
-              <button
-                onClick={() => setShowLoginPrompt(false)}
-                className="w-full px-4 py-2.5 text-[#706F6C] hover:text-[#1A1917] transition-colors text-sm"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de connexion */}
+      <AuthModal
+        isOpen={showLoginPrompt}
+        onClose={() => setShowLoginPrompt(false)}
+        onSuccess={() => {
+          setShowLoginPrompt(false);
+        }}
+      />
 
       {/* Modal de confirmation */}
       {showConfirmation && (

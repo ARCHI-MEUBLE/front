@@ -216,6 +216,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
               {mode === 'register' && (
                 <p className="text-xs text-zinc-500">Minimum 8 caractères</p>
               )}
+              {mode === 'login' && (
+                <a
+                  href="/auth/forgot-password"
+                  className="text-xs text-zinc-500 hover:text-[#1A1917] hover:underline transition-colors"
+                >
+                  Mot de passe oublié ?
+                </a>
+              )}
             </div>
 
             <Button
