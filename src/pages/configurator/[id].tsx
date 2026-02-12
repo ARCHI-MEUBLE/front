@@ -1092,6 +1092,7 @@ export default function ConfiguratorPage() {
 
   const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const pendingSaveRef = useRef(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -2823,6 +2824,14 @@ export default function ConfiguratorPage() {
     }
   };
 
+  // Après login réussi, déclencher la sauvegarde en attente
+  useEffect(() => {
+    if (isAuthenticated && customer && pendingSaveRef.current) {
+      pendingSaveRef.current = false;
+      saveConfiguration();
+    }
+  }, [isAuthenticated, customer]);
+
   // Fonction pour passer en mode édition admin
   const handleAdminEdit = useCallback(() => {
     const { mode, ...rest } = router.query;
@@ -3722,7 +3731,7 @@ export default function ConfiguratorPage() {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => {
-          setTimeout(() => saveConfiguration(), 500);
+          pendingSaveRef.current = true;
         }}
       />
 
