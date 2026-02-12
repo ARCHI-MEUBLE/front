@@ -57,38 +57,6 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
   const router = useRouter();
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [installments, setInstallments] = useState<1 | 3>(1);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-
-  useEffect(() => {
-    createPaymentIntent();
-  }, [installments]);
-
-  const createPaymentIntent = async () => {
-    try {
-      const response = await fetch('/backend/api/payment-link/create-payment-intent.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          installments
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Erreur lors de la création du paiement');
-      }
-
-      setClientSecret(data.data.clientSecret);
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la préparation du paiement');
-      console.error('Error creating payment intent:', err);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,10 +86,7 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
     }
   };
 
-  const baseAmount = orderData.order.amount || orderData.order.total_amount;
-  const amountToPay = installments === 3
-    ? Math.ceil(baseAmount / 3)
-    : baseAmount;
+  const amountToPay = orderData.order.amount || orderData.order.total_amount;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
@@ -129,66 +94,6 @@ function CheckoutForm({ token, orderData }: { token: string; orderData: OrderDat
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Options de paiement */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Options de paiement</CardTitle>
-          <CardDescription>Choisissez votre mode de paiement</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div
-              onClick={() => setInstallments(1)}
-              className={`cursor-pointer rounded-lg border-2 p-4 transition-all hover:shadow-md ${
-                installments === 1
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-base font-semibold cursor-pointer">Paiement en 1 fois</Label>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  installments === 1 ? 'border-primary bg-primary' : 'border-muted-foreground'
-                }`}>
-                  {installments === 1 && (
-                    <div className="w-2 h-2 bg-primary-foreground rounded-full" />
-                  )}
-                </div>
-              </div>
-              <p className="text-2xl font-bold">{formatCurrency(baseAmount)}</p>
-              <p className="text-sm text-muted-foreground mt-1">Sans frais</p>
-            </div>
-
-            <div
-              onClick={() => setInstallments(3)}
-              className={`cursor-pointer rounded-lg border-2 p-4 transition-all hover:shadow-md ${
-                installments === 3
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-base font-semibold cursor-pointer">Paiement en 3 fois</Label>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  installments === 3 ? 'border-primary bg-primary' : 'border-muted-foreground'
-                }`}>
-                  {installments === 3 && (
-                    <div className="w-2 h-2 bg-primary-foreground rounded-full" />
-                  )}
-                </div>
-              </div>
-              <p className="text-2xl font-bold">
-                {formatCurrency(amountToPay)}
-                <span className="text-sm font-normal text-muted-foreground"> /mois</span>
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                3 × {formatCurrency(amountToPay)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Stripe Payment Element */}
       {clientSecret && (
         <Card>
@@ -273,8 +178,7 @@ export default function PaymentLinkPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: linkToken,
-          installments: 1
+          token: linkToken
         }),
       });
 

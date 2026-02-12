@@ -130,7 +130,6 @@ export default function CheckoutStripe() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [installments, setInstallments] = useState<1 | 3>(1);
   const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'balance'>('full');
   const [orderData, setOrderData] = useState<any>(null);
 
@@ -692,73 +691,14 @@ export default function CheckoutStripe() {
                 </form>
               ) : (
                 <div className="space-y-8">
-                  {/* Payment Options */}
-                  <div className="border border-[#E8E6E3] bg-white">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
-                      <CreditCard className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
-                        Options de paiement
-                      </h2>
-                    </div>
-
-                    <div className="space-y-3 p-6">
-                      <label className={`group flex cursor-pointer items-start gap-4 border p-5 transition-colors ${
-                        installments === 1 ? 'border-[#1A1917]' : 'border-[#E8E6E3] hover:border-[#1A1917]/30'
-                      }`}>
-                        <div className="relative mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                          <input
-                            type="radio"
-                            name="installments"
-                            value="1"
-                            checked={installments === 1}
-                            onChange={() => setInstallments(1)}
-                            className="peer sr-only"
-                          />
-                          <div className="h-5 w-5 rounded-full border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917]" />
-                          <div className="absolute h-2.5 w-2.5 rounded-full bg-[#1A1917] opacity-0 transition-opacity peer-checked:opacity-100" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-[#1A1917]">Paiement en 1 fois</div>
-                          <div className="mt-1 text-sm text-[#706F6C]">
-                            Payez {grandTotal.toLocaleString('fr-FR')} € maintenant
-                          </div>
-                        </div>
-                      </label>
-
-                      <label className={`group flex cursor-pointer items-start gap-4 border p-5 transition-colors ${
-                        installments === 3 ? 'border-[#1A1917]' : 'border-[#E8E6E3] hover:border-[#1A1917]/30'
-                      }`}>
-                        <div className="relative mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                          <input
-                            type="radio"
-                            name="installments"
-                            value="3"
-                            checked={installments === 3}
-                            onChange={() => setInstallments(3)}
-                            className="peer sr-only"
-                          />
-                          <div className="h-5 w-5 rounded-full border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917]" />
-                          <div className="absolute h-2.5 w-2.5 rounded-full bg-[#1A1917] opacity-0 transition-opacity peer-checked:opacity-100" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-[#1A1917]">Paiement en 3 fois</div>
-                          <div className="mt-1 text-sm text-[#706F6C]">
-                            3 × {(grandTotal / 3).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € par mois
-                          </div>
-                        </div>
-                        <span className="text-xs font-medium uppercase tracking-wider text-[#8B7355]">Sans frais</span>
-                      </label>
-                    </div>
-                  </div>
-
                   {/* Stripe Checkout */}
                   {orderId && (
                     <div className="border border-[#E8E6E3] bg-white p-6">
                       {paymentType !== 'full' && (
                         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                           <p className="text-amber-800 font-medium">
-                            {paymentType === 'deposit' 
-                              ? `Paiement de l'acompte (${orderData?.deposit_percentage}%)` 
+                            {paymentType === 'deposit'
+                              ? `Paiement de l'acompte (${orderData?.deposit_percentage}%)`
                               : `Paiement du solde restant`}
                           </p>
                           <p className="text-sm text-amber-700 mt-1">
@@ -769,7 +709,6 @@ export default function CheckoutStripe() {
                       <StripeCheckoutWrapper
                         orderId={orderId}
                         amount={grandTotal}
-                        installments={installments}
                         onSuccess={() => console.log('Payment success!')}
                         onError={(error) => setError(error)}
                       />
