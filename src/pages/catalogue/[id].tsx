@@ -313,20 +313,6 @@ export default function ProductDetail() {
               </div>
             </div>
             
-            <div className="mt-8 flex items-center justify-center gap-8 text-muted-foreground">
-              <div className="flex items-center gap-2 text-xs">
-                <IconCheck size={16} className="text-green-500" />
-                Qualité certifiée
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <IconCheck size={16} className="text-green-500" />
-                Expédition sous 48h
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <IconCheck size={16} className="text-green-500" />
-                Service client local
-              </div>
-            </div>
           </motion.div>
         </div>
       </main>

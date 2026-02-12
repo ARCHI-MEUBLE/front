@@ -122,21 +122,6 @@ export default function RealisationsPage() {
           <div className="relative mx-auto max-w-7xl px-6">
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
-                {/* Made in France Badge */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-8 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm"
-                >
-                  <div className="flex gap-0.5">
-                    <div className="h-4 w-1.5 rounded-sm bg-[#0055A4]" />
-                    <div className="h-4 w-1.5 rounded-sm bg-white" />
-                    <div className="h-4 w-1.5 rounded-sm bg-[#EF4135]" />
-                  </div>
-                  <span className="text-xs font-medium uppercase tracking-[0.2em] text-white/80">
-                    Made in France
-                  </span>
-                </motion.div>
 
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
@@ -168,24 +153,6 @@ export default function RealisationsPage() {
                   vos espaces avec des créations artisanales pensées pour durer.
                 </motion.p>
 
-                {/* Stats */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-10 grid grid-cols-3 gap-8"
-                >
-                  {[
-                    { value: "150+", label: "Projets livrés" },
-                    { value: "100%", label: "Sur mesure" },
-                    { value: "Atelier", label: "Lillois" },
-                  ].map((stat) => (
-                    <div key={stat.label}>
-                      <div className="font-serif text-3xl text-white">{stat.value}</div>
-                      <div className="mt-1 text-sm text-white/50">{stat.label}</div>
-                    </div>
-                  ))}
-                </motion.div>
               </div>
 
               {/* Featured images grid */}
@@ -214,18 +181,6 @@ export default function RealisationsPage() {
                   </div>
                 </div>
 
-                {/* Floating badge */}
-                <div className="absolute -left-6 bottom-24 rounded-2xl border border-white/10 bg-[#1A1917]/90 p-4 backdrop-blur-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8B7355]">
-                      <MapPin className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-white">Métropole Lilloise</div>
-                      <div className="text-xs text-white/50">Hauts-de-France</div>
-                    </div>
-                  </div>
-                </div>
               </motion.div>
             </div>
           </div>
@@ -410,18 +365,6 @@ export default function RealisationsPage() {
                 </Link>
               </div>
 
-              {/* Trust badges */}
-              <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-[#6B6560]">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-0.5">
-                    <div className="h-3 w-1 rounded-sm bg-[#0055A4]" />
-                    <div className="h-3 w-1 rounded-sm bg-[#E8E4DE]" />
-                    <div className="h-3 w-1 rounded-sm bg-[#EF4135]" />
-                  </div>
-                  Fabriqué en France
-                </div>
-                <div>Devis gratuit</div>
-              </div>
             </motion.div>
           </div>
         </section>

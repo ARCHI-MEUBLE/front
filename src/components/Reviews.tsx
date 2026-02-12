@@ -188,7 +188,7 @@ export function Reviews() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="grid grid-cols-3 gap-6"
+              className="grid grid-cols-2 gap-6"
             >
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
                 <div className="flex items-center justify-center gap-1">
@@ -203,10 +203,6 @@ export function Reviews() {
                 <p className="mt-2 text-sm text-white/60">Avis vérifiés</p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
-                <span className="font-serif text-4xl text-white">100%</span>
-                <p className="mt-2 text-sm text-white/60">Satisfaits</p>
-              </div>
             </motion.div>
           </div>
         </div>
@@ -409,27 +405,6 @@ export function Reviews() {
         </div>
       </section>
 
-      {/* Trust Section */}
-      <section className="border-t border-[#E8E4DE] py-16">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-wrap items-center justify-center gap-10 text-sm text-[#6B6560]">
-            <div className="flex items-center gap-2">
-              <div className="flex gap-0.5">
-                <div className="h-4 w-1.5 rounded-sm bg-[#0055A4]" />
-                <div className="h-4 w-1.5 rounded-sm bg-[#E8E4DE]" />
-                <div className="h-4 w-1.5 rounded-sm bg-[#EF4135]" />
-              </div>
-              <span>Fabriqué en France</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-[#059669]" />
-              <span>Avis vérifiés</span>
-            </div>
-            <div>Atelier Lillois</div>
-            <div>100% sur mesure</div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

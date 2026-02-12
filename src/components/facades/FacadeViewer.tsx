@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState, Suspense } from 'react';
 import { Canvas, useThree, useLoader, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, useTexture } from '@react-three/drei';
+import { OrbitControls, ContactShadows, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { FacadeConfig, FacadeDrilling } from '@/types/facade';
 
@@ -494,7 +494,6 @@ const FacadeViewer = forwardRef<FacadeViewerHandle, FacadeViewerProps>(
             far={1}
           />
 
-          <Environment preset="city" background={false} />
         </Canvas>
       </div>
     );

@@ -96,21 +96,6 @@ export default function ModelsPage() {
 
           <div className="relative mx-auto max-w-7xl px-6">
             <div className="max-w-3xl">
-              {/* Made in France Badge */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm"
-              >
-                <div className="flex gap-0.5">
-                  <div className="h-4 w-1.5 rounded-sm bg-[#0055A4]" />
-                  <div className="h-4 w-1.5 rounded-sm bg-white" />
-                  <div className="h-4 w-1.5 rounded-sm bg-[#EF4135]" />
-                </div>
-                <span className="text-xs font-medium uppercase tracking-[0.2em] text-white/80">
-                  Fabriqué en France
-                </span>
-              </motion.div>
 
               <motion.span
                 initial={{ opacity: 0, y: 20 }}
@@ -327,18 +312,6 @@ export default function ModelsPage() {
                     </Link>
                   </div>
 
-                  {/* Trust badges */}
-                  <div className="mt-12 flex flex-wrap items-center gap-6 text-sm text-white/50">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-0.5">
-                        <div className="h-3 w-1 rounded-sm bg-[#0055A4]" />
-                        <div className="h-3 w-1 rounded-sm bg-white/50" />
-                        <div className="h-3 w-1 rounded-sm bg-[#EF4135]" />
-                      </div>
-                      Made in France
-                    </div>
-                    <div>Devis gratuit</div>
-                  </div>
                 </div>
 
                 {/* Right: Decorative */}

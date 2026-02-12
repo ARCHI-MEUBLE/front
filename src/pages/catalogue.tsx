@@ -213,26 +213,6 @@ export default function Catalogue() {
               Découvrez notre sélection de produits et accessoires haut de gamme pour vos projets d'aménagement.
             </p>
 
-            {/* Stats */}
-            <div
-              data-animate
-              className="mt-10 flex items-center gap-8 opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
-                <span className="text-2xl font-black text-[#8B7355]">100%</span>
-                <span className="text-xs text-[#706F6C] uppercase tracking-wider">Qualité</span>
-              </div>
-              <div className="w-px h-8 bg-white/10" />
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
-                <span className="text-2xl font-black text-[#8B7355]">Pro</span>
-                <span className="text-xs text-[#706F6C] uppercase tracking-wider">Matériaux</span>
-              </div>
-              <div className="w-px h-8 bg-white/10" />
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
-                <span className="text-2xl font-black text-[#8B7355]">48h</span>
-                <span className="text-xs text-[#706F6C] uppercase tracking-wider">Livraison</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>

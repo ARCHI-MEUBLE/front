@@ -152,24 +152,6 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Trust indicators - Mobile */}
-          <div
-            data-animate
-            className="mt-8 flex justify-between border-t border-[#E8E6E3] pt-6 opacity-0"
-          >
-            <div className="text-center">
-              <span className="block font-sans font-bold text-lg text-[#1A1917]">30j</span>
-              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">fabrication</span>
-            </div>
-            <div className="text-center">
-              <span className="block font-sans font-bold text-lg text-[#1A1917]">100%</span>
-              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">français</span>
-            </div>
-            <div className="text-center">
-              <span className="block font-sans font-bold text-lg text-[#1A1917]">Atelier</span>
-              <span className="text-xs text-[#706F6C] font-medium uppercase tracking-wider">Lillois</span>
-            </div>
-          </div>
         </div>
 
         {/* Desktop Layout */}
@@ -270,26 +252,6 @@ export function HeroSection() {
               </Link>
             </div>
 
-            {/* Trust indicators */}
-            <div
-              data-animate
-              className="mt-16 flex items-center gap-8 text-sm text-[#706F6C] opacity-0"
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-sans font-bold text-base text-[#8B7355]">30j</span>
-                <span className="font-medium uppercase tracking-wider text-[10px]">fabrication</span>
-              </div>
-              <div className="h-4 w-px bg-[#E8E6E3]" />
-              <div className="flex items-center gap-2">
-                <span className="font-sans font-bold text-base text-[#8B7355]">100%</span>
-                <span className="font-medium uppercase tracking-wider text-[10px]">Made in France</span>
-              </div>
-              <div className="h-4 w-px bg-[#E8E6E3]" />
-              <div className="flex items-center gap-2">
-                <span className="font-sans font-bold text-base text-[#8B7355]">Atelier</span>
-                <span className="font-medium uppercase tracking-wider text-[10px]">Lillois</span>
-              </div>
-            </div>
           </div>
 
           <div className="relative lg:col-span-6 lg:hidden">
