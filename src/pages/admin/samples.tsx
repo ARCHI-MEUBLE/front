@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient, type SampleType, uploadImage } from '@/lib/apiClient';
 import type { GetServerSideProps } from 'next';
 import { hasAdminSession } from '@/lib/adminAuth';
+import { adminUrl } from '@/lib/adminPath';
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (!hasAdminSession(req.headers.cookie)) {
     return {
       redirect: {
-        destination: '/admin/login',
+        destination: adminUrl('/login'),
         permanent: false,
       },
     };
@@ -65,7 +66,7 @@ export default function AdminSamplesPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => router.push('/admin/dashboard')}
+              onClick={() => router.push(adminUrl('/dashboard'))}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <span>Terminer</span>

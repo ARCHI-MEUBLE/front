@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 import { hasAdminSession } from '@/lib/adminAuth';
+import { adminUrl } from '@/lib/adminPath';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (hasAdminSession(req.headers.cookie)) {
     return {
       redirect: {
-        destination: '/admin/dashboard',
+        destination: adminUrl('/dashboard'),
         permanent: false,
       },
     };
@@ -60,7 +61,7 @@ export default function AdminLoginPage() {
         throw new Error('Identifiants incorrects');
       }
 
-      await router.push('/admin/dashboard');
+      await router.push(adminUrl('/dashboard'));
     } catch (err) {
       setError((err as Error).message ?? 'Une erreur est survenue');
     } finally {
@@ -188,12 +189,6 @@ export default function AdminLoginPage() {
             </CardContent>
 
             <CardFooter className="flex flex-col gap-4 text-center mt-4">
-              <Link
-                href="/admin/register"
-                className="text-sm text-[#8B7355] hover:text-[#1A1917] transition-colors font-medium"
-              >
-                Créer un compte admin
-              </Link>
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] transition-colors group"

@@ -19,6 +19,7 @@ import { DashboardSamples } from '@/components/admin/DashboardSamples';
 import { DashboardRealisations } from '@/components/admin/DashboardRealisations';
 import { DashboardFacades } from '@/components/admin/DashboardFacades';
 import { hasAdminSession } from '@/lib/adminAuth';
+import { adminUrl } from '@/lib/adminPath';
 import NotificationsModal from '@/components/admin/NotificationsModal';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
@@ -26,7 +27,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (!hasAdminSession(req.headers.cookie)) {
     return {
       redirect: {
-        destination: '/admin/login',
+        destination: adminUrl('/login'),
         permanent: false,
       },
     };
@@ -173,7 +174,7 @@ export default function AdminDashboardPage() {
     try {
       const response = await fetch('/api/admin/logout', { method: 'POST' });
       if (!response.ok) throw new Error('Déconnexion impossible');
-      await router.push('/admin/login');
+      await router.push(adminUrl('/login'));
     } catch (error) {
       console.error(error);
       toast.error('Erreur lors de la déconnexion');

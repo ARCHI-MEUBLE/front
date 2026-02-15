@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
+import { adminUrl } from '@/lib/adminPath';
 import {
   IconPackage,
   IconPlus,
@@ -224,7 +225,7 @@ export function DashboardModels() {
       const response = await fetch('/backend/api/models.php');
 
       if (response.status === 401) {
-        window.location.href = '/admin/login';
+        window.location.href = adminUrl('/login');
         return;
       }
 
@@ -370,7 +371,7 @@ export function DashboardModels() {
         });
 
         if (uploadResponse.status === 401) {
-          window.location.href = '/admin/login';
+          window.location.href = adminUrl('/login');
           return;
         }
 
@@ -397,7 +398,7 @@ export function DashboardModels() {
         });
 
         if (uploadResponse.status === 401) {
-          window.location.href = '/admin/login';
+          window.location.href = adminUrl('/login');
           return;
         }
 
@@ -437,7 +438,7 @@ export function DashboardModels() {
       });
 
       if (response.status === 401) {
-        window.location.href = '/admin/login';
+        window.location.href = adminUrl('/login');
         return;
       }
 
@@ -501,7 +502,7 @@ export function DashboardModels() {
       });
 
       if (response.status === 401) {
-        window.location.href = '/admin/login';
+        window.location.href = adminUrl('/login');
         return;
       }
 
