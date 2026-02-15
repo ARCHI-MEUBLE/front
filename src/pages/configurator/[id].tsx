@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import Link from 'next/link';
 import Viewer from '@/components/configurator/Viewer';
+import { adminUrl } from '@/lib/adminPath';
 import type { ThreeCanvasHandle } from '@/components/configurator/types';
 
 // Import dynamique pour éviter les erreurs SSR avec R3F
@@ -3759,7 +3760,7 @@ export default function ConfiguratorPage() {
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => router.push('/admin/dashboard?section=models')}
+                  onClick={() => router.push(adminUrl('/dashboard?section=models'))}
                   className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
                   style={{ borderRadius: '2px' }}
                 >
@@ -3788,7 +3789,7 @@ export default function ConfiguratorPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push('/admin/dashboard')}
+                    onClick={() => router.push(adminUrl('/dashboard'))}
                     className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
                     style={{ borderRadius: '2px' }}
                   >
@@ -3869,7 +3870,7 @@ export default function ConfiguratorPage() {
                       type="button"
                       onClick={() => {
                         // Rediriger vers le bon endroit selon le type d'utilisateur
-                        router.push(isAdmin ? '/admin/dashboard?tab=configurations' : '/account?section=configurations');
+                        router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/account?section=configurations');
                       }}
                       className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
                       style={{ borderRadius: '2px' }}
@@ -3891,7 +3892,7 @@ export default function ConfiguratorPage() {
                       type="button"
                       onClick={() => {
                         // Utiliser isAdmin (session réelle) au lieu de localStorage
-                        router.push(isAdmin ? '/admin/dashboard' : '/account?section=configurations');
+                        router.push(isAdmin ? adminUrl('/dashboard') : '/account?section=configurations');
                       }}
                       className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
                       style={{ borderRadius: '2px' }}

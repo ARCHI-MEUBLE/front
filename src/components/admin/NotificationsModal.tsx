@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { formatDate } from '@/lib/dateUtils';
+import { adminUrl } from '@/lib/adminPath';
 import {
   IconBell,
   IconCheck,
@@ -132,7 +133,7 @@ export default function NotificationsModal({
       await markAsRead(notification.id);
     }
     if (notification.related_order_id) {
-      router.push('/admin/orders');
+      router.push(adminUrl('/orders'));
       onClose();
     }
   };
@@ -190,7 +191,7 @@ export default function NotificationsModal({
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
               <p className="text-sm text-destructive mb-2 font-medium">{error}</p>
-              <Link href="/admin/login" className="text-sm text-primary hover:underline">
+              <Link href={adminUrl('/login')} className="text-sm text-primary hover:underline">
                 Aller à la page de connexion
               </Link>
             </div>
