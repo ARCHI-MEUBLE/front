@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import type { GetServerSideProps } from 'next';
-import { Menu } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import Sidebar, { type DashboardSection } from '@/components/admin/Sidebar';
+import { AdminSidebar, type DashboardSection } from '@/components/admin/AdminSidebar';
+import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DashboardModels } from '@/components/admin/DashboardModels';
 import { DashboardCatalogue } from '@/components/admin/DashboardCatalogue';
 import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
@@ -13,16 +13,21 @@ import DashboardPayments from '@/components/admin/DashboardPayments';
 import { DashboardAppointments } from '@/components/admin/DashboardAppointments';
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
-import { DashboardSamplesAnalytics } from '@/components/admin/DashboardSamplesAnalytics';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
+import { DashboardPricingCombined } from '@/components/admin/DashboardPricingCombined';
+import { DashboardSamples } from '@/components/admin/DashboardSamples';
+import { DashboardRealisations } from '@/components/admin/DashboardRealisations';
+import { DashboardFacades } from '@/components/admin/DashboardFacades';
 import { hasAdminSession } from '@/lib/adminAuth';
+import { adminUrl } from '@/lib/adminPath';
 import NotificationsModal from '@/components/admin/NotificationsModal';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (!hasAdminSession(req.headers.cookie)) {
     return {
       redirect: {
-        destination: '/admin/login',
+        destination: adminUrl('/login'),
         permanent: false,
       },
     };
@@ -31,16 +36,53 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   return { props: {} };
 };
 
+const sectionTitles: Record<DashboardSection, { title: string; description: string }> = {
+  models: { title: 'Modèles de meubles', description: 'Gérer le catalogue de modèles' },
+  configs: { title: 'Configurations clients', description: 'Configurations enregistrées par les clients' },
+  orders: { title: 'Gestion des commandes', description: 'Toutes les commandes et leur statut' },
+  payments: { title: 'Paiements', description: 'Historique et gestion des paiements' },
+  appointments: { title: 'Demandes de rendez-vous', description: 'Nouvelles demandes de rendez-vous' },
+  calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
+  avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
+  pricing: { title: 'Gestion des prix', description: 'Configurez tous les paramètres de tarification' },
+  catalogue: { title: 'Catalogue & Pièces', description: 'Gérez les articles et accessoires' },
+  facades: { title: 'Façades', description: 'Gérer les matériaux et types de perçages' },
+  samples: { title: 'Gestion des échantillons', description: 'Catalogue des finitions et matériaux' },
+  realisations: { title: 'Réalisations', description: 'Gérer les photos et détails des projets réels' },
+  password: { title: 'Paramètres', description: 'Modifier le mot de passe' },
+};
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [selectedSection, setSelectedSection] = useState<DashboardSection>('orders');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const lastNotificationIdRef = useRef<number>(0);
+  const [adminInfo, setAdminInfo] = useState<{ email: string; name: string } | null>(null);
 
   useEffect(() => {
+    // Charger les infos de l'admin connecté
+    const loadAdminInfo = async () => {
+      try {
+        const res = await fetch('/api/admin/session', {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.admin) {
+            setAdminInfo({
+              email: data.admin.email || 'admin@archimeuble.com',
+              name: data.admin.username || 'Admin',
+            });
+          }
+        }
+      } catch {
+        // Ignorer les erreurs
+      }
+    };
+    loadAdminInfo();
+
     // Écouter les événements de navigation depuis d'autres composants
     const handleNavigate = (event: CustomEvent) => {
       setSelectedSection(event.detail as DashboardSection);
@@ -48,7 +90,7 @@ export default function AdminDashboardPage() {
 
     window.addEventListener('navigate-dashboard', handleNavigate as EventListener);
 
-    // Charger le nombre de notifications non lues (si session admin PHP valide)
+    // Charger le nombre de notifications non lues
     const loadUnread = async () => {
       try {
         const res = await fetch('/api/admin/notifications?unread=true', {
@@ -75,11 +117,9 @@ export default function AdminDashboardPage() {
         if (data.notifications && data.notifications.length > 0) {
           const latestNotif = data.notifications[0];
 
-          // Si on a une nouvelle notification (ID plus grand que le dernier connu)
           if (latestNotif.id > lastNotificationIdRef.current) {
             lastNotificationIdRef.current = latestNotif.id;
 
-            // Afficher un toast uniquement si ce n'est pas la première fois
             if (lastNotificationIdRef.current > latestNotif.id - 1) {
               const icon = latestNotif.type === 'visio' ? '🎥' : '📞';
               toast.success(
@@ -87,16 +127,10 @@ export default function AdminDashboardPage() {
                 {
                   duration: 5000,
                   position: 'bottom-right',
-                  style: {
-                    background: '#f6f1eb',
-                    color: '#2f2a26',
-                    border: '1px solid #2f2a26',
-                  },
                 }
               );
             }
 
-            // Recharger le compteur
             loadUnread();
           }
         }
@@ -105,7 +139,6 @@ export default function AdminDashboardPage() {
       }
     };
 
-    // Initialiser avec la dernière notification
     const initLastNotification = async () => {
       try {
         const res = await fetch('/api/admin/notifications?limit=1', {
@@ -122,9 +155,7 @@ export default function AdminDashboardPage() {
     };
 
     initLastNotification();
-
-    // Démarrer le polling
-    const intervalId = setInterval(pollNotifications, 30000); // 30 secondes
+    const intervalId = setInterval(pollNotifications, 30000);
 
     return () => {
       clearInterval(intervalId);
@@ -134,7 +165,6 @@ export default function AdminDashboardPage() {
 
   const handleSelect = (section: DashboardSection) => {
     setSelectedSection(section);
-    setIsSidebarOpen(false);
   };
 
   const handleLogout = async () => {
@@ -144,126 +174,74 @@ export default function AdminDashboardPage() {
     try {
       const response = await fetch('/api/admin/logout', { method: 'POST' });
       if (!response.ok) throw new Error('Déconnexion impossible');
-      await router.push('/admin/login');
+      await router.push(adminUrl('/login'));
     } catch (error) {
       console.error(error);
+      toast.error('Erreur lors de la déconnexion');
     } finally {
       setIsLoggingOut(false);
     }
   };
 
+  const currentSection = sectionTitles[selectedSection];
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* --- Sidebar fixe --- */}
-      <Sidebar
-        selectedSection={selectedSection}
-        onSelect={handleSelect}
-        onLogout={handleLogout}
-        className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:bg-white sticky top-0 h-screen overflow-y-auto"
-      />
+    <>
+      <Head>
+        <title>ArchiMeuble — {currentSection.title}</title>
+      </Head>
 
-      {/* --- Contenu principal --- */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Head>
-          <title>ArchiMeuble — Tableau de bord</title>
-        </Head>
-
-        {/* --- Barre supérieure mobile --- */}
-        <div className="lg:hidden">
-          <div className="flex items-center justify-between bg-white px-4 py-4 shadow-sm">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">ArchiMeuble</p>
-              <p className="text-xs text-gray-500">Administration</p>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "18rem",
+          } as React.CSSProperties
+        }
+      >
+        <AdminSidebar
+          selectedSection={selectedSection}
+          onSelect={handleSelect}
+          onLogout={handleLogout}
+          adminEmail={adminInfo?.email}
+          adminName={adminInfo?.name}
+          variant="inset"
+        />
+        <SidebarInset>
+          <AdminHeader
+            title={currentSection.title}
+            description={currentSection.description}
+            onNotificationsClick={() => setIsNotifOpen(true)}
+            onHomeClick={() => router.push('/')}
+            unreadCount={unreadCount}
+          />
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-2">
+              <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                {selectedSection === 'models' && <DashboardModels />}
+                {selectedSection === 'catalogue' && <DashboardCatalogue />}
+                {selectedSection === 'facades' && <DashboardFacades />}
+                {selectedSection === 'configs' && <DashboardConfigs />}
+                {selectedSection === 'orders' && <DashboardOrders />}
+                {selectedSection === 'payments' && <DashboardPayments />}
+                {selectedSection === 'appointments' && <DashboardAppointments />}
+                {selectedSection === 'calendar' && <DashboardCalendar />}
+                {selectedSection === 'avis' && <DashboardAvis />}
+                {selectedSection === 'pricing' && <DashboardPricingCombined />}
+                {selectedSection === 'samples' && <DashboardSamples />}
+                {selectedSection === 'realisations' && <DashboardRealisations />}
+                {selectedSection === 'password' && <DashboardPassword />}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
           </div>
+        </SidebarInset>
+      </SidebarProvider>
 
-          {isSidebarOpen && (
-            <div className="fixed inset-0 z-50 flex">
-              <div
-                className="absolute inset-0 bg-black/40"
-                onClick={() => setIsSidebarOpen(false)}
-                aria-hidden="true"
-              />
-              <Sidebar
-                selectedSection={selectedSection}
-                onSelect={handleSelect}
-                onLogout={handleLogout}
-                className="relative z-10 w-72 border-r-0 shadow-xl bg-white"
-                showCloseButton
-                onClose={() => setIsSidebarOpen(false)}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* --- Zone de contenu scrollable --- */}
-        <main className="flex-1 overflow-y-auto">
-          {/* Header fixe */}
-          <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-8 py-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-amber-600">Espace administrateur</p>
-              <h1 className="text-2xl font-semibold text-gray-900">Tableau de bord</h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => router.push('/')}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100"
-              >
-                <span>🏠</span>
-                <span>Accueil</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsNotifOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <span>🔔</span>
-                <span>Notifications</span>
-                {unreadCount > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
-              </button>
-            </div>
-          </header>
-
-          {/* Contenu dynamique - Remplir toute la largeur */}
-          <div className="w-full p-6 space-y-6">
-            {selectedSection === 'models' && <DashboardModels />}
-            {selectedSection === 'catalogue' && <DashboardCatalogue />}
-            {selectedSection === 'configs' && <DashboardConfigs />}
-            {selectedSection === 'orders' && <DashboardOrders />}
-            {selectedSection === 'payments' && <DashboardPayments />}
-            {selectedSection === 'appointments' && <DashboardAppointments />}
-            {selectedSection === 'calendar' && <DashboardCalendar />}
-            {selectedSection === 'avis' && <DashboardAvis />}
-            {selectedSection === 'password' && <DashboardPassword />}
-          </div>
-        </main>
-      </div>
       <NotificationsModal
         isOpen={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
         onUnreadCountChange={(c) => setUnreadCount(c)}
       />
       <Toaster />
-    </div>
+    </>
   );
 }

@@ -41,11 +41,11 @@ export function LoginForm() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-[32px] border border-[#e7ded3] bg-white/90 p-10 shadow-lg backdrop-blur">
-      <h1 className="heading-serif text-3xl text-ink">
+    <div className="mx-auto w-full max-w-md rounded-sm border border-border bg-white/90 p-10 shadow-lg backdrop-blur">
+      <h1 className="font-serif text-3xl text-ink">
         {mode === "login" ? "Connexion à ArchiMeuble" : "Créer un compte"}
       </h1>
-      <p className="mt-4 text-sm leading-relaxed text-ink/70">
+      <p className="mt-4 text-sm leading-relaxed text-stone">
         {mode === "login"
           ? "Renseignez vos identifiants pour accéder à vos projets."
           : "Créez votre espace personnel pour sauvegarder vos meubles."}
@@ -54,7 +54,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {mode === "register" && (
           <div>
-            <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
+            <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted">
               Nom (optionnel)
             </label>
             <input
@@ -62,12 +62,12 @@ export function LoginForm() {
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+              className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             />
           </div>
         )}
         <div>
-          <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
+          <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted">
             Email
           </label>
           <input
@@ -76,11 +76,11 @@ export function LoginForm() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-[0.3em] text-ink/50">
+          <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted">
             Mot de passe
           </label>
           <input
@@ -90,7 +90,7 @@ export function LoginForm() {
             minLength={6}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
 

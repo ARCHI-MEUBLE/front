@@ -2,12 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@layer base {
+  :root {
+    /* Shadcn theme variables - New York style with neutral base */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 97%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 0 0% 65%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 240 5% 26%;
+    --sidebar-primary: 240 6% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 240 6% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217 91% 60%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 92%;
+    --primary-foreground: 0 0% 15%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 25%;
+    --ring: 0 0% 45%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar: 240 6% 10%;
+    --sidebar-foreground: 240 5% 96%;
+    --sidebar-primary: 224 76% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4% 16%;
+    --sidebar-accent-foreground: 240 5% 96%;
+    --sidebar-border: 240 4% 16%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
 
 :root {
-  color: #2f2a26;
-  background-color: #f6f1eb;
-  font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #1A1A1A;
+  background-color: #FAF9F7;
+  font-family: 'DM Sans', 'IBM Plex Sans', -apple-system, sans-serif;
 }
 
 html {
@@ -16,8 +99,8 @@ html {
 
 body {
   min-height: 100vh;
-  background-color: #f6f1eb;
-  color: #2f2a26;
+  background-color: #FAF9F7;
+  color: #1A1A1A;
   font-feature-settings: 'ss01' on, 'ss02' on;
 }
 
@@ -35,129 +118,290 @@ h2,
 h3,
 h4,
 .heading-serif {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Playfair Display', 'Libre Baskerville', Georgia, serif;
   letter-spacing: -0.02em;
 }
 
-/* ==================== BUTTONS ==================== */
-.button-elevated {
-  @apply inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white transition duration-200 ease-out whitespace-nowrap;
-}
+/* ==================== BUTTONS (design artisanal, pas de gradient) ==================== */
 
-.button-elevated:hover {
-  @apply bg-primary-hover;
-}
-
-.button-elevated:active {
-  @apply bg-primary-active;
-}
-
-.button-outline {
-  @apply inline-flex items-center justify-center rounded-full border border-primary px-6 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-primary transition duration-200 ease-out whitespace-nowrap;
-}
-
-.button-outline:hover {
-  @apply bg-primary text-white;
-}
-
-.button-outline:active {
-  @apply bg-primary-active text-white;
-}
-
-/* Primary button - Full width variant */
+/* Primary button - solide, simple */
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-semibold text-white transition duration-200 ease-out hover:bg-primary-hover active:bg-primary-active disabled:opacity-50 disabled:cursor-not-allowed;
+  background: #1A1A1A;
+  color: white;
+  padding: 14px 28px;
+  border-radius: 4px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: background 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-/* Secondary button */
+.btn-primary:hover {
+  background: #2D2D2D;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Secondary button - outline fin */
 .btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-border-neutral bg-white px-6 py-3 text-sm font-semibold text-secondary transition duration-200 ease-out hover:bg-bg-light active:border-secondary disabled:opacity-50 disabled:cursor-not-allowed;
+  background: transparent;
+  border: 1px solid #1A1A1A;
+  color: #1A1A1A;
+  padding: 14px 28px;
+  border-radius: 4px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: all 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-/* Ghost button */
+.btn-secondary:hover {
+  background: #1A1A1A;
+  color: white;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ghost button - texte simple */
 .btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold text-secondary transition duration-200 ease-out hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed;
+  background: transparent;
+  color: #1A1A1A;
+  padding: 14px 28px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: opacity 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  opacity: 0.7;
+}
+
+/* Small button variant */
+.btn-sm {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+/* Link style button */
+.btn-link {
+  background: none;
+  border: none;
+  color: #1A1A1A;
+  font-weight: 500;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: opacity 200ms ease;
+}
+
+.btn-link:hover {
+  opacity: 0.7;
 }
 
 /* ==================== FORM INPUTS ==================== */
 .input {
-  @apply w-full rounded-2xl border border-border-light bg-white px-4 py-3 text-sm text-text-primary placeholder-text-tertiary transition duration-200 ease-out focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20;
+  width: 100%;
+  border: 1px solid #E7E5E4;
+  border-radius: 4px;
+  background: white;
+  padding: 14px 16px;
+  font-size: 15px;
+  color: #1A1A1A;
+  transition: border-color 200ms ease;
+}
+
+.input::placeholder {
+  color: #A8A29E;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #1A1A1A;
 }
 
 .input:disabled {
-  @apply bg-bg-light text-text-tertiary cursor-not-allowed;
+  background: #F5F5F4;
+  color: #A8A29E;
+  cursor: not-allowed;
+}
+
+/* Input with bottom border only */
+.input-minimal {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #E7E5E4;
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 0;
+  font-size: 15px;
+  color: #1A1A1A;
+  transition: border-color 200ms ease;
+}
+
+.input-minimal:focus {
+  outline: none;
+  border-bottom-color: #1A1A1A;
 }
 
 .textarea {
-  @apply w-full rounded-2xl border border-border-light bg-white px-4 py-3 text-sm text-text-primary placeholder-text-tertiary transition duration-200 ease-out focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20;
+  width: 100%;
+  border: 1px solid #E7E5E4;
+  border-radius: 4px;
+  background: white;
+  padding: 14px 16px;
+  font-size: 15px;
+  color: #1A1A1A;
+  transition: border-color 200ms ease;
   resize: vertical;
+  min-height: 120px;
 }
 
-.textarea:disabled {
-  @apply bg-bg-light text-text-tertiary cursor-not-allowed;
+.textarea:focus {
+  outline: none;
+  border-color: #1A1A1A;
 }
 
 .select {
-  @apply w-full rounded-2xl border border-border-light bg-white px-4 py-3 text-sm text-text-primary transition duration-200 ease-out focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20;
+  width: 100%;
+  border: 1px solid #E7E5E4;
+  border-radius: 4px;
+  background: white;
+  padding: 14px 16px;
+  font-size: 15px;
+  color: #1A1A1A;
+  transition: border-color 200ms ease;
+  cursor: pointer;
 }
 
-/* ==================== CARDS & CONTAINERS ==================== */
+.select:focus {
+  outline: none;
+  border-color: #1A1A1A;
+}
+
+/* ==================== CARDS (minimalistes) ==================== */
 .card {
-  @apply rounded-2xl border border-border-light bg-white p-6 transition duration-200 ease-out hover:shadow-md;
+  background: white;
+  border: 1px solid #E7E5E4;
+  border-radius: 2px;
+  padding: 32px;
+  transition: border-color 200ms ease;
 }
 
-.card-elevated {
-  @apply rounded-2xl bg-white p-6 shadow-sm transition duration-200 ease-out hover:shadow-md;
+.card:hover {
+  border-color: #1A1A1A;
 }
 
+.card-flat {
+  background: white;
+  border: 1px solid #E7E5E4;
+  border-radius: 2px;
+  padding: 24px;
+}
+
+/* ==================== SECTION CONTAINERS ==================== */
 .section-container {
-  @apply mx-auto max-w-7xl px-6 py-24;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 96px 24px;
 }
 
 .section-container-sm {
-  @apply mx-auto max-w-7xl px-6 py-16;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 64px 24px;
 }
 
-/* ==================== BADGES & LABELS ==================== */
+@media (min-width: 768px) {
+  .section-container {
+    padding: 120px 48px;
+  }
+  .section-container-sm {
+    padding: 80px 48px;
+  }
+}
+
+/* ==================== LABELS & BADGES ==================== */
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #57534E;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .badge {
-  @apply inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white;
-}
-
-.badge-secondary {
-  @apply inline-flex items-center gap-1 rounded-full bg-bg-light px-3 py-1 text-xs font-semibold text-secondary;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .badge-success {
-  @apply inline-flex items-center gap-1 rounded-full bg-success-light px-3 py-1 text-xs font-semibold text-success;
+  color: #166534;
 }
 
 .badge-error {
-  @apply inline-flex items-center gap-1 rounded-full bg-error-light px-3 py-1 text-xs font-semibold text-error;
+  color: #DC2626;
 }
 
-.label {
-  @apply block text-sm font-semibold text-text-primary;
+.badge-warning {
+  color: #D97706;
 }
 
-/* ==================== ALERTS ==================== */
-.alert {
-  @apply rounded-2xl border p-4;
+/* ==================== SECTION TITLES ==================== */
+.section-label {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #A8A29E;
+  margin-bottom: 16px;
 }
 
-.alert-success {
-  @apply border-success bg-success-light text-success;
+.section-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  color: #1A1A1A;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
-.alert-error {
-  @apply border-error bg-error-light text-error;
+/* ==================== UTILITY CLASSES ==================== */
+.text-mono {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
-.alert-warning {
-  @apply border-warning bg-warning-light text-warning;
+.text-muted {
+  color: #A8A29E;
 }
 
-.alert-info {
-  @apply border-info bg-info-light text-info;
+.text-stone {
+  color: #57534E;
 }
 
 .line-clamp-2 {
@@ -167,17 +411,41 @@ h4,
   overflow: hidden;
 }
 
-@keyframes contactDetailsReveal {
-  0% {
+/* ==================== DIVIDERS ==================== */
+.divider {
+  height: 1px;
+  background: #E7E5E4;
+  width: 100%;
+}
+
+/* ==================== ANIMATIONS (subtiles) ==================== */
+@keyframes fadeIn {
+  from {
     opacity: 0;
-    transform: translateY(16px);
   }
-  40% {
+  to {
     opacity: 1;
-    transform: translateY(-2px);
   }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 400ms ease;
+}
+
+/* ==================== CUSTOM SCROLLBAR ==================== */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }

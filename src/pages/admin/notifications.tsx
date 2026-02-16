@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { adminUrl } from '@/lib/adminPath';
 
 interface Notification {
   id: number;
@@ -39,7 +40,7 @@ export default function AdminNotifications() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Vous devez être connecté en tant qu\'administrateur pour voir les notifications. Rendez-vous sur /admin/login.');
+          throw new Error('Vous devez être connecté en tant qu\'administrateur pour voir les notifications.');
         }
         throw new Error('Erreur lors du chargement des notifications');
       }
@@ -107,7 +108,7 @@ export default function AdminNotifications() {
 
     // Rediriger vers la commande si applicable
     if (notification.related_order_id) {
-      router.push(`/admin/orders`);
+      router.push(adminUrl('/orders'));
     }
   };
 
@@ -168,8 +169,8 @@ export default function AdminNotifications() {
                   ✓ Tout marquer comme lu
                 </button>
               )}
-              <Link 
-                href="/admin/orders"
+              <Link
+                href={adminUrl('/orders')}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
               >
                 ← Commandes
@@ -184,7 +185,7 @@ export default function AdminNotifications() {
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
             <p className="mb-2">{error}</p>
-            <Link href="/admin/login" className="text-blue-600 underline">Aller à la page de connexion admin</Link>
+            <Link href={adminUrl('/login')} className="text-blue-600 underline">Aller à la page de connexion admin</Link>
           </div>
         )}
 

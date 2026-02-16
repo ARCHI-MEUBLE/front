@@ -137,7 +137,7 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
 
   if (!isMounted) {
     return (
-      <div className="flex min-h-[850px] items-center justify-center rounded-[32px] border border-[#e0d7cc] bg-white/80 p-10">
+      <div className="flex min-h-[850px] items-center justify-center rounded-sm border border-[#e0d7cc] bg-white/80 p-10">
         <div className="flex flex-col items-center gap-4">
           {/* Spinner de chargement */}
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e0d7cc] border-t-[#2f2a26]"></div>
@@ -148,7 +148,7 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-[32px] border border-[#e0d7cc] bg-white/80 shadow-lg">
+    <div className="overflow-hidden rounded-sm border border-[#e0d7cc] bg-white/80 shadow-lg">
       <InlineWidget
         url={calendlyUrl}
         prefill={prefill}

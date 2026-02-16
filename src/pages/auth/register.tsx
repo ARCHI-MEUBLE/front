@@ -3,6 +3,11 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useCustomer } from '@/context/CustomerContext';
 import Head from 'next/head';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
 
 export default function Register() {
   const router = useRouter();
@@ -50,27 +55,45 @@ export default function Register() {
       return;
     }
 
+    // Validation du téléphone
+    const cleanPhone = formData.phone.replace(/\s/g, '');
+    const phoneRegex = /^(\+33|0)[1-9](\d{2}){4}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setError('Format de téléphone invalide (ex: 0612345678 ou +33612345678)');
+      return;
+    }
+
+    // Validation du code postal (France)
+    if (formData.country === 'France' && !/^\d{5}$/.test(formData.postal_code)) {
+      setError('Le code postal doit contenir exactement 5 chiffres');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Envoyer uniquement les champs non vides
-      const dataToSend: any = {
+      // Envoyer tous les champs (maintenant obligatoires)
+      const dataToSend = {
         email: formData.email,
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        postal_code: formData.postal_code,
+        country: formData.country,
       };
 
-      if (formData.phone) dataToSend.phone = formData.phone;
-      if (formData.address) dataToSend.address = formData.address;
-      if (formData.city) dataToSend.city = formData.city;
-      if (formData.postal_code) dataToSend.postal_code = formData.postal_code;
-      if (formData.country) dataToSend.country = formData.country;
+      const result = await register(dataToSend);
 
-      await register(dataToSend);
-
-      // Rediriger vers l'accueil après inscription
-      router.push('/');
+      // Si vérification email requise, rediriger vers la page de vérification
+      if (result.requiresVerification) {
+        router.push(`/auth/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
+      } else {
+        // Ancien flux : rediriger vers l'accueil
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');
     } finally {
@@ -90,203 +113,245 @@ export default function Register() {
       <Head>
         <title>Créer un compte | ArchiMeuble</title>
       </Head>
-      <div className="min-h-screen bg-bg-light flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-text-primary mb-2">
-              Créer un compte
-            </h1>
-            <p className="text-text-secondary">
-              Rejoignez ArchiMeuble pour sauvegarder vos configurations
-            </p>
+      <div className="relative flex min-h-screen flex-col items-center justify-center font-sans lg:max-w-none lg:grid lg:grid-cols-2 lg:px-0">
+        {/* Header mobile (visible uniquement sur mobile) */}
+        <div className="flex w-full items-center justify-between p-6 lg:hidden">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-black p-1">
+              <span className="text-xl font-bold text-white">A</span>
+            </div>
+            <span className="font-serif text-xl font-medium text-[#1A1917]">ArchiMeuble</span>
+          </Link>
+          <Link 
+            href="/auth/login" 
+            className="text-sm font-medium text-[#8B7355] hover:underline"
+          >
+            Se connecter
+          </Link>
+        </div>
+
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
+          <div 
+            className="absolute inset-0 bg-zinc-900" 
+            style={{
+              backgroundImage: 'url("https://images.unsplash.com/photo-1590069261209-f8e9b8642343?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1376&q=80")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative z-20 flex items-center text-lg font-medium">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-white p-1">
+                <span className="text-xl font-bold text-black">A</span>
+              </div>
+              ArchiMeuble
+            </Link>
           </div>
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                &ldquo;ArchiMeuble m&apos;a permis de concevoir le meuble de mes rêves en quelques clics. 
+                La qualité de fabrication lilloise est exceptionnelle.&rdquo;
+              </p>
+              <footer className="text-sm">Sofia Davis</footer>
+            </blockquote>
+          </div>
+        </div>
 
-          {error && (
-            <div className="alert alert-error mb-6">
-              {error}
-            </div>
-          )}
+        <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-black lg:p-8 h-full w-full overflow-y-auto">
+          <Card className="w-full max-w-2xl border-none shadow-none bg-transparent lg:shadow-none dark:bg-transparent py-10 lg:py-0">
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-3xl font-bold tracking-tight text-[#1A1917] dark:text-white">
+                Créer un compte
+              </CardTitle>
+              <CardDescription className="text-zinc-500 dark:text-zinc-400">
+                Rejoignez ArchiMeuble pour sauvegarder vos configurations
+              </CardDescription>
+            </CardHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Informations de connexion */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="label mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="votre@email.com"
-                />
-              </div>
+            <CardContent className="mt-4">
+              {error && (
+                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive mb-6">
+                  {error}
+                </div>
+              )}
 
-              <div>
-                <label className="label mb-2">
-                  Mot de passe *
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="Min. 8 caractères"
-                />
-              </div>
+              <form onSubmit={handleSubmit} className="grid gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="first_name" className="text-sm font-medium">Prénom *</Label>
+                    <Input
+                      id="first_name"
+                      name="first_name"
+                      placeholder="Prénom"
+                      required
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      className="bg-white dark:bg-zinc-800"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="last_name" className="text-sm font-medium">Nom *</Label>
+                    <Input
+                      id="last_name"
+                      name="last_name"
+                      placeholder="Nom"
+                      required
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      className="bg-white dark:bg-zinc-800"
+                    />
+                  </div>
+                </div>
 
-              <div>
-                <label className="label mb-2">
-                  Confirmer le mot de passe *
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="Répétez le mot de passe"
-                />
-              </div>
-            </div>
-
-            {/* Informations personnelles */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label mb-2">
-                  Prénom *
-                </label>
-                <input
-                  type="text"
-                  name="first_name"
-                  required
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="Prénom"
-                />
-              </div>
-
-              <div>
-                <label className="label mb-2">
-                  Nom *
-                </label>
-                <input
-                  type="text"
-                  name="last_name"
-                  required
-                  value={formData.last_name}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="Nom"
-                />
-              </div>
-            </div>
-
-            {/* Coordonnées (optionnel) */}
-            <div className="border-t border-border-light pt-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">
-                Coordonnées (optionnel)
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="label mb-2">
-                    Téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-medium">Email *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="nom@exemple.com"
+                    required
+                    value={formData.email}
                     onChange={handleChange}
-                    className="input"
-                    placeholder="+33 6 12 34 56 78"
+                    className="bg-white dark:bg-zinc-800"
                   />
                 </div>
 
-                <div>
-                  <label className="label mb-2">
-                    Adresse
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="input"
-                    placeholder="123 Rue Example"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="label mb-2">
-                      Code postal
-                    </label>
-                    <input
-                      type="text"
-                      name="postal_code"
-                      value={formData.postal_code}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="password" title="Mot de passe" className="text-sm font-medium">Mot de passe *</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                      value={formData.password}
                       onChange={handleChange}
-                      className="input"
-                      placeholder="75001"
+                      className="bg-white dark:bg-zinc-800"
                     />
                   </div>
-
-                  <div>
-                    <label className="label mb-2">
-                      Ville
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirmPassword" title="Confirmer le mot de passe" className="text-sm font-medium">Confirmer le mot de passe *</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                      value={formData.confirmPassword}
                       onChange={handleChange}
-                      className="input"
-                      placeholder="Paris"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label mb-2">
-                      Pays
-                    </label>
-                    <input
-                      type="text"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleChange}
-                      className="input"
-                      placeholder="France"
+                      className="bg-white dark:bg-zinc-800"
                     />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full"
-            >
-              {isLoading ? 'Inscription en cours...' : 'Créer mon compte'}
-            </button>
-          </form>
+                <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+                    Coordonnées
+                  </h3>
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone" className="text-sm font-medium">Téléphone *</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="+33 6 12 34 56 78"
+                        required
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className="bg-white dark:bg-zinc-800"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="address" className="text-sm font-medium">Adresse *</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        placeholder="123 Rue Example"
+                        required
+                        value={formData.address}
+                        onChange={handleChange}
+                        className="bg-white dark:bg-zinc-800"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="postal_code" className="text-sm font-medium">Code postal *</Label>
+                        <Input
+                          id="postal_code"
+                          name="postal_code"
+                          placeholder="75001"
+                          required
+                          value={formData.postal_code}
+                          onChange={handleChange}
+                          className="bg-white dark:bg-zinc-800"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="city" className="text-sm font-medium">Ville *</Label>
+                        <Input
+                          id="city"
+                          name="city"
+                          placeholder="Paris"
+                          required
+                          value={formData.city}
+                          onChange={handleChange}
+                          className="bg-white dark:bg-zinc-800"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="country" className="text-sm font-medium">Pays *</Label>
+                        <Input
+                          id="country"
+                          name="country"
+                          placeholder="France"
+                          required
+                          value={formData.country}
+                          onChange={handleChange}
+                          className="bg-white dark:bg-zinc-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-text-secondary">
-              Vous avez déjà un compte ?{' '}
-              <Link href="/auth/login" className="text-primary hover:text-primary-hover font-semibold">
-                Se connecter
+                <Button 
+                  type="submit" 
+                  className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm mt-2"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Création en cours...
+                    </>
+                  ) : (
+                    'Créer mon compte'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-6 text-center mt-2">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Déjà un compte ?{' '}
+                <Link href="/auth/login" className="font-semibold text-[#1A1917] hover:underline dark:text-white">
+                  Se connecter
+                </Link>
+              </p>
+              <Link 
+                href="/" 
+                className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] dark:text-zinc-400 dark:hover:text-white transition-colors group"
+              >
+                <IconArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                Retour à l&apos;accueil
               </Link>
-            </p>
-          </div>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     </>

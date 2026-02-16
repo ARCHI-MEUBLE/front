@@ -1,32 +1,36 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Download, Calendar, TrendingUp, Package, X } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import toast from 'react-hot-toast';
+import {
+  IconDownload,
+  IconRefresh,
+  IconTrendingUp,
+  IconCurrencyEuro,
+  IconShoppingCart,
+  IconChartBar,
+  IconCreditCard,
+} from '@tabler/icons-react';
 import type { PaymentAnalytics, PaymentTransaction, PaymentFilters } from '@/types/PaymentAnalytics';
-import { DashboardSamplesAnalytics } from './DashboardSamplesAnalytics';
 import { formatDate } from '@/lib/dateUtils';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-interface SamplesSummary {
-  total_ordered: number;
-  samples_in_cart: number;
-  recent_trend: { date: string; count: number }[];
-}
 
 export default function DashboardPayments() {
   const [analytics, setAnalytics] = useState<PaymentAnalytics | null>(null);
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
-  const [samplesSummary, setSamplesSummary] = useState<SamplesSummary | null>(null);
   const [filters, setFilters] = useState<PaymentFilters>({ period: '30d' });
   const [loading, setLoading] = useState(true);
-  const [showSamplesModal, setShowSamplesModal] = useState(false);
 
   useEffect(() => {
     fetchAnalytics();
     fetchTransactions();
-    fetchSamplesSummary();
   }, [filters]);
 
   const fetchAnalytics = async () => {
@@ -40,6 +44,7 @@ export default function DashboardPayments() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des analytics:', error);
+      toast.error('Erreur lors du chargement des analytics');
     } finally {
       setLoading(false);
     }
@@ -59,32 +64,6 @@ export default function DashboardPayments() {
     }
   };
 
-  const fetchSamplesSummary = async () => {
-    try {
-      const response = await fetch('/api/admin/samples/analytics', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.analytics) {
-          // Préparer un résumé compact des 7 derniers jours
-          const recentTrend = data.analytics.recent_orders.slice(-7).map((item: any) => ({
-            date: new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-            count: item.order_count
-          }));
-
-          setSamplesSummary({
-            total_ordered: data.analytics.total_ordered,
-            samples_in_cart: data.analytics.samples_in_cart,
-            recent_trend: recentTrend
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement du résumé échantillons:', error);
-    }
-  };
-
   const handleExportCSV = async () => {
     try {
       const response = await fetch(`/backend/api/admin/export-payments.php?period=${filters.period}`, {
@@ -100,9 +79,11 @@ export default function DashboardPayments() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        toast.success('Export CSV téléchargé');
       }
     } catch (error) {
       console.error('Erreur lors de l\'export CSV:', error);
+      toast.error('Erreur lors de l\'export CSV');
     }
   };
 
@@ -110,18 +91,16 @@ export default function DashboardPayments() {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
       case 'paid':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'secondary';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'outline';
       case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'refunded':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'destructive';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'default';
     }
   };
 
@@ -142,16 +121,23 @@ export default function DashboardPayments() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Chargement des analytics...</div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <IconRefresh className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        </div>
       </div>
     );
   }
 
   if (!analytics) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Aucune donnée disponible</div>
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Aucune donnée disponible</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -161,325 +147,248 @@ export default function DashboardPayments() {
     : '0.0';
 
   return (
-    <div className="space-y-6">
-      {/* Header with filters */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Analytics Paiements</h1>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
-            <button
-              onClick={() => setFilters({ period: '7d' })}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                filters.period === '7d'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              7 jours
-            </button>
-            <button
-              onClick={() => setFilters({ period: '30d' })}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                filters.period === '30d'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              30 jours
-            </button>
-            <button
-              onClick={() => setFilters({ period: '90d' })}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                filters.period === '90d'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              90 jours
-            </button>
-            <button
-              onClick={() => setFilters({ period: '1y' })}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                filters.period === '1y'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              1 an
-            </button>
-          </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <Download size={18} />
-            Exporter CSV
-          </button>
-        </div>
+    <>
+      {/* Stats Cards */}
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-2 lg:grid-cols-4 lg:px-6">
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>Revenu Total</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(analytics.total_revenue)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconCurrencyEuro className="size-3" />
+                Revenu
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Paiements réussis <IconTrendingUp className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              {analytics.successful_payments} paiements
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>Commandes</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {analytics.total_orders}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconShoppingCart className="size-3" />
+                Total
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Toutes les commandes <IconShoppingCart className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              {analytics.pending_payments} en attente
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>Panier Moyen</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {formatCurrency(analytics.average_order_value)}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconChartBar className="size-3" />
+                Moyenne
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Valeur moyenne <IconChartBar className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Par commande
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>Taux de Succès</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {successRate}%
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconTrendingUp className="size-3" />
+                Succès
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Paiements réussis <IconCreditCard className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Taux de conversion
+            </div>
+          </CardFooter>
+        </Card>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Revenu Total</div>
-          <div className="text-2xl font-bold text-gray-900">{formatCurrency(analytics.total_revenue)}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {analytics.successful_payments} paiements réussis
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Commandes</div>
-          <div className="text-2xl font-bold text-gray-900">{analytics.total_orders}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {analytics.pending_payments} en attente
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Panier Moyen</div>
-          <div className="text-2xl font-bold text-gray-900">{formatCurrency(analytics.average_order_value)}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            Par commande
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="text-sm font-medium text-gray-600 mb-1">Taux de Succès</div>
-          <div className="text-2xl font-bold text-gray-900">{successRate}%</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {analytics.failed_payments} échecs
-          </div>
-        </div>
-      </div>
-
-      {/* Samples Summary Card - Compact */}
-      {samplesSummary && (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            {/* Left: Stats */}
-            <div className="flex items-center gap-3">
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-purple-600" />
-              </div>
+      {/* Filters & Content */}
+      <div className="px-4 lg:px-6 space-y-4">
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-medium text-gray-600 uppercase">Échantillons Gratuits</div>
-                <div className="text-2xl font-bold text-gray-900">{samplesSummary.total_ordered}</div>
-                <div className="text-xs text-gray-500">
-                  {samplesSummary.samples_in_cart} en attente
-                </div>
+                <CardTitle>Analytics Paiements</CardTitle>
+                <CardDescription>Statistiques et transactions</CardDescription>
               </div>
+              <Button onClick={handleExportCSV} variant="outline">
+                <IconDownload className="w-4 h-4 mr-2" />
+                Exporter CSV
+              </Button>
             </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={filters.period} onValueChange={(value) => setFilters({ period: value as any })}>
+              <TabsList className="grid grid-cols-4 w-full max-w-md">
+                <TabsTrigger value="7d">7 jours</TabsTrigger>
+                <TabsTrigger value="30d">30 jours</TabsTrigger>
+                <TabsTrigger value="90d">90 jours</TabsTrigger>
+                <TabsTrigger value="1y">1 an</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardContent>
+        </Card>
 
-            {/* Right: Link to full analytics */}
-            <button
-              onClick={() => setShowSamplesModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-            >
-              Voir Analytics Complètes
-              <TrendingUp className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            {filters.period === '7d' || filters.period === '30d' ? 'Revenu par Jour' : 'Revenu par Mois'}
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={analytics.revenue_by_month}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="month" stroke="#6b7280" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '12px'
-                }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={{ fill: '#3b82f6', r: 4 }}
-                name="Revenu"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Payment Methods Chart */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Moyens de Paiement</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={analytics.payment_methods_distribution}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ method, percentage }) => `${method}: ${percentage.toFixed(1)}%`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="count"
-              >
-                {analytics.payment_methods_distribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '12px'
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Transactions Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Transactions Récentes</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  N° Commande
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Client
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Montant
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Méthode
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Statut
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {transaction.order_number}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.customer_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {transaction.customer_email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatCurrency(transaction.amount)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {transaction.payment_method}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border ${getStatusColor(transaction.payment_status)}`}>
-                      {getStatusLabel(transaction.payment_status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {formatDate(transaction.created_at)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {transaction.payment_status === 'paid' && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`/backend/api/orders/invoice.php?id=${transaction.id}&download=true`, {
-                              credentials: 'include'
-                            });
-                            if (!response.ok) throw new Error('Erreur');
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `facture-${transaction.invoice_number || transaction.id}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
-                          } catch (error) {
-                            alert('Erreur lors du téléchargement');
-                          }
-                        }}
-                        className="text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
-                        title="Télécharger la facture"
-                      >
-                        📄 Facture
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {transactions.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            Aucune transaction trouvée
-          </div>
+        {analytics.revenue_by_month && analytics.revenue_by_month.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Évolution du revenu</CardTitle>
+              <CardDescription>Revenus par période</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analytics.revenue_by_month}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="month"
+                      className="text-xs"
+                    />
+                    <YAxis
+                      className="text-xs"
+                      tickFormatter={(value) => `${value}€`}
+                    />
+                    <Tooltip
+                      formatter={(value: any) => formatCurrency(value)}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      name="Revenu"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* Payment Methods */}
+        {analytics.payment_methods_distribution && analytics.payment_methods_distribution.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Méthodes de paiement</CardTitle>
+              <CardDescription>Répartition des paiements</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analytics.payment_methods_distribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ method, percentage }) => `${method} ${percentage.toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                      nameKey="method"
+                    >
+                      {analytics.payment_methods_distribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Transactions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Transactions récentes</CardTitle>
+            <CardDescription>Derniers paiements enregistrés</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {transactions.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-sm text-muted-foreground">Aucune transaction</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead className="hidden md:table-cell">Montant</TableHead>
+                    <TableHead className="hidden sm:table-cell">Statut</TableHead>
+                    <TableHead className="hidden lg:table-cell">Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.slice(0, 10).map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="font-mono text-xs">#{transaction.id}</TableCell>
+                      <TableCell className="font-medium">{transaction.customer_email || 'Client'}</TableCell>
+                      <TableCell className="hidden md:table-cell font-semibold tabular-nums">
+                        {formatCurrency(transaction.amount)}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant={getStatusVariant(transaction.payment_status)}>
+                          {getStatusLabel(transaction.payment_status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                        {formatDate(transaction.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Samples Analytics Modal */}
-      {showSamplesModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowSamplesModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10">
-              <h2 className="text-xl font-semibold text-gray-900">Analytics Échantillons</h2>
-              <button
-                onClick={() => setShowSamplesModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Fermer"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Modal Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-              <DashboardSamplesAnalytics />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 }

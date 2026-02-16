@@ -22,7 +22,9 @@
       "@/styles/*": ["src/styles/*"],
       "@/contexts/*": ["src/contexts/*"],
       "@/utils/*": ["src/utils/*"],
-      "@/context/*": ["src/context/*"]
+      "@/context/*": ["src/context/*"],
+      "@/hooks/*": ["src/hooks/*"],
+      "@/types/*": ["src/types/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],

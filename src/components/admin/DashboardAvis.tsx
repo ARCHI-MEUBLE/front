@@ -1,6 +1,22 @@
+"use client"
+
 import { useEffect, useState } from 'react';
-import { Trash2, Star, MessageSquare, TrendingUp } from 'lucide-react';
 import { formatDate } from '@/lib/dateUtils';
+import toast from 'react-hot-toast';
+import {
+  IconStar,
+  IconStarFilled,
+  IconTrash,
+  IconRefresh,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconMessage,
+} from '@tabler/icons-react';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 type Review = {
   id: string;
@@ -38,25 +54,30 @@ export function DashboardAvis() {
 
     setDeleting(id);
     try {
-      const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/reviews/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
       if (res.ok) {
         setAvis((prev) => prev.filter((a) => a.id !== id));
+        toast.success('Avis supprimé');
       } else {
         const error = await res.json();
-        alert(error.error || 'Erreur lors de la suppression');
+        toast.error(error.error || 'Erreur lors de la suppression');
       }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
-      alert('Erreur lors de la suppression de l\'avis');
+      toast.error('Erreur lors de la suppression de l\'avis');
     } finally {
       setDeleting(null);
     }
   };
 
-  // Calculer les statistiques
   const averageRating = avis.length > 0
-    ? (avis.reduce((sum, review) => sum + review.rating, 0) / avis.length).toFixed(1)
-    : '0.0';
+    ? (avis.reduce((sum, review) => sum + review.rating, 0) / avis.length)
+    : 0;
+
+  const satisfaction = avis.length > 0 ? (averageRating / 5) * 100 : 0;
 
   const ratingDistribution = [5, 4, 3, 2, 1].map(rating => {
     const count = avis.filter(review => review.rating === rating).length;
@@ -64,137 +85,205 @@ export function DashboardAvis() {
     return { rating, count, percentage };
   });
 
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          star <= rating ? (
+            <IconStarFilled key={star} className="size-4 text-yellow-500" />
+          ) : (
+            <IconStar key={star} className="size-4 text-muted-foreground" />
+          )
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-gray-500">Chargement des avis...</div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <IconRefresh className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Gestion des Avis Clients</h1>
+    <>
+      {/* Stats Cards */}
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-3">
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Total Avis</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {avis.length}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconMessage className="size-3" />
+                Tous
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Avis clients collectés <IconMessage className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Depuis le début
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Note Moyenne</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {averageRating.toFixed(1)} / 5
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                {averageRating >= 4 ? (
+                  <><IconTrendingUp className="size-3" /> Excellent</>
+                ) : averageRating >= 3 ? (
+                  <><IconStar className="size-3" /> Bon</>
+                ) : (
+                  <><IconTrendingDown className="size-3" /> À améliorer</>
+                )}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              {renderStars(Math.round(averageRating))}
+            </div>
+            <div className="text-muted-foreground">
+              Moyenne globale
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Satisfaction</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {satisfaction.toFixed(0)}%
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                {satisfaction >= 80 ? (
+                  <><IconTrendingUp className="size-3" /> +{satisfaction.toFixed(0)}%</>
+                ) : (
+                  <><IconTrendingDown className="size-3" /> {satisfaction.toFixed(0)}%</>
+                )}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Taux de satisfaction <IconTrendingUp className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Basé sur la note moyenne
+            </div>
+          </CardFooter>
+        </Card>
       </div>
 
-      {/* Statistiques KPI */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <MessageSquare className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-600">Total Avis</div>
-              <div className="text-2xl font-bold text-gray-900">{avis.length}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <Star className="h-6 w-6 text-yellow-500 fill-current" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-600">Note Moyenne</div>
-              <div className="text-2xl font-bold text-gray-900">{averageRating} / 5</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-600">Satisfaction</div>
-              <div className="text-2xl font-bold text-gray-900">
-                {avis.length > 0 ? Math.round((avis.filter(r => r.rating >= 4).length / avis.length) * 100) : 0}%
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Distribution des notes */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Distribution des Notes</h2>
-        <div className="space-y-2">
-          {ratingDistribution.map(({ rating, count, percentage }) => (
-            <div key={rating} className="flex items-center gap-3">
-              <div className="flex items-center gap-1 w-16">
-                <span className="text-sm font-medium text-gray-700">{rating}</span>
-                <Star className="h-4 w-4 text-yellow-500 fill-current" />
-              </div>
-              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-yellow-500 h-full rounded-full transition-all"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-              <span className="text-sm text-gray-600 w-12 text-right">{count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Liste des avis */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Tous les Avis</h2>
-        </div>
-
-        {avis.length === 0 ? (
-          <div className="p-12 text-center">
-            <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">Aucun avis client pour le moment.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {avis.map((review) => (
-              <div
-                key={review.id}
-                className="p-6 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-gray-900">{review.authorName}</h3>
-                      <div className="flex items-center gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < review.rating
-                                ? 'text-yellow-500 fill-current'
-                                : 'text-gray-300 fill-current'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-3">{formatDate(review.date)}</p>
-                    <p className="text-sm text-gray-700 leading-relaxed">{review.text}</p>
+      {/* Distribution & Liste */}
+      <div className="px-4 lg:px-6 space-y-6">
+        {/* Distribution des notes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribution des Notes</CardTitle>
+            <CardDescription>Répartition des avis par nombre d'étoiles</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {ratingDistribution.map(({ rating, count, percentage }) => (
+                <div key={rating} className="flex items-center gap-4">
+                  <div className="flex items-center gap-1 w-12">
+                    <IconStarFilled className="size-4 text-yellow-500" />
+                    <span className="text-sm font-medium">{rating}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(review.id)}
-                    disabled={deleting === review.id}
-                    className="ml-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {deleting === review.id ? 'Suppression...' : 'Supprimer'}
-                  </button>
+                  <div className="flex-1">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="w-16 text-right">
+                    <span className="text-sm font-medium">{count}</span>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Liste des avis */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Tous les Avis</CardTitle>
+            <CardDescription>Gérer et modérer les avis clients</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {avis.length === 0 ? (
+              <div className="py-12 text-center">
+                <div className="text-4xl mb-3">⭐</div>
+                <h3 className="text-lg font-medium mb-1">Aucun avis client</h3>
+                <p className="text-sm text-muted-foreground">
+                  Aucun avis pour le moment
+                </p>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead className="hidden md:table-cell">Commentaire</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {avis.map((review) => (
+                    <TableRow key={review.id}>
+                      <TableCell className="font-medium">{review.authorName}</TableCell>
+                      <TableCell>{renderStars(review.rating)}</TableCell>
+                      <TableCell className="hidden md:table-cell max-w-md">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {review.text}
+                        </p>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                        {formatDate(review.date)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          onClick={() => handleDelete(review.id)}
+                          disabled={deleting === review.id}
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <IconTrash className="w-4 h-4 mr-1" />
+                          Supprimer
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </>
   );
 }

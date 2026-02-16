@@ -11,7 +11,6 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 interface StripeCheckoutWrapperProps {
   orderId: number;
   amount: number;
-  installments?: 1 | 3; // Paiement en 1 ou 3 fois
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -19,17 +18,21 @@ interface StripeCheckoutWrapperProps {
 export default function StripeCheckoutWrapper({
   orderId,
   amount,
-  installments = 1,
   onSuccess,
   onError
 }: StripeCheckoutWrapperProps) {
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentAmount, setCurrentAmount] = useState(amount);
 
   useEffect(() => {
+    if (amount !== currentAmount) {
+      setClientSecret('');
+      setCurrentAmount(amount);
+    }
     createPaymentIntent();
-  }, [amount, installments]);
+  }, [amount]);
 
   const createPaymentIntent = async () => {
     try {
@@ -42,7 +45,6 @@ export default function StripeCheckoutWrapper({
         credentials: 'include',
         body: JSON.stringify({
           amount,
-          installments,
           currency: 'eur'
         })
       });
@@ -131,32 +133,10 @@ export default function StripeCheckoutWrapper({
 
   return (
     <div>
-      {installments === 3 && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h4 className="font-semibold text-blue-900 mb-1">
-                Paiement en 3 fois
-              </h4>
-              <p className="text-sm text-blue-800">
-                Vous allez payer{' '}
-                <span className="font-semibold">
-                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount / 3)}
-                </span>{' '}
-                aujourd'hui, puis 2 autres versements les mois suivants.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Elements stripe={stripePromise} options={options}>
         <StripeCheckoutForm
           orderId={orderId}
-          amount={installments === 3 ? amount / 3 : amount}
+          amount={amount}
           onSuccess={onSuccess}
           onError={onError}
         />

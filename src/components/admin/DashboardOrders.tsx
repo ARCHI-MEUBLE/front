@@ -1,14 +1,77 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/dateUtils';
-import { Clock, CheckCircle, Hammer, Truck, Package, XCircle, Ruler, Download } from 'lucide-react';
+import {
+  IconClock,
+  IconCircleCheck,
+  IconHammer,
+  IconTruck,
+  IconPackage,
+  IconX,
+  IconRuler,
+  IconRefresh,
+  IconEye,
+  IconLink,
+  IconTrendingUp,
+  IconSquare,
+  IconDownload,
+} from '@tabler/icons-react';
+import PaymentLinkModal from '@/components/admin/PaymentLinkModal';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface OrderItem {
   configuration_id: number;
   quantity: number;
-  price: number;          // Nouveau champ aplati depuis backend
-  prompt: string;         // Nouveau champ aplati depuis backend
-  name: string;           // Nouveau champ aplati depuis backend
+  price: number;
+  prompt: string;
+  name: string;
+}
+
+interface CatalogueOrderItem {
+  id: number;
+  name: string;
+  variation_name: string | null;
+  image_url: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+interface FacadeOrderItem {
+  id: number;
+  config_data: string;
+  config?: {
+    width: number;
+    height: number;
+    depth: number;
+    material?: {
+      id: number;
+      name: string;
+      color_hex: string;
+      texture_url?: string;
+    };
+    hinges?: {
+      type: string;
+      count: number;
+      direction: string;
+    };
+    drillings?: Array<{
+      id: string;
+      type: string;
+      typeName: string;
+      x: number;
+      y: number;
+      diameter?: number;
+    }>;
+  };
+  quantity: number;
+  unit_price: number;
+  total_price: number;
 }
 
 interface Customer {
@@ -17,51 +80,70 @@ interface Customer {
   first_name: string;
   last_name: string;
   phone: string;
-  name: string;          // Nom complet combiné
+  name: string;
 }
 
 interface Order {
   id: string;
   order_number: string;
   customer?: Customer;
-  customer_name?: string;  // Champ aplati au niveau racine
+  customer_name?: string;
   customer_email?: string;
   customer_phone?: string;
   status: string;
-  total: number;           // Champ principal
-  amount?: number;         // Alias
+  total: number;
+  amount?: number;
   shipping_address: string;
   payment_method: string;
   payment_status: string;
+  payment_strategy?: 'full' | 'deposit';
+  deposit_percentage?: number;
+  deposit_amount?: number;
+  remaining_amount?: number;
+  deposit_payment_status?: string;
+  balance_payment_status?: string;
   created_at: string;
   items?: OrderItem[];
+  catalogue_items?: CatalogueOrderItem[];
+  facade_items?: FacadeOrderItem[];
 }
 
-interface Stats {
-  total: number;
-  pending: number;
-  confirmed: number;
-  in_production: number;
-  shipped: number;
-  delivered: number;
-}
+const STATUS_CONFIG: {
+  [key: string]: {
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  };
+} = {
+  pending: { label: 'En attente', Icon: IconClock, variant: 'outline' },
+  confirmed: { label: 'Confirmée', Icon: IconCircleCheck, variant: 'default' },
+  in_production: { label: 'En production', Icon: IconHammer, variant: 'default' },
+  shipped: { label: 'Expédiée', Icon: IconTruck, variant: 'secondary' },
+  delivered: { label: 'Livrée', Icon: IconPackage, variant: 'secondary' },
+  cancelled: { label: 'Annulée', Icon: IconX, variant: 'destructive' },
+};
 
-const STATUS_CONFIG: { [key: string]: { label: string; Icon: React.ComponentType<{ className?: string }> } } = {
-  pending: { label: 'En attente', Icon: Clock },
-  confirmed: { label: 'Confirmée', Icon: CheckCircle },
-  in_production: { label: 'En production', Icon: Hammer },
-  shipped: { label: 'Expédiée', Icon: Truck },
-  delivered: { label: 'Livrée', Icon: Package },
-  cancelled: { label: 'Annulée', Icon: XCircle }
+// Labels pour les types de charnières
+const HINGE_TYPE_LABELS: { [key: string]: string } = {
+  'no-hole-no-hinge': 'Sans trou, sans charnière',
+  'hole-hinge-overlay': 'Trou + charnière fournie porte en applique',
+  'hole-hinge-twin': 'Trou + charnière fournie porte jumelée',
+  'hole-hinge-inset': 'Trou + charnière fournie porte encastrée',
+};
+
+const getHingeTypeLabel = (hingeType: string): string => {
+  return HINGE_TYPE_LABELS[hingeType] || hingeType;
 };
 
 export function DashboardOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [paymentLinkModalOpen, setPaymentLinkModalOpen] = useState(false);
+  const [selectedOrderForPaymentLink, setSelectedOrderForPaymentLink] = useState<Order | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -74,9 +156,7 @@ export function DashboardOrders() {
         url += `?status=${filterStatus}`;
       }
 
-      const response = await fetch(url, {
-        credentials: 'include',
-      });
+      const response = await fetch(url, { credentials: 'include' });
 
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des commandes');
@@ -84,14 +164,12 @@ export function DashboardOrders() {
 
       const data = await response.json();
       setOrders(data.orders || []);
-      setStats(data.stats || null);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
     } finally {
       setIsLoading(false);
     }
   };
-
 
   const loadOrderDetails = async (orderId: string) => {
     try {
@@ -118,8 +196,8 @@ export function DashboardOrders() {
         credentials: 'include',
         body: JSON.stringify({
           order_id: orderId,
-          status: newStatus
-        })
+          status: newStatus,
+        }),
       });
 
       if (!response.ok) {
@@ -129,6 +207,33 @@ export function DashboardOrders() {
       toast.success('Statut mis à jour');
       await loadOrders();
 
+      if (selectedOrder && selectedOrder.id === orderId) {
+        await loadOrderDetails(orderId);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de la mise à jour');
+    }
+  };
+
+  const updatePaymentStrategy = async (orderId: string, strategy: 'full' | 'deposit', percentage: number = 0) => {
+    try {
+      const response = await fetch('/backend/api/admin/orders/payment-strategy.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          order_id: orderId,
+          strategy: strategy,
+          deposit_percentage: percentage
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la mise à jour de la stratégie de paiement');
+      }
+
+      toast.success('Stratégie de paiement mise à jour');
+      await loadOrders();
       if (selectedOrder && selectedOrder.id === orderId) {
         await loadOrderDetails(orderId);
       }
@@ -153,286 +258,526 @@ export function DashboardOrders() {
     return order.total || order.amount || 0;
   };
 
+  // Calculate important stats
+  const stats = {
+    pending: orders.filter(o => o.status === 'pending').length,
+    in_production: orders.filter(o => o.status === 'in_production').length,
+    shipped: orders.filter(o => o.status === 'shipped').length,
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 text-sm">Chargement...</p>
+        <div className="text-center space-y-4">
+          <IconRefresh className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Chargement...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Stats - Design sobre */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 uppercase">Total</p>
-            <p className="text-xl font-semibold text-gray-900">{stats.total}</p>
-          </div>
-          <div className="border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 uppercase">En attente</p>
-            <p className="text-xl font-semibold text-gray-900">{stats.pending}</p>
-          </div>
-          <div className="border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 uppercase">Confirmées</p>
-            <p className="text-xl font-semibold text-gray-900">{stats.confirmed}</p>
-          </div>
-          <div className="border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 uppercase">En production</p>
-            <p className="text-xl font-semibold text-gray-900">{stats.in_production}</p>
-          </div>
-          <div className="border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 uppercase">Expédiées</p>
-            <p className="text-xl font-semibold text-gray-900">{stats.shipped}</p>
-          </div>
-          <div className="border border-gray-200 p-3">
-            <p className="text-xs text-gray-500 uppercase">Livrées</p>
-            <p className="text-xl font-semibold text-gray-900">{stats.delivered}</p>
-          </div>
-        </div>
-      )}
+    <>
+      {/* Important Stats */}
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-3 lg:px-6">
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>En attente</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {stats.pending}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconClock className="size-3" />
+                À traiter
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Commandes en attente <IconClock className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Nécessitent validation
+            </div>
+          </CardFooter>
+        </Card>
 
-      {/* Filters - Design sobre */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <button
-          onClick={() => setFilterStatus('all')}
-          className={`px-3 py-1.5 text-xs font-medium border whitespace-nowrap ${
-            filterStatus === 'all'
-              ? 'bg-gray-900 text-white border-gray-900'
-              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
-          }`}
-        >
-          Toutes
-        </button>
-        {Object.entries(STATUS_CONFIG).map(([status, { label, Icon }]) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-3 py-1.5 text-xs font-medium border whitespace-nowrap flex items-center gap-1.5 ${
-              filterStatus === status
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900'
-            }`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-          </button>
-        ))}
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>En production</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {stats.in_production}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconHammer className="size-3" />
+                Actif
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              En cours de fabrication <IconHammer className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Travail en cours
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader className="pb-2">
+            <CardDescription>Expédiées</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {stats.shipped}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <IconTruck className="size-3" />
+                En route
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              En livraison <IconTruck className="size-4" />
+            </div>
+            <div className="text-muted-foreground">
+              Chez le transporteur
+            </div>
+          </CardFooter>
+        </Card>
       </div>
+
+      {/* Filters */}
+      <div className="px-4 lg:px-6">
+        <Card>
+        <CardHeader>
+          <CardTitle>Filtrer par statut</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={filterStatus} onValueChange={setFilterStatus}>
+            <TabsList className="grid grid-cols-3 lg:grid-cols-7 w-full">
+              <TabsTrigger value="all">Toutes</TabsTrigger>
+              {Object.entries(STATUS_CONFIG).map(([status, { label, Icon }]) => (
+                <TabsTrigger key={status} value={status} className="flex items-center gap-1">
+                  <Icon className="w-3 h-3" />
+                  <span className="hidden sm:inline">{label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Error */}
       {error && (
-        <div className="p-3 border border-red-300 bg-red-50 text-red-700 text-sm">
-          {error}
-        </div>
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-sm text-destructive">{error}</p>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Table - Design sobre sans shadow */}
+      {/* Orders Table */}
       {orders.length === 0 ? (
-        <div className="text-center py-12 border border-gray-200 bg-white">
-          <div className="text-4xl mb-3">📦</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">Aucune commande</h3>
-          <p className="text-sm text-gray-600">
-            {filterStatus === 'all'
-              ? 'Aucune commande pour le moment'
-              : `Aucune commande avec le statut "${STATUS_CONFIG[filterStatus]?.label}"`
-            }
-          </p>
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="text-4xl mb-3">📦</div>
+            <h3 className="text-lg font-medium mb-1">Aucune commande</h3>
+            <p className="text-sm text-muted-foreground">
+              {filterStatus === 'all'
+                ? 'Aucune commande pour le moment'
+                : `Aucune commande avec le statut "${STATUS_CONFIG[filterStatus]?.label}"`}
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="border border-gray-200 bg-white">
-          <table className="w-full">
-            <thead className="border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commande</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {orders.map((order) => {
-                const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-                const StatusIcon = statusConfig.Icon;
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Commande</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Montant</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.map((order) => {
+                  const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                  const StatusIcon = statusConfig.Icon;
 
-                return (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm text-gray-900">
-                        #{order.order_number}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-xs">
-                        <div className="font-medium text-gray-900">{getCustomerName(order)}</div>
-                        <div className="text-gray-500">{getCustomerEmail(order)}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm text-gray-900">
-                        {getOrderTotal(order)}€
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-900 text-xs font-medium">
-                        <StatusIcon className="w-3.5 h-3.5" />
-                        <span>{statusConfig.label}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
-                      {formatDate(order.created_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => loadOrderDetails(order.id)}
-                        className="text-xs font-medium text-gray-900 hover:underline"
-                      >
-                        Voir détails →
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Modal détails - Design sobre */}
-      {selectedOrder && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedOrder(null)}
-        >
-          <div
-            className="bg-white border border-gray-300 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Commande #{selectedOrder.order_number}
-                </h2>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Client */}
-              <div className="border border-gray-200 p-3">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Informations Client
-                </h3>
-                <div className="space-y-1 text-xs">
-                  <p><span className="font-medium">Nom:</span> {getCustomerName(selectedOrder)}</p>
-                  <p><span className="font-medium">Email:</span> {getCustomerEmail(selectedOrder)}</p>
-                  <p><span className="font-medium">Téléphone:</span> {getCustomerPhone(selectedOrder)}</p>
-                </div>
-              </div>
-
-              {/* Changer le statut */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Changer le statut
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {Object.entries(STATUS_CONFIG).slice(0, 5).map(([status, { label, Icon }]) => (
-                    <button
-                      key={status}
-                      onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                      disabled={selectedOrder.status === status}
-                      className={`p-2 border text-xs font-medium flex items-center justify-center gap-1.5 ${
-                        selectedOrder.status === status
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'border-gray-300 hover:border-gray-900 text-gray-700'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Articles */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Articles à produire
-                </h3>
-                <div className="space-y-3">
-                  {selectedOrder.items?.map((item, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-200 p-3"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium text-sm text-gray-900">
-                            {item.name || 'Sans nom'}
-                          </h4>
-                          <p className="text-xs text-gray-600">
-                            Quantité: {item.quantity} × {item.price}€ = <span className="font-semibold">{item.quantity * item.price}€</span>
-                          </p>
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">#{order.order_number}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div className="font-medium">{getCustomerName(order)}</div>
+                          <div className="text-muted-foreground">{getCustomerEmail(order)}</div>
                         </div>
-                      </div>
-
-                      {/* PROMPT */}
-                      <div className="bg-gray-50 border border-gray-300 p-2 mb-2">
-                        <p className="text-xs font-semibold text-gray-900 mb-1">PROMPT DE PRODUCTION:</p>
-                        <code className="text-xs font-mono text-gray-900 break-all">
-                          {item.prompt || 'N/A'}
-                        </code>
-                      </div>
-
-                      {/* Bouton téléchargement DXF */}
-                      <div className="mt-2">
-                        <a
-                          href={`/backend/api/files/dxf.php?id=${item.configuration_id}`}
-                          download={`configuration_${item.configuration_id}.dxf`}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition"
-                        >
-                          <Ruler className="w-3.5 h-3.5" />
-                          Télécharger DXF pour la menuiserie
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Livraison */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Adresse de livraison
-                </h3>
-                <div className="p-3 border border-gray-200">
-                  <p className="text-xs text-gray-700">{selectedOrder.shipping_address}</p>
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="border-t border-gray-300 pt-3">
-                <div className="flex justify-between items-center text-base font-semibold">
-                  <span>Total à facturer</span>
-                  <span>{getOrderTotal(selectedOrder)}€</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">{getOrderTotal(order)}€</TableCell>
+                      <TableCell>
+                        <Badge variant={statusConfig.variant} className="gap-1">
+                          <StatusIcon className="w-3 h-3" />
+                          {statusConfig.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(order.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            onClick={() => loadOrderDetails(order.id)}
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <IconEye className="w-4 h-4 mr-1" />
+                            Détails
+                          </Button>
+                          {(order.payment_status !== 'paid' || (order.payment_strategy === 'deposit' && order.balance_payment_status !== 'paid')) && (
+                            <Button
+                              onClick={() => {
+                                setSelectedOrderForPaymentLink(order);
+                                setPaymentLinkModalOpen(true);
+                              }}
+                              size="sm"
+                            >
+                              <IconLink className="w-4 h-4 mr-1" />
+                              Lien paiement
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
-    </div>
+      </div>
+
+      {/* Order Details Sheet */}
+      <Sheet open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+        <SheetContent className="sm:max-w-3xl overflow-y-auto">
+          {selectedOrder && (
+            <>
+              <SheetHeader>
+                <SheetTitle>Commande #{selectedOrder.order_number}</SheetTitle>
+                <SheetDescription>Détails complets de la commande</SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6">
+                {/* Customer Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Informations client</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <p>
+                      <span className="font-medium">Nom:</span> {getCustomerName(selectedOrder)}
+                    </p>
+                    <p>
+                      <span className="font-medium">Email:</span> {getCustomerEmail(selectedOrder)}
+                    </p>
+                    <p>
+                      <span className="font-medium">Téléphone:</span> {getCustomerPhone(selectedOrder)}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Payment Strategy */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <IconTrendingUp className="w-4 h-4 text-amber-600" />
+                      Stratégie de paiement
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => updatePaymentStrategy(selectedOrder.id, 'full')}
+                          variant={selectedOrder.payment_strategy === 'full' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          disabled={selectedOrder.deposit_payment_status === 'paid' || selectedOrder.payment_status === 'paid'}
+                        >
+                          Paiement 100% direct
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const p = prompt('Pourcentage de l\'acompte (ex: 30) :', '30');
+                            if (p) updatePaymentStrategy(selectedOrder.id, 'deposit', parseFloat(p));
+                          }}
+                          variant={selectedOrder.payment_strategy === 'deposit' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          disabled={selectedOrder.deposit_payment_status === 'paid' || selectedOrder.payment_status === 'paid'}
+                        >
+                          Acompte + Reste
+                        </Button>
+                      </div>
+
+                      {(selectedOrder.deposit_payment_status === 'paid' || selectedOrder.payment_status === 'paid') && (
+                        <p className="text-xs text-muted-foreground italic">
+                          La stratégie ne peut plus être modifiée car un paiement a été effectué.
+                        </p>
+                      )}
+
+                      {selectedOrder.payment_strategy === 'deposit' && (
+                        <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm space-y-1">
+                          <p><span className="font-medium">Acompte ({selectedOrder.deposit_percentage}%):</span> {selectedOrder.deposit_amount}€ ({selectedOrder.deposit_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
+                          <p><span className="font-medium">Solde restant:</span> {selectedOrder.remaining_amount}€ ({selectedOrder.balance_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Status Change */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Changer le statut</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {Object.entries(STATUS_CONFIG)
+                        .slice(0, 5)
+                        .map(([status, { label, Icon }]) => (
+                          <Button
+                            key={status}
+                            onClick={() => updateOrderStatus(selectedOrder.id, status)}
+                            disabled={selectedOrder.status === status}
+                            variant={selectedOrder.status === status ? 'default' : 'outline'}
+                            size="sm"
+                            className="justify-start gap-1"
+                          >
+                            <Icon className="w-3 h-3" />
+                            {label}
+                          </Button>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Catalogue Items */}
+                {selectedOrder.catalogue_items && selectedOrder.catalogue_items.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Articles du catalogue</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedOrder.catalogue_items.map((item, index) => (
+                        <div key={index} className="flex items-center gap-4 p-3 border rounded-lg bg-white shadow-sm">
+                          <div className="h-14 w-14 flex-shrink-0 border rounded overflow-hidden bg-muted/20">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <IconPackage className="w-6 h-6 text-muted-foreground/30" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm truncate">{item.name}</h4>
+                            {item.variation_name && (
+                              <p className="text-xs text-muted-foreground">Finition: {item.variation_name}</p>
+                            )}
+                            <p className="text-xs font-semibold text-primary mt-1">
+                              {item.quantity} × {item.unit_price}€ = {item.total_price}€
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Facade Items */}
+                {selectedOrder.facade_items && selectedOrder.facade_items.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <IconSquare className="w-4 h-4" />
+                        Façades sur mesure
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedOrder.facade_items.map((facade, index) => {
+                        const config = facade.config || (typeof facade.config_data === 'string' ? JSON.parse(facade.config_data) : facade.config_data);
+                        const width = config?.width ? (config.width / 10) : 0;
+                        const height = config?.height ? (config.height / 10) : 0;
+                        const depth = config?.depth || 19;
+                        const materialName = config?.material?.name || 'Matériau';
+                        const hingeType = config?.hinges?.type || 'Aucune';
+                        const hingeCount = config?.hinges?.count || 0;
+                        const hingeDirection = config?.hinges?.direction || '';
+                        const drillings = config?.drillings || [];
+
+                        return (
+                          <div key={index} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-start gap-4">
+                              {/* Material preview */}
+                              <div
+                                className="h-16 w-16 flex-shrink-0 border rounded"
+                                style={{
+                                  backgroundColor: config?.material?.color_hex || '#E5E7EB',
+                                  backgroundImage: config?.material?.texture_url ? `url(${config.material.texture_url})` : undefined,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                }}
+                              />
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">
+                                  Façade {width} × {height} cm · {depth} mm
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Matériau: {materialName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Type: {getHingeTypeLabel(hingeType)}
+                                </p>
+                                {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Charnières: {hingeCount} ({hingeDirection === 'left' ? 'gauche' : hingeDirection === 'right' ? 'droite' : hingeDirection})
+                                  </p>
+                                )}
+                                {drillings.length > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Perçages supplémentaires: {drillings.length} trou(s)
+                                  </p>
+                                )}
+                                <p className="text-xs font-semibold text-primary mt-2">
+                                  {facade.quantity} × {Number(facade.unit_price).toFixed(2)}€ = {Number(facade.total_price).toFixed(2)}€
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* DXF Download */}
+                            <Button asChild variant="outline" size="sm" className="w-full">
+                              <a
+                                href={`/backend/api/facades/dxf.php?facade_id=${facade.id}`}
+                                download={`facade_${facade.id}.dxf`}
+                              >
+                                <IconDownload className="w-4 h-4 mr-2" />
+                                Télécharger DXF de la façade
+                              </a>
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Order Items */}
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Meubles sur mesure</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {selectedOrder.items.map((item, index) => (
+                      <div key={index} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium text-sm">{item.name || 'Sans nom'}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              Quantité: {item.quantity} × {item.price}€ ={' '}
+                              <span className="font-semibold">{item.quantity * item.price}€</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="bg-muted p-3 rounded-md">
+                          <p className="text-xs font-semibold mb-1 uppercase text-muted-foreground">
+                            Prompt de production:
+                          </p>
+                          <code className="text-xs font-mono block whitespace-pre-wrap break-all">
+                            {item.prompt || 'N/A'}
+                          </code>
+                        </div>
+
+                        <Button asChild variant="outline" size="sm" className="w-full">
+                          <a
+                            href={`/backend/api/files/dxf.php?id=${item.configuration_id}`}
+                            download={`configuration_${item.configuration_id}.dxf`}
+                          >
+                            <IconRuler className="w-4 h-4 mr-2" />
+                            Télécharger DXF pour la menuiserie
+                          </a>
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                )}
+
+                {/* Shipping Address */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Adresse de livraison</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{selectedOrder.shipping_address}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Total */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-center text-lg font-semibold">
+                        <span>Total à facturer</span>
+                        <span>{getOrderTotal(selectedOrder)}€</span>
+                      </div>
+                      <div className="mt-4">
+                        <Button
+                          onClick={() => {
+                            setSelectedOrderForPaymentLink(selectedOrder);
+                            setPaymentLinkModalOpen(true);
+                          }}
+                          className="w-full gap-2"
+                        >
+                          <IconLink className="w-4 h-4" />
+                          Générer un lien de paiement
+                        </Button>
+                      </div>
+                    </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Payment Link Modal */}
+      {selectedOrderForPaymentLink && (
+        <PaymentLinkModal
+          isOpen={paymentLinkModalOpen}
+          onClose={() => {
+            setPaymentLinkModalOpen(false);
+            setSelectedOrderForPaymentLink(null);
+            loadOrders(); // Rafraîchir les données
+          }}
+          orderId={parseInt(selectedOrderForPaymentLink.id)}
+          orderNumber={selectedOrderForPaymentLink.order_number}
+          totalAmount={getOrderTotal(selectedOrderForPaymentLink)}
+          paymentStrategy={selectedOrderForPaymentLink.payment_strategy}
+          depositAmount={selectedOrderForPaymentLink.deposit_amount}
+          remainingAmount={selectedOrderForPaymentLink.remaining_amount}
+          depositPaymentStatus={selectedOrderForPaymentLink.deposit_payment_status}
+        />
+      )}
+    </>
   );
 }
