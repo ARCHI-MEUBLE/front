@@ -167,7 +167,7 @@ export default function SamplesPage() {
 
   const features = [
     { icon: IconPackage, title: "Échantillons", desc: "Découvrez nos finitions" },
-    { icon: IconTruck, title: "Livraison rapide", desc: "Sous 3-5 jours ouvrés" },
+    { icon: IconTruck, title: "Livraison", desc: "Livraison en France" },
     { icon: IconCircleCheck, title: "Qualité garantie", desc: "Matériaux de nos ateliers" },
   ];
 

@@ -55,10 +55,7 @@ export default function MentionsLegales() {
                   </Link>
                 </p>
                 <p>
-                  <strong className="text-[#1A1917]">SIRET :</strong> 123 456 789 00012
-                </p>
-                <p>
-                  <strong className="text-[#1A1917]">N° TVA intracommunautaire :</strong> FR 12 123456789
+                  <strong className="text-[#1A1917]">SIRET :</strong> 8098 4114 1000 25
                 </p>
               </div>
             </section>

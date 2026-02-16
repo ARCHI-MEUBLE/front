@@ -219,7 +219,7 @@ export default function OrderConfirmationPage() {
     if (isSamplesOnly) {
       return [
         'Préparation de vos échantillons sous 24-48h',
-        'Livraison sous 3-5 jours ouvrés'
+        'Vous serez notifié par email à chaque étape'
       ];
     }
     if (hasConfigurations) {
@@ -243,7 +243,7 @@ export default function OrderConfirmationPage() {
     if (hasCatalogueItems) {
       return [
         'Préparation de vos articles pour l\'expédition',
-        'Livraison sous 3-5 jours ouvrés'
+        'Vous serez notifié par email à chaque étape'
       ];
     }
     return [
