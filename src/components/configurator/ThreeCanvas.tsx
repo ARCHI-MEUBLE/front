@@ -2023,8 +2023,8 @@ function Furniture({
                     items.push(
                         <AnimatedDrawer
                             key={zone.id}
-                            position={[x, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
-                            width={width - compartmentGap}
+                            position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
+                            width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
                             depth={d}
                             hexColor={drawerHexColor}
@@ -2045,8 +2045,8 @@ function Furniture({
                     items.push(
                         <AnimatedPushDrawer
                             key={zone.id}
-                            position={[x, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
-                            width={width - compartmentGap}
+                            position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
+                            width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
                             depth={d}
                             hexColor={drawerHexColor}
