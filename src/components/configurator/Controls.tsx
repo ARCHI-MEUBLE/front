@@ -14,7 +14,7 @@ export default function Controls({ width, depth, height, setWidth, setDepth, set
     <div className="space-y-4">
       <div>
         <label className="block text-sm">Largeur (mm)</label>
-        <input type="range" min={500} max={3000} value={width} onChange={e => setWidth(Number(e.target.value))} />
+        <input type="range" min={500} max={6000} value={width} onChange={e => setWidth(Number(e.target.value))} />
         <div>{width} mm</div>
       </div>
       <div>
@@ -24,7 +24,7 @@ export default function Controls({ width, depth, height, setWidth, setDepth, set
       </div>
       <div>
         <label className="block text-sm">Hauteur (mm)</label>
-        <input type="range" min={400} max={1500} value={height} onChange={e => setHeight(Number(e.target.value))} />
+        <input type="range" min={400} max={4000} value={height} onChange={e => setHeight(Number(e.target.value))} />
         <div>{height} mm</div>
       </div>
     </div>

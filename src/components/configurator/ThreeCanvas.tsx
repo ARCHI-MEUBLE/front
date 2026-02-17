@@ -400,14 +400,14 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
                 document.body.style.cursor = 'default';
             }}
         >
-            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
+            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
             {/* Poignée */}
             <Handle
                 type={handleType || 'vertical_bar'}
-                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.02]}
+                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
                 side={side}
                 height={height}
             />
@@ -451,7 +451,7 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
             }}
         >
             {/* Porte avec effet vitré */}
-            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
+            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
                 <meshStandardMaterial
                     color="#A5D8FF"
@@ -465,7 +465,7 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
             {/* Poignée */}
             <Handle
                 type={handleType || 'vertical_bar'}
-                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.02]}
+                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
                 side={side}
                 height={height}
             />
@@ -511,12 +511,12 @@ function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, i
                 document.body.style.cursor = 'default';
             }}
         >
-            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.01]} castShadow>
+            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
             {/* Petite encoche discrète pour indiquer push-to-open */}
-            <mesh position={[side === 'left' ? width - 0.08 : -width + 0.08, 0, 0.015]}>
+            <mesh position={[side === 'left' ? width - 0.08 : -width + 0.08, 0, 0.019]}>
                 <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
                 <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
             </mesh>
@@ -855,7 +855,7 @@ function Furniture({
             [id]: !prev[id]
         }));
     }, []);
-    const { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap } = useMemo(() => {
+    const { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
         const w = (width || 1500) / 1000;
         const h = (height || 730) / 1000;
         const d = (depth || 500) / 1000;
@@ -868,7 +868,9 @@ function Furniture({
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
         // En appliqué, les portes débordent pour recouvrir le cadre (dessus/dessous)
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
-        return { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap };
+        // Pas de retrait des étagères (crée des trous visibles avec le caisson)
+        const doorRecess = 0;
+        return { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
     }, [width, height, depth, hasSocle, mountingStyle]);
 
     // Couleur par défaut
@@ -1025,6 +1027,7 @@ function Furniture({
     interface SeparatorSegment extends PanelSegment {
         orientation: 'vertical' | 'horizontal';
         segmentIndex: number;
+        behindDoor?: boolean;
     }
 
     const panelSegments = useMemo(() => {
@@ -1151,6 +1154,7 @@ function Furniture({
             height: number;
             orientation: 'vertical' | 'horizontal';
             path: string;
+            behindDoor: boolean;
         }
 
         const collectSeparators = (
@@ -1159,7 +1163,8 @@ function Furniture({
             y: number,
             width: number,
             height: number,
-            path: string = ''
+            path: string = '',
+            hasDoorAbove: boolean = false
         ): SeparatorInfo[] => {
             const separators: SeparatorInfo[] = [];
 
@@ -1172,17 +1177,23 @@ function Furniture({
             // récurser dans l'enfant pour collecter ses séparateurs internes
             if (zone.children.length === 1) {
                 const child = zone.children[0];
+                const zoneDoor = zone.doorContent || zone.content;
+                const childHasDoor = hasDoorAbove || !!(zoneDoor && typeof zoneDoor === 'string' && zoneDoor.includes('door'));
                 const childSeparators = collectSeparators(
                     child,
                     x,
                     y,
                     width,
                     height,
-                    `${path}c0-`
+                    `${path}c0-`,
+                    childHasDoor
                 );
                 separators.push(...childSeparators);
                 return separators;
             }
+
+            const zoneDoor = zone.doorContent || zone.content;
+            const currentHasDoor = hasDoorAbove || !!(zoneDoor && typeof zoneDoor === 'string' && zoneDoor.includes('door'));
 
             if (zone.type === 'vertical') {
                 // Soustraire l'espace occupé par les séparateurs
@@ -1210,7 +1221,8 @@ function Furniture({
                             width: thickness,
                             height: height,
                             orientation: 'vertical',
-                            path: `${path}v${i}`
+                            path: `${path}v${i}`,
+                            behindDoor: currentHasDoor
                         });
                     }
 
@@ -1221,7 +1233,8 @@ function Furniture({
                         y,
                         colWidth,
                         height,
-                        `${path}c${i}-`
+                        `${path}c${i}-`,
+                        currentHasDoor
                     );
                     separators.push(...childSeparators);
 
@@ -1257,7 +1270,8 @@ function Furniture({
                             width: width,
                             height: thickness,
                             orientation: 'horizontal',
-                            path: `${path}h${i}`
+                            path: `${path}h${i}`,
+                            behindDoor: currentHasDoor
                         });
                     }
 
@@ -1268,7 +1282,8 @@ function Furniture({
                         currentY - rowHeight / 2,
                         width,
                         rowHeight,
-                        `${path}r${i}-`
+                        `${path}r${i}-`,
+                        currentHasDoor
                     );
                     separators.push(...childSeparators);
 
@@ -1697,7 +1712,8 @@ function Furniture({
                                 width: thickness,
                                 height: segHeight,
                                 orientation: 'vertical',
-                                segmentIndex: j
+                                segmentIndex: j,
+                                behindDoor: sep.behindDoor
                             });
                         });
                 } else {
@@ -1727,7 +1743,8 @@ function Furniture({
                         width: thickness,
                         height: segHeight,
                         orientation: 'vertical',
-                        segmentIndex: 0
+                        segmentIndex: 0,
+                        behindDoor: sep.behindDoor
                     });
                 }
             } else {
@@ -1790,7 +1807,8 @@ function Furniture({
                                 width: segWidth,
                                 height: thickness,
                                 orientation: 'horizontal',
-                                segmentIndex: j
+                                segmentIndex: j,
+                                behindDoor: sep.behindDoor
                             });
                         });
                 } else {
@@ -1815,7 +1833,8 @@ function Furniture({
                         width: segWidth,
                         height: sep.height,
                         orientation: 'horizontal',
-                        segmentIndex: 0
+                        segmentIndex: 0,
+                        behindDoor: sep.behindDoor
                     });
                 }
             }
@@ -1842,7 +1861,7 @@ function Furniture({
         // console.log('🎨 ThreeCanvas - rootZone.type:', rootZone.type);
         // console.log('🎨 ThreeCanvas - rootZone.children:', rootZone.children?.length || 0, 'enfants');
 
-        const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true) => {
+        const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true, hasDoorInFront: boolean = false) => {
             // Calcul du débordement pour les portes en mode appliqué
             // On n'applique le débordement que sur les bords externes du meuble
             const topOverlap = isAtTop ? doorOverlap : 0;
@@ -1921,10 +1940,16 @@ function Furniture({
                 }
 
                 // Hitbox de sélection pour toutes les zones leaf
+                // En mode encastré, réduire la hitbox si derrière une porte pour ne pas bloquer le clic sur la porte
+                const hitboxBehindDoor = hasDoorInFront || !!zone.doorContent;
+                // Réduire la hitbox quand derrière une porte pour ne pas intercepter les clics
+                const hitboxRecess = hitboxBehindDoor ? 0.005 : 0;
+                const hitboxDepth = d - hitboxRecess + 0.002;
+                const hitboxZ = -hitboxRecess / 2;
                 items.push(
                     <mesh
                         key={`${zone.id}-hitbox`}
-                        position={[x, y, 0]}
+                        position={[x, y, hitboxZ]}
                         visible={true}
                         onPointerOver={(e) => {
                             e.stopPropagation();
@@ -1944,7 +1969,7 @@ function Furniture({
                             }
                         }}
                     >
-                        <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
+                        <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
                         <meshBasicMaterial
                             transparent
                             opacity={selectedZoneIds.includes(zone.id) ? 0.5 : 0.01}
@@ -1956,12 +1981,12 @@ function Furniture({
                             <>
                                 {/* Grillage (Wireframe) pour effet de sélection */}
                                 <mesh>
-                                    <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
+                                    <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
                                     <meshBasicMaterial color="#FF9800" wireframe transparent opacity={0.4} toneMapped={false} />
                                 </mesh>
                                 {/* Bordures plus marquées */}
                                 <lineSegments>
-                                    <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, d + 0.002)]} />
+                                    <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, hitboxDepth)]} />
                                     <lineBasicMaterial color="#FF9800" linewidth={4} toneMapped={false} />
                                 </lineSegments>
                             </>
@@ -1970,17 +1995,20 @@ function Furniture({
                 );
 
                 if (zone.content === 'shelf') {
+                    const behindDoor = hasDoorInFront || !!zone.doorContent;
+                    const shelfDepth = behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                    const shelfZ = behindDoor && doorRecess > 0 ? z - doorRecess / 2 : z;
                     items.push(
-                        <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
-                            <boxGeometry args={[width, thickness, d]} />
+                        <mesh key={zone.id} position={[x, y, shelfZ]} castShadow receiveShadow>
+                            <boxGeometry args={[width, thickness, shelfDepth]} />
                             <TexturedMaterial hexColor={finalShelfColor} imageUrl={finalShelfImageUrl} />
                         </mesh>
                     );
                     // Ajouter des décorations sur l'étagère
                     if (showDecorations) {
                         items.push(
-                            <group key={`${zone.id}-deco`} position={[x, y + thickness/2, z]}>
-                                <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
+                            <group key={`${zone.id}-deco`} position={[x, y + thickness/2, shelfZ]}>
+                                <ShelfDecoration width={width} height={height} depth={shelfDepth} seed={zone.id} />
                             </group>
                         );
                     }
@@ -2131,9 +2159,12 @@ function Furniture({
 
                 if (zone.content === 'glass_shelf') {
                     // Étagère en verre transparente
+                    const behindDoorGlass = hasDoorInFront || !!zone.doorContent;
+                    const glassDepth = behindDoorGlass && doorRecess > 0 ? d - doorRecess : d;
+                    const glassZ = behindDoorGlass && doorRecess > 0 ? z - doorRecess / 2 : z;
                     items.push(
-                        <mesh key={zone.id} position={[x, y, z]} castShadow receiveShadow>
-                            <boxGeometry args={[width, thickness, d]} />
+                        <mesh key={zone.id} position={[x, y, glassZ]} castShadow receiveShadow>
+                            <boxGeometry args={[width, thickness, glassDepth]} />
                             <meshPhysicalMaterial
                                 color="#ffffff"
                                 transparent
@@ -2273,6 +2304,9 @@ function Furniture({
 
             if (zone.children && zone.children.length > 0) {
                 console.log('🎨 parseZone - zone avec enfants:', zone.id, 'type:', zone.type, 'enfants:', zone.children.length);
+                // Déterminer si cette zone a une porte de groupe (pour la propager aux enfants)
+                const zoneDoorContent = zone.doorContent || zone.content;
+                const zoneHasDoor = hasDoorInFront || !!(zoneDoorContent && typeof zoneDoorContent === 'string' && zoneDoorContent.includes('door'));
                 let currentPos = 0;
                 zone.children.forEach((child, i) => {
                     // Calcul du ratio pour chaque enfant
@@ -2299,14 +2333,14 @@ function Furniture({
                         const isLast = i === zone.children!.length - 1;
                         const childIsAtTop = isFirst ? isAtTop : false;
                         const childIsAtBottom = isLast ? isAtBottom : false;
-                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom);
+                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor);
                         currentPos += childHeight;
                         // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
                         // pour permettre la suppression individuelle de chaque segment
                     } else {
                         const childWidth = width * ratio;
                         // Pour les splits verticaux: les enfants héritent isAtTop et isAtBottom du parent
-                        parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom);
+                        parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor);
                         currentPos += childWidth;
                         // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
                         // pour permettre la suppression individuelle de chaque segment
@@ -2318,7 +2352,7 @@ function Furniture({
         parseZone(rootZone, 0, sideHeight/2 + yOffset, 0, w - (thickness * 2), sideHeight - (thickness * 2));
         return items;
     }, [
-        rootZone, w, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, d,
+        rootZone, w, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess, d,
         finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
@@ -2460,29 +2494,33 @@ function Furniture({
             ))}
 
             {/* Séparateurs - rendu segment par segment pour permettre la suppression individuelle */}
-            {panelSegments.separatorSegments.map((segment) => (
-                !deletedPanelIds.has(segment.id) && (
+            {panelSegments.separatorSegments.map((segment) => {
+                const sepDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                const sepZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
+                return !deletedPanelIds.has(segment.id) && (
                     <StructuralPanel
                         key={`visual-${segment.id}`}
-                        position={[segment.x, segment.y, 0]}
-                        size={[segment.width, segment.height, d]}
+                        position={[segment.x, segment.y, sepZ]}
+                        size={[segment.width, segment.height, sepDepth]}
                         hexColor={segment.orientation === 'vertical' ? separatorColor : finalShelfColor}
                         imageUrl={segment.orientation === 'vertical' ? separatorImageUrl : finalShelfImageUrl}
                     />
-                )
-            ))}
+                );
+            })}
             {/* Hitbox de sélection par segment pour les séparateurs */}
-            {panelSegments.separatorSegments.map((segment) => (
-                <PanelSegmentHitbox
+            {panelSegments.separatorSegments.map((segment) => {
+                const sepHitDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                const sepHitZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
+                return <PanelSegmentHitbox
                     key={segment.id}
                     panelId={segment.id}
-                    position={[segment.x, segment.y, 0]}
-                    size={[segment.width, segment.height, d]}
+                    position={[segment.x, segment.y, sepHitZ]}
+                    size={[segment.width, segment.height, sepHitDepth]}
                     isSelected={selectedPanelIds.has(segment.id)}
                     onSelect={handlePanelSelect}
                     isDeleted={deletedPanelIds.has(segment.id)}
-                />
-            ))}
+                />;
+            })}
 
             {/* Dynamic Elements */}
             {elements}
