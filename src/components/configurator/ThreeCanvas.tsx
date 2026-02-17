@@ -401,7 +401,7 @@ function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpe
             }}
         >
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
-                <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
+                <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
             {/* Poignée */}
@@ -452,7 +452,7 @@ function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, ha
         >
             {/* Porte avec effet vitré */}
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
-                <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
+                <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <meshStandardMaterial
                     color="#A5D8FF"
                     transparent={true}
@@ -512,7 +512,7 @@ function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, i
             }}
         >
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
-                <boxGeometry args={[width - 0.005, height - 0.01, 0.018]} />
+                <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
             {/* Petite encoche discrète pour indiquer push-to-open */}
