@@ -2449,7 +2449,7 @@ function Furniture({
             ))}
 
             {/* Décorations sur le dessus */}
-            {showDecorations && (
+            {showDecorations && h <= 1.5 && (
                 <group position={[0, h, 0]}>
                     {w > 0.6 && (
                         <Lamp position={[w/2 - 0.2, 0, 0]} />
