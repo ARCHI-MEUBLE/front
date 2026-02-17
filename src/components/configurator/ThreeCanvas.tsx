@@ -100,7 +100,10 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
                 }
 
                 loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
-                loadedTexture.repeat.set(4, 4); // Augmenter la répétition pour mieux voir la texture
+                loadedTexture.repeat.set(1, 1);
+                loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
+                loadedTexture.magFilter = THREE.LinearFilter;
+                loadedTexture.anisotropy = 16;
                 loadedTexture.needsUpdate = true;
                 textureRef.current = loadedTexture;
                 setTexture(loadedTexture);
@@ -143,6 +146,9 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
                 color="#ffffff"
                 roughness={0.7}
                 metalness={0.1}
+                polygonOffset
+                polygonOffsetFactor={1}
+                polygonOffsetUnits={1}
             />
         );
     }
@@ -155,6 +161,9 @@ function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?:
             color={safeColor}
             roughness={0.4}
             metalness={0.1}
+            polygonOffset
+            polygonOffsetFactor={1}
+            polygonOffsetUnits={1}
         />
     );
 }
@@ -2465,13 +2474,13 @@ function Furniture({
                         <Lamp position={[w/2 - 0.2, 0, 0]} />
                     )}
                     {w > 0.8 && (
-                        <Vase position={[-w/2 + 0.3, 0, 0.05]} color="#E0E0E0" scale={1.2} seed="top-vase" />
+                        <Plant position={[-w/2 + 0.25, 0, 0.05]} seed="top-plant" scale={1.1} />
                     )}
                     {w > 1.2 && (
                         <Books position={[0, 0, -0.05]} count={Math.min(6, Math.floor(w * 3))} seed="top-books" />
                     )}
                     {w > 1.6 && (
-                        <Vase position={[w/2 - 0.5, 0, -0.1]} color="#BDBDBD" scale={0.9} seed="top-vase-2" />
+                        <Vase position={[w/2 - 0.5, 0, -0.1]} color="#C4B5A3" scale={0.9} seed="top-vase" />
                     )}
                 </group>
             )}
@@ -3198,47 +3207,70 @@ function HumanSilhouette() {
 
 // --- Composants de Décoration ---
 
-function Book({ position, color, rotation = [0, 0, 0] }: any) {
+function Book({ position, color, rotation = [0, 0, 0], height = 0.22, thickness = 0.028, bookDepth = 0.14 }: any) {
     return (
         <group position={position} rotation={rotation}>
-            {/* Couverture (Dos + Plats) */}
+            {/* Couverture */}
             <mesh castShadow receiveShadow>
-                <boxGeometry args={[0.03, 0.22, 0.16]} />
-                <meshStandardMaterial color={color} roughness={0.6} />
+                <boxGeometry args={[thickness, height, bookDepth]} />
+                <meshStandardMaterial color={color} roughness={0.75} />
             </mesh>
-            {/* Tranches (Pages) - Visibles sur 3 côtés */}
-            <mesh position={[0.002, 0, 0.002]}>
-                <boxGeometry args={[0.027, 0.21, 0.155]} />
-                <meshStandardMaterial color="#FCF9F2" roughness={1} />
+            {/* Pages (tranche visible cote mur) */}
+            <mesh position={[0, 0, -0.002]}>
+                <boxGeometry args={[thickness - 0.003, height - 0.005, bookDepth - 0.005]} />
+                <meshStandardMaterial color="#F5F0E8" roughness={0.95} />
             </mesh>
-            {/* Détail sur le dos (titre simulé) */}
-            <mesh position={[-0.016, 0, 0]}>
-                <boxGeometry args={[0.001, 0.14, 0.1]} />
-                <meshStandardMaterial color="#FFF" transparent opacity={0.15} />
+            {/* Titre sur le dos (2 lignes) */}
+            <mesh position={[0, height * 0.1, bookDepth / 2 + 0.001]}>
+                <boxGeometry args={[thickness * 0.6, 0.004, 0.001]} />
+                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.45} />
+            </mesh>
+            <mesh position={[0, height * 0.05, bookDepth / 2 + 0.001]}>
+                <boxGeometry args={[thickness * 0.45, 0.003, 0.001]} />
+                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.35} />
+            </mesh>
+            {/* Auteur en bas du dos */}
+            <mesh position={[0, -height * 0.28, bookDepth / 2 + 0.001]}>
+                <boxGeometry args={[thickness * 0.5, 0.003, 0.001]} />
+                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.35} />
+            </mesh>
+            {/* Bande decorative haut du dos */}
+            <mesh position={[0, height * 0.42, bookDepth / 2 + 0.001]}>
+                <boxGeometry args={[thickness * 0.75, 0.005, 0.001]} />
+                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.5} />
             </mesh>
         </group>
     );
 }
 
 function Books({ position, count = 5, seed = "1" }: any) {
-    const colors = ['#4A6274', '#7B8C7C', '#A89F91', '#5E524D', '#3F4E4F', '#2C3E50', '#8E44AD', '#2980B9', '#C0392B', '#16A085'];
+    const colors = ['#5B7B7A', '#8B7355', '#6B5B4C', '#4A5568', '#7C6B5C', '#3C4A3E', '#6E5F50', '#4F5D65', '#8E7B6B', '#5C6B6A'];
     const books = useMemo(() => {
         let hash = 0;
         for (let i = 0; i < seed.length; i++) {
             hash = ((hash << 5) - hash) + seed.charCodeAt(i);
             hash |= 0;
         }
-        const startColor = Math.abs(hash);
+        const s = Math.abs(hash);
 
+        let currentX = 0;
         return Array.from({ length: count }).map((_, i) => {
-            const s = Math.abs(hash + i);
+            const h = s + i * 7;
             const isLast = i === count - 1;
-            const tilt = isLast && count > 1 ? (Math.PI * 0.08) : ((s % 10) - 5) * 0.005;
+            const bookHeight = 0.18 + (h % 5) * 0.012;
+            const bookThickness = 0.022 + (h % 3) * 0.005;
+            const bookDepth = 0.11 + (h % 4) * 0.01;
+            const tilt = isLast && count > 1 ? 0.06 : 0;
+            const offset = currentX + bookThickness / 2;
+            currentX += bookThickness + 0.002;
             return {
-                color: colors[(startColor + i) % colors.length],
-                offset: i * 0.036,
-                tilt: tilt,
-                depthOffset: ((s % 7) - 3) * 0.005
+                color: colors[(s + i) % colors.length],
+                height: bookHeight,
+                thickness: bookThickness,
+                depth: bookDepth,
+                offset,
+                tilt,
+                depthOffset: ((h % 5) - 2) * 0.003
             };
         });
     }, [count, seed]);
@@ -3248,8 +3280,11 @@ function Books({ position, count = 5, seed = "1" }: any) {
             {books.map((b, i) => (
                 <Book
                     key={i}
-                    position={[b.offset, 0.11, b.depthOffset]}
+                    position={[b.offset, b.height / 2, b.depthOffset]}
                     color={b.color}
+                    height={b.height}
+                    thickness={b.thickness}
+                    bookDepth={b.depth}
                     rotation={[0, 0, b.tilt]}
                 />
             ))}
@@ -3257,84 +3292,109 @@ function Books({ position, count = 5, seed = "1" }: any) {
     );
 }
 
-function Flower({ position, color = "#E91E63", seed = "1" }: any) {
-    const stemPoints = useMemo(() => {
-        const points = [];
-        const h = 0.15;
-        const segments = 8;
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            // Ajout d'une légère courbure sinusoïdale
-            const x = Math.sin(t * Math.PI) * 0.01;
-            const z = Math.cos(t * Math.PI) * 0.005;
-            points.push(new THREE.Vector3(x, t * h, z));
+function Plant({ position, scale = 1, seed = "1" }: any) {
+    const hash = useMemo(() => {
+        let h = 0;
+        for (let i = 0; i < seed.length; i++) {
+            h = ((h << 5) - h) + seed.charCodeAt(i);
+            h |= 0;
         }
-        return points;
-    }, []);
+        return Math.abs(h);
+    }, [seed]);
 
-    const stemCurve = useMemo(() => new THREE.CatmullRomCurve3(stemPoints), [stemPoints]);
+    const potColor = ['#C67B5C', '#A0877C', '#8B7355', '#9C8B7A'][hash % 4];
 
     return (
-        <group position={position}>
-            {/* Tige */}
-            <mesh castShadow>
-                <tubeGeometry args={[stemCurve, 12, 0.003, 8, false]} />
-                <meshStandardMaterial color="#2D5A27" />
+        <group position={position} scale={scale}>
+            {/* Pot */}
+            <mesh position={[0, 0.04, 0]} castShadow>
+                <cylinderGeometry args={[0.045, 0.035, 0.08, 16]} />
+                <meshStandardMaterial color={potColor} roughness={0.85} />
             </mesh>
-
-            {/* Feuilles sur la tige */}
-            <group position={[0.01, 0.06, 0]} rotation={[0.5, 0, 1.2]}>
-                <mesh castShadow>
-                    <sphereGeometry args={[0.01, 12, 12]} />
-                    <meshStandardMaterial color="#388E3C" roughness={0.8} />
-                    <group scale={[2.5, 0.15, 0.8]}>
-                        <mesh>
-                            <sphereGeometry args={[0.01, 12, 12]} />
-                            <meshStandardMaterial color="#388E3C" roughness={0.8} />
+            {/* Bord du pot */}
+            <mesh position={[0, 0.082, 0]}>
+                <cylinderGeometry args={[0.048, 0.046, 0.008, 16]} />
+                <meshStandardMaterial color={potColor} roughness={0.85} />
+            </mesh>
+            {/* Terre */}
+            <mesh position={[0, 0.08, 0]}>
+                <cylinderGeometry args={[0.042, 0.042, 0.005, 16]} />
+                <meshStandardMaterial color="#3E2723" roughness={1} />
+            </mesh>
+            {/* Feuilles */}
+            {Array.from({ length: 6 }).map((_, i) => {
+                const angle = (i / 6) * Math.PI * 2 + (hash % 10) * 0.3;
+                const lean = 0.35 + (i % 3) * 0.15;
+                const leafLen = 0.04 + (i % 2) * 0.015;
+                return (
+                    <group key={i} position={[0, 0.085, 0]} rotation={[lean, angle, 0]}>
+                        <mesh position={[0, leafLen, 0]} scale={[0.3, 1, 0.08]} castShadow>
+                            <sphereGeometry args={[leafLen, 8, 6]} />
+                            <meshStandardMaterial color={i % 2 === 0 ? '#4A6B3C' : '#567D4A'} roughness={0.8} side={THREE.DoubleSide} />
                         </mesh>
                     </group>
-                </mesh>
-            </group>
+                );
+            })}
+        </group>
+    );
+}
 
-            <group position={[-0.01, 0.09, 0]} rotation={[-0.5, 0, -1.2]}>
-                <mesh castShadow>
-                    <sphereGeometry args={[0.01, 12, 12]} />
-                    <meshStandardMaterial color="#388E3C" roughness={0.8} />
-                    <group scale={[2, 0.15, 0.7]}>
-                        <mesh>
-                            <sphereGeometry args={[0.01, 12, 12]} />
-                            <meshStandardMaterial color="#388E3C" roughness={0.8} />
+function MagazineStack({ position, scale = 1, seed = "1" }: any) {
+    const hash = useMemo(() => {
+        let h = 0;
+        for (let i = 0; i < seed.length; i++) {
+            h = ((h << 5) - h) + seed.charCodeAt(i);
+            h |= 0;
+        }
+        return Math.abs(h);
+    }, [seed]);
+
+    const colors = ['#8B7355', '#5B7B7A', '#A89080', '#6B5B4C', '#7C6B5C', '#4A5568', '#9C8B7A', '#6E5F50'];
+    const count = 3 + (hash % 3); // 3 a 5 magazines
+
+    const magazines = useMemo(() => {
+        return Array.from({ length: count }).map((_, i) => {
+            const h = hash + i * 13;
+            const magWidth = 0.14 + (h % 3) * 0.01;
+            const magDepth = 0.10 + (h % 2) * 0.01;
+            const magThickness = 0.004 + (h % 3) * 0.001;
+            const offsetX = ((h % 7) - 3) * 0.003;
+            const offsetZ = ((h % 5) - 2) * 0.004;
+            const rotation = ((h % 9) - 4) * 0.04;
+            return {
+                color: colors[(hash + i) % colors.length],
+                width: magWidth,
+                depth: magDepth,
+                thickness: magThickness,
+                offsetX,
+                offsetZ,
+                rotation,
+            };
+        });
+    }, [hash, count]);
+
+    let currentY = 0;
+
+    return (
+        <group position={position} scale={scale}>
+            {magazines.map((m, i) => {
+                const y = currentY + m.thickness / 2;
+                currentY += m.thickness + 0.0005;
+                return (
+                    <group key={i} position={[m.offsetX, y, m.offsetZ]} rotation={[0, m.rotation, 0]}>
+                        {/* Couverture */}
+                        <mesh castShadow receiveShadow>
+                            <boxGeometry args={[m.width, m.thickness, m.depth]} />
+                            <meshStandardMaterial color={m.color} roughness={0.6} />
+                        </mesh>
+                        {/* Pages interieures (tranche visible) */}
+                        <mesh position={[0.002, 0, 0]}>
+                            <boxGeometry args={[m.width - 0.004, m.thickness - 0.001, m.depth - 0.003]} />
+                            <meshStandardMaterial color="#F0EBE3" roughness={0.95} />
                         </mesh>
                     </group>
-                </mesh>
-            </group>
-
-            {/* Fleur principale (plus détaillée) */}
-            <group position={stemPoints[stemPoints.length - 1]}>
-                {/* Cœur de la fleur */}
-                <mesh castShadow>
-                    <sphereGeometry args={[0.014, 16, 16]} />
-                    <meshStandardMaterial color="#FFD54F" roughness={0.8} />
-                </mesh>
-
-                {/* Pétales (Double rangée pour plus de volume) */}
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <group key={`p1-${i}`} rotation={[0, (i * Math.PI * 2) / 8, 0.4]}>
-                        <mesh position={[0.03, 0, 0]} scale={[1.5, 0.1, 0.6]} castShadow>
-                            <sphereGeometry args={[0.025, 16, 16]} />
-                            <meshStandardMaterial color={color} roughness={0.6} side={THREE.DoubleSide} />
-                        </mesh>
-                    </group>
-                ))}
-                {Array.from({ length: 5 }).map((_, i) => (
-                    <group key={`p2-${i}`} rotation={[0, (i * Math.PI * 2) / 5 + 0.3, 0.8]}>
-                        <mesh position={[0.02, 0.01, 0]} scale={[1, 0.1, 0.5]} castShadow>
-                            <sphereGeometry args={[0.02, 16, 16]} />
-                            <meshStandardMaterial color={color} roughness={0.7} side={THREE.DoubleSide} />
-                        </mesh>
-                    </group>
-                ))}
-            </group>
+                );
+            })}
         </group>
     );
 }
@@ -3346,74 +3406,36 @@ function Vase({ position, color, scale = 1, seed = "1" }: any) {
             hash = ((hash << 5) - hash) + seed.charCodeAt(i);
             hash |= 0;
         }
-        return Math.abs(hash) % 3;
+        return Math.abs(hash) % 4;
     }, [seed]);
 
     const points = useMemo(() => {
         const shapes = [
-            // Classique
-            [[0, 0], [0.06, 0.01], [0.08, 0.08], [0.05, 0.18], [0.04, 0.22], [0.06, 0.25]],
-            // Élancé
-            [[0, 0], [0.05, 0.01], [0.04, 0.1], [0.06, 0.2], [0.03, 0.25], [0.035, 0.28]],
-            // Boule
-            [[0, 0], [0.04, 0.01], [0.1, 0.1], [0.1, 0.15], [0.03, 0.22], [0.04, 0.24]]
+            // Cylindrique elegant
+            [[0, 0], [0.04, 0.005], [0.042, 0.18], [0.038, 0.2], [0.038, 0.22]],
+            // Arrondi
+            [[0, 0], [0.05, 0.005], [0.06, 0.08], [0.055, 0.14], [0.038, 0.19], [0.035, 0.21]],
+            // Evase
+            [[0, 0], [0.032, 0.005], [0.028, 0.08], [0.032, 0.14], [0.048, 0.19], [0.052, 0.21]],
+            // Bouteille
+            [[0, 0], [0.05, 0.005], [0.052, 0.1], [0.05, 0.12], [0.018, 0.17], [0.018, 0.23]]
         ];
         return shapes[shapeIndex].map(p => new THREE.Vector2(p[0], p[1]));
     }, [shapeIndex]);
-
-    const height = useMemo(() => {
-        const lastPoint = points[points.length - 1];
-        return lastPoint.y;
-    }, [points]);
-
-    const flowerColors = ['#E91E63', '#F06292', '#BA68C8', '#9575CD', '#FFAB91', '#FF8A65'];
-    const hash = useMemo(() => {
-        return seed.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0);
-    }, [seed]);
 
     return (
         <group position={position} scale={scale}>
             <mesh castShadow receiveShadow>
                 <latheGeometry args={[points, 32]} />
-                <meshStandardMaterial color={color} roughness={0.2} metalness={0.3} />
+                <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
             </mesh>
-
-            {/* Bouquet de fleurs plus dense et varié */}
-            <Flower
-                position={[0, height - 0.02, 0]}
-                color={flowerColors[hash % flowerColors.length]}
-                seed={seed}
-            />
-            {shapeIndex === 2 && ( // Vase boule : bouquet complet
-                <>
-                    <group rotation={[0, 0, 0.35]}>
-                        <Flower
-                            position={[0.02, height - 0.04, 0.02]}
-                            color={flowerColors[(hash + 1) % flowerColors.length]}
-                            seed={seed + "_f2"}
-                        />
-                    </group>
-                    <group rotation={[0, 0, -0.35]}>
-                        <Flower
-                            position={[-0.02, height - 0.04, -0.02]}
-                            color={flowerColors[(hash + 2) % flowerColors.length]}
-                            seed={seed + "_f3"}
-                        />
-                    </group>
-                </>
-            )}
-            {shapeIndex === 1 && ( // Vase élancé : deux fleurs décalées
-                <group rotation={[0.2, 0, 0.1]}>
-                    <Flower
-                        position={[0.01, height - 0.05, 0]}
-                        color={flowerColors[(hash + 3) % flowerColors.length]}
-                        seed={seed + "_f4"}
-                    />
-                </group>
-            )}
         </group>
     );
 }
+
+
+
+
 
 function Lamp({ position }: any) {
     return (
@@ -3482,50 +3504,8 @@ function CableHole({ width, height, depth, position }: any) {
     );
 }
 
-function ModernSculpture({ color }: { color: string }) {
-    return (
-        <group>
-            {/* Socle de la sculpture */}
-            <mesh position={[0, 0.005, 0]} castShadow>
-                <boxGeometry args={[0.07, 0.01, 0.07]} />
-                <meshStandardMaterial color="#1A1917" roughness={0.5} />
-            </mesh>
-            {/* Sculpture abstraite minimaliste (évite le simple cercle) */}
-            <mesh position={[0, 0.05, 0]} castShadow>
-                <octahedronGeometry args={[0.035, 0]} />
-                <meshStandardMaterial color={color} metalness={0.8} roughness={0.1} />
-            </mesh>
-            <mesh position={[0, 0.1, 0]} castShadow>
-                <sphereGeometry args={[0.015, 16, 16]} />
-                <meshStandardMaterial color={color} metalness={0.9} roughness={0.1} />
-            </mesh>
-            <mesh position={[0, 0.05, 0]} rotation={[Math.PI / 4, 0, Math.PI / 4]} castShadow>
-                <boxGeometry args={[0.01, 0.12, 0.01]} />
-                <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
-            </mesh>
-        </group>
-    );
-}
-
-function DecorObject({ position, type = 'sphere', color = '#D4AF37' }: any) {
-    return (
-        <group position={position}>
-            {type === 'sphere' ? (
-                <mesh castShadow>
-                    <sphereGeometry args={[0.05, 16, 16]} />
-                    <meshStandardMaterial color={color} metalness={0.6} roughness={0.2} />
-                </mesh>
-            ) : (
-                <ModernSculpture color={color} />
-            )}
-        </group>
-    );
-}
-
 function ShelfDecoration({ width, height, depth, seed }: { width: number, height: number, depth: number, seed: string }) {
-    // Utiliser le seed pour avoir des décos stables par zone
     const decoType = useMemo(() => {
-        // Hash simple du seed
         let hash = 0;
         for (let i = 0; i < seed.length; i++) {
             hash = ((hash << 5) - hash) + seed.charCodeAt(i);
@@ -3533,107 +3513,92 @@ function ShelfDecoration({ width, height, depth, seed }: { width: number, height
         }
         const s = Math.abs(hash);
 
-        if (width < 0.15 || depth < 0.15 || height < 0.15) return null; // Trop petit pour quoi que ce soit
+        if (width < 0.15 || depth < 0.12 || height < 0.12) return null;
 
         const types = [];
-        if (width > 0.6) types.push('books_vase_sculpture');
-        if (width > 0.45) types.push('books_vase');
-        if (width > 0.35) types.push('vase_sculpture');
-        if (width > 0.25) types.push('books');
-        types.push('vase');
-        types.push('sculpture');
+        if (width > 0.6) types.push('books_vase', 'plant_books', 'magazines_vase');
+        if (width > 0.45) types.push('books_vase', 'vase_plant', 'magazines_plant');
+        if (width > 0.35) types.push('books', 'plant', 'magazines');
+        if (width > 0.25) types.push('books', 'magazines');
+        types.push('vase', 'plant');
 
         return types[s % types.length];
     }, [seed, width, height, depth]);
 
     if (!decoType) return null;
 
-    const vaseColors = ['#90A4AE', '#A1887F', '#8D6E63', '#78909C', '#BDBDBD', '#E0E0E0', '#B0BEC5', '#D7CCC8'];
-    const objColors = ['#D4AF37', '#C0C0C0', '#CD7F32', '#444', '#263238'];
+    const vaseColors = ['#C4B5A3', '#A89F91', '#B8AFA4', '#9C9388', '#D4CBC0', '#8B8178'];
     const hash = seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
 
-    // Calcul du facteur d'échelle basé sur la hauteur du compartiment
-    // Hauteur naturelle estimée : Vase+Fleur ~0.42m, Livres ~0.22m, Sculpture ~0.15m
-    const margin = 0.04; // 4cm de marge en haut
+    const margin = 0.03;
     const availableHeight = height - margin;
-
-    const vaseScale = Math.min(1.1, availableHeight / 0.42, width * 2);
+    const vaseScale = Math.min(1.0, availableHeight / 0.24, width * 2.5);
+    const plantScale = Math.min(1.0, availableHeight / 0.18);
     const booksScale = Math.min(1.0, availableHeight / 0.22);
-    const sculptureScale = Math.min(1.0, availableHeight / 0.15);
 
     return (
         <group position={[0, 0, 0]}>
             {decoType === 'books' && (
                 <group scale={booksScale}>
-                    <Books position={[-width / 4, 0, -depth / 6]} count={Math.min(10, Math.floor(width * 15))} />
+                    <Books position={[-width / 4, 0, -depth / 8]} count={Math.min(8, Math.max(2, Math.floor(width * 12)))} seed={seed} />
                 </group>
             )}
             {decoType === 'vase' && (
-                <Vase
-                    position={[0, 0, 0]}
-                    color={vaseColors[hash % vaseColors.length]}
-                    seed={seed}
-                    scale={vaseScale}
-                />
+                <Vase position={[0, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed} scale={vaseScale} />
+            )}
+            {decoType === 'plant' && (
+                <Plant position={[0, 0, 0]} seed={seed} scale={plantScale} />
             )}
             {decoType === 'books_vase' && (
                 <>
                     <group scale={booksScale}>
-                        <Books position={[-width / 3, 0, -depth / 6]} count={Math.max(2, Math.floor(width * 6))} />
+                        <Books position={[-width / 3, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 5))} seed={seed} />
                     </group>
-                    <Vase
-                        position={[width / 4, 0, depth / 10]}
-                        color={vaseColors[hash % vaseColors.length]}
-                        seed={seed + "_v"}
-                        scale={Math.min(0.8, vaseScale)}
-                    />
+                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.8, vaseScale)} />
                 </>
             )}
-            {decoType === 'books_vase_sculpture' && (
+            {decoType === 'books_plant' && (
                 <>
                     <group scale={booksScale}>
-                        <Books position={[-width / 2.5, 0, -depth / 8]} count={3} />
+                        <Books position={[-width / 4, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 6))} seed={seed} />
                     </group>
-                    <Vase
-                        position={[0, 0, depth / 10]}
-                        color={vaseColors[hash % vaseColors.length]}
-                        seed={seed + "_v"}
-                        scale={Math.min(0.7, vaseScale)}
-                    />
-                    <group scale={sculptureScale}>
-                        <DecorObject
-                            position={[width / 3, 0.04, -depth / 10]}
-                            type={hash % 2 === 0 ? 'sphere' : 'sculpture'}
-                            color={objColors[hash % objColors.length]}
-                        />
-                    </group>
+                    <Plant position={[width / 4, 0, 0]} seed={seed + "_p3"} scale={Math.min(0.65, plantScale)} />
                 </>
             )}
-            {decoType === 'vase_sculpture' && (
+            {decoType === 'vase_plant' && (
                 <>
-                    <Vase
-                        position={[-width / 6, 0, -depth / 10]}
-                        color={vaseColors[(hash + 1) % vaseColors.length]}
-                        seed={seed + "_v2"}
-                        scale={Math.min(0.9, vaseScale)}
-                    />
-                    <group scale={sculptureScale}>
-                        <DecorObject
-                            position={[width / 6, 0.05, depth / 10]}
-                            type={hash % 2 === 0 ? 'sphere' : 'sculpture'}
-                            color={objColors[hash % objColors.length]}
-                        />
+                    <Vase position={[-width / 6, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.85, vaseScale)} />
+                    <Plant position={[width / 5, 0, depth / 12]} seed={seed + "_p2"} scale={Math.min(0.7, plantScale)} />
+                </>
+            )}
+            {decoType === 'plant_books' && (
+                <>
+                    <Plant position={[-width / 4, 0, 0]} seed={seed + "_p"} scale={Math.min(0.75, plantScale)} />
+                    <group scale={booksScale}>
+                        <Books position={[width / 6, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 4))} seed={seed + "_b"} />
                     </group>
                 </>
             )}
-            {decoType === 'sculpture' && (
-                <group scale={sculptureScale}>
-                    <DecorObject
-                        position={[0, 0.05, 0]}
-                        type={hash % 3 === 0 ? 'sculpture' : 'sphere'}
-                        color={objColors[hash % objColors.length]}
-                    />
-                </group>
+            {decoType === 'plant_vase' && (
+                <>
+                    <Plant position={[-width / 6, 0, 0]} seed={seed + "_p"} scale={Math.min(0.7, plantScale)} />
+                    <Vase position={[width / 5, 0, 0]} color={vaseColors[(hash + 2) % vaseColors.length]} seed={seed + "_v2"} scale={Math.min(0.7, vaseScale)} />
+                </>
+            )}
+            {decoType === 'magazines' && (
+                <MagazineStack position={[0, 0, 0]} seed={seed} scale={Math.min(1.0, availableHeight / 0.04)} />
+            )}
+            {decoType === 'magazines_vase' && (
+                <>
+                    <MagazineStack position={[-width / 4, 0, 0]} seed={seed + "_m"} scale={Math.min(0.9, availableHeight / 0.04)} />
+                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[(hash + 1) % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.75, vaseScale)} />
+                </>
+            )}
+            {decoType === 'magazines_plant' && (
+                <>
+                    <MagazineStack position={[-width / 5, 0, 0]} seed={seed + "_m"} scale={Math.min(0.9, availableHeight / 0.04)} />
+                    <Plant position={[width / 4, 0, 0]} seed={seed + "_p"} scale={Math.min(0.65, plantScale)} />
+                </>
             )}
         </group>
     );
