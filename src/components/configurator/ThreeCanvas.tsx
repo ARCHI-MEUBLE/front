@@ -1861,13 +1861,17 @@ function Furniture({
         // console.log('🎨 ThreeCanvas - rootZone.type:', rootZone.type);
         // console.log('🎨 ThreeCanvas - rootZone.children:', rootZone.children?.length || 0, 'enfants');
 
-        const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true, hasDoorInFront: boolean = false) => {
+        const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true, hasDoorInFront: boolean = false, isAtLeft: boolean = true, isAtRight: boolean = true) => {
             // Calcul du débordement pour les portes en mode appliqué
             // On n'applique le débordement que sur les bords externes du meuble
             const topOverlap = isAtTop ? doorOverlap : 0;
             const bottomOverlap = isAtBottom ? doorOverlap : 0;
             const totalDoorOverlap = topOverlap + bottomOverlap;
             const doorYOffset = (topOverlap - bottomOverlap) / 2;
+            const leftOverlap = isAtLeft ? doorOverlap : 0;
+            const rightOverlap = isAtRight ? doorOverlap : 0;
+            const doorZoneWidth = width + leftOverlap + rightOverlap;
+            const doorXOffset = (rightOverlap - leftOverlap) / 2;
             if (zone.type === 'leaf') {
                 // Si c'est un espace ouvert, ne pas ajouter de contenu ni de hitbox normale
                 if (zone.isOpenSpace) {
@@ -2083,11 +2087,11 @@ function Furniture({
 
                     if (isMirror) {
                         items.push(
-                            <group key={`${zone.id}-door`} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                            <group key={`${zone.id}-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                                 <AnimatedMirrorDoor
                                     side={isMirrorRight ? "right" : "left"}
-                                    position={[isMirrorRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
-                                    width={width - compartmentGap}
+                                    position={[isMirrorRight ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
+                                    width={doorZoneWidth - compartmentGap}
                                     height={height - compartmentGap + totalDoorOverlap}
                                     handleType={zone.handleType}
                                     isOpen={openCompartments[zone.id]}
@@ -2100,11 +2104,11 @@ function Furniture({
                         );
                     } else if (isPush) {
                         items.push(
-                            <group key={`${zone.id}-door`} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                            <group key={`${zone.id}-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                                 <AnimatedPushDoor
                                     side={isPushRight ? "right" : "left"}
-                                    position={[isPushRight ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
-                                    width={width - compartmentGap}
+                                    position={[isPushRight ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
+                                    width={doorZoneWidth - compartmentGap}
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
@@ -2119,12 +2123,12 @@ function Furniture({
                         );
                     } else {
                         items.push(
-                            <group key={`${zone.id}-door`} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                            <group key={`${zone.id}-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                                 {(isDouble || !isRight) && (
                                     <AnimatedDoor
                                         side="left"
-                                        position={[-width/2 + compartmentGap/2, 0, 0]}
-                                        width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                                        position={[-doorZoneWidth/2 + compartmentGap/2, 0, 0]}
+                                        width={isDouble ? (doorZoneWidth - compartmentGap)/2 : doorZoneWidth - compartmentGap}
                                         height={height - compartmentGap + totalDoorOverlap}
                                         hexColor={doorHexColor}
                                         imageUrl={doorImageUrl}
@@ -2139,8 +2143,8 @@ function Furniture({
                                 {(isDouble || isRight) && (
                                     <AnimatedDoor
                                         side="right"
-                                        position={[width/2 - compartmentGap/2, 0, 0]}
-                                        width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                                        position={[doorZoneWidth/2 - compartmentGap/2, 0, 0]}
+                                        width={isDouble ? (doorZoneWidth - compartmentGap)/2 : doorZoneWidth - compartmentGap}
                                         height={height - compartmentGap + totalDoorOverlap}
                                         hexColor={doorHexColor}
                                         imageUrl={doorImageUrl}
@@ -2180,11 +2184,11 @@ function Furniture({
                     // Porte avec miroir
                     const isMirrorRightLeaf = zone.content === 'mirror_door_right';
                     items.push(
-                        <group key={zone.id} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={zone.id} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             <AnimatedMirrorDoor
                                 side={isMirrorRightLeaf ? "right" : "left"}
-                                position={[isMirrorRightLeaf ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
-                                width={width - compartmentGap}
+                                position={[isMirrorRightLeaf ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
+                                width={doorZoneWidth - compartmentGap}
                                 height={height - compartmentGap + totalDoorOverlap}
                                 handleType={zone.handleType}
                                 isOpen={openCompartments[zone.id]}
@@ -2225,11 +2229,11 @@ function Furniture({
 
                 if (isMirror) {
                     items.push(
-                        <group key={`${zone.id}-group-door`} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={`${zone.id}-group-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             <AnimatedMirrorDoor
                                 side={isMirrorRightGroup ? "right" : "left"}
-                                position={[isMirrorRightGroup ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
-                                width={width - compartmentGap}
+                                position={[isMirrorRightGroup ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
+                                width={doorZoneWidth - compartmentGap}
                                 height={height - compartmentGap + totalDoorOverlap}
                                 handleType={zone.handleType}
                                 isOpen={openCompartments[zone.id]}
@@ -2243,11 +2247,11 @@ function Furniture({
                     );
                 } else if (isPush) {
                     items.push(
-                        <group key={`${zone.id}-group-door`} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={`${zone.id}-group-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             <AnimatedPushDoor
                                 side={isPushRightGroup ? "right" : "left"}
-                                position={[isPushRightGroup ? (width/2 - compartmentGap/2) : (-width/2 + compartmentGap/2), 0, 0]}
-                                width={width - compartmentGap}
+                                position={[isPushRightGroup ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
+                                width={doorZoneWidth - compartmentGap}
                                 height={height - compartmentGap + totalDoorOverlap}
                                 hexColor={doorHexColor}
                                 imageUrl={doorImageUrl}
@@ -2262,12 +2266,12 @@ function Furniture({
                     );
                 } else {
                     items.push(
-                        <group key={`${zone.id}-group-door`} position={[x, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={`${zone.id}-group-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             {(isDouble || !isRight) && (
                                 <AnimatedDoor
                                     side="left"
-                                    position={[-width/2 + compartmentGap/2, 0, 0]}
-                                    width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                                    position={[-doorZoneWidth/2 + compartmentGap/2, 0, 0]}
+                                    width={isDouble ? (doorZoneWidth - compartmentGap)/2 : doorZoneWidth - compartmentGap}
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
@@ -2283,8 +2287,8 @@ function Furniture({
                             {(isDouble || isRight) && (
                                 <AnimatedDoor
                                     side="right"
-                                    position={[width/2 - compartmentGap/2, 0, 0]}
-                                    width={isDouble ? (width - compartmentGap)/2 : width - compartmentGap}
+                                    position={[doorZoneWidth/2 - compartmentGap/2, 0, 0]}
+                                    width={isDouble ? (doorZoneWidth - compartmentGap)/2 : doorZoneWidth - compartmentGap}
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
@@ -2329,18 +2333,24 @@ function Furniture({
                         // Pour les splits horizontaux:
                         // - Premier enfant (i=0) est en haut: hérite isAtTop du parent, isAtBottom = false (sauf si c'est le seul enfant)
                         // - Dernier enfant est en bas: isAtTop = false (sauf si c'est le seul enfant), hérite isAtBottom du parent
+                        // - Tous héritent isAtLeft/isAtRight du parent
                         const isFirst = i === 0;
                         const isLast = i === zone.children!.length - 1;
                         const childIsAtTop = isFirst ? isAtTop : false;
                         const childIsAtBottom = isLast ? isAtBottom : false;
-                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor);
+                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight);
                         currentPos += childHeight;
                         // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
                         // pour permettre la suppression individuelle de chaque segment
                     } else {
                         const childWidth = width * ratio;
                         // Pour les splits verticaux: les enfants héritent isAtTop et isAtBottom du parent
-                        parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor);
+                        // Premier enfant (gauche) hérite isAtLeft, dernier (droite) hérite isAtRight
+                        const isFirst = i === 0;
+                        const isLast = i === zone.children!.length - 1;
+                        const childIsAtLeft = isFirst ? isAtLeft : false;
+                        const childIsAtRight = isLast ? isAtRight : false;
+                        parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight);
                         currentPos += childWidth;
                         // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
                         // pour permettre la suppression individuelle de chaque segment
