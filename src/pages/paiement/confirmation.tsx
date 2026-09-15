@@ -95,7 +95,7 @@ export default function PaymentConfirmation() {
               <div className="flex flex-col gap-4">
                 <Link href="/" className="w-full">
                   <Button className="w-full" size="lg">
-                    Retour à l'accueil
+                    Retour à l&apos;accueil
                   </Button>
                 </Link>
                 <a href="mailto:contact@archimeuble.com">
@@ -215,7 +215,7 @@ export default function PaymentConfirmation() {
                     <div className="flex-1">
                       <p className="font-semibold">Livraison</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Vous serez notifié dès l'expédition
+                        Vous serez notifié dès l&apos;expédition
                       </p>
                     </div>
                   </li>
@@ -227,7 +227,7 @@ export default function PaymentConfirmation() {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link href="/" className="flex-1">
                 <Button className="w-full h-12" size="lg">
-                  Retour à l'accueil
+                  Retour à l&apos;accueil
                 </Button>
               </Link>
               {payment_intent && (

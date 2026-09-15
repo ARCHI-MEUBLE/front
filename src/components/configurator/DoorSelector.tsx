@@ -56,7 +56,7 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
       {type === 'single' && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-3">
           <div className="border-b border-[#E8E6E3] pb-1">
-            <h4 className="text-[11px] font-semibold text-[#706F6C] uppercase tracking-wider">Sens d'ouverture</h4>
+            <h4 className="text-[11px] font-semibold text-[#706F6C] uppercase tracking-wider">Sens d&apos;ouverture</h4>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {DOOR_SIDE_OPTIONS.map((option) => {

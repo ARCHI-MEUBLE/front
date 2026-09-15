@@ -86,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
         'Content-Length': body.length.toString(),
       },
-      body: body,
+      body: body as unknown as BodyInit,
     });
 
     // Nettoyer le fichier temporaire

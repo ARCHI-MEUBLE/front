@@ -175,7 +175,7 @@ export default function ZoneColorPicker({
       {/* Footer hint */}
       <div className="px-4 py-2 bg-[#FAFAF9] border-t border-[#E8E6E3]">
         <p className="text-xs text-[#706F6C]">
-          Cliquez sur une couleur pour l'appliquer à ce {contentLabel.toLowerCase()}
+          Cliquez sur une couleur pour l&apos;appliquer à ce {contentLabel.toLowerCase()}
         </p>
       </div>
     </div>

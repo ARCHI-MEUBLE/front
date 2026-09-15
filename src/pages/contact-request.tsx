@@ -414,7 +414,7 @@ export default function ContactRequestPage() {
                                                 </div>
 
                                                 <p className="text-center text-xs text-[#A8A5A0]">
-                                                    En soumettant ce formulaire, vous acceptez d'être recontacté
+                                                    En soumettant ce formulaire, vous acceptez d&apos;être recontacté
                                                     par notre équipe.
                                                 </p>
                                             </form>

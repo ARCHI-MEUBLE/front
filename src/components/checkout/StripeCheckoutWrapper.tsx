@@ -113,7 +113,7 @@ export default function StripeCheckoutWrapper({
       <div className="bg-white p-8 rounded-lg border border-red-200">
         <div className="text-center">
           <div className="text-red-600 text-lg font-semibold mb-2">
-            Erreur d'initialisation
+            Erreur d&apos;initialisation
           </div>
           <p className="text-gray-600 mb-4">{error}</p>
           <button

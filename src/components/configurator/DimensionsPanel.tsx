@@ -153,7 +153,7 @@ export default function DimensionsPanel({
         value={width}
         onChange={onWidthChange}
         min={300}
-        max={3000}
+        max={6000}
         step={10}
         unit="mm"
       />
@@ -173,7 +173,7 @@ export default function DimensionsPanel({
         value={height}
         onChange={onHeightChange}
         min={100}
-        max={2500}
+        max={4000}
         step={10}
         unit="mm"
       />

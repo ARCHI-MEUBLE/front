@@ -122,6 +122,7 @@ export function DashboardCategories() {
       const categoryData = {
         ...formData,
         image_url: imageUrl,
+        is_active: formData.is_active ? 1 : 0,
       };
 
       if (editingCategory) {
@@ -256,7 +257,7 @@ export function DashboardCategories() {
       <div className="rounded-lg border border-[#E8E4DE] bg-white">
         <div className="p-4">
           <p className="text-sm text-[#6B6560]">
-            Glissez-déposez pour réorganiser l'ordre d'affichage
+            Glissez-déposez pour réorganiser l&apos;ordre d&apos;affichage
           </p>
         </div>
 
@@ -282,7 +283,7 @@ export function DashboardCategories() {
                 />
               ) : (
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[#F5F3F0] text-sm text-[#6B6560]">
-                  Pas d'image
+                  Pas d&apos;image
                 </div>
               )}
 
@@ -385,7 +386,7 @@ export function DashboardCategories() {
                   required
                 />
                 <p className="mt-1 text-xs text-[#6B6560]">
-                  Utilisé dans l'URL (pas d'espaces, accents ou caractères spéciaux)
+                  Utilisé dans l&apos;URL (pas d&apos;espaces, accents ou caractères spéciaux)
                 </p>
               </div>
 

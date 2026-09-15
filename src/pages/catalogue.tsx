@@ -210,7 +210,7 @@ export default function Catalogue() {
               data-animate
               className="mt-6 text-base sm:text-lg font-medium leading-relaxed text-[#A8A7A3] max-w-xl opacity-0 translate-y-4 [&.animate-in]:opacity-100 [&.animate-in]:translate-y-0 transition-all duration-700"
             >
-              Découvrez notre sélection de produits et accessoires haut de gamme pour vos projets d'aménagement.
+              Découvrez notre sélection de produits et accessoires haut de gamme pour vos projets d&apos;aménagement.
             </p>
 
           </div>
@@ -330,7 +330,7 @@ export default function Catalogue() {
                   onClick={() => setSearchTerm('')}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1A1917] text-white text-sm font-medium"
                 >
-                  "{searchTerm}"
+                  &quot;{searchTerm}&quot;
                   <IconX size={14} />
                 </button>
               )}
@@ -463,7 +463,7 @@ export default function Catalogue() {
                 </div>
                 <h3 className="text-xl lg:text-2xl font-bold text-[#1A1917] mb-2">Aucun article trouvé</h3>
                 <p className="text-[#706F6C] mb-8 max-w-md mx-auto">
-                  Nous n'avons trouvé aucun produit correspondant à vos critères. Essayez d'ajuster vos filtres.
+                  Nous n&apos;avons trouvé aucun produit correspondant à vos critères. Essayez d&apos;ajuster vos filtres.
                 </p>
                 <button
                   onClick={() => { setSearchTerm(''); setSelectedCategory(''); }}

@@ -218,7 +218,7 @@ export default function PaymentLinkPage() {
           </CardHeader>
           <CardContent>
             <Button onClick={() => router.push('/')} className="w-full">
-              Retour à l'accueil
+              Retour à l&apos;accueil
             </Button>
           </CardContent>
         </Card>
@@ -351,7 +351,7 @@ export default function PaymentLinkPage() {
                         <IconClock className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                            Lien valide jusqu'au
+                            Lien valide jusqu&apos;au
                           </p>
                           <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
                             {new Date(orderData.payment_link.expires_at).toLocaleDateString('fr-FR', {

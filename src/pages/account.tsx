@@ -803,7 +803,7 @@ export default function Account() {
                                           width={configData.dimensions?.width || 1500}
                                           height={configData.dimensions?.height || 730}
                                           depth={configData.dimensions?.depth || 500}
-                                          hexColor={configData.styling?.color || '#D8C7A1'}
+                                          color={configData.styling?.color || '#D8C7A1'}
                                           imageUrl={configData.styling?.colorImage}
                                           hasSocle={configData.styling?.socle && configData.styling?.socle !== 'none'}
                                           socle={configData.styling?.socle || 'none'}
@@ -1011,7 +1011,7 @@ export default function Account() {
                                 <h4 className="font-bold text-amber-800">En attente de validation</h4>
                                 <p className="mt-1 text-sm text-amber-700">
                                   Votre commande est en cours de vérification par notre équipe.
-                                  Vous recevrez un email dès qu'elle sera validée et prête pour le paiement.
+                                  Vous recevrez un email dès qu&apos;elle sera validée et prête pour le paiement.
                                 </p>
                               </div>
                             </div>
@@ -1054,7 +1054,7 @@ export default function Account() {
                                 <h4 className="font-bold text-purple-800">En cours de préparation</h4>
                                 <p className="mt-1 text-sm text-purple-700">
                                   Votre commande est actuellement en cours de préparation.
-                                  Nous vous tiendrons informé de l'avancement.
+                                  Nous vous tiendrons informé de l&apos;avancement.
                                 </p>
                               </div>
                             </div>
@@ -1134,7 +1134,7 @@ export default function Account() {
                           <IconPackage size={32} className="text-[#A8A7A3]" stroke={1.5} />
                         </div>
                         <h3 className="mt-6 text-lg font-bold text-[#1A1917]">Aucune commande</h3>
-                        <p className="mt-2 text-[#706F6C]">Vous n'avez pas encore passé de commande</p>
+                        <p className="mt-2 text-[#706F6C]">Vous n&apos;avez pas encore passé de commande</p>
                         <Link
                           href="/"
                           className="mt-6 inline-flex items-center gap-2 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
@@ -1237,7 +1237,7 @@ export default function Account() {
                                   color={config.config_data.styling?.color || '#D8C7A1'}
                                   hasSocle={config.config_data.styling?.socle !== 'none'}
                                   rootZone={config.config_data.advancedZones || { id: 'root', type: 'leaf', content: 'empty' } as Zone}
-                                  selectedZoneId={null}
+                                  selectedZoneIds={[]}
                                   onSelectZone={() => {}}
                                   isBuffet={false}
                                   doorsOpen={config.config_data.features?.doorsOpen ?? false}
@@ -1661,7 +1661,7 @@ export default function Account() {
 
                     {/* CTA */}
                     <div className="bg-[#1A1917] p-8 text-center">
-                      <h3 className="text-xl font-bold text-white">Besoin d'aide pour votre projet ?</h3>
+                      <h3 className="text-xl font-bold text-white">Besoin d&apos;aide pour votre projet ?</h3>
                       <p className="mt-2 text-white/70">Notre équipe est à votre disposition pour vous accompagner</p>
                       <Link
                         href="/contact-request"

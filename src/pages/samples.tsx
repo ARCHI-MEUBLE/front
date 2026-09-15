@@ -102,7 +102,7 @@ export default function SamplesPage() {
         const data = await response.json();
         setSamplesInCart(data.count || 0);
         const items = data.items || [];
-        const ids = new Set(items.map((item: any) => item.sample_color_id));
+        const ids = new Set<number>(items.map((item: any) => item.sample_color_id));
         setSamplesInCartIds(ids);
 
         const freeCount = items.filter((item: any) => (item.unit_price ?? 0) <= 0).length;
@@ -355,7 +355,7 @@ export default function SamplesPage() {
                   <IconPackage size={28} className="text-[#D4D4D4]" />
                 </div>
                 <p className="text-lg font-bold text-[#1A1917]">Aucun coloris disponible</p>
-                <p className="mt-1 text-[#706F6C]">Ce matériau n'a pas encore de coloris.</p>
+                <p className="mt-1 text-[#706F6C]">Ce matériau n&apos;a pas encore de coloris.</p>
               </div>
             ) : (
               <div>

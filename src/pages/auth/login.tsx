@@ -81,7 +81,7 @@ export default function Login() {
             href="/auth/register"
             className="text-sm font-medium text-[#8B7355] hover:underline"
           >
-            S'inscrire
+            S&apos;inscrire
           </Link>
         </div>
 

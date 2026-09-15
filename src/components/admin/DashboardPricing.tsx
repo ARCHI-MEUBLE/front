@@ -436,7 +436,7 @@ export function DashboardPricing() {
                     <IconCurrencyEuro className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Meuble 1500×730×500 mm avec tarif "default" (1500€/m³)</p>
+                    <p className="text-sm font-medium">Meuble 1500×730×500 mm avec tarif &quot;default&quot; (1500€/m³)</p>
                     <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
                       <li className="flex items-center gap-2">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/60" />

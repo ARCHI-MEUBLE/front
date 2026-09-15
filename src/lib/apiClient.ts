@@ -24,6 +24,8 @@ export interface FurnitureModel {
   price: number | null;
   image_url: string | null;
   hover_image_url: string | null;
+  category: string | null;
+  config_data: string | null;
   created_at: string;
 }
 
@@ -305,7 +307,7 @@ export const categoriesApi = {
     description?: string;
     image_url?: string;
     display_order?: number;
-    is_active?: boolean;
+    is_active?: number;
   }): Promise<{ success: boolean; category: Category }> {
     return request<{ success: boolean; category: Category }>('/api/categories', {
       method: 'POST',

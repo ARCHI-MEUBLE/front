@@ -835,7 +835,7 @@ export function DashboardPricingConfig() {
                       </ul>
                       <p className="mt-2"><strong>Exemple :</strong></p>
                       <p className="ml-2">
-                        Si une zone a une porte avec une poignée "barre horizontale" à 15€,
+                        Si une zone a une porte avec une poignée &quot;barre horizontale&quot; à 15€,
                         le prix total inclura automatiquement ces 15€.
                       </p>
                     </div>
@@ -887,7 +887,7 @@ export function DashboardPricingConfig() {
 
                     <div className="text-xs text-muted-foreground space-y-3">
                       <p className="p-2 bg-green-50 border border-green-200 rounded text-green-800">
-                        <strong>💡 Le prix du matériau = le prix de l'échantillon</strong><br/>
+                        <strong>💡 Le prix du matériau = le prix de l&apos;échantillon</strong><br/>
                         Définissez le prix au m² dans <strong>Dashboard → Gestion des échantillons</strong>
                       </p>
 
@@ -916,7 +916,7 @@ export function DashboardPricingConfig() {
                         <li>Dessus + Dessous = (Largeur × Profondeur) × 2</li>
                       </ul>
 
-                      <p className="mt-3"><strong>Exemple : Meuble 1500mm × 730mm × 500mm avec échantillon "Chêne" à 150€/m²</strong></p>
+                      <p className="mt-3"><strong>Exemple : Meuble 1500mm × 730mm × 500mm avec échantillon &quot;Chêne&quot; à 150€/m²</strong></p>
 
                       <p className="ml-2">Étape 1 - Calculer la surface :</p>
                       <ul className="list-disc list-inside ml-4 space-y-1">
@@ -928,7 +928,7 @@ export function DashboardPricingConfig() {
 
                       <p className="ml-2 mt-2">Étape 2 - Calculer le prix :</p>
                       <ul className="list-disc list-inside ml-4 space-y-1">
-                        <li>Prix échantillon "Chêne" = 150€/m²</li>
+                        <li>Prix échantillon &quot;Chêne&quot; = 150€/m²</li>
                         <li>Coefficient fabrication = 1.2</li>
                         <li><strong>Prix caisson = 150€ × 3.325m² × 1.2 = 598€</strong></li>
                       </ul>
@@ -942,20 +942,20 @@ export function DashboardPricingConfig() {
               <TabsContent value="display" className="mt-10">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between mb-4 pb-2 border-b border-muted">
-                    <h4 className="text-lg font-bold tracking-tight">Paramètres d'affichage du prix</h4>
+                    <h4 className="text-lg font-bold tracking-tight">Paramètres d&apos;affichage du prix</h4>
                   </div>
                   {renderDisplayTable()}
 
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <h5 className="text-sm font-semibold mb-2">Options d'affichage</h5>
+                    <h5 className="text-sm font-semibold mb-2">Options d&apos;affichage</h5>
                     <div className="text-xs text-muted-foreground space-y-2">
                       <p>
-                        <strong>Mode d'affichage :</strong> Définit si le prix est affiché de manière exacte (DIRECT) ou sous forme de fourchette (INTERVALLE).
+                        <strong>Mode d&apos;affichage :</strong> Définit si le prix est affiché de manière exacte (DIRECT) ou sous forme de fourchette (INTERVALLE).
                         <br /><em>Note: Utilisez 0 pour DIRECT et 1 pour INTERVALLE.</em>
                       </p>
                       <p>
-                        <strong>Écart type :</strong> La valeur à ajouter et soustraire du prix calculé pour créer l'intervalle.
-                        <br /><em>Exemple: Si le prix est de 2000€ et l'écart est de 100€, l'affichage sera "1 900€ - 2 100€".</em>
+                        <strong>Écart type :</strong> La valeur à ajouter et soustraire du prix calculé pour créer l&apos;intervalle.
+                        <br /><em>Exemple: Si le prix est de 2000€ et l&apos;écart est de 100€, l&apos;affichage sera &quot;1 900€ - 2 100€&quot;.</em>
                       </p>
                     </div>
                   </div>
@@ -1147,7 +1147,7 @@ export function DashboardPricingConfig() {
                 <p className="text-muted-foreground">
                   Surface totale = arrière + 2×côtés + dessus + dessous (pas de devant)
                   <br />
-                  Le prix du matériau = prix de l'échantillon sélectionné.
+                  Le prix du matériau = prix de l&apos;échantillon sélectionné.
                   <br />
                   Le coefficient majore le prix pour la complexité de fabrication.
                 </p>

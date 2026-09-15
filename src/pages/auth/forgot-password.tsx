@@ -70,10 +70,10 @@ export default function ForgotPassword() {
                   <IconCheck className="h-6 w-6" />
                 </div>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Si un compte est associé à l'adresse <strong>{email}</strong>, vous recevrez un email contenant les instructions pour réinitialiser votre mot de passe d'ici quelques instants.
+                  Si un compte est associé à l&apos;adresse <strong>{email}</strong>, vous recevrez un email contenant les instructions pour réinitialiser votre mot de passe d&apos;ici quelques instants.
                 </p>
                 <Button variant="outline" className="w-full mt-4" onClick={() => setIsSent(false)}>
-                  Renvoyer l'email
+                  Renvoyer l&apos;email
                 </Button>
               </div>
             ) : (

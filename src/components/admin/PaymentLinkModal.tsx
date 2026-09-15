@@ -344,7 +344,7 @@ export default function PaymentLinkModal({
                         </div>
                         {depositPaymentStatus !== 'paid' && (
                           <p className="mt-2 text-xs text-[#706F6C] italic">
-                            L'acompte doit être réglé avant de pouvoir générer le lien pour le solde.
+                            L&apos;acompte doit être réglé avant de pouvoir générer le lien pour le solde.
                           </p>
                         )}
                       </div>

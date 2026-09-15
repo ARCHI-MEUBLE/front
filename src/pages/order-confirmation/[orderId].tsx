@@ -338,7 +338,7 @@ export default function OrderConfirmationPage() {
                               width={dimensions.width || 1000}
                               height={dimensions.height || 2000}
                               depth={dimensions.depth || 400}
-                              hexColor={styling.color || '#D8C7A1'}
+                              color={styling.color || '#D8C7A1'}
                               imageUrl={styling.colorImage}
                               hasSocle={styling.socle && styling.socle !== 'none'}
                               socle={styling.socle || 'none'}
@@ -528,7 +528,7 @@ export default function OrderConfirmationPage() {
               ))}
               <li className="flex gap-2">
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700 font-medium">{getNextSteps().length + 2}</span>
-                <span>Suivez l'avancement dans "Mes commandes"</span>
+                <span>Suivez l&apos;avancement dans &quot;Mes commandes&quot;</span>
               </li>
             </ol>
           </div>

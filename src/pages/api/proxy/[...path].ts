@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
         headers['Content-Length'] = body.length.toString();
-        fetchOptions.body = body;
+        fetchOptions.body = body as unknown as BodyInit;
       } else {
         // Handle JSON and other content types
         const rawBody = await getRawBody(req);

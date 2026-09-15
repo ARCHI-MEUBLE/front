@@ -705,7 +705,7 @@ function HingesPanel({
       <div>
         <div className="flex items-center gap-2 mb-3">
           <p className="text-sm font-medium text-[#1A1917]">
-            SENS D'OUVERTURE DE LA FAÇADE
+            SENS D&apos;OUVERTURE DE LA FAÇADE
           </p>
           <button className="w-5 h-5 rounded-full bg-[#1A1917] text-white flex items-center justify-center text-xs">
             ?
@@ -796,7 +796,7 @@ function DrillingPanel({
       {/* Instructions */}
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-900">
-          💡 Sélectionnez un type de perçage ci-dessous, puis ajustez sa position sur l'aperçu 3D
+          💡 Sélectionnez un type de perçage ci-dessous, puis ajustez sa position sur l&apos;aperçu 3D
         </p>
       </div>
 

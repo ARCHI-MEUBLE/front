@@ -124,7 +124,7 @@ export function HeroSection() {
                 href="tel:+33601062867"
                 className="inline-flex h-12 items-center justify-center border border-[#1A1917] px-6 text-sm font-medium text-[#1A1917]"
               >
-                Appeler l'atelier
+                Appeler l&apos;atelier
               </Link>
             </div>
           </div>
@@ -248,7 +248,7 @@ export function HeroSection() {
                 href="tel:+33601062867"
                 className="inline-flex h-14 items-center justify-center border border-[#1A1917] px-8 text-sm font-medium tracking-wide text-[#1A1917] transition-all duration-300 hover:bg-[#1A1917] hover:text-white"
               >
-                Appeler l'atelier
+                Appeler l&apos;atelier
               </Link>
             </div>
 
