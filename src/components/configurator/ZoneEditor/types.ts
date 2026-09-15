@@ -72,6 +72,12 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     icon: 'D2',
     description: 'Deux petites portes battantes',
   },
+  shelf: {
+    label: 'Étagère',
+    shortLabel: 'Étagère',
+    icon: 'E',
+    description: 'Ajoute une étagère fixe',
+  },
   glass_shelf: {
     label: 'Étagère en verre',
     shortLabel: 'Verre',

@@ -208,7 +208,7 @@ function ZoneNode({
     const isHorizontal = zone.type === 'horizontal';
     const children = zone.children ?? [];
     const ratios = getChildRatios();
-    const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
+    const currentDoor = zone.doorContent || null;
     const meta = ZONE_CONTENT_META[currentDoor ?? 'empty'] || ZONE_CONTENT_META['empty'];
     const hasDoor = currentDoor && currentDoor !== 'empty' && currentDoor.includes('door');
 

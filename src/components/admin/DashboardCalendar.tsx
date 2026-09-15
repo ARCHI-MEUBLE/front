@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, dateFnsLocalizer, Views, SlotInfo } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, Views, SlotInfo, View, stringOrDate } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -32,7 +32,7 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-const DnDCalendar = withDragAndDrop(Calendar);
+const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar);
 
 interface CalendlyAppointment {
   id: number;
@@ -86,7 +86,7 @@ export function DashboardCalendar() {
   const [selectedAppointment, setSelectedAppointment] = useState<CalendlyAppointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [view, setView] = useState(Views.MONTH);
+  const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export function DashboardCalendar() {
     };
   }, []);
 
-  const handleEventDrop = async ({ event, start, end }: { event: CalendarEvent; start: Date; end: Date }) => {
+  const handleEventDrop = async ({ event, start, end }: { event: CalendarEvent; start: stringOrDate; end: stringOrDate }) => {
     if (!confirm(`Reprogrammer le rendez-vous de ${event.resource.client_name} ?`)) {
       return;
     }
@@ -172,8 +172,8 @@ export function DashboardCalendar() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            start_time: start.toISOString(),
-            end_time: end.toISOString(),
+            start_time: new Date(start).toISOString(),
+            end_time: new Date(end).toISOString(),
           }),
         }
       );
