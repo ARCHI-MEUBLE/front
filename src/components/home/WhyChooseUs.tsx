@@ -33,7 +33,7 @@ export function WhyChooseUs() {
             </h2>
           </div>
           <p className="max-w-md text-base font-medium leading-relaxed text-[#706F6C] lg:text-right">
-            Du premier croquis à l'installation, chaque détail est pensé
+            Du premier croquis à l&apos;installation, chaque détail est pensé
             pour créer un meuble qui traverse les années.
           </p>
         </div>

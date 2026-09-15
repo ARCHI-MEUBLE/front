@@ -10,6 +10,7 @@ interface Customer {
   city?: string;
   postal_code?: string;
   country?: string;
+  civility?: 'M' | 'Mme';
 }
 
 interface RegisterResult {

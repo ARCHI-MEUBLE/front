@@ -1,5 +1,4 @@
 import React, { Suspense, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
-// On retire useFrame de l'import react-three/fiber
 import { Canvas, useThree, RootState } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -7,13 +6,18 @@ import * as THREE from 'three';
 import { Zone, PanelId, panelIdToString } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
+import { getSafeColor, getHingeYPositions } from './scene/utils';
+import { TexturedMaterial } from './scene/TexturedMaterial';
+import { PanelSegmentHitbox, StructuralPanel, Handle, DoorHinge } from './scene/StructuralElements';
+import { AnimatedDoor, AnimatedMirrorDoor, AnimatedPushDoor } from './scene/AnimatedDoors';
+import { AnimatedPushDrawer, AnimatedDrawer } from './scene/AnimatedDrawers';
+import { BackPanelWithOpenings } from './scene/BackPanel';
+import { JapaneseMinimalist, ScandinavianLandscape, BauhausGeometric, WallClock } from './scene/wall-art';
+import { Room, HumanSilhouette } from './scene/Room';
+import { Books, Plant, Vase, Lamp, CompartmentLight, CableHole, ShelfDecoration } from './scene/Decor';
+import { ScreenshotCapture } from './scene/ScreenshotCapture';
 
 export type { ThreeCanvasHandle };
-
-// --- Hooks Utilitaires ---
-
-// On supprime useAnimationFrame car il causait des erreurs de contexte R3F
-// Les composants utilisent maintenant requestAnimationFrame directement dans useEffect
 
 interface ThreeViewerProps {
     width: number;
@@ -41,790 +45,7 @@ interface ThreeViewerProps {
     onCaptureReady?: (captureFunction: () => string | null) => void;
 }
 
-// Couleur par défaut (beige/bois naturel)
-const DEFAULT_MATERIAL_COLOR = '#D8C7A1';
 
-// Fonction utilitaire pour obtenir une couleur valide
-function getSafeColor(hexColor: string | null | undefined): string {
-    if (hexColor && hexColor !== '' && hexColor !== 'null' && hexColor !== 'undefined' && hexColor.startsWith('#')) {
-        return hexColor;
-    }
-    return DEFAULT_MATERIAL_COLOR;
-}
-
-// Composant pour un matériau avec support de texture
-function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?: string | null }) {
-    const [texture, setTexture] = useState<THREE.Texture | null>(null);
-    const textureRef = useRef<THREE.Texture | null>(null);
-    const currentImageUrlRef = useRef<string | null>(null);
-
-    // Couleur de fallback - calculée de manière synchrone à chaque render
-    const safeColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        // Si pas d'URL d'image, utiliser la couleur hex
-        if (!imageUrl) {
-            // Dispose de la texture précédente si elle existe
-            if (textureRef.current) {
-                textureRef.current.dispose();
-                textureRef.current = null;
-            }
-            setTexture(null);
-            currentImageUrlRef.current = null;
-            return;
-        }
-
-        // Si c'est la même URL, ne pas recharger
-        if (currentImageUrlRef.current === imageUrl && textureRef.current) {
-            return;
-        }
-
-        currentImageUrlRef.current = imageUrl;
-        console.log('[TexturedMaterial] Loading texture:', imageUrl);
-
-        const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous');
-        loader.load(
-            imageUrl,
-            (loadedTexture) => {
-                console.log('[TexturedMaterial] Texture loaded successfully:', imageUrl);
-                // Vérifier que l'URL n'a pas changé pendant le chargement
-                if (currentImageUrlRef.current !== imageUrl) {
-                    loadedTexture.dispose();
-                    return;
-                }
-
-                // Dispose de l'ancienne texture
-                if (textureRef.current) {
-                    textureRef.current.dispose();
-                }
-
-                loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
-                loadedTexture.repeat.set(1, 1);
-                loadedTexture.minFilter = THREE.LinearMipmapLinearFilter;
-                loadedTexture.magFilter = THREE.LinearFilter;
-                loadedTexture.anisotropy = 16;
-                loadedTexture.needsUpdate = true;
-                textureRef.current = loadedTexture;
-                setTexture(loadedTexture);
-            },
-            undefined,
-            () => {
-                console.warn('Failed to load texture:', imageUrl);
-                if (currentImageUrlRef.current === imageUrl) {
-                    setTexture(null);
-                }
-            }
-        );
-
-        return () => {
-            // Cleanup seulement si on démonte le composant
-        };
-    }, [imageUrl]);
-
-    // Cleanup au démontage
-    useEffect(() => {
-        return () => {
-            if (textureRef.current) {
-                textureRef.current.dispose();
-                textureRef.current = null;
-            }
-        };
-    }, []);
-
-    // Utiliser une clé unique pour forcer React à recréer le matériau proprement
-    // quand la couleur ou la texture change
-    const materialKey = texture ? `tex-${currentImageUrlRef.current}` : `col-${safeColor}`;
-
-    // Si on a une texture chargée, l'utiliser
-    if (texture) {
-        return (
-            <meshStandardMaterial
-                key={materialKey}
-                attach="material"
-                map={texture}
-                color="#ffffff"
-                roughness={0.7}
-                metalness={0.1}
-                polygonOffset
-                polygonOffsetFactor={1}
-                polygonOffsetUnits={1}
-            />
-        );
-    }
-
-    // Sinon utiliser la couleur hex (pendant le chargement ou en fallback)
-    return (
-        <meshStandardMaterial
-            key={materialKey}
-            attach="material"
-            color={safeColor}
-            roughness={0.4}
-            metalness={0.1}
-            polygonOffset
-            polygonOffsetFactor={1}
-            polygonOffsetUnits={1}
-        />
-    );
-}
-
-// Composant pour une hitbox de sélection de segment de panneau (invisible, uniquement pour la sélection)
-interface PanelSegmentHitboxProps {
-    panelId: string;
-    position: [number, number, number];
-    size: [number, number, number]; // width, height, depth
-    isSelected: boolean;
-    onSelect: (panelId: string | null) => void;
-    isDeleted?: boolean;
-}
-
-function PanelSegmentHitbox({
-                                panelId,
-                                position,
-                                size,
-                                isSelected,
-                                onSelect,
-                                isDeleted = false
-                            }: PanelSegmentHitboxProps) {
-    return (
-        <group position={position}>
-            {/* Hitbox invisible pour la sélection */}
-            <mesh
-                visible={false}
-                onPointerOver={(e) => {
-                    e.stopPropagation();
-                    document.body.style.cursor = 'pointer';
-                }}
-                onPointerOut={() => {
-                    document.body.style.cursor = 'default';
-                }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect(isSelected ? null : panelId);
-                }}
-            >
-                <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.002]} />
-                <meshBasicMaterial transparent opacity={0} />
-            </mesh>
-
-            {/* Effet de sélection visible uniquement quand sélectionné */}
-            {isSelected && (
-                <>
-                    <mesh>
-                        <boxGeometry args={[size[0] + 0.003, size[1] + 0.003, size[2] + 0.003]} />
-                        <meshBasicMaterial
-                            transparent
-                            opacity={isDeleted ? 0.35 : 0.4}
-                            color={isDeleted ? "#FF5722" : "#2196F3"}
-                            depthWrite={false}
-                            toneMapped={false}
-                        />
-                    </mesh>
-                    <mesh>
-                        <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, size[2] + 0.004]} />
-                        <meshBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} wireframe transparent opacity={0.5} toneMapped={false} />
-                    </mesh>
-                    <lineSegments>
-                        <edgesGeometry args={[new THREE.BoxGeometry(size[0] + 0.005, size[1] + 0.005, size[2] + 0.005)]} />
-                        <lineBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} linewidth={4} toneMapped={false} />
-                    </lineSegments>
-                </>
-            )}
-        </group>
-    );
-}
-
-// Composant pour un panneau structurel (visuel uniquement, sans interaction)
-interface StructuralPanelProps {
-    position: [number, number, number];
-    size: [number, number, number]; // width, height, depth
-    hexColor: string;
-    imageUrl?: string | null;
-    castShadow?: boolean;
-    receiveShadow?: boolean;
-}
-
-function StructuralPanel({
-                             position,
-                             size,
-                             hexColor,
-                             imageUrl,
-                             castShadow = true,
-                             receiveShadow = true
-                         }: StructuralPanelProps) {
-    return (
-        <mesh position={position} castShadow={castShadow} receiveShadow={receiveShadow}>
-            <boxGeometry args={size} />
-            <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-        </mesh>
-    );
-}
-
-// Composant pour rendre différents types de poignées
-function Handle({ type = 'vertical_bar', position, side, height, width }: { type?: string; position: [number, number, number]; side: string; height: number; width?: number }) {
-    const handleMaterial = <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />;
-
-    if (type === 'horizontal_bar') {
-        // Barre horizontale (utilise width si disponible, sinon height)
-        const barLength = width ? Math.min(width * 0.4, 0.5) : Math.min(height * 0.4, 0.3);
-        return (
-            <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.008, 0.008, barLength, 12]} />
-                {handleMaterial}
-            </mesh>
-        );
-    } else if (type === 'knob') {
-        // Bouton rond
-        return (
-            <mesh position={position}>
-                <sphereGeometry args={[0.02, 16, 16]} />
-                {handleMaterial}
-            </mesh>
-        );
-    } else if (type === 'recessed') {
-        // Poignée encastrée (encoche)
-        return (
-            <group position={position}>
-                <mesh>
-                    <boxGeometry args={[0.08, 0.025, 0.015]} />
-                    <meshStandardMaterial color="#2a2a2a" metalness={0.5} roughness={0.6} />
-                </mesh>
-            </group>
-        );
-    } else {
-        // Barre verticale (défaut)
-        return (
-            <mesh position={position}>
-                <cylinderGeometry args={[0.008, 0.008, Math.min(height * 0.25, 0.4), 12]} />
-                {handleMaterial}
-            </mesh>
-        );
-    }
-}
-
-// Fonction pour calculer les positions des charnières selon la hauteur
-function getHingeYPositions(height: number): number[] {
-    const margin = 0.15; // Marge de 15cm depuis le bord haut/bas
-    const usableHeight = height - 2 * margin;
-
-    // Logique: 2 charnières jusqu'à 1.5m, puis +1 charnière par 0.5m supplémentaire
-    let numHinges = 2;
-    if (height >= 1.5) {
-        numHinges = 3;
-    }
-    if (height >= 2.0) {
-        numHinges = 4;
-    }
-    if (height >= 2.5) {
-        numHinges = 5;
-    }
-
-    const positions: number[] = [];
-    if (numHinges === 2) {
-        // 2 charnières: haut et bas
-        positions.push(height / 2 - margin);
-        positions.push(-height / 2 + margin);
-    } else {
-        // Plus de 2 charnières: répartition uniforme
-        for (let i = 0; i < numHinges; i++) {
-            const y = (height / 2 - margin) - (i * usableHeight / (numHinges - 1));
-            positions.push(y);
-        }
-    }
-
-    return positions;
-}
-
-// Composant pour les charnières de porte
-function DoorHinge({ position, side }: { position: [number, number, number]; side: 'left' | 'right' }) {
-    const hingeMaterial = (
-        <meshPhysicalMaterial
-            color="#2a2a2a"
-            metalness={0.85}
-            roughness={0.2}
-            clearcoat={0.3}
-        />
-    );
-
-    return (
-        <group position={position}>
-            {/* Partie fixe de la charnière (sur le cadre) */}
-            <mesh position={[side === 'left' ? -0.008 : 0.008, 0, -0.012]} castShadow>
-                <boxGeometry args={[0.012, 0.05, 0.008]} />
-                {hingeMaterial}
-            </mesh>
-            {/* Cylindre central (pivot) */}
-            <mesh position={[side === 'left' ? -0.002 : 0.002, 0, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-                <cylinderGeometry args={[0.004, 0.004, 0.055, 12]} />
-                {hingeMaterial}
-            </mesh>
-            {/* Partie mobile de la charnière (sur la porte) */}
-            <mesh position={[side === 'left' ? 0.004 : -0.004, 0, -0.004]} castShadow>
-                <boxGeometry args={[0.01, 0.045, 0.006]} />
-                {hingeMaterial}
-            </mesh>
-        </group>
-    );
-}
-
-// --- Composants Animés (Utilisant requestAnimationFrame manuel pour plus de robustesse) ---
-
-function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
-    const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
-
-    // S'assurer que la couleur est valide
-    const safeHexColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        let animationFrameId: number;
-
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetRot]);
-
-    return (
-        <group
-            ref={groupRef}
-            position={position}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
-            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
-                <boxGeometry args={[width - 0.005, height, 0.018]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            {/* Poignée */}
-            <Handle
-                type={handleType || 'vertical_bar'}
-                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
-                side={side}
-                height={height}
-            />
-        </group>
-    );
-}
-
-function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
-    const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetRot]);
-
-    return (
-        <group
-            ref={groupRef}
-            position={position}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
-            {/* Porte avec effet vitré */}
-            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
-                <boxGeometry args={[width - 0.005, height, 0.018]} />
-                <meshStandardMaterial
-                    color="#A5D8FF"
-                    transparent={true}
-                    opacity={0.4}
-                    metalness={0.9}
-                    roughness={0.1}
-                    envMapIntensity={2}
-                />
-            </mesh>
-            {/* Poignée */}
-            <Handle
-                type={handleType || 'vertical_bar'}
-                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
-                side={side}
-                height={height}
-            />
-        </group>
-    );
-}
-
-function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
-    const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
-
-    // S'assurer que la couleur est valide
-    const safeHexColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetRot]);
-
-    return (
-        <group
-            ref={groupRef}
-            position={position}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
-            <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
-                <boxGeometry args={[width - 0.005, height, 0.018]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            {/* Petite encoche discrète pour indiquer push-to-open */}
-            <mesh position={[side === 'left' ? width - 0.08 : -width + 0.08, 0, 0.019]}>
-                <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
-                <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
-            </mesh>
-        </group>
-    );
-}
-
-function AnimatedPushDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, onClick }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    const initialZ = position[2];
-    const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
-
-    // S'assurer que la couleur est valide
-    const safeHexColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetZ]);
-
-    const boxDepth = depth * 0.8;
-    const boxHeight = height * 0.8;
-
-    return (
-        <group
-            ref={groupRef}
-            position={[position[0], position[1], initialZ]}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
-            {/* Façade sans poignée */}
-            <mesh castShadow>
-                <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            {/* Petite encoche discrète pour indiquer push-to-open */}
-            <mesh position={[0, -height * 0.3, 0.015]}>
-                <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
-                <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
-            </mesh>
-            {/* Corps du tiroir (visible quand ouvert) */}
-            <mesh position={[0, 0, -boxDepth / 2]}>
-                <boxGeometry args={[width - 0.02, boxHeight, boxDepth]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-        </group>
-    );
-}
-
-function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, onClick, handleType }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    const initialZ = position[2];
-    const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
-
-    // S'assurer que la couleur est valide
-    const safeHexColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetZ]);
-
-    const boxDepth = depth * 0.8;
-    const boxHeight = height * 0.8;
-
-    return (
-        <group
-            ref={groupRef}
-            position={[position[0], position[1], initialZ]}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
-            {/* Façade */}
-            <mesh castShadow>
-                <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            {/* Poignée */}
-            <Handle
-                type={handleType || 'horizontal_bar'}
-                position={[0, 0, 0.015]}
-                side="center"
-                height={height}
-                width={width}
-            />
-            {/* Fond du tiroir */}
-            <mesh position={[0, -height / 2 + 0.05, -boxDepth / 2]} receiveShadow>
-                <boxGeometry args={[width - 0.06, 0.01, boxDepth]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            {/* Côtés du tiroir */}
-            <mesh position={[-width / 2 + 0.03, -height / 2 + 0.05 + boxHeight / 2, -boxDepth / 2]} castShadow>
-                <boxGeometry args={[0.012, boxHeight, boxDepth]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            <mesh position={[width / 2 - 0.03, -height / 2 + 0.05 + boxHeight / 2, -boxDepth / 2]} castShadow>
-                <boxGeometry args={[0.012, boxHeight, boxDepth]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-            {/* Arrière du tiroir */}
-            <mesh position={[0, -height / 2 + 0.05 + boxHeight / 2, -boxDepth]} castShadow>
-                <boxGeometry args={[width - 0.06, boxHeight, 0.012]} />
-                <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
-            </mesh>
-        </group>
-    );
-}
-
-// Composant pour générer le panneau arrière avec des ouvertures pour les espaces ouverts
-function BackPanelWithOpenings({
-                                   totalWidth,
-                                   totalHeight,
-                                   yOffset,
-                                   zOffset,
-                                   openSpaces,
-                                   hexColor,
-                                   imageUrl
-                               }: {
-    totalWidth: number;
-    totalHeight: number;
-    yOffset: number;
-    zOffset: number;
-    openSpaces: { x: number; y: number; width: number; height: number }[];
-    hexColor: string;
-    imageUrl?: string | null;
-}) {
-    // Pour simplifier, on divise le panneau en segments horizontaux
-    // Si un espace ouvert couvre toute la largeur, on crée des panneaux au-dessus et en-dessous
-    // Pour des cas plus complexes (plusieurs colonnes ouvertes), on génère des segments
-
-    // Trier les espaces ouverts par position Y (de haut en bas)
-    const sortedOpenSpaces = [...openSpaces].sort((a, b) => b.y - a.y);
-
-    // Générer les panneaux qui évitent les zones ouvertes
-    const panels: React.ReactNode[] = [];
-
-    // Simplification : créer des panneaux autour de chaque espace ouvert
-    // En utilisant une approche par colonne verticale
-
-    const leftEdge = -totalWidth / 2;
-    const rightEdge = totalWidth / 2;
-    const topEdge = yOffset + totalHeight / 2;
-    const bottomEdge = yOffset - totalHeight / 2;
-
-    // Convertir les espaces ouverts en rectangles exclus
-    const exclusions = openSpaces.map(os => ({
-        left: os.x - os.width / 2,
-        right: os.x + os.width / 2,
-        top: os.y + os.height / 2,
-        bottom: os.y - os.height / 2
-    }));
-
-    // Pour chaque espace ouvert, créer des panneaux à gauche, à droite, au-dessus et en-dessous
-    if (exclusions.length === 1) {
-        const ex = exclusions[0];
-
-        // Panneau à gauche de l'ouverture
-        if (ex.left > leftEdge + 0.01) {
-            const panelWidth = ex.left - leftEdge;
-            panels.push(
-                <mesh key="back-left" position={[leftEdge + panelWidth/2, yOffset, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-
-        // Panneau à droite de l'ouverture
-        if (ex.right < rightEdge - 0.01) {
-            const panelWidth = rightEdge - ex.right;
-            panels.push(
-                <mesh key="back-right" position={[rightEdge - panelWidth/2, yOffset, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-
-        // Panneau au-dessus de l'ouverture (dans la colonne de l'ouverture)
-        if (ex.top < topEdge - 0.01) {
-            const panelHeight = topEdge - ex.top;
-            const panelWidth = ex.right - ex.left;
-            panels.push(
-                <mesh key="back-top" position={[(ex.left + ex.right)/2, topEdge - panelHeight/2, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-
-        // Panneau en-dessous de l'ouverture (dans la colonne de l'ouverture)
-        if (ex.bottom > bottomEdge + 0.01) {
-            const panelHeight = ex.bottom - bottomEdge;
-            const panelWidth = ex.right - ex.left;
-            panels.push(
-                <mesh key="back-bottom" position={[(ex.left + ex.right)/2, bottomEdge + panelHeight/2, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-    } else if (exclusions.length > 1) {
-        // Pour plusieurs ouvertures, utiliser une approche plus générale
-        // On crée un panneau complet puis on "découpe" conceptuellement avec des panneaux par segment
-
-        // Trier par position X
-        const sortedExclusions = [...exclusions].sort((a, b) => a.left - b.left);
-
-        let currentX = leftEdge;
-
-        sortedExclusions.forEach((ex, i) => {
-            // Panneau à gauche de cette exclusion
-            if (ex.left > currentX + 0.01) {
-                const panelWidth = ex.left - currentX;
-                panels.push(
-                    <mesh key={`back-seg-${i}-left`} position={[currentX + panelWidth/2, yOffset, zOffset]} receiveShadow>
-                        <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                        <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                    </mesh>
-                );
-            }
-
-            // Panneau au-dessus de l'ouverture
-            if (ex.top < topEdge - 0.01) {
-                const panelHeight = topEdge - ex.top;
-                const panelWidth = ex.right - ex.left;
-                panels.push(
-                    <mesh key={`back-seg-${i}-top`} position={[(ex.left + ex.right)/2, topEdge - panelHeight/2, zOffset]} receiveShadow>
-                        <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                        <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                    </mesh>
-                );
-            }
-
-            // Panneau en-dessous de l'ouverture
-            if (ex.bottom > bottomEdge + 0.01) {
-                const panelHeight = ex.bottom - bottomEdge;
-                const panelWidth = ex.right - ex.left;
-                panels.push(
-                    <mesh key={`back-seg-${i}-bottom`} position={[(ex.left + ex.right)/2, bottomEdge + panelHeight/2, zOffset]} receiveShadow>
-                        <boxGeometry args={[panelWidth, panelHeight, 0.004]} />
-                        <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                    </mesh>
-                );
-            }
-
-            currentX = ex.right;
-        });
-
-        // Panneau final à droite
-        if (currentX < rightEdge - 0.01) {
-            const panelWidth = rightEdge - currentX;
-            panels.push(
-                <mesh key="back-seg-final" position={[currentX + panelWidth/2, yOffset, zOffset]} receiveShadow>
-                    <boxGeometry args={[panelWidth, totalHeight, 0.004]} />
-                    <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />
-                </mesh>
-            );
-        }
-    }
-
-    return <group>{panels}</group>;
-}
 
 function Furniture({
                        width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
@@ -841,7 +62,6 @@ function Furniture({
                    }: ThreeViewerProps) {
     const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
 
-    // Synchronisation avec l'état global doorsOpen
     useEffect(() => {
         if (rootZone) {
             const newOpenStates: Record<string, boolean> = {};
@@ -872,24 +92,17 @@ function Furniture({
         const sideHeight = hasSocle ? h - 0.1 : h;
         const yOffset = hasSocle ? 0.1 : 0;
         const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
-        // En encastré, reculer les portes de 22mm pour que leur face avant soit derrière la face avant des montants
-        // Cela évite le z-fighting entre les bords des portes et les montants structurels
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
-        // En appliqué, les portes débordent pour recouvrir le cadre (dessus/dessous)
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
-        // Pas de retrait des étagères (crée des trous visibles avec le caisson)
         const doorRecess = 0;
         return { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
     }, [width, height, depth, hasSocle, mountingStyle]);
 
-    // Couleur par défaut
     const DEFAULT_COLOR = '#D8C7A1';
 
-    // Couleur de base (structure) - utilisée comme fallback pour tout
     const baseStructureColor = color || DEFAULT_COLOR;
     const baseStructureImageUrl = imageUrl || null;
 
-    // Calcul des couleurs finales - simplifié et robuste
     const finalStructureColor = useMemo(() => {
         if (!useMultiColor) return baseStructureColor;
         const hex = componentColors?.structure?.hex;
@@ -959,7 +172,6 @@ function Furniture({
     const separatorColor = finalStructureColor;
     const separatorImageUrl = finalStructureImageUrl;
 
-    // Check if any zone has a zone-specific door
     const hasZoneSpecificDoors = useMemo(() => {
         if (!rootZone) return false;
 
@@ -976,7 +188,6 @@ function Furniture({
         return checkZone(rootZone);
     }, [rootZone]);
 
-    // Collecter les informations sur les espaces ouverts pour le rendu du fond
     const openSpaceInfo = useMemo(() => {
         const openSpaces: { x: number; y: number; width: number; height: number }[] = [];
         if (!rootZone) return openSpaces;
@@ -1016,8 +227,6 @@ function Furniture({
         return openSpaces;
     }, [rootZone, w, sideHeight, yOffset, thickness]);
 
-    // Calculer les segments de panneaux basés sur la structure des zones
-    // Cela permet de sélectionner des portions de panneaux correspondant aux zones
     interface PanelSegment {
         id: string;
         x: number;
@@ -1026,13 +235,11 @@ function Furniture({
         height: number;
     }
 
-    // Interface pour les segments du panneau arrière (2D grid)
     interface BackPanelSegment extends PanelSegment {
         colIndex: number;
         rowIndex: number;
     }
 
-    // Interface pour les séparateurs
     interface SeparatorSegment extends PanelSegment {
         orientation: 'vertical' | 'horizontal';
         segmentIndex: number;
@@ -1051,7 +258,6 @@ function Furniture({
         const innerHeight = sideHeight - (thickness * 2);
 
         if (!rootZone) {
-            // Si pas de zones, un seul segment par panneau
             topSegments.push({ id: 'panel-top-0', x: 0, y: h - thickness/2, width: w, height: thickness });
             bottomSegments.push({ id: 'panel-bottom-0', x: 0, y: yOffset + thickness/2, width: w, height: thickness });
             leftSegments.push({ id: 'panel-left-0', x: -w/2 + thickness/2, y: sideHeight/2 + yOffset, width: thickness, height: sideHeight });
@@ -1060,7 +266,6 @@ function Furniture({
             return { topSegments, bottomSegments, leftSegments, rightSegments, backSegments, separatorSegments };
         }
 
-        // Fonction pour collecter toutes les cellules (grille 2D) récursivement
         interface GridCell {
             x: number;
             y: number;
@@ -1087,7 +292,6 @@ function Furniture({
             const cells: GridCell[] = [];
 
             if (zone.type === 'vertical') {
-                // Soustraire l'espace occupé par les séparateurs
                 const numSeparators = zone.children.length - 1;
                 const availableWidth = width - (numSeparators * thickness);
                 let currentX = x - width / 2;
@@ -1119,7 +323,6 @@ function Furniture({
                     }
                 });
             } else if (zone.type === 'horizontal') {
-                // Soustraire l'espace occupé par les séparateurs
                 const numSeparators = zone.children.length - 1;
                 const availableHeight = height - (numSeparators * thickness);
                 let currentY = y + height / 2;
@@ -1155,7 +358,6 @@ function Furniture({
             return cells;
         };
 
-        // Collecter les séparateurs récursivement
         interface SeparatorInfo {
             x: number;
             y: number;
@@ -1177,13 +379,10 @@ function Furniture({
         ): SeparatorInfo[] => {
             const separators: SeparatorInfo[] = [];
 
-            // Si pas d'enfants, retourner vide
             if (!zone.children || zone.children.length === 0) {
                 return separators;
             }
 
-            // Si un seul enfant, pas de séparateurs à ce niveau mais on doit quand même
-            // récurser dans l'enfant pour collecter ses séparateurs internes
             if (zone.children.length === 1) {
                 const child = zone.children[0];
                 const zoneDoor = zone.doorContent || zone.content;
@@ -1205,7 +404,6 @@ function Furniture({
             const currentHasDoor = hasDoorAbove || !!(zoneDoor && typeof zoneDoor === 'string' && zoneDoor.includes('door'));
 
             if (zone.type === 'vertical') {
-                // Soustraire l'espace occupé par les séparateurs
                 const numSeparators = zone.children.length - 1;
                 const availableWidth = width - (numSeparators * thickness);
                 let currentX = x - width / 2;
@@ -1222,7 +420,6 @@ function Furniture({
 
                     const colWidth = availableWidth * ratio;
 
-                    // Ajouter séparateur vertical après chaque colonne sauf la dernière
                     if (i < zone.children!.length - 1) {
                         separators.push({
                             x: currentX + colWidth + thickness / 2,
@@ -1235,7 +432,6 @@ function Furniture({
                         });
                     }
 
-                    // Récursion dans l'enfant
                     const childSeparators = collectSeparators(
                         child,
                         currentX + colWidth / 2,
@@ -1253,7 +449,6 @@ function Furniture({
                     }
                 });
             } else if (zone.type === 'horizontal') {
-                // Soustraire l'espace occupé par les séparateurs
                 const numSeparators = zone.children.length - 1;
                 const availableHeight = height - (numSeparators * thickness);
                 let currentY = y + height / 2;
@@ -1270,7 +465,6 @@ function Furniture({
 
                     const rowHeight = availableHeight * ratio;
 
-                    // Ajouter séparateur horizontal après chaque rangée sauf la dernière
                     if (i < zone.children!.length - 1) {
                         const sepY = currentY - rowHeight - thickness / 2;
                         separators.push({
@@ -1284,7 +478,6 @@ function Furniture({
                         });
                     }
 
-                    // Récursion dans l'enfant
                     const childSeparators = collectSeparators(
                         child,
                         x,
@@ -1306,7 +499,6 @@ function Furniture({
             return separators;
         };
 
-        // Collecter toutes les cellules de la grille
         const allCells = collectGridCells(
             rootZone,
             0,
@@ -1315,7 +507,6 @@ function Furniture({
             innerHeight
         );
 
-        // Collecter tous les séparateurs
         const allSeparators = collectSeparators(
             rootZone,
             0,
@@ -1324,13 +515,9 @@ function Furniture({
             innerHeight
         );
 
-        // Définir les limites ABSOLUES de l'intérieur du meuble (basées sur la structure, pas les cellules)
-        // Ces valeurs correspondent aux bords internes des panneaux haut/bas
-        const furnitureBottomInner = yOffset + thickness;  // Haut du panneau du bas
-        const furnitureTopInner = yOffset + sideHeight - thickness;  // Bas du panneau du haut
+        const furnitureBottomInner = yOffset + thickness;
+        const furnitureTopInner = yOffset + sideHeight - thickness;
 
-        // Créer les segments du panneau arrière basés sur les cellules
-        // Calculer les limites min/max réelles des cellules (pour référence)
         const minCellY = Math.min(...allCells.map(c => c.y - c.height / 2));
         const maxCellY = Math.max(...allCells.map(c => c.y + c.height / 2));
         const minCellX = Math.min(...allCells.map(c => c.x - c.width / 2));
@@ -1342,20 +529,16 @@ function Furniture({
             let segWidth = cell.width;
             let segHeight = cell.height;
 
-            // Utiliser les limites réelles des cellules pour déterminer les bords
             const cellBottom = cell.y - cell.height / 2;
             const cellTop = cell.y + cell.height / 2;
             const cellLeft = cell.x - cell.width / 2;
             const cellRight = cell.x + cell.width / 2;
 
-            // Vérifier si la cellule est aux bords par rapport aux autres cellules
             const isLeftmost = cellLeft <= minCellX + 0.01;
             const isRightmost = cellRight >= maxCellX - 0.01;
             const isTopmost = cellTop >= maxCellY - 0.01;
             const isBottommost = cellBottom <= minCellY + 0.01;
 
-            // Vérifier AUSSI contre les limites absolues du meuble (pour les colonnes internes)
-            // Utiliser une tolérance plus grande (0.05) pour capturer les cellules proches du bord
             const touchesFurnitureBottom = cellBottom <= furnitureBottomInner + 0.05;
             const touchesFurnitureTop = cellTop >= furnitureTopInner - 0.05;
 
@@ -1367,14 +550,11 @@ function Furniture({
                 segWidth += thickness;
                 segX += thickness / 2;
             }
-            // Étendre vers le haut si cellule au sommet
             if (isTopmost || touchesFurnitureTop) {
                 segHeight += thickness;
                 segY += thickness / 2;
             }
-            // Étendre vers le bas si cellule au fond du meuble - étendre jusqu'au socle
             if (isBottommost || touchesFurnitureBottom) {
-                // Calculer l'extension exacte nécessaire pour atteindre le haut du socle (yOffset)
                 const gapToBottom = cellBottom - yOffset;
                 const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
                 segHeight += extensionBottom;
@@ -1384,7 +564,6 @@ function Furniture({
             const colIndex = cell.colPath.length > 0 ? cell.colPath[0] : 0;
             const rowIndex = cell.rowPath.length > 0 ? cell.rowPath[0] : 0;
 
-            // Utiliser le chemin complet pour un ID unique et stable
             const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
 
             backSegments.push({
@@ -1398,21 +577,16 @@ function Furniture({
             });
         });
 
-        // DEBUG: Log pour comparer avec PanelPlanCanvas
         console.log('ThreeCanvas - Back panel IDs:', allCells.map((cell) => {
             const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
             return `panel-back-${pathId}`;
         }));
 
-        // Pour le panneau du haut - segmenter selon les colonnes de premier niveau
-        // IMPORTANT: Ne considérer que les cellules qui touchent le bord SUPÉRIEUR
-        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const maxY = Math.max(...allCells.map(c => c.y + c.height / 2));
         const topTouchingCells = allCells.filter(cell =>
             cell.y + cell.height / 2 >= maxY - 0.05
         );
 
-        // Identifier les colonnes uniques parmi les cellules touchant le haut
         const uniqueTopColumns = new Map<number, GridCell[]>();
         topTouchingCells.forEach(cell => {
             const key = Math.round(cell.x * 1000);
@@ -1422,13 +596,11 @@ function Furniture({
             uniqueTopColumns.get(key)!.push(cell);
         });
 
-        // Créer un segment de panneau haut pour chaque colonne
         const sortedTopColumns = Array.from(uniqueTopColumns.entries())
             .sort(([keyA], [keyB]) => keyA - keyB);
 
         if (sortedTopColumns.length > 1) {
             sortedTopColumns.forEach(([, cells], index) => {
-                // Prendre la première cellule de cette colonne pour obtenir la position
                 const cell = cells[0];
                 const isLeftmost = index === 0;
                 const isRightmost = index === sortedTopColumns.length - 1;
@@ -1436,7 +608,6 @@ function Furniture({
                 let segX = cell.x;
                 let segWidth = cell.width;
 
-                // Étendre aux bords pour les colonnes extrêmes
                 if (isLeftmost) {
                     segWidth += thickness;
                     segX -= thickness / 2;
@@ -1455,7 +626,6 @@ function Furniture({
                 });
             });
         } else {
-            // Pas de colonnes multiples, un seul segment
             topSegments.push({
                 id: 'panel-top-0',
                 x: 0,
@@ -1465,9 +635,6 @@ function Furniture({
             });
         }
 
-        // Pour le panneau du bas - segmenter selon les colonnes qui touchent le BAS
-        // IMPORTANT: Ne considérer que les cellules qui touchent le bord INFÉRIEUR
-        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const minY = Math.min(...allCells.map(c => c.y - c.height / 2));
         const bottomTouchingCells = allCells.filter(cell =>
             cell.y - cell.height / 2 <= minY + 0.05
@@ -1521,7 +688,6 @@ function Furniture({
             });
         }
 
-        // DEBUG: Log bottom panel creation
         console.log('🔵 BOTTOM PANEL DEBUG:', {
             allCellsCount: allCells.length,
             allCellsX: allCells.map(c => ({ x: c.x.toFixed(4), y: c.y.toFixed(4), bottom: (c.y - c.height/2).toFixed(4) })),
@@ -1532,8 +698,6 @@ function Furniture({
             bottomSegments: bottomSegments.map(s => ({ id: s.id, x: s.x.toFixed(4), width: s.width.toFixed(4) }))
         });
 
-        // Pour le panneau gauche - segmenter selon les rangées de premier niveau
-        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const uniqueLeftRows = new Map<number, GridCell[]>();
         const leftCells = allCells.filter(cell =>
             cell.x - cell.width / 2 <= -innerWidth / 2 + 0.05
@@ -1547,7 +711,7 @@ function Furniture({
         });
 
         const sortedLeftRows = Array.from(uniqueLeftRows.entries())
-            .sort(([keyA], [keyB]) => keyB - keyA); // Tri descendant pour Y (haut en premier)
+            .sort(([keyA], [keyB]) => keyB - keyA);
 
         if (sortedLeftRows.length > 1) {
             sortedLeftRows.forEach(([, cells], index) => {
@@ -1563,7 +727,6 @@ function Furniture({
                     segY += thickness / 2;
                 }
                 if (isBottommost) {
-                    // Étendre jusqu'au socle (yOffset)
                     const cellBottom = cell.y - cell.height / 2;
                     const gapToBottom = cellBottom - yOffset;
                     const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
@@ -1589,8 +752,6 @@ function Furniture({
             });
         }
 
-        // Pour le panneau droit - segmenter selon les rangées de premier niveau
-        // Tolérance augmentée à 0.05 (5cm) pour gérer les cas où splitRatios ne somment pas à 100%
         const uniqueRightRows = new Map<number, GridCell[]>();
         const rightCells = allCells.filter(cell =>
             cell.x + cell.width / 2 >= innerWidth / 2 - 0.05
@@ -1604,7 +765,7 @@ function Furniture({
         });
 
         const sortedRightRows = Array.from(uniqueRightRows.entries())
-            .sort(([keyA], [keyB]) => keyB - keyA); // Tri descendant pour Y (haut en premier)
+            .sort(([keyA], [keyB]) => keyB - keyA);
 
         if (sortedRightRows.length > 1) {
             sortedRightRows.forEach(([, cells], index) => {
@@ -1620,7 +781,6 @@ function Furniture({
                     segY += thickness / 2;
                 }
                 if (isBottommost) {
-                    // Étendre jusqu'au socle (yOffset)
                     const cellBottom = cell.y - cell.height / 2;
                     const gapToBottom = cellBottom - yOffset;
                     const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
@@ -1646,32 +806,21 @@ function Furniture({
             });
         }
 
-        // DEBUG: Log séparateurs
         console.log('ThreeCanvas - Separators:', allSeparators.map((sep) =>
             `${sep.orientation === 'vertical' ? 'V' : 'H'}[${sep.path}] at ${sep.orientation === 'vertical' ? `x=${sep.x.toFixed(2)}` : `y=${sep.y.toFixed(2)}`}`
         ));
 
-        // Utiliser les limites réelles des cellules pour les séparateurs aussi
-        // (déjà calculées ci-dessus : minCellY, maxCellY, minCellX, maxCellX)
 
-        // Créer les segments des séparateurs
         allSeparators.forEach((sep, i) => {
-            // Pour chaque séparateur, on peut le segmenter selon les cellules qu'il borde
-            // Pour simplifier, on crée un segment pour chaque portion du séparateur
 
             if (sep.orientation === 'vertical') {
-                // Vérifier si le séparateur lui-même touche les bords ABSOLUS du meuble
-                // Utiliser une tolérance plus grande (0.05) pour éviter les erreurs de virgule flottante
                 const sepBottom = sep.y - sep.height / 2;
                 const sepTop = sep.y + sep.height / 2;
                 const sepTouchesFurnitureTop = sepTop >= furnitureTopInner - 0.05;
                 const sepTouchesFurnitureBottom = sepBottom <= furnitureBottomInner + 0.05;
 
-                // DEBUG: Afficher les valeurs pour diagnostic
                 console.log(`Separator ${sep.path}: bottom=${sepBottom.toFixed(4)}, furnitureBottomInner=${furnitureBottomInner.toFixed(4)}, touches=${sepTouchesFurnitureBottom}`);
 
-                // Trouver toutes les cellules à gauche de ce séparateur
-                // Utiliser une tolérance plus grande pour capturer les cellules adjacentes
                 const adjacentCells = allCells.filter(cell =>
                     Math.abs((cell.x + cell.width / 2) - (sep.x - thickness / 2)) < 0.05
                 );
@@ -1679,7 +828,6 @@ function Furniture({
                 console.log(`Separator ${sep.path}: found ${adjacentCells.length} adjacent cells`);
 
                 if (adjacentCells.length > 0) {
-                    // Grouper par Y
                     const uniqueRows = new Map<number, GridCell>();
                     adjacentCells.forEach(cell => {
                         const key = Math.round(cell.y * 1000);
@@ -1691,23 +839,18 @@ function Furniture({
                     Array.from(uniqueRows.values())
                         .sort((a, b) => b.y - a.y)
                         .forEach((cell, j) => {
-                            // Utiliser directement les positions du séparateur pour assurer l'alignement
                             let segY = sep.y;
                             let segHeight = sep.height;
 
-                            // Étendre vers le haut si le séparateur touche le haut du meuble
                             if (sepTouchesFurnitureTop) {
-                                // Calculer l'extension exacte nécessaire pour atteindre le haut
                                 const gapToTop = furnitureTopInner - sepTop;
                                 const extensionTop = thickness + Math.max(0, gapToTop);
                                 segHeight += extensionTop;
                                 segY += extensionTop / 2;
                             }
-                            // Étendre vers le bas si le séparateur touche le bas du meuble
                             if (sepTouchesFurnitureBottom) {
-                                // Calculer l'extension exacte nécessaire pour atteindre le bas (yOffset = haut du socle)
                                 const gapToBottom = sepBottom - yOffset;
-                                const extensionBottom = Math.max(thickness, gapToBottom + 0.001); // +0.001 pour s'assurer de la couverture
+                                const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
                                 segHeight += extensionBottom;
                                 segY -= extensionBottom / 2;
                             }
@@ -1726,11 +869,9 @@ function Furniture({
                             });
                         });
                 } else {
-                    // Pas de cellules adjacentes, utiliser les dimensions du séparateur
                     let segY = sep.y;
                     let segHeight = sep.height;
 
-                    // Étendre jusqu'aux bords du meuble si le séparateur les touche
                     if (sepTouchesFurnitureTop) {
                         const gapToTop = furnitureTopInner - sepTop;
                         const extensionTop = thickness + Math.max(0, gapToTop);
@@ -1738,7 +879,6 @@ function Furniture({
                         segY += extensionTop / 2;
                     }
                     if (sepTouchesFurnitureBottom) {
-                        // Calculer l'extension exacte nécessaire pour atteindre le bas (yOffset = haut du socle)
                         const gapToBottom = sepBottom - yOffset;
                         const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
                         segHeight += extensionBottom;
@@ -1757,12 +897,9 @@ function Furniture({
                     });
                 }
             } else {
-                // Séparateur horizontal
-                // Limites gauche/droite du meuble
                 const furnitureLeftInner = -innerWidth / 2;
                 const furnitureRightInner = innerWidth / 2;
 
-                // Vérifier si le séparateur lui-même touche les bords du meuble
                 const sepTouchesFurnitureLeft = sep.x - sep.width / 2 <= furnitureLeftInner + 0.05;
                 const sepTouchesFurnitureRight = sep.x + sep.width / 2 >= furnitureRightInner - 0.05;
 
@@ -1786,24 +923,16 @@ function Furniture({
                             let segX = cell.x;
                             let segWidth = cell.width;
 
-                            // Vérifier si la cellule touche les bords ABSOLUS du meuble
                             const touchesFurnitureLeft = cell.x - cell.width / 2 <= furnitureLeftInner + 0.01;
                             const touchesFurnitureRight = cell.x + cell.width / 2 >= furnitureRightInner - 0.01;
 
-                            // Vérifier si c'est la première/dernière colonne dans le groupe
                             const isFirstInGroup = j === 0;
                             const isLastInGroup = j === sortedCols.length - 1;
 
-                            // Étendre vers la gauche si:
-                            // - La cellule touche le bord gauche du meuble, OU
-                            // - C'est une colonne unique (pas de colonnes adjacentes à gauche)
                             if (touchesFurnitureLeft || (isSingleColumn && isFirstInGroup)) {
                                 segWidth += thickness;
                                 segX -= thickness / 2;
                             }
-                            // Étendre vers la droite si:
-                            // - La cellule touche le bord droit du meuble, OU
-                            // - C'est une colonne unique (pas de colonnes adjacentes à droite)
                             if (touchesFurnitureRight || (isSingleColumn && isLastInGroup)) {
                                 segWidth += thickness;
                                 segX += thickness / 2;
@@ -1821,11 +950,9 @@ function Furniture({
                             });
                         });
                 } else {
-                    // Pas de cellules adjacentes, utiliser les dimensions du séparateur
                     let segX = sep.x;
                     let segWidth = sep.width;
 
-                    // Étendre jusqu'aux bords du meuble si le séparateur les touche
                     if (sepTouchesFurnitureLeft) {
                         segWidth += thickness;
                         segX -= thickness / 2;
@@ -1849,10 +976,8 @@ function Furniture({
             }
         });
 
-        // Log des segments séparateurs créés
         console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
 
-        // Fallback pour le panneau arrière si aucun segment n'a été créé
         if (backSegments.length === 0) {
             backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
         }
@@ -1865,14 +990,8 @@ function Furniture({
         const items: React.ReactNode[] = [];
         if (!rootZone) return items;
 
-        // Debug: afficher la rootZone reçue
-        // console.log('🎨 ThreeCanvas - rootZone reçue:', JSON.stringify(rootZone, null, 2));
-        // console.log('🎨 ThreeCanvas - rootZone.type:', rootZone.type);
-        // console.log('🎨 ThreeCanvas - rootZone.children:', rootZone.children?.length || 0, 'enfants');
 
         const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true, hasDoorInFront: boolean = false, isAtLeft: boolean = true, isAtRight: boolean = true) => {
-            // Calcul du débordement pour les portes en mode appliqué
-            // On n'applique le débordement que sur les bords externes du meuble
             const topOverlap = isAtTop ? doorOverlap : 0;
             const bottomOverlap = isAtBottom ? doorOverlap : 0;
             const totalDoorOverlap = topOverlap + bottomOverlap;
@@ -1882,9 +1001,7 @@ function Furniture({
             const doorZoneWidth = width + leftOverlap + rightOverlap;
             const doorXOffset = (rightOverlap - leftOverlap) / 2;
             if (zone.type === 'leaf') {
-                // Si c'est un espace ouvert, ne pas ajouter de contenu ni de hitbox normale
                 if (zone.isOpenSpace) {
-                    // Hitbox transparente pour pouvoir sélectionner l'espace ouvert
                     items.push(
                         <mesh
                             key={`${zone.id}-hitbox`}
@@ -1924,10 +1041,9 @@ function Furniture({
                             )}
                         </mesh>
                     );
-                    return; // Ne pas continuer - c'est un espace ouvert
+                    return;
                 }
 
-                // Ajouter l'éclairage si activé
                 if (zone.hasLight) {
                     items.push(
                         <CompartmentLight
@@ -1939,7 +1055,6 @@ function Furniture({
                     );
                 }
 
-                // Ajouter le passe-câble si activé
                 if (zone.hasCableHole) {
                     items.push(
                         <CableHole
@@ -1952,10 +1067,7 @@ function Furniture({
                     );
                 }
 
-                // Hitbox de sélection pour toutes les zones leaf
-                // En mode encastré, réduire la hitbox si derrière une porte pour ne pas bloquer le clic sur la porte
                 const hitboxBehindDoor = hasDoorInFront || !!zone.doorContent;
-                // Réduire la hitbox quand derrière une porte pour ne pas intercepter les clics
                 const hitboxRecess = hitboxBehindDoor ? 0.005 : 0;
                 const hitboxDepth = d - hitboxRecess + 0.002;
                 const hitboxZ = -hitboxRecess / 2;
@@ -1973,10 +1085,8 @@ function Furniture({
                         }}
                         onClick={(e) => {
                             e.stopPropagation();
-                            // On appelle onSelectZone avec l'id de la zone.
                             onSelectZone?.(zone.id);
 
-                            // On bascule l'ouverture si c'est un compartiment mobile
                             if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
                                 toggleCompartment(zone.id);
                             }
@@ -1992,12 +1102,10 @@ function Furniture({
                         />
                         {selectedZoneIds.includes(zone.id) && (
                             <>
-                                {/* Grillage (Wireframe) pour effet de sélection */}
                                 <mesh>
                                     <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
                                     <meshBasicMaterial color="#FF9800" wireframe transparent opacity={0.4} toneMapped={false} />
                                 </mesh>
-                                {/* Bordures plus marquées */}
                                 <lineSegments>
                                     <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, hitboxDepth)]} />
                                     <lineBasicMaterial color="#FF9800" linewidth={4} toneMapped={false} />
@@ -2017,7 +1125,6 @@ function Furniture({
                             <TexturedMaterial hexColor={finalShelfColor} imageUrl={finalShelfImageUrl} />
                         </mesh>
                     );
-                    // Ajouter des décorations sur l'étagère
                     if (showDecorations) {
                         items.push(
                             <group key={`${zone.id}-deco`} position={[x, y + thickness/2, shelfZ]}>
@@ -2026,7 +1133,6 @@ function Furniture({
                         );
                     }
                 } else if (zone.content === 'drawer') {
-                    // Utiliser la couleur spécifique de la zone si disponible
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
@@ -2048,7 +1154,6 @@ function Furniture({
                         />
                     );
                 } else if (zone.content === 'push_drawer') {
-                    // Tiroir push-to-open sans poignée - utiliser la couleur spécifique de la zone si disponible
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
@@ -2070,7 +1175,6 @@ function Furniture({
                     );
                 }
 
-                // Rendu de la penderie (Dressing) - Indépendant du contenu principal
                 if (zone.hasDressing || zone.content === 'dressing') {
                     items.push(
                         <mesh key={`${zone.id}-dressing`} position={[x, y + height / 2 - 0.05, z]} rotation={[0, 0, Math.PI / 2]}>
@@ -2080,7 +1184,6 @@ function Furniture({
                     );
                 }
 
-                // Rendu des portes (Indépendant du type de zone : feuille ou parent)
                 const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') ? zone.content : null);
 
                 if (doorToRender) {
@@ -2171,7 +1274,6 @@ function Furniture({
                 }
 
                 if (zone.content === 'glass_shelf') {
-                    // Étagère en verre transparente
                     const behindDoorGlass = hasDoorInFront || !!zone.doorContent;
                     const glassDepth = behindDoorGlass && doorRecess > 0 ? d - doorRecess : d;
                     const glassZ = behindDoorGlass && doorRecess > 0 ? z - doorRecess / 2 : z;
@@ -2190,7 +1292,6 @@ function Furniture({
                         </mesh>
                     );
                 } else if (zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
-                    // Porte avec miroir
                     const isMirrorRightLeaf = zone.content === 'mirror_door_right';
                     items.push(
                         <group key={zone.id} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
@@ -2210,7 +1311,6 @@ function Furniture({
                         </group>
                     );
                 } else {
-                    // Niche vide : Ajouter des décorations au fond de la niche
                     if (showDecorations) {
                         items.push(
                             <group key={`${zone.id}-deco`} position={[x, y - height/2 + thickness/2, z]}>
@@ -2221,8 +1321,6 @@ function Furniture({
                 }
             }
 
-            // --- Gestion des Portes sur les Groupes ---
-            // Si la zone a des enfants (groupe) et qu'elle a un contenu de type porte
             const groupDoor = zone.doorContent || (zone.children && zone.children.length > 0 ? zone.content : null);
             if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty') {
                 const doorToRender = groupDoor;
@@ -2317,52 +1415,36 @@ function Furniture({
 
             if (zone.children && zone.children.length > 0) {
                 console.log('🎨 parseZone - zone avec enfants:', zone.id, 'type:', zone.type, 'enfants:', zone.children.length);
-                // Déterminer si cette zone a une porte de groupe (pour la propager aux enfants)
                 const zoneDoorContent = zone.doorContent || zone.content;
                 const zoneHasDoor = hasDoorInFront || !!(zoneDoorContent && typeof zoneDoorContent === 'string' && zoneDoorContent.includes('door'));
                 let currentPos = 0;
                 zone.children.forEach((child, i) => {
-                    // Calcul du ratio pour chaque enfant
                     let ratio: number;
                     if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
-                        // Ratios explicites pour chaque enfant
                         ratio = zone.splitRatios[i] / 100;
                     } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
-                        // Mode splitRatio pour exactement 2 enfants
                         ratio = (i === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
                     } else {
-                        // Par défaut: distribution égale
                         ratio = 1 / zone.children!.length;
                     }
                     console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
 
                     if (zone.type === 'horizontal') {
                         const childHeight = height * ratio;
-                        // Rendu de haut en bas pour correspondre à l'UI 2D (index 0 = haut)
-                        // Pour les splits horizontaux:
-                        // - Premier enfant (i=0) est en haut: hérite isAtTop du parent, isAtBottom = false (sauf si c'est le seul enfant)
-                        // - Dernier enfant est en bas: isAtTop = false (sauf si c'est le seul enfant), hérite isAtBottom du parent
-                        // - Tous héritent isAtLeft/isAtRight du parent
                         const isFirst = i === 0;
                         const isLast = i === zone.children!.length - 1;
                         const childIsAtTop = isFirst ? isAtTop : false;
                         const childIsAtBottom = isLast ? isAtBottom : false;
                         parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight);
                         currentPos += childHeight;
-                        // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
-                        // pour permettre la suppression individuelle de chaque segment
                     } else {
                         const childWidth = width * ratio;
-                        // Pour les splits verticaux: les enfants héritent isAtTop et isAtBottom du parent
-                        // Premier enfant (gauche) hérite isAtLeft, dernier (droite) hérite isAtRight
                         const isFirst = i === 0;
                         const isLast = i === zone.children!.length - 1;
                         const childIsAtLeft = isFirst ? isAtLeft : false;
                         const childIsAtRight = isLast ? isAtRight : false;
                         parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight);
                         currentPos += childWidth;
-                        // Note: Les séparateurs visuels sont maintenant rendus via panelSegments.separatorSegments
-                        // pour permettre la suppression individuelle de chaque segment
                     }
                 });
             }
@@ -2379,20 +1461,16 @@ function Furniture({
         selectedPanelIds, onSelectPanel
     ]);
 
-    // Note: On n'utilise plus de key={colorKey} car cela causait des remontages
-    // et des flashs blancs lors des changements de couleur
 
-    // Callback pour la sélection de panneaux (désélectionne les zones si on sélectionne un panneau)
     const handlePanelSelect = useCallback((panelId: string | null) => {
         if (panelId && onSelectZone) {
-            onSelectZone(null); // Désélectionner les zones
+            onSelectZone(null);
         }
         onSelectPanel?.(panelId);
     }, [onSelectPanel, onSelectZone]);
 
     return (
         <group>
-            {/* Panneau gauche - rendu segment par segment pour permettre la suppression individuelle */}
             {panelSegments.leftSegments.map((segment) => (
                 !deletedPanelIds.has(segment.id) && (
                     <StructuralPanel
@@ -2404,7 +1482,6 @@ function Furniture({
                     />
                 )
             ))}
-            {/* Hitbox de sélection par segment pour le panneau gauche */}
             {panelSegments.leftSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
@@ -2417,7 +1494,6 @@ function Furniture({
                 />
             ))}
 
-            {/* Panneau droit - rendu segment par segment pour permettre la suppression individuelle */}
             {panelSegments.rightSegments.map((segment) => (
                 !deletedPanelIds.has(segment.id) && (
                     <StructuralPanel
@@ -2429,7 +1505,6 @@ function Furniture({
                     />
                 )
             ))}
-            {/* Hitbox de sélection par segment pour le panneau droit */}
             {panelSegments.rightSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
@@ -2442,7 +1517,6 @@ function Furniture({
                 />
             ))}
 
-            {/* Panneau supérieur - rendu segment par segment pour permettre la suppression individuelle */}
             {panelSegments.topSegments.map((segment) => (
                 !deletedPanelIds.has(segment.id) && (
                     <StructuralPanel
@@ -2454,7 +1528,6 @@ function Furniture({
                     />
                 )
             ))}
-            {/* Hitbox de sélection par segment pour le panneau supérieur */}
             {panelSegments.topSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
@@ -2467,7 +1540,6 @@ function Furniture({
                 />
             ))}
 
-            {/* Décorations sur le dessus */}
             {showDecorations && h <= 1.5 && (
                 <group position={[0, h, 0]}>
                     {w > 0.6 && (
@@ -2485,7 +1557,6 @@ function Furniture({
                 </group>
             )}
 
-            {/* Panneau inférieur - rendu segment par segment pour permettre la suppression individuelle */}
             {panelSegments.bottomSegments.map((segment) => {
                 const isDeleted = deletedPanelIds.has(segment.id);
                 console.log('🟢 BOTTOM RENDER:', segment.id, 'isDeleted:', isDeleted, 'deletedPanelIds:', Array.from(deletedPanelIds));
@@ -2499,7 +1570,6 @@ function Furniture({
                     />
                 );
             })}
-            {/* Hitbox de sélection par segment pour le panneau inférieur */}
             {panelSegments.bottomSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
@@ -2512,7 +1582,6 @@ function Furniture({
                 />
             ))}
 
-            {/* Séparateurs - rendu segment par segment pour permettre la suppression individuelle */}
             {panelSegments.separatorSegments.map((segment) => {
                 const sepDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
                 const sepZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
@@ -2526,7 +1595,6 @@ function Furniture({
                     />
                 );
             })}
-            {/* Hitbox de sélection par segment pour les séparateurs */}
             {panelSegments.separatorSegments.map((segment) => {
                 const sepHitDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
                 const sepHitZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
@@ -2541,10 +1609,8 @@ function Furniture({
                 />;
             })}
 
-            {/* Dynamic Elements */}
             {elements}
 
-            {/* Doors with Animation - Only render if no zone-specific doors */}
             {rootZone && doorType !== 'none' && !hasZoneSpecificDoors && (
                 <group position={[0, sideHeight/2 + yOffset, d/2]}>
                     {(doorType === 'double' || (doorType === 'single' && doorSide === 'left')) && (
@@ -2580,8 +1646,6 @@ function Furniture({
                 </group>
             )}
 
-            {/* Click Detector for Doors (invisible large area) - Only render if no zone-specific doors */}
-            {/* We keep it as a fallback for when clicking between doors or for the root selection if doors are closed */}
             {doorType !== 'none' && !hasZoneSpecificDoors && (
                 <mesh
                     position={[0, sideHeight/2 + yOffset, d/2 + 0.01]}
@@ -2596,12 +1660,10 @@ function Furniture({
                 </mesh>
             )}
 
-            {/* Socle */}
             {hasSocle && (
                 <>
                     {socle === 'metal' ? (
                         <group position={[0, 0, 0]}>
-                            {/* Pieds métal */}
                             <mesh position={[-w/2 + 0.05, 0.05, -d/2 + 0.05]} castShadow>
                                 <boxGeometry args={[0.03, 0.1, 0.03]} />
                                 <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
@@ -2620,25 +1682,21 @@ function Furniture({
                             </mesh>
                         </group>
                     ) : (
-                        /* Socle plein (bois) - segmenté selon les colonnes du bas */
                         <group>
                             {panelSegments.bottomSegments.map((segment, index) => {
                                 if (deletedPanelIds.has(segment.id)) return null;
 
-                                // Étendre le socle pour couvrir les espaces des séparateurs
                                 const isFirst = index === 0;
                                 const isLast = index === panelSegments.bottomSegments.length - 1;
-                                const separatorGap = thickness; // Épaisseur du séparateur vertical
+                                const separatorGap = thickness;
 
                                 let socleX = segment.x;
                                 let socleWidth = segment.width;
 
-                                // Étendre vers la droite pour couvrir le séparateur (sauf dernier segment)
                                 if (!isLast) {
                                     socleWidth += separatorGap / 2;
                                     socleX += separatorGap / 4;
                                 }
-                                // Étendre vers la gauche pour couvrir le séparateur (sauf premier segment)
                                 if (!isFirst) {
                                     socleWidth += separatorGap / 2;
                                     socleX -= separatorGap / 4;
@@ -2661,11 +1719,8 @@ function Furniture({
                 </>
             )}
 
-            {/* Back Panel - avec gestion des espaces ouverts */}
             {openSpaceInfo.length === 0 ? (
-                // Pas d'espaces ouverts : panneaux segmentés avec suppression individuelle
                 <>
-                    {/* Panneaux arrière visuels par segment (peuvent être supprimés individuellement) */}
                     {panelSegments.backSegments.map((segment) => (
                         !deletedPanelIds.has(segment.id) && (
                             <StructuralPanel
@@ -2678,7 +1733,6 @@ function Furniture({
                             />
                         )
                     ))}
-                    {/* Hitbox de sélection par segment pour le panneau arrière */}
                     {panelSegments.backSegments.map((segment) => (
                         <PanelSegmentHitbox
                             key={segment.id}
@@ -2692,8 +1746,6 @@ function Furniture({
                     ))}
                 </>
             ) : (
-                // Avec espaces ouverts : générer des panneaux qui évitent les zones ouvertes
-                // Note: Pour simplifier, le back panel avec ouvertures n'est pas sélectionnable pour l'instant
                 <group
                     onClick={(e) => {
                         e.stopPropagation();
@@ -2728,911 +1780,11 @@ function Furniture({
     );
 }
 
-// ============================================
-// TABLEAUX ARTISTIQUES MODERNES
-// ============================================
-
-// Composant pour un tableau style minimaliste japonais
-function JapaneseMinimalist({ position, width = 0.8, height = 1.0 }: { position: [number, number, number]; width?: number; height?: number }) {
-    return (
-        <group position={position}>
-            {/* Cadre noir fin */}
-            <mesh position={[0, height/2 + 0.01, 0]} castShadow>
-                <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
-            </mesh>
-            <mesh position={[0, -height/2 - 0.01, 0]} castShadow>
-                <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
-            </mesh>
-            <mesh position={[-width/2 - 0.01, 0, 0]} castShadow>
-                <boxGeometry args={[0.015, height, 0.02]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
-            </mesh>
-            <mesh position={[width/2 + 0.01, 0, 0]} castShadow>
-                <boxGeometry args={[0.015, height, 0.02]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.2} metalness={0.3} />
-            </mesh>
-
-            {/* Fond crème */}
-            <mesh position={[0, 0, -0.005]}>
-                <planeGeometry args={[width, height]} />
-                <meshStandardMaterial color="#F5F2E8" roughness={0.95} />
-            </mesh>
-
-            {/* Branche de cerisier */}
-            <mesh position={[-width*0.1, -height*0.1, 0.001]} rotation={[0, 0, 0.3]}>
-                <boxGeometry args={[width*0.5, 0.008, 0.002]} />
-                <meshStandardMaterial color="#3E2723" roughness={0.8} />
-            </mesh>
-            <mesh position={[width*0.05, height*0.05, 0.001]} rotation={[0, 0, -0.5]}>
-                <boxGeometry args={[width*0.25, 0.005, 0.002]} />
-                <meshStandardMaterial color="#3E2723" roughness={0.8} />
-            </mesh>
-
-            {/* Fleurs de cerisier */}
-            <mesh position={[-width*0.05, height*0.1, 0.002]}>
-                <circleGeometry args={[0.025, 16]} />
-                <meshStandardMaterial color="#FFCDD2" roughness={0.6} />
-            </mesh>
-            <mesh position={[width*0.08, height*0.15, 0.002]}>
-                <circleGeometry args={[0.02, 16]} />
-                <meshStandardMaterial color="#F8BBD9" roughness={0.6} />
-            </mesh>
-            <mesh position={[width*0.15, height*0.08, 0.002]}>
-                <circleGeometry args={[0.022, 16]} />
-                <meshStandardMaterial color="#FFCDD2" roughness={0.6} />
-            </mesh>
-            <mesh position={[-width*0.12, height*0.02, 0.002]}>
-                <circleGeometry args={[0.018, 16]} />
-                <meshStandardMaterial color="#F8BBD9" roughness={0.6} />
-            </mesh>
-            <mesh position={[width*0.02, height*0.2, 0.002]}>
-                <circleGeometry args={[0.024, 16]} />
-                <meshStandardMaterial color="#FFCDD2" roughness={0.6} />
-            </mesh>
-
-            {/* Sceau rouge signature */}
-            <mesh position={[width*0.3, -height*0.35, 0.002]}>
-                <boxGeometry args={[0.04, 0.05, 0.001]} />
-                <meshStandardMaterial color="#C62828" roughness={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-// Composant pour un tableau abstrait contemporain
-function AbstractContemporary({ position, width = 1.2, height = 0.9 }: { position: [number, number, number]; width?: number; height?: number }) {
-    return (
-        <group position={position}>
-            {/* Cadre flottant blanc */}
-            <mesh position={[0, 0, -0.02]} castShadow>
-                <boxGeometry args={[width + 0.08, height + 0.08, 0.04]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.1} />
-            </mesh>
-            <mesh position={[0, 0, 0]}>
-                <boxGeometry args={[width + 0.04, height + 0.04, 0.03]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
-            </mesh>
-
-            {/* Fond */}
-            <mesh position={[0, 0, 0.01]}>
-                <planeGeometry args={[width - 0.04, height - 0.04]} />
-                <meshStandardMaterial color="#FAFAFA" roughness={0.9} />
-            </mesh>
-
-            {/* Arc doré */}
-            <mesh position={[width*0.2, -height*0.05, 0.016]} rotation={[0, 0, -0.3]}>
-                <ringGeometry args={[width*0.12, width*0.18, 32, 1, 0, Math.PI]} />
-                <meshStandardMaterial color="#F2CC8F" roughness={0.6} side={THREE.DoubleSide} />
-            </mesh>
-
-            {/* Cercle bleu foncé */}
-            <mesh position={[-width*0.2, height*0.15, 0.015]}>
-                <circleGeometry args={[width*0.18, 32]} />
-                <meshStandardMaterial color="#4A5F7F" roughness={0.6} />
-            </mesh>
-
-            {/* Cercle vert */}
-            <mesh position={[width*0.25, height*0.25, 0.017]}>
-                <circleGeometry args={[width*0.06, 24]} />
-                <meshStandardMaterial color="#81B29A" roughness={0.5} />
-            </mesh>
-
-            {/* Ligne graphique */}
-            <mesh position={[-width*0.1, -height*0.25, 0.018]}>
-                <boxGeometry args={[width*0.4, 0.008, 0.001]} />
-                <meshStandardMaterial color="#3D405B" roughness={0.4} />
-            </mesh>
-
-            {/* Points décoratifs */}
-            <mesh position={[-width*0.3, height*0.3, 0.019]}>
-                <circleGeometry args={[0.012, 12]} />
-                <meshStandardMaterial color="#3D405B" roughness={0.5} />
-            </mesh>
-            <mesh position={[width*0.32, -height*0.28, 0.019]}>
-                <circleGeometry args={[0.015, 12]} />
-                <meshStandardMaterial color="#81B29A" roughness={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-// Composant pour un paysage scandinave minimaliste
-function ScandinavianLandscape({ position, width = 1.0, height = 0.7 }: { position: [number, number, number]; width?: number; height?: number }) {
-    return (
-        <group position={position}>
-            {/* Cadre bois clair */}
-            <mesh position={[0, height/2 + 0.02, 0]} castShadow>
-                <boxGeometry args={[width + 0.07, 0.035, 0.025]} />
-                <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
-            </mesh>
-            <mesh position={[0, -height/2 - 0.02, 0]} castShadow>
-                <boxGeometry args={[width + 0.07, 0.035, 0.025]} />
-                <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
-            </mesh>
-            <mesh position={[-width/2 - 0.02, 0, 0]} castShadow>
-                <boxGeometry args={[0.035, height, 0.025]} />
-                <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
-            </mesh>
-            <mesh position={[width/2 + 0.02, 0, 0]} castShadow>
-                <boxGeometry args={[0.035, height, 0.025]} />
-                <meshStandardMaterial color="#D4C4B0" roughness={0.4} metalness={0.1} />
-            </mesh>
-
-            {/* Ciel */}
-            <mesh position={[0, height*0.2, -0.005]}>
-                <planeGeometry args={[width, height*0.6]} />
-                <meshStandardMaterial color="#E8DFD6" roughness={0.95} />
-            </mesh>
-            <mesh position={[0, height*0.35, -0.004]}>
-                <planeGeometry args={[width, height*0.3]} />
-                <meshStandardMaterial color="#D4C8BC" roughness={0.95} />
-            </mesh>
-
-            {/* Montagne arrière */}
-            <mesh position={[width*0.15, -height*0.05, 0.001]}>
-                <coneGeometry args={[width*0.35, height*0.5, 3]} />
-                <meshStandardMaterial color="#C4B8AC" roughness={0.8} flatShading />
-            </mesh>
-
-            {/* Montagne avant */}
-            <mesh position={[-width*0.1, -height*0.15, 0.002]}>
-                <coneGeometry args={[width*0.3, height*0.45, 3]} />
-                <meshStandardMaterial color="#8B7355" roughness={0.8} flatShading />
-            </mesh>
-
-            {/* Eau/Reflet */}
-            <mesh position={[0, -height*0.35, 0.003]}>
-                <planeGeometry args={[width, height*0.2]} />
-                <meshStandardMaterial color="#B8C4C8" roughness={0.3} metalness={0.2} />
-            </mesh>
-
-            {/* Ligne d'horizon */}
-            <mesh position={[0, -height*0.25, 0.004]}>
-                <boxGeometry args={[width, 0.003, 0.001]} />
-                <meshStandardMaterial color="#5C5552" roughness={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-// Composant One Line Art (dessin au trait)
-function OneLineArt({ position, width = 0.5, height = 0.7 }: { position: [number, number, number]; width?: number; height?: number }) {
-    return (
-        <group position={position}>
-            {/* Cadre flottant */}
-            <mesh position={[0, 0, -0.02]} castShadow>
-                <boxGeometry args={[width + 0.06, height + 0.06, 0.04]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.3} metalness={0.1} />
-            </mesh>
-            <mesh position={[0, 0, 0]}>
-                <boxGeometry args={[width + 0.02, height + 0.02, 0.03]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
-            </mesh>
-
-            {/* Fond blanc */}
-            <mesh position={[0, 0, 0.01]}>
-                <planeGeometry args={[width - 0.02, height - 0.02]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.95} />
-            </mesh>
-
-            {/* Dessin visage au trait */}
-            {/* Contour du visage */}
-            <mesh position={[0, 0, 0.015]} rotation={[0, 0, 0.1]}>
-                <torusGeometry args={[width*0.18, 0.003, 8, 32, Math.PI * 1.2]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
-            </mesh>
-            {/* Œil */}
-            <mesh position={[-width*0.05, height*0.05, 0.016]}>
-                <torusGeometry args={[width*0.03, 0.002, 8, 16, Math.PI * 2]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
-            </mesh>
-            {/* Sourcil */}
-            <mesh position={[-width*0.05, height*0.1, 0.016]} rotation={[0, 0, 0.2]}>
-                <torusGeometry args={[width*0.04, 0.002, 8, 16, Math.PI * 0.6]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
-            </mesh>
-            {/* Nez */}
-            <mesh position={[width*0.02, -height*0.02, 0.016]}>
-                <boxGeometry args={[0.003, height*0.08, 0.001]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
-            </mesh>
-            {/* Lèvres */}
-            <mesh position={[0, -height*0.1, 0.016]}>
-                <torusGeometry args={[width*0.04, 0.002, 8, 16, Math.PI]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-// Composant Bauhaus géométrique
-function BauhausGeometric({ position, width = 0.6, height = 0.8 }: { position: [number, number, number]; width?: number; height?: number }) {
-    return (
-        <group position={position}>
-            {/* Cadre blanc fin */}
-            <mesh position={[0, height/2 + 0.01, 0]} castShadow>
-                <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
-            </mesh>
-            <mesh position={[0, -height/2 - 0.01, 0]} castShadow>
-                <boxGeometry args={[width + 0.02, 0.015, 0.02]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
-            </mesh>
-            <mesh position={[-width/2 - 0.01, 0, 0]} castShadow>
-                <boxGeometry args={[0.015, height, 0.02]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
-            </mesh>
-            <mesh position={[width/2 + 0.01, 0, 0]} castShadow>
-                <boxGeometry args={[0.015, height, 0.02]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.3} />
-            </mesh>
-
-            {/* Fond */}
-            <mesh position={[0, 0, -0.005]}>
-                <planeGeometry args={[width, height]} />
-                <meshStandardMaterial color="#F5F5F0" roughness={0.95} />
-            </mesh>
-
-            {/* Cercle rouge */}
-            <mesh position={[-width*0.15, height*0.2, 0.001]}>
-                <circleGeometry args={[width*0.2, 32]} />
-                <meshStandardMaterial color="#D32F2F" roughness={0.5} />
-            </mesh>
-
-            {/* Triangle jaune */}
-            <mesh position={[width*0.15, height*0.15, 0.002]}>
-                <coneGeometry args={[width*0.15, width*0.25, 3]} />
-                <meshStandardMaterial color="#FBC02D" roughness={0.5} flatShading />
-            </mesh>
-
-            {/* Carré bleu */}
-            <mesh position={[width*0.1, -height*0.2, 0.003]} rotation={[0, 0, Math.PI/6]}>
-                <boxGeometry args={[width*0.22, width*0.22, 0.002]} />
-                <meshStandardMaterial color="#1976D2" roughness={0.5} />
-            </mesh>
-
-            {/* Lignes noires */}
-            <mesh position={[-width*0.2, -height*0.1, 0.004]}>
-                <boxGeometry args={[0.006, height*0.5, 0.001]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
-            </mesh>
-            <mesh position={[0, -height*0.3, 0.004]}>
-                <boxGeometry args={[width*0.6, 0.006, 0.001]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
-            </mesh>
-
-            {/* Petit cercle noir */}
-            <mesh position={[-width*0.25, -height*0.25, 0.005]}>
-                <circleGeometry args={[width*0.05, 24]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
-            </mesh>
-        </group>
-    );
-}
-
-// Composant Horloge murale moderne
-function WallClock({ position, radius = 0.25 }: { position: [number, number, number]; radius?: number }) {
-    return (
-        <group position={position}>
-            {/* Cadre/Bordure de l'horloge */}
-            <mesh position={[0, 0, -0.01]} castShadow>
-                <cylinderGeometry args={[radius + 0.015, radius + 0.015, 0.04, 32]} />
-                <meshStandardMaterial color="#2C2C2C" roughness={0.3} metalness={0.7} />
-            </mesh>
-
-            {/* Fond blanc de l'horloge */}
-            <mesh position={[0, 0, 0.01]}>
-                <circleGeometry args={[radius, 32]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.2} />
-            </mesh>
-
-            {/* Marques des heures (12, 3, 6, 9) */}
-            <mesh position={[0, radius * 0.85, 0.015]}>
-                <boxGeometry args={[0.008, radius * 0.12, 0.002]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
-            </mesh>
-            <mesh position={[radius * 0.85, 0, 0.015]}>
-                <boxGeometry args={[radius * 0.12, 0.008, 0.002]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
-            </mesh>
-            <mesh position={[0, -radius * 0.85, 0.015]}>
-                <boxGeometry args={[0.008, radius * 0.12, 0.002]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
-            </mesh>
-            <mesh position={[-radius * 0.85, 0, 0.015]}>
-                <boxGeometry args={[radius * 0.12, 0.008, 0.002]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
-            </mesh>
-
-            {/* Petites marques pour les autres heures */}
-            {Array.from({ length: 8 }).map((_, i) => {
-                const angle = (Math.PI / 6) * (i + (i >= 3 ? 2 : 1));
-                const x = Math.sin(angle) * radius * 0.88;
-                const y = Math.cos(angle) * radius * 0.88;
-                return (
-                    <mesh key={i} position={[x, y, 0.015]} rotation={[0, 0, -angle]}>
-                        <boxGeometry args={[0.004, radius * 0.08, 0.002]} />
-                        <meshStandardMaterial color="#666" roughness={0.5} />
-                    </mesh>
-                );
-            })}
-
-            {/* Aiguille des heures (10h) */}
-            <mesh position={[-radius * 0.15, radius * 0.25, 0.02]} rotation={[0, 0, Math.PI / 6]}>
-                <boxGeometry args={[0.01, radius * 0.5, 0.003]} />
-                <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
-            </mesh>
-
-            {/* Aiguille des minutes (10 minutes) */}
-            <mesh position={[radius * 0.08, radius * 0.4, 0.022]} rotation={[0, 0, -Math.PI / 18]}>
-                <boxGeometry args={[0.006, radius * 0.7, 0.003]} />
-                <meshStandardMaterial color="#2C2C2C" roughness={0.3} />
-            </mesh>
-
-            {/* Centre de l'horloge */}
-            <mesh position={[0, 0, 0.025]}>
-                <cylinderGeometry args={[0.015, 0.015, 0.01, 16]} />
-                <meshStandardMaterial color="#D32F2F" roughness={0.4} metalness={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-function Room() {
-    return (
-        <group>
-            {/* Sol (Parquet clair) */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]} receiveShadow>
-                <planeGeometry args={[20, 20]} />
-                <meshStandardMaterial color="#E5DACE" roughness={0.8} metalness={0.1} />
-            </mesh>
-
-            {/* Tapis */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 1]} receiveShadow>
-                <planeGeometry args={[4, 3]} />
-                <meshStandardMaterial color="#D1D1D1" roughness={1} />
-            </mesh>
-
-            {/* Mur Arrière */}
-            <mesh position={[0, 5, -2]} receiveShadow>
-                <planeGeometry args={[20, 10]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
-            </mesh>
-
-            {/* Mur Gauche */}
-            <mesh position={[-5, 5, 3]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
-                <planeGeometry args={[10, 10]} />
-                <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
-            </mesh>
-
-            {/* Plinthe */}
-            <mesh position={[0, 0.05, -1.99]}>
-                <boxGeometry args={[20, 0.1, 0.02]} />
-                <meshStandardMaterial color="#FFFFFF" />
-            </mesh>
-
-            {/* Interrupteur */}
-            <mesh position={[-4.98, 1.2, 0]}>
-                <boxGeometry args={[0.02, 0.1, 0.1]} />
-                <meshStandardMaterial color="#f0f0f0" />
-            </mesh>
-
-            {/* Plante décorative */}
-            <group position={[-1.8, 0, -1]}>
-                <mesh position={[0, 0.15, 0]} castShadow>
-                    <cylinderGeometry args={[0.15, 0.1, 0.3, 16]} />
-                    <meshStandardMaterial color="#444444" />
-                </mesh>
-                {Array.from({ length: 12 }).map((_, i) => (
-                    <mesh
-                        key={i}
-                        position={[0, 0.5, 0]}
-                        rotation={[Math.random() * 0.8, i * Math.PI/6, Math.random() * 0.8]}
-                        castShadow
-                    >
-                        <capsuleGeometry args={[0.03, 0.6, 4, 8]} />
-                        <meshStandardMaterial color="#2D5A27" roughness={0.8} />
-                    </mesh>
-                ))}
-            </group>
-
-            {/* ========== TABLEAUX ARTISTIQUES MODERNES ========== */}
-
-            {/* Tableau principal - Japonais minimaliste (centre) - NOUVEAU DESIGN */}
-            <JapaneseMinimalist position={[0.3, 2.6, -1.97]} width={1.2} height={0.95} />
-
-            {/* Tableau scandinave (gauche) */}
-            <ScandinavianLandscape position={[-2.2, 2.4, -1.97]} width={0.8} height={0.95} />
-
-            {/* Bauhaus géométrique (droite haut) */}
-            <BauhausGeometric position={[2.5, 2.8, -1.97]} width={0.65} height={0.8} />
-
-            {/* Horloge murale (droite bas) - REMPLACE LE TABLEAU NOIR */}
-            <WallClock position={[2.5, 1.8, -1.97]} radius={0.25} />
-
-            {/* Bauhaus géométrique (extrême gauche) */}
-            <BauhausGeometric position={[-3.5, 2.2, -1.97]} width={0.55} height={0.7} />
-
-        </group>
-    );
-}
-
-function HumanSilhouette() {
-    const [texture, setTexture] = useState<THREE.Texture | null>(null);
-
-    useEffect(() => {
-        const loader = new THREE.TextureLoader();
-        loader.load('/images/human-silhouette.png', (t) => {
-            setTexture(t);
-        });
-    }, []);
-
-    if (!texture) return null;
-
-    return (
-        <group position={[1.4, 0.85, 0.9]}>
-            <sprite scale={[1.1, 1.7, 1]}>
-                <spriteMaterial
-                    map={texture}
-                    transparent
-                    opacity={0.12}
-                    depthWrite={false}
-                />
-            </sprite>
-        </group>
-    );
-}
-
-// --- Composants de Décoration ---
-
-function Book({ position, color, rotation = [0, 0, 0], height = 0.22, thickness = 0.028, bookDepth = 0.14 }: any) {
-    return (
-        <group position={position} rotation={rotation}>
-            {/* Couverture */}
-            <mesh castShadow receiveShadow>
-                <boxGeometry args={[thickness, height, bookDepth]} />
-                <meshStandardMaterial color={color} roughness={0.75} />
-            </mesh>
-            {/* Pages (tranche visible cote mur) */}
-            <mesh position={[0, 0, -0.002]}>
-                <boxGeometry args={[thickness - 0.003, height - 0.005, bookDepth - 0.005]} />
-                <meshStandardMaterial color="#F5F0E8" roughness={0.95} />
-            </mesh>
-            {/* Titre sur le dos (2 lignes) */}
-            <mesh position={[0, height * 0.1, bookDepth / 2 + 0.001]}>
-                <boxGeometry args={[thickness * 0.6, 0.004, 0.001]} />
-                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.45} />
-            </mesh>
-            <mesh position={[0, height * 0.05, bookDepth / 2 + 0.001]}>
-                <boxGeometry args={[thickness * 0.45, 0.003, 0.001]} />
-                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.35} />
-            </mesh>
-            {/* Auteur en bas du dos */}
-            <mesh position={[0, -height * 0.28, bookDepth / 2 + 0.001]}>
-                <boxGeometry args={[thickness * 0.5, 0.003, 0.001]} />
-                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.35} />
-            </mesh>
-            {/* Bande decorative haut du dos */}
-            <mesh position={[0, height * 0.42, bookDepth / 2 + 0.001]}>
-                <boxGeometry args={[thickness * 0.75, 0.005, 0.001]} />
-                <meshStandardMaterial color="#FFFFFF" transparent opacity={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-function Books({ position, count = 5, seed = "1" }: any) {
-    const colors = ['#5B7B7A', '#8B7355', '#6B5B4C', '#4A5568', '#7C6B5C', '#3C4A3E', '#6E5F50', '#4F5D65', '#8E7B6B', '#5C6B6A'];
-    const books = useMemo(() => {
-        let hash = 0;
-        for (let i = 0; i < seed.length; i++) {
-            hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-            hash |= 0;
-        }
-        const s = Math.abs(hash);
-
-        let currentX = 0;
-        return Array.from({ length: count }).map((_, i) => {
-            const h = s + i * 7;
-            const isLast = i === count - 1;
-            const bookHeight = 0.18 + (h % 5) * 0.012;
-            const bookThickness = 0.022 + (h % 3) * 0.005;
-            const bookDepth = 0.11 + (h % 4) * 0.01;
-            const tilt = isLast && count > 1 ? 0.06 : 0;
-            const offset = currentX + bookThickness / 2;
-            currentX += bookThickness + 0.002;
-            return {
-                color: colors[(s + i) % colors.length],
-                height: bookHeight,
-                thickness: bookThickness,
-                depth: bookDepth,
-                offset,
-                tilt,
-                depthOffset: ((h % 5) - 2) * 0.003
-            };
-        });
-    }, [count, seed]);
-
-    return (
-        <group position={position}>
-            {books.map((b, i) => (
-                <Book
-                    key={i}
-                    position={[b.offset, b.height / 2, b.depthOffset]}
-                    color={b.color}
-                    height={b.height}
-                    thickness={b.thickness}
-                    bookDepth={b.depth}
-                    rotation={[0, 0, b.tilt]}
-                />
-            ))}
-        </group>
-    );
-}
-
-function Plant({ position, scale = 1, seed = "1" }: any) {
-    const hash = useMemo(() => {
-        let h = 0;
-        for (let i = 0; i < seed.length; i++) {
-            h = ((h << 5) - h) + seed.charCodeAt(i);
-            h |= 0;
-        }
-        return Math.abs(h);
-    }, [seed]);
-
-    const potColor = ['#C67B5C', '#A0877C', '#8B7355', '#9C8B7A'][hash % 4];
-
-    return (
-        <group position={position} scale={scale}>
-            {/* Pot */}
-            <mesh position={[0, 0.04, 0]} castShadow>
-                <cylinderGeometry args={[0.045, 0.035, 0.08, 16]} />
-                <meshStandardMaterial color={potColor} roughness={0.85} />
-            </mesh>
-            {/* Bord du pot */}
-            <mesh position={[0, 0.082, 0]}>
-                <cylinderGeometry args={[0.048, 0.046, 0.008, 16]} />
-                <meshStandardMaterial color={potColor} roughness={0.85} />
-            </mesh>
-            {/* Terre */}
-            <mesh position={[0, 0.08, 0]}>
-                <cylinderGeometry args={[0.042, 0.042, 0.005, 16]} />
-                <meshStandardMaterial color="#3E2723" roughness={1} />
-            </mesh>
-            {/* Feuilles */}
-            {Array.from({ length: 6 }).map((_, i) => {
-                const angle = (i / 6) * Math.PI * 2 + (hash % 10) * 0.3;
-                const lean = 0.35 + (i % 3) * 0.15;
-                const leafLen = 0.04 + (i % 2) * 0.015;
-                return (
-                    <group key={i} position={[0, 0.085, 0]} rotation={[lean, angle, 0]}>
-                        <mesh position={[0, leafLen, 0]} scale={[0.3, 1, 0.08]} castShadow>
-                            <sphereGeometry args={[leafLen, 8, 6]} />
-                            <meshStandardMaterial color={i % 2 === 0 ? '#4A6B3C' : '#567D4A'} roughness={0.8} side={THREE.DoubleSide} />
-                        </mesh>
-                    </group>
-                );
-            })}
-        </group>
-    );
-}
-
-function MagazineStack({ position, scale = 1, seed = "1" }: any) {
-    const hash = useMemo(() => {
-        let h = 0;
-        for (let i = 0; i < seed.length; i++) {
-            h = ((h << 5) - h) + seed.charCodeAt(i);
-            h |= 0;
-        }
-        return Math.abs(h);
-    }, [seed]);
-
-    const colors = ['#8B7355', '#5B7B7A', '#A89080', '#6B5B4C', '#7C6B5C', '#4A5568', '#9C8B7A', '#6E5F50'];
-    const count = 3 + (hash % 3); // 3 a 5 magazines
-
-    const magazines = useMemo(() => {
-        return Array.from({ length: count }).map((_, i) => {
-            const h = hash + i * 13;
-            const magWidth = 0.14 + (h % 3) * 0.01;
-            const magDepth = 0.10 + (h % 2) * 0.01;
-            const magThickness = 0.004 + (h % 3) * 0.001;
-            const offsetX = ((h % 7) - 3) * 0.003;
-            const offsetZ = ((h % 5) - 2) * 0.004;
-            const rotation = ((h % 9) - 4) * 0.04;
-            return {
-                color: colors[(hash + i) % colors.length],
-                width: magWidth,
-                depth: magDepth,
-                thickness: magThickness,
-                offsetX,
-                offsetZ,
-                rotation,
-            };
-        });
-    }, [hash, count]);
-
-    let currentY = 0;
-
-    return (
-        <group position={position} scale={scale}>
-            {magazines.map((m, i) => {
-                const y = currentY + m.thickness / 2;
-                currentY += m.thickness + 0.0005;
-                return (
-                    <group key={i} position={[m.offsetX, y, m.offsetZ]} rotation={[0, m.rotation, 0]}>
-                        {/* Couverture */}
-                        <mesh castShadow receiveShadow>
-                            <boxGeometry args={[m.width, m.thickness, m.depth]} />
-                            <meshStandardMaterial color={m.color} roughness={0.6} />
-                        </mesh>
-                        {/* Pages interieures (tranche visible) */}
-                        <mesh position={[0.002, 0, 0]}>
-                            <boxGeometry args={[m.width - 0.004, m.thickness - 0.001, m.depth - 0.003]} />
-                            <meshStandardMaterial color="#F0EBE3" roughness={0.95} />
-                        </mesh>
-                    </group>
-                );
-            })}
-        </group>
-    );
-}
-
-function Vase({ position, color, scale = 1, seed = "1" }: any) {
-    const shapeIndex = useMemo(() => {
-        let hash = 0;
-        for (let i = 0; i < seed.length; i++) {
-            hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-            hash |= 0;
-        }
-        return Math.abs(hash) % 4;
-    }, [seed]);
-
-    const points = useMemo(() => {
-        const shapes = [
-            // Cylindrique elegant
-            [[0, 0], [0.04, 0.005], [0.042, 0.18], [0.038, 0.2], [0.038, 0.22]],
-            // Arrondi
-            [[0, 0], [0.05, 0.005], [0.06, 0.08], [0.055, 0.14], [0.038, 0.19], [0.035, 0.21]],
-            // Evase
-            [[0, 0], [0.032, 0.005], [0.028, 0.08], [0.032, 0.14], [0.048, 0.19], [0.052, 0.21]],
-            // Bouteille
-            [[0, 0], [0.05, 0.005], [0.052, 0.1], [0.05, 0.12], [0.018, 0.17], [0.018, 0.23]]
-        ];
-        return shapes[shapeIndex].map(p => new THREE.Vector2(p[0], p[1]));
-    }, [shapeIndex]);
-
-    return (
-        <group position={position} scale={scale}>
-            <mesh castShadow receiveShadow>
-                <latheGeometry args={[points, 32]} />
-                <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
-            </mesh>
-        </group>
-    );
-}
-
-
-
-
-
-function Lamp({ position }: any) {
-    return (
-        <group position={position}>
-            {/* Base */}
-            <mesh position={[0, 0.01, 0]} castShadow>
-                <cylinderGeometry args={[0.08, 0.08, 0.02, 24]} />
-                <meshStandardMaterial color="#222" metalness={0.8} />
-            </mesh>
-            {/* Tige */}
-            <mesh position={[0, 0.2, 0]} castShadow>
-                <cylinderGeometry args={[0.01, 0.01, 0.4, 12]} />
-                <meshStandardMaterial color="#222" metalness={0.8} />
-            </mesh>
-            {/* Abat-jour */}
-            <mesh position={[0, 0.4, 0]} castShadow>
-                <cylinderGeometry args={[0.12, 0.18, 0.2, 24, 1, true]} />
-                <meshStandardMaterial color="#F5F5F5" side={THREE.DoubleSide} />
-            </mesh>
-            {/* Ampoule (physique + lumière) */}
-            <mesh position={[0, 0.38, 0]}>
-                <sphereGeometry args={[0.025, 16, 16]} />
-                <meshStandardMaterial color="#FFF5E1" emissive="#FFF5E1" emissiveIntensity={0.5} />
-            </mesh>
-            <pointLight position={[0, 0.38, 0]} intensity={0.4} color="#FFF5E1" />
-        </group>
-    );
-}
-
-function CompartmentLight({ width, depth, position }: any) {
-    return (
-        <group position={position}>
-            {/* Ruban LED physique */}
-            <mesh position={[0, -0.005, depth / 4]}>
-                <boxGeometry args={[width * 0.9, 0.01, 0.01]} />
-                <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={2} />
-            </mesh>
-            {/* Lumière d'ambiance */}
-            <pointLight
-                position={[0, -0.1, depth / 4]}
-                intensity={0.4}
-                distance={1.5}
-                decay={2}
-                color="#fffde1"
-                castShadow
-                shadow-bias={-0.001}
-            />
-        </group>
-    );
-}
-
-function CableHole({ width, height, depth, position }: any) {
-    return (
-        <group position={position}>
-            {/* Cercle noir pour simuler le trou dans le fond */}
-            <mesh position={[0, 0, -depth / 2 + 0.005]}>
-                <circleGeometry args={[0.03, 32]} />
-                <meshStandardMaterial color="#111" roughness={1} />
-            </mesh>
-            {/* Bordure du passe-câble (plastique noir) */}
-            <mesh position={[0, 0, -depth / 2 + 0.006]}>
-                <torusGeometry args={[0.03, 0.005, 16, 32]} />
-                <meshStandardMaterial color="#222" roughness={0.5} />
-            </mesh>
-        </group>
-    );
-}
-
-function ShelfDecoration({ width, height, depth, seed }: { width: number, height: number, depth: number, seed: string }) {
-    const decoType = useMemo(() => {
-        let hash = 0;
-        for (let i = 0; i < seed.length; i++) {
-            hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-            hash |= 0;
-        }
-        const s = Math.abs(hash);
-
-        if (width < 0.15 || depth < 0.12 || height < 0.12) return null;
-
-        const types = [];
-        if (width > 0.6) types.push('books_vase', 'plant_books', 'magazines_vase');
-        if (width > 0.45) types.push('books_vase', 'vase_plant', 'magazines_plant');
-        if (width > 0.35) types.push('books', 'plant', 'magazines');
-        if (width > 0.25) types.push('books', 'magazines');
-        types.push('vase', 'plant');
-
-        return types[s % types.length];
-    }, [seed, width, height, depth]);
-
-    if (!decoType) return null;
-
-    const vaseColors = ['#C4B5A3', '#A89F91', '#B8AFA4', '#9C9388', '#D4CBC0', '#8B8178'];
-    const hash = seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-
-    const margin = 0.03;
-    const availableHeight = height - margin;
-    const vaseScale = Math.min(1.0, availableHeight / 0.24, width * 2.5);
-    const plantScale = Math.min(1.0, availableHeight / 0.18);
-    const booksScale = Math.min(1.0, availableHeight / 0.22);
-
-    return (
-        <group position={[0, 0, 0]}>
-            {decoType === 'books' && (
-                <group scale={booksScale}>
-                    <Books position={[-width / 4, 0, -depth / 8]} count={Math.min(8, Math.max(2, Math.floor(width * 12)))} seed={seed} />
-                </group>
-            )}
-            {decoType === 'vase' && (
-                <Vase position={[0, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed} scale={vaseScale} />
-            )}
-            {decoType === 'plant' && (
-                <Plant position={[0, 0, 0]} seed={seed} scale={plantScale} />
-            )}
-            {decoType === 'books_vase' && (
-                <>
-                    <group scale={booksScale}>
-                        <Books position={[-width / 3, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 5))} seed={seed} />
-                    </group>
-                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.8, vaseScale)} />
-                </>
-            )}
-            {decoType === 'books_plant' && (
-                <>
-                    <group scale={booksScale}>
-                        <Books position={[-width / 4, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 6))} seed={seed} />
-                    </group>
-                    <Plant position={[width / 4, 0, 0]} seed={seed + "_p3"} scale={Math.min(0.65, plantScale)} />
-                </>
-            )}
-            {decoType === 'vase_plant' && (
-                <>
-                    <Vase position={[-width / 6, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.85, vaseScale)} />
-                    <Plant position={[width / 5, 0, depth / 12]} seed={seed + "_p2"} scale={Math.min(0.7, plantScale)} />
-                </>
-            )}
-            {decoType === 'plant_books' && (
-                <>
-                    <Plant position={[-width / 4, 0, 0]} seed={seed + "_p"} scale={Math.min(0.75, plantScale)} />
-                    <group scale={booksScale}>
-                        <Books position={[width / 6, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 4))} seed={seed + "_b"} />
-                    </group>
-                </>
-            )}
-            {decoType === 'plant_vase' && (
-                <>
-                    <Plant position={[-width / 6, 0, 0]} seed={seed + "_p"} scale={Math.min(0.7, plantScale)} />
-                    <Vase position={[width / 5, 0, 0]} color={vaseColors[(hash + 2) % vaseColors.length]} seed={seed + "_v2"} scale={Math.min(0.7, vaseScale)} />
-                </>
-            )}
-            {decoType === 'magazines' && (
-                <MagazineStack position={[0, 0, 0]} seed={seed} scale={Math.min(1.0, availableHeight / 0.04)} />
-            )}
-            {decoType === 'magazines_vase' && (
-                <>
-                    <MagazineStack position={[-width / 4, 0, 0]} seed={seed + "_m"} scale={Math.min(0.9, availableHeight / 0.04)} />
-                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[(hash + 1) % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.75, vaseScale)} />
-                </>
-            )}
-            {decoType === 'magazines_plant' && (
-                <>
-                    <MagazineStack position={[-width / 5, 0, 0]} seed={seed + "_m"} scale={Math.min(0.9, availableHeight / 0.04)} />
-                    <Plant position={[width / 4, 0, 0]} seed={seed + "_p"} scale={Math.min(0.65, plantScale)} />
-                </>
-            )}
-        </group>
-    );
-}
-
-// Composant interne pour capturer le screenshot
-function ScreenshotCapture({ onCapture }: { onCapture: (fn: () => string | null) => void }) {
-    const { gl, scene, camera } = useThree();
-
-    useEffect(() => {
-        const captureScreenshot = () => {
-            try {
-                // Rendre une frame
-                gl.render(scene, camera);
-                // Capturer le canvas en base64
-                const dataUrl = gl.domElement.toDataURL('image/png');
-                return dataUrl;
-            } catch (error) {
-                console.error('Erreur lors de la capture:', error);
-                return null;
-            }
-        };
-
-        onCapture(captureScreenshot);
-    }, [gl, scene, camera, onCapture]);
-
-    return null;
-}
 
 const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
     const { onSelectZone } = props;
     const captureRef = useRef<(() => string | null) | null>(null);
 
-    // Exposer la méthode de capture via la ref
     useImperativeHandle(ref, () => ({
         captureScreenshot: () => {
             if (captureRef.current) {
@@ -3660,8 +1812,6 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                 }}
                 gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
             >
-                {/* Screenshot capture temporairement désactivé pour éviter les erreurs SSR */}
-                {/* <ScreenshotCapture onCapture={handleCapture} /> */}
                 <OrbitControls
                     enableDamping
                     minDistance={1.5}

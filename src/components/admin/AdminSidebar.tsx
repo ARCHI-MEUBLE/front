@@ -58,7 +58,7 @@ export type DashboardSection =
   | 'realisations'
   | 'password'
 
-interface AdminSidebarProps extends React.ComponentProps<typeof Sidebar> {
+interface AdminSidebarProps extends Omit<React.ComponentProps<typeof Sidebar>, 'onSelect'> {
   selectedSection: DashboardSection
   onSelect: (section: DashboardSection) => void
   onLogout: () => void

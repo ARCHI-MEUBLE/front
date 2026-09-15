@@ -60,7 +60,7 @@ export function ColorsAndFinishesSection({ colors }: Props) {
             </h2>
             <p className="mt-5 text-base font-medium leading-relaxed text-[#706F6C] sm:mt-6">
               Bois naturels, nuances contemporaines, finitions mates ou satinées —
-              votre meuble sera exactement comme vous l'imaginez.
+              votre meuble sera exactement comme vous l&apos;imaginez.
             </p>
 
             {/* Color swatches */}

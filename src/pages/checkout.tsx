@@ -601,7 +601,7 @@ export default function CheckoutStripe() {
                           <div className="h-5 w-5 border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917] peer-checked:bg-[#1A1917]" />
                           <Check className="absolute h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
                         </div>
-                        <span className="text-sm text-[#1A1917]">Identique à l'adresse de livraison</span>
+                        <span className="text-sm text-[#1A1917]">Identique à l&apos;adresse de livraison</span>
                       </label>
 
                       {!formData.billing_same && (
@@ -739,12 +739,12 @@ export default function CheckoutStripe() {
                 {/* Items */}
                 <div className="p-6">
                   {/* Configurations */}
-                  {cart.items && cart.items.length > 0 && (
+                  {cart && cart.items && cart.items.length > 0 && (
                     <div className="space-y-4">
                       <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
                         Meubles sur mesure
                       </p>
-                      {cart.items.map((item, index) => (
+                      {cart && cart.items.map((item, index) => (
                         <div key={index} className="flex items-start justify-between gap-4">
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-[#1A1917]">
@@ -764,7 +764,7 @@ export default function CheckoutStripe() {
 
                   {/* Samples */}
                   {samplesCart && samplesCart.items && samplesCart.items.length > 0 && (
-                    <div className={`space-y-4 ${cart.items && cart.items.length > 0 ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
+                    <div className={`space-y-4 ${cart && cart.items && cart.items.length > 0 ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
                       <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
                         Échantillons ({samplesCart.count})
                       </p>
@@ -799,7 +799,7 @@ export default function CheckoutStripe() {
 
                   {/* Catalogue Items */}
                   {catalogueCart && catalogueCart.items && catalogueCart.items.length > 0 && (
-                    <div className={`space-y-4 ${ (cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
+                    <div className={`space-y-4 ${ (cart && cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
                       <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
                         Catalogue ({catalogueCart.items.length})
                       </p>
@@ -836,7 +836,7 @@ export default function CheckoutStripe() {
 
                   {/* Façades */}
                   {facadeCart && facadeCart.items && facadeCart.items.length > 0 && (
-                    <div className={`space-y-4 ${ (cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) || (catalogueCart && catalogueCart.items && catalogueCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
+                    <div className={`space-y-4 ${ (cart && cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) || (catalogueCart && catalogueCart.items && catalogueCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
                       <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
                         Façades sur mesure ({facadeCart.count})
                       </p>

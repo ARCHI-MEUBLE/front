@@ -29,7 +29,7 @@ export default function ModelsPage() {
       setIsLoading(true);
       setError(null);
       const data = await apiClient.models.getAll();
-      const productModels: ProductModel[] = data.map((model: FurnitureModel & { category?: string; hover_image_url?: string }) => ({
+      const productModels: ProductModel[] = data.map((model: FurnitureModel) => ({
         id: model.id,
         name: model.name,
         description: model.description || "",
@@ -293,7 +293,7 @@ export default function ModelsPage() {
                   </h2>
                   <p className="mt-6 leading-relaxed text-white/70">
                     Nous réalisons tous types de meubles sur mesure. Partagez-nous
-                    votre projet et nous vous accompagnons de la conception à l'installation.
+                    votre projet et nous vous accompagnons de la conception à l&apos;installation.
                   </p>
 
                   <div className="mt-10 flex flex-col gap-4 sm:flex-row">

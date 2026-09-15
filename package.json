@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "seed:admin": "node scripts/seed-admin.js"
   },
   "dependencies": {
@@ -30,7 +32,6 @@
     "@react-three/drei": "^9.117.3",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.2",
-    "postprocessing": "^6.36.0",
     "@stripe/react-stripe-js": "^5.3.0",
     "@stripe/stripe-js": "^8.3.0",
     "@tabler/icons-react": "^3.36.0",
@@ -46,6 +47,7 @@
     "lucide-react": "^0.562.0",
     "next": "^14.2.3",
     "next-themes": "^0.4.6",
+    "postprocessing": "^6.36.0",
     "react": "^18.2.0",
     "react-big-calendar": "^1.19.4",
     "react-calendly": "^4.4.0",
@@ -60,16 +62,23 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/better-sqlite3": "^7.6.13",
     "@types/form-data": "^2.2.1",
     "@types/node": "20.19.23",
     "@types/react": "^18.2.79",
+    "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^18.2.25",
+    "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.3",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.11"
   }
 }

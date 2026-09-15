@@ -294,7 +294,7 @@ export function DashboardPassword() {
                 <div>
                   <h3 className="text-lg font-medium">Thème & Couleurs</h3>
                   <p className="text-sm text-muted-foreground">
-                    Personnalisez l'apparence de votre dashboard
+                    Personnalisez l&apos;apparence de votre dashboard
                   </p>
                 </div>
 
@@ -364,9 +364,9 @@ export function DashboardPassword() {
                   {/* Accent Color */}
                   <div className="rounded-lg border p-4 space-y-3">
                     <div>
-                      <Label htmlFor="accent-color" className="text-base">Couleur d'accentuation</Label>
+                      <Label htmlFor="accent-color" className="text-base">Couleur d&apos;accentuation</Label>
                       <p className="text-sm text-muted-foreground">
-                        Couleur secondaire pour les éléments d'interface
+                        Couleur secondaire pour les éléments d&apos;interface
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
