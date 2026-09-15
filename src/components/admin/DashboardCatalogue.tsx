@@ -509,9 +509,9 @@ export function DashboardCatalogue() {
                   <Label htmlFor="image">Image principale</Label>
                   <div className="flex gap-4 items-start">
                     <Input id="image" type="file" accept="image/*" onChange={handleFileChange} className="flex-1" />
-                    {(preview || formState.imagePath) && (
+                    {preview && (
                       <div className="h-20 w-20 rounded border bg-muted p-1 overflow-hidden shrink-0">
-                        <img src={preview || formState.imagePath} alt="Aperçu" className="h-full w-full object-cover" />
+                        <img src={preview} alt="Aperçu" className="h-full w-full object-cover" />
                       </div>
                     )}
                   </div>

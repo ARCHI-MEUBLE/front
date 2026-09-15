@@ -122,6 +122,7 @@ export function DashboardCategories() {
       const categoryData = {
         ...formData,
         image_url: imageUrl,
+        is_active: formData.is_active ? 1 : 0,
       };
 
       if (editingCategory) {

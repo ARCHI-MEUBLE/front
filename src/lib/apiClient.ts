@@ -305,7 +305,7 @@ export const categoriesApi = {
     description?: string;
     image_url?: string;
     display_order?: number;
-    is_active?: boolean;
+    is_active?: number;
   }): Promise<{ success: boolean; category: Category }> {
     return request<{ success: boolean; category: Category }>('/api/categories', {
       method: 'POST',
