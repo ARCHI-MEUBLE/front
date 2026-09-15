@@ -29,7 +29,7 @@ export default function ModelsPage() {
       setIsLoading(true);
       setError(null);
       const data = await apiClient.models.getAll();
-      const productModels: ProductModel[] = data.map((model: FurnitureModel & { category?: string; hover_image_url?: string }) => ({
+      const productModels: ProductModel[] = data.map((model: FurnitureModel & { category?: string }) => ({
         id: model.id,
         name: model.name,
         description: model.description || "",

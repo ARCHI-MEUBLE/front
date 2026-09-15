@@ -102,7 +102,7 @@ export default function SamplesPage() {
         const data = await response.json();
         setSamplesInCart(data.count || 0);
         const items = data.items || [];
-        const ids = new Set(items.map((item: any) => item.sample_color_id));
+        const ids = new Set<number>(items.map((item: any) => item.sample_color_id));
         setSamplesInCartIds(ids);
 
         const freeCount = items.filter((item: any) => (item.unit_price ?? 0) <= 0).length;
