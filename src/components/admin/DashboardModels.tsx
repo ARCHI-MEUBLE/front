@@ -467,7 +467,7 @@ export function DashboardModels() {
     }
   };
 
-  const handleEdit = (model: AdminModel & { category?: string; price?: number; hover_image_url?: string }) => {
+  const handleEdit = (model: AdminModel & { category?: string; price?: number }) => {
     setEditingId(model.id);
     setFormState({
       name: model.name,
@@ -779,7 +779,7 @@ export function DashboardModels() {
                 </select>
               </div>
               {/* Prix calculé automatiquement - affiché en lecture seule */}
-              {formState.price > 0 && (
+              {parseFloat(formState.price) > 0 && (
                 <div className="space-y-2">
                   <Label>Prix calculé</Label>
                   <div className="flex items-center gap-2 h-10 px-3 py-2 rounded-md border bg-gray-50">
