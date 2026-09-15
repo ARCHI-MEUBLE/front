@@ -1225,7 +1225,7 @@ export default function ConfiguratorPage() {
 
             if (hStruct) {
               const inner = hStruct[2];
-              const children = inner.split(',').map((content, idx) => ({
+              const children = inner.split(',').map((content: string, idx: number) => ({
                 id: `zone-${idx}`,
                 type: 'leaf' as const,
                 content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
@@ -1233,7 +1233,7 @@ export default function ConfiguratorPage() {
               initRootZone = { id: 'root', type: 'horizontal', children };
             } else if (vStruct) {
               const inner = vStruct[2];
-              const children = inner.split(',').map((content, idx) => ({
+              const children = inner.split(',').map((content: string, idx: number) => ({
                 id: `zone-${idx}`,
                 type: 'leaf' as const,
                 content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
@@ -1307,7 +1307,7 @@ export default function ConfiguratorPage() {
 
             if (hStruct) {
               const inner = hStruct[2];
-              const children = inner.split(',').map((content, idx) => ({
+              const children = inner.split(',').map((content: string, idx: number) => ({
                 id: `zone-${idx}`,
                 type: 'leaf' as const,
                 content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
@@ -1315,7 +1315,7 @@ export default function ConfiguratorPage() {
               initRootZone = { id: 'root', type: 'horizontal', children };
             } else if (vStruct) {
               const inner = vStruct[2];
-              const children = inner.split(',').map((content, idx) => ({
+              const children = inner.split(',').map((content: string, idx: number) => ({
                 id: `zone-${idx}`,
                 type: 'leaf' as const,
                 content: (content.includes('T') ? 'drawer' : content.includes('D') ? 'dressing' : content.includes('P') ? 'door' : 'empty') as ZoneContent,
