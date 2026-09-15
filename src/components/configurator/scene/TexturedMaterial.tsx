@@ -7,13 +7,10 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
     const textureRef = useRef<THREE.Texture | null>(null);
     const currentImageUrlRef = useRef<string | null>(null);
 
-    // Couleur de fallback - calculée de manière synchrone à chaque render
     const safeColor = getSafeColor(hexColor);
 
     useEffect(() => {
-        // Si pas d'URL d'image, utiliser la couleur hex
         if (!imageUrl) {
-            // Dispose de la texture précédente si elle existe
             if (textureRef.current) {
                 textureRef.current.dispose();
                 textureRef.current = null;
@@ -23,7 +20,6 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
             return;
         }
 
-        // Si c'est la même URL, ne pas recharger
         if (currentImageUrlRef.current === imageUrl && textureRef.current) {
             return;
         }
@@ -37,13 +33,11 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
             imageUrl,
             (loadedTexture) => {
                 console.log('[TexturedMaterial] Texture loaded successfully:', imageUrl);
-                // Vérifier que l'URL n'a pas changé pendant le chargement
                 if (currentImageUrlRef.current !== imageUrl) {
                     loadedTexture.dispose();
                     return;
                 }
 
-                // Dispose de l'ancienne texture
                 if (textureRef.current) {
                     textureRef.current.dispose();
                 }
@@ -67,11 +61,9 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
         );
 
         return () => {
-            // Cleanup seulement si on démonte le composant
         };
     }, [imageUrl]);
 
-    // Cleanup au démontage
     useEffect(() => {
         return () => {
             if (textureRef.current) {
@@ -81,11 +73,8 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
         };
     }, []);
 
-    // Utiliser une clé unique pour forcer React à recréer le matériau proprement
-    // quand la couleur ou la texture change
     const materialKey = texture ? `tex-${currentImageUrlRef.current}` : `col-${safeColor}`;
 
-    // Si on a une texture chargée, l'utiliser
     if (texture) {
         return (
             <meshStandardMaterial
@@ -102,7 +91,6 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
         );
     }
 
-    // Sinon utiliser la couleur hex (pendant le chargement ou en fallback)
     return (
         <meshStandardMaterial
             key={materialKey}

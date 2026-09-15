@@ -9,7 +9,6 @@ export function AnimatedPushDrawer({ position, width, height, depth, hexColor, i
     const initialZ = position[2];
     const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
 
-    // S'assurer que la couleur est valide
     const safeHexColor = getSafeColor(hexColor);
 
     useEffect(() => {
@@ -45,17 +44,14 @@ export function AnimatedPushDrawer({ position, width, height, depth, hexColor, i
                 document.body.style.cursor = 'default';
             }}
         >
-            {/* Façade sans poignée */}
             <mesh castShadow>
                 <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            {/* Petite encoche discrète pour indiquer push-to-open */}
             <mesh position={[0, -height * 0.3, 0.015]}>
                 <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
                 <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />
             </mesh>
-            {/* Corps du tiroir (visible quand ouvert) */}
             <mesh position={[0, 0, -boxDepth / 2]}>
                 <boxGeometry args={[width - 0.02, boxHeight, boxDepth]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
@@ -69,7 +65,6 @@ export function AnimatedDrawer({ position, width, height, depth, hexColor, image
     const initialZ = position[2];
     const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
 
-    // S'assurer que la couleur est valide
     const safeHexColor = getSafeColor(hexColor);
 
     useEffect(() => {
@@ -105,12 +100,10 @@ export function AnimatedDrawer({ position, width, height, depth, hexColor, image
                 document.body.style.cursor = 'default';
             }}
         >
-            {/* Façade */}
             <mesh castShadow>
                 <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            {/* Poignée */}
             <Handle
                 type={handleType || 'horizontal_bar'}
                 position={[0, 0, 0.015]}
@@ -118,12 +111,10 @@ export function AnimatedDrawer({ position, width, height, depth, hexColor, image
                 height={height}
                 width={width}
             />
-            {/* Fond du tiroir */}
             <mesh position={[0, -height / 2 + 0.05, -boxDepth / 2]} receiveShadow>
                 <boxGeometry args={[width - 0.06, 0.01, boxDepth]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            {/* Côtés du tiroir */}
             <mesh position={[-width / 2 + 0.03, -height / 2 + 0.05 + boxHeight / 2, -boxDepth / 2]} castShadow>
                 <boxGeometry args={[0.012, boxHeight, boxDepth]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
@@ -132,7 +123,6 @@ export function AnimatedDrawer({ position, width, height, depth, hexColor, image
                 <boxGeometry args={[0.012, boxHeight, boxDepth]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            {/* Arrière du tiroir */}
             <mesh position={[0, -height / 2 + 0.05 + boxHeight / 2, -boxDepth]} castShadow>
                 <boxGeometry args={[width - 0.06, boxHeight, 0.012]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />

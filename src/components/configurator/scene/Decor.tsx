@@ -4,17 +4,14 @@ import * as THREE from 'three';
 export function Book({ position, color, rotation = [0, 0, 0], height = 0.22, thickness = 0.028, bookDepth = 0.14 }: any) {
     return (
         <group position={position} rotation={rotation}>
-            {/* Couverture */}
             <mesh castShadow receiveShadow>
                 <boxGeometry args={[thickness, height, bookDepth]} />
                 <meshStandardMaterial color={color} roughness={0.75} />
             </mesh>
-            {/* Pages (tranche visible cote mur) */}
             <mesh position={[0, 0, -0.002]}>
                 <boxGeometry args={[thickness - 0.003, height - 0.005, bookDepth - 0.005]} />
                 <meshStandardMaterial color="#F5F0E8" roughness={0.95} />
             </mesh>
-            {/* Titre sur le dos (2 lignes) */}
             <mesh position={[0, height * 0.1, bookDepth / 2 + 0.001]}>
                 <boxGeometry args={[thickness * 0.6, 0.004, 0.001]} />
                 <meshStandardMaterial color="#FFFFFF" transparent opacity={0.45} />
@@ -23,12 +20,10 @@ export function Book({ position, color, rotation = [0, 0, 0], height = 0.22, thi
                 <boxGeometry args={[thickness * 0.45, 0.003, 0.001]} />
                 <meshStandardMaterial color="#FFFFFF" transparent opacity={0.35} />
             </mesh>
-            {/* Auteur en bas du dos */}
             <mesh position={[0, -height * 0.28, bookDepth / 2 + 0.001]}>
                 <boxGeometry args={[thickness * 0.5, 0.003, 0.001]} />
                 <meshStandardMaterial color="#FFFFFF" transparent opacity={0.35} />
             </mesh>
-            {/* Bande decorative haut du dos */}
             <mesh position={[0, height * 0.42, bookDepth / 2 + 0.001]}>
                 <boxGeometry args={[thickness * 0.75, 0.005, 0.001]} />
                 <meshStandardMaterial color="#FFFFFF" transparent opacity={0.5} />
@@ -100,22 +95,18 @@ export function Plant({ position, scale = 1, seed = "1" }: any) {
 
     return (
         <group position={position} scale={scale}>
-            {/* Pot */}
             <mesh position={[0, 0.04, 0]} castShadow>
                 <cylinderGeometry args={[0.045, 0.035, 0.08, 16]} />
                 <meshStandardMaterial color={potColor} roughness={0.85} />
             </mesh>
-            {/* Bord du pot */}
             <mesh position={[0, 0.082, 0]}>
                 <cylinderGeometry args={[0.048, 0.046, 0.008, 16]} />
                 <meshStandardMaterial color={potColor} roughness={0.85} />
             </mesh>
-            {/* Terre */}
             <mesh position={[0, 0.08, 0]}>
                 <cylinderGeometry args={[0.042, 0.042, 0.005, 16]} />
                 <meshStandardMaterial color="#3E2723" roughness={1} />
             </mesh>
-            {/* Feuilles */}
             {Array.from({ length: 6 }).map((_, i) => {
                 const angle = (i / 6) * Math.PI * 2 + (hash % 10) * 0.3;
                 const lean = 0.35 + (i % 3) * 0.15;
@@ -144,7 +135,7 @@ export function MagazineStack({ position, scale = 1, seed = "1" }: any) {
     }, [seed]);
 
     const colors = ['#8B7355', '#5B7B7A', '#A89080', '#6B5B4C', '#7C6B5C', '#4A5568', '#9C8B7A', '#6E5F50'];
-    const count = 3 + (hash % 3); // 3 a 5 magazines
+    const count = 3 + (hash % 3);
 
     const magazines = useMemo(() => {
         return Array.from({ length: count }).map((_, i) => {
@@ -176,12 +167,10 @@ export function MagazineStack({ position, scale = 1, seed = "1" }: any) {
                 currentY += m.thickness + 0.0005;
                 return (
                     <group key={i} position={[m.offsetX, y, m.offsetZ]} rotation={[0, m.rotation, 0]}>
-                        {/* Couverture */}
                         <mesh castShadow receiveShadow>
                             <boxGeometry args={[m.width, m.thickness, m.depth]} />
                             <meshStandardMaterial color={m.color} roughness={0.6} />
                         </mesh>
-                        {/* Pages interieures (tranche visible) */}
                         <mesh position={[0.002, 0, 0]}>
                             <boxGeometry args={[m.width - 0.004, m.thickness - 0.001, m.depth - 0.003]} />
                             <meshStandardMaterial color="#F0EBE3" roughness={0.95} />
@@ -205,13 +194,9 @@ export function Vase({ position, color, scale = 1, seed = "1" }: any) {
 
     const points = useMemo(() => {
         const shapes = [
-            // Cylindrique elegant
             [[0, 0], [0.04, 0.005], [0.042, 0.18], [0.038, 0.2], [0.038, 0.22]],
-            // Arrondi
             [[0, 0], [0.05, 0.005], [0.06, 0.08], [0.055, 0.14], [0.038, 0.19], [0.035, 0.21]],
-            // Evase
             [[0, 0], [0.032, 0.005], [0.028, 0.08], [0.032, 0.14], [0.048, 0.19], [0.052, 0.21]],
-            // Bouteille
             [[0, 0], [0.05, 0.005], [0.052, 0.1], [0.05, 0.12], [0.018, 0.17], [0.018, 0.23]]
         ];
         return shapes[shapeIndex].map(p => new THREE.Vector2(p[0], p[1]));
@@ -230,22 +215,18 @@ export function Vase({ position, color, scale = 1, seed = "1" }: any) {
 export function Lamp({ position }: any) {
     return (
         <group position={position}>
-            {/* Base */}
             <mesh position={[0, 0.01, 0]} castShadow>
                 <cylinderGeometry args={[0.08, 0.08, 0.02, 24]} />
                 <meshStandardMaterial color="#222" metalness={0.8} />
             </mesh>
-            {/* Tige */}
             <mesh position={[0, 0.2, 0]} castShadow>
                 <cylinderGeometry args={[0.01, 0.01, 0.4, 12]} />
                 <meshStandardMaterial color="#222" metalness={0.8} />
             </mesh>
-            {/* Abat-jour */}
             <mesh position={[0, 0.4, 0]} castShadow>
                 <cylinderGeometry args={[0.12, 0.18, 0.2, 24, 1, true]} />
                 <meshStandardMaterial color="#F5F5F5" side={THREE.DoubleSide} />
             </mesh>
-            {/* Ampoule (physique + lumière) */}
             <mesh position={[0, 0.38, 0]}>
                 <sphereGeometry args={[0.025, 16, 16]} />
                 <meshStandardMaterial color="#FFF5E1" emissive="#FFF5E1" emissiveIntensity={0.5} />
@@ -258,12 +239,10 @@ export function Lamp({ position }: any) {
 export function CompartmentLight({ width, depth, position }: any) {
     return (
         <group position={position}>
-            {/* Ruban LED physique */}
             <mesh position={[0, -0.005, depth / 4]}>
                 <boxGeometry args={[width * 0.9, 0.01, 0.01]} />
                 <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={2} />
             </mesh>
-            {/* Lumière d'ambiance */}
             <pointLight
                 position={[0, -0.1, depth / 4]}
                 intensity={0.4}
@@ -280,12 +259,10 @@ export function CompartmentLight({ width, depth, position }: any) {
 export function CableHole({ width, height, depth, position }: any) {
     return (
         <group position={position}>
-            {/* Cercle noir pour simuler le trou dans le fond */}
             <mesh position={[0, 0, -depth / 2 + 0.005]}>
                 <circleGeometry args={[0.03, 32]} />
                 <meshStandardMaterial color="#111" roughness={1} />
             </mesh>
-            {/* Bordure du passe-câble (plastique noir) */}
             <mesh position={[0, 0, -depth / 2 + 0.006]}>
                 <torusGeometry args={[0.03, 0.005, 16, 32]} />
                 <meshStandardMaterial color="#222" roughness={0.5} />

@@ -6,10 +6,8 @@ import { Handle } from './StructuralElements';
 
 export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {
     const groupRef = useRef<THREE.Group>(null);
-    // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
     const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
 
-    // S'assurer que la couleur est valide
     const safeHexColor = getSafeColor(hexColor);
 
     useEffect(() => {
@@ -48,7 +46,6 @@ export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side
                 <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            {/* Poignée */}
             <Handle
                 type={handleType || 'vertical_bar'}
                 position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
@@ -61,7 +58,6 @@ export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side
 
 export function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
     const groupRef = useRef<THREE.Group>(null);
-    // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
     const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
 
     useEffect(() => {
@@ -94,7 +90,6 @@ export function AnimatedMirrorDoor({ position, width, height, side, isOpen, onCl
                 document.body.style.cursor = 'default';
             }}
         >
-            {/* Porte avec effet vitré */}
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <meshStandardMaterial
@@ -106,7 +101,6 @@ export function AnimatedMirrorDoor({ position, width, height, side, isOpen, onCl
                     envMapIntensity={2}
                 />
             </mesh>
-            {/* Poignée */}
             <Handle
                 type={handleType || 'vertical_bar'}
                 position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
@@ -119,10 +113,8 @@ export function AnimatedMirrorDoor({ position, width, height, side, isOpen, onCl
 
 export function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick }: any) {
     const groupRef = useRef<THREE.Group>(null);
-    // Réduire l'angle d'ouverture à 70° (0.39 * PI) pour éviter les collisions entre portes adjacentes
     const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
 
-    // S'assurer que la couleur est valide
     const safeHexColor = getSafeColor(hexColor);
 
     useEffect(() => {
@@ -159,7 +151,6 @@ export function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, 
                 <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            {/* Petite encoche discrète pour indiquer push-to-open */}
             <mesh position={[side === 'left' ? width - 0.08 : -width + 0.08, 0, 0.019]}>
                 <cylinderGeometry args={[0.012, 0.012, 0.003, 16]} />
                 <meshStandardMaterial color="#333" metalness={0.3} roughness={0.7} />

@@ -1,19 +1,16 @@
 export function WallClock({ position, radius = 0.25 }: { position: [number, number, number]; radius?: number }) {
     return (
         <group position={position}>
-            {/* Cadre/Bordure de l'horloge */}
             <mesh position={[0, 0, -0.01]} castShadow>
                 <cylinderGeometry args={[radius + 0.015, radius + 0.015, 0.04, 32]} />
                 <meshStandardMaterial color="#2C2C2C" roughness={0.3} metalness={0.7} />
             </mesh>
 
-            {/* Fond blanc de l'horloge */}
             <mesh position={[0, 0, 0.01]}>
                 <circleGeometry args={[radius, 32]} />
                 <meshStandardMaterial color="#FFFFFF" roughness={0.2} />
             </mesh>
 
-            {/* Marques des heures (12, 3, 6, 9) */}
             <mesh position={[0, radius * 0.85, 0.015]}>
                 <boxGeometry args={[0.008, radius * 0.12, 0.002]} />
                 <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
@@ -31,7 +28,6 @@ export function WallClock({ position, radius = 0.25 }: { position: [number, numb
                 <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
             </mesh>
 
-            {/* Petites marques pour les autres heures */}
             {Array.from({ length: 8 }).map((_, i) => {
                 const angle = (Math.PI / 6) * (i + (i >= 3 ? 2 : 1));
                 const x = Math.sin(angle) * radius * 0.88;
@@ -44,19 +40,16 @@ export function WallClock({ position, radius = 0.25 }: { position: [number, numb
                 );
             })}
 
-            {/* Aiguille des heures (10h) */}
             <mesh position={[-radius * 0.15, radius * 0.25, 0.02]} rotation={[0, 0, Math.PI / 6]}>
                 <boxGeometry args={[0.01, radius * 0.5, 0.003]} />
                 <meshStandardMaterial color="#1a1a1a" roughness={0.3} />
             </mesh>
 
-            {/* Aiguille des minutes (10 minutes) */}
             <mesh position={[radius * 0.08, radius * 0.4, 0.022]} rotation={[0, 0, -Math.PI / 18]}>
                 <boxGeometry args={[0.006, radius * 0.7, 0.003]} />
                 <meshStandardMaterial color="#2C2C2C" roughness={0.3} />
             </mesh>
 
-            {/* Centre de l'horloge */}
             <mesh position={[0, 0, 0.025]}>
                 <cylinderGeometry args={[0.015, 0.015, 0.01, 16]} />
                 <meshStandardMaterial color="#D32F2F" roughness={0.4} metalness={0.5} />

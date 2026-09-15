@@ -1,6 +1,5 @@
 import { Zone } from '@/components/configurator/ZoneEditor';
 
-// Normalise les splitRatios d'une zone (et de ses enfants) pour que leur somme fasse 100%
 export function normalizeZoneSplitRatios(zone: Zone): Zone {
   let normalizedZone = { ...zone };
 

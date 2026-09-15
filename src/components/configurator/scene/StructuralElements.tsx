@@ -4,7 +4,7 @@ import { TexturedMaterial } from './TexturedMaterial';
 interface PanelSegmentHitboxProps {
     panelId: string;
     position: [number, number, number];
-    size: [number, number, number]; // width, height, depth
+    size: [number, number, number];
     isSelected: boolean;
     onSelect: (panelId: string | null) => void;
     isDeleted?: boolean;
@@ -20,7 +20,6 @@ export function PanelSegmentHitbox({
                             }: PanelSegmentHitboxProps) {
     return (
         <group position={position}>
-            {/* Hitbox invisible pour la sélection */}
             <mesh
                 visible={false}
                 onPointerOver={(e) => {
@@ -39,7 +38,6 @@ export function PanelSegmentHitbox({
                 <meshBasicMaterial transparent opacity={0} />
             </mesh>
 
-            {/* Effet de sélection visible uniquement quand sélectionné */}
             {isSelected && (
                 <>
                     <mesh>
@@ -68,7 +66,7 @@ export function PanelSegmentHitbox({
 
 interface StructuralPanelProps {
     position: [number, number, number];
-    size: [number, number, number]; // width, height, depth
+    size: [number, number, number];
     hexColor: string;
     imageUrl?: string | null;
     castShadow?: boolean;
@@ -91,12 +89,10 @@ export function StructuralPanel({
     );
 }
 
-// Composant pour rendre différents types de poignées
 export function Handle({ type = 'vertical_bar', position, side, height, width }: { type?: string; position: [number, number, number]; side: string; height: number; width?: number }) {
     const handleMaterial = <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />;
 
     if (type === 'horizontal_bar') {
-        // Barre horizontale (utilise width si disponible, sinon height)
         const barLength = width ? Math.min(width * 0.4, 0.5) : Math.min(height * 0.4, 0.3);
         return (
             <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
@@ -105,7 +101,6 @@ export function Handle({ type = 'vertical_bar', position, side, height, width }:
             </mesh>
         );
     } else if (type === 'knob') {
-        // Bouton rond
         return (
             <mesh position={position}>
                 <sphereGeometry args={[0.02, 16, 16]} />
@@ -113,7 +108,6 @@ export function Handle({ type = 'vertical_bar', position, side, height, width }:
             </mesh>
         );
     } else if (type === 'recessed') {
-        // Poignée encastrée (encoche)
         return (
             <group position={position}>
                 <mesh>
@@ -123,7 +117,6 @@ export function Handle({ type = 'vertical_bar', position, side, height, width }:
             </group>
         );
     } else {
-        // Barre verticale (défaut)
         return (
             <mesh position={position}>
                 <cylinderGeometry args={[0.008, 0.008, Math.min(height * 0.25, 0.4), 12]} />
@@ -133,7 +126,6 @@ export function Handle({ type = 'vertical_bar', position, side, height, width }:
     }
 }
 
-// Composant pour les charnières de porte
 export function DoorHinge({ position, side }: { position: [number, number, number]; side: 'left' | 'right' }) {
     const hingeMaterial = (
         <meshPhysicalMaterial
@@ -146,17 +138,14 @@ export function DoorHinge({ position, side }: { position: [number, number, numbe
 
     return (
         <group position={position}>
-            {/* Partie fixe de la charnière (sur le cadre) */}
             <mesh position={[side === 'left' ? -0.008 : 0.008, 0, -0.012]} castShadow>
                 <boxGeometry args={[0.012, 0.05, 0.008]} />
                 {hingeMaterial}
             </mesh>
-            {/* Cylindre central (pivot) */}
             <mesh position={[side === 'left' ? -0.002 : 0.002, 0, -0.008]} rotation={[Math.PI / 2, 0, 0]} castShadow>
                 <cylinderGeometry args={[0.004, 0.004, 0.055, 12]} />
                 {hingeMaterial}
             </mesh>
-            {/* Partie mobile de la charnière (sur la porte) */}
             <mesh position={[side === 'left' ? 0.004 : -0.004, 0, -0.004]} castShadow>
                 <boxGeometry args={[0.01, 0.045, 0.006]} />
                 {hingeMaterial}

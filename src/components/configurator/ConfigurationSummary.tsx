@@ -67,7 +67,6 @@ export function ConfigurationSummary({
 }: any) {
   const analysis = analyzeConfiguration(rootZone);
 
-  // Compter les équipements
   const equipmentCount: Record<string, number> = {};
   analysis.leafZones.forEach((z: any) => {
     const key = z.content || 'empty';
@@ -76,7 +75,6 @@ export function ConfigurationSummary({
 
   return (
     <div className="flex flex-col h-full bg-white overflow-y-auto custom-scrollbar">
-      {/* Header */}
       <div className="p-5 border-b border-[#E8E6E3]">
         <div className="flex items-center justify-between">
           <div>
@@ -107,7 +105,6 @@ export function ConfigurationSummary({
       </div>
 
       <div className="p-5 space-y-5">
-        {/* Visualisation 2D */}
         <div className="border border-[#E8E6E3] p-3 bg-[#FAFAF9]">
           <ZoneEditor
             rootZone={rootZone}
@@ -121,7 +118,6 @@ export function ConfigurationSummary({
           />
         </div>
 
-        {/* Caractéristiques principales - 2 colonnes */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <div className="flex justify-between py-1.5 border-b border-[#E8E6E3]">
             <span className="text-[#706F6C]">Largeur</span>
@@ -166,7 +162,6 @@ export function ConfigurationSummary({
           </div>
         </div>
 
-        {/* Équipements - Liste compacte */}
         <div>
           <h3 className="text-xs font-medium text-[#706F6C] uppercase tracking-wide mb-2">Équipements ({analysis.leafZones.length} zones)</h3>
           <div className="flex flex-wrap gap-1.5">
@@ -182,7 +177,6 @@ export function ConfigurationSummary({
           </div>
         </div>
 
-        {/* Détails par zone - Table simplifiée */}
         <div>
           <h3 className="text-xs font-medium text-[#706F6C] uppercase tracking-wide mb-2">Détail par zone</h3>
           <div className="border border-[#E8E6E3] divide-y divide-[#E8E6E3] text-sm">
@@ -207,7 +201,6 @@ export function ConfigurationSummary({
           </div>
         </div>
 
-        {/* Prix */}
         <div className="flex items-center justify-between py-4 border-t border-[#E8E6E3]">
           <span className="text-sm text-[#706F6C]">Estimation</span>
           <div className="text-right">
@@ -221,7 +214,6 @@ export function ConfigurationSummary({
           </div>
         </div>
 
-        {/* Note informative */}
         <p className="text-xs text-[#706F6C] text-center py-3 border-t border-[#E8E6E3]">
           Mode consultation — Cliquez sur Modifier pour éditer
         </p>
