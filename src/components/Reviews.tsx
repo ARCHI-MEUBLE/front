@@ -352,7 +352,7 @@ export function Reviews() {
                       <br />expérience
                     </h2>
                     <p className="mt-6 leading-relaxed text-white/70">
-                      Votre témoignage aide d'autres personnes à découvrir
+                      Votre témoignage aide d&apos;autres personnes à découvrir
                       notre savoir-faire artisanal.
                     </p>
                     <button
@@ -385,7 +385,7 @@ export function Reviews() {
                   </h2>
                   <p className="mt-6 leading-relaxed text-white/70">
                     Connectez-vous pour partager votre avis et aider
-                    d'autres clients à découvrir ArchiMeuble.
+                    d&apos;autres clients à découvrir ArchiMeuble.
                   </p>
                   <Link
                     href="/auth/login"

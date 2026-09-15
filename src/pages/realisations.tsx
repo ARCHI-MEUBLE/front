@@ -195,7 +195,7 @@ export default function RealisationsPage() {
                   Notre savoir-faire
                 </span>
                 <h2 className="mt-4 font-serif text-3xl text-[#1A1917] lg:text-4xl">
-                  L'artisanat français
+                  L&apos;artisanat français
                   <br />au service de vos projets
                 </h2>
                 <p className="mt-6 leading-relaxed text-[#6B6560]">

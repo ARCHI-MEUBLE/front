@@ -132,7 +132,7 @@ export function DashboardStats() {
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-lg font-semibold text-gray-900">Statistiques des Rendez-vous</h2>
         <p className="text-sm text-gray-600 mt-1">
-          Vue d'ensemble et tendances des rendez-vous Calendly
+          Vue d&apos;ensemble et tendances des rendez-vous Calendly
         </p>
       </div>
 
@@ -162,7 +162,7 @@ export function DashboardStats() {
         </div>
 
         <div className="border border-gray-200 p-4 bg-white">
-          <p className="text-xs text-gray-500 uppercase mb-1">Taux d'annulation</p>
+          <p className="text-xs text-gray-500 uppercase mb-1">Taux d&apos;annulation</p>
           <p className="text-2xl font-bold text-gray-900">{stats.cancellation_rate}%</p>
           <p className="text-xs text-gray-500 mt-1">{stats.cancelled} annulés</p>
         </div>
@@ -290,7 +290,7 @@ export function DashboardStats() {
             </p>
           </div>
           <div>
-            <p className="text-gray-500">Taux d'annulation</p>
+            <p className="text-gray-500">Taux d&apos;annulation</p>
             <p className="text-lg font-semibold text-gray-900 mt-1">{stats.cancellation_rate}%</p>
           </div>
         </div>

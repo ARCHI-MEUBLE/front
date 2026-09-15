@@ -590,7 +590,7 @@ export function DashboardModels() {
         <Card>
           <CardHeader>
             <CardTitle>Conception visuelle</CardTitle>
-            <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l'ajouter directement au catalogue.</CardDescription>
+            <CardDescription>Utilisez le configurateur 3D pour concevoir un meuble et l&apos;ajouter directement au catalogue.</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center">
             <Button asChild className="bg-[#8B7355] hover:bg-[#705D45]">

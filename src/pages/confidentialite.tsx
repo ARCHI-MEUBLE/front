@@ -36,7 +36,7 @@ export default function Confidentialite() {
               </h2>
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>
-                  ArchiMeuble s'engage à protéger la vie privée des utilisateurs de son site internet.
+                  ArchiMeuble s&apos;engage à protéger la vie privée des utilisateurs de son site internet.
                   Cette politique de confidentialité explique comment nous collectons, utilisons et
                   protégeons vos données personnelles.
                 </p>
@@ -57,7 +57,7 @@ export default function Confidentialite() {
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>Nous collectons les données suivantes :</p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Données d'identification :</strong> nom, prénom, adresse email, numéro de téléphone</li>
+                  <li><strong className="text-[#1A1917]">Données d&apos;identification :</strong> nom, prénom, adresse email, numéro de téléphone</li>
                   <li><strong className="text-[#1A1917]">Données de livraison :</strong> adresse postale</li>
                   <li><strong className="text-[#1A1917]">Données de commande :</strong> historique des commandes, configurations de meubles</li>
                   <li><strong className="text-[#1A1917]">Données de connexion :</strong> adresse IP, données de navigation</li>
@@ -92,9 +92,9 @@ export default function Confidentialite() {
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>Le traitement de vos données repose sur :</p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">L'exécution d'un contrat :</strong> traitement de vos commandes</li>
+                  <li><strong className="text-[#1A1917]">L&apos;exécution d&apos;un contrat :</strong> traitement de vos commandes</li>
                   <li><strong className="text-[#1A1917]">Votre consentement :</strong> envoi de newsletters et communications commerciales</li>
-                  <li><strong className="text-[#1A1917]">L'intérêt légitime :</strong> amélioration de nos services, prévention de la fraude</li>
+                  <li><strong className="text-[#1A1917]">L&apos;intérêt légitime :</strong> amélioration de nos services, prévention de la fraude</li>
                   <li><strong className="text-[#1A1917]">Les obligations légales :</strong> conservation des factures</li>
                 </ul>
               </div>
@@ -128,7 +128,7 @@ export default function Confidentialite() {
                 <ul className="ml-6 list-disc space-y-2">
                   <li>Nos prestataires de paiement (Stripe)</li>
                   <li>Nos prestataires de livraison</li>
-                  <li>Nos prestataires d'hébergement (Vercel)</li>
+                  <li>Nos prestataires d&apos;hébergement (Vercel)</li>
                   <li>Les autorités compétentes si requis par la loi</li>
                 </ul>
                 <p>
@@ -147,11 +147,11 @@ export default function Confidentialite() {
                   Conformément au RGPD, vous disposez des droits suivants :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Droit d'accès :</strong> obtenir une copie de vos données</li>
+                  <li><strong className="text-[#1A1917]">Droit d&apos;accès :</strong> obtenir une copie de vos données</li>
                   <li><strong className="text-[#1A1917]">Droit de rectification :</strong> corriger vos données inexactes</li>
-                  <li><strong className="text-[#1A1917]">Droit à l'effacement :</strong> demander la suppression de vos données</li>
+                  <li><strong className="text-[#1A1917]">Droit à l&apos;effacement :</strong> demander la suppression de vos données</li>
                   <li><strong className="text-[#1A1917]">Droit à la portabilité :</strong> recevoir vos données dans un format structuré</li>
-                  <li><strong className="text-[#1A1917]">Droit d'opposition :</strong> vous opposer au traitement de vos données</li>
+                  <li><strong className="text-[#1A1917]">Droit d&apos;opposition :</strong> vous opposer au traitement de vos données</li>
                   <li><strong className="text-[#1A1917]">Droit de limitation :</strong> limiter le traitement de vos données</li>
                 </ul>
                 <p>
@@ -193,8 +193,8 @@ export default function Confidentialite() {
                   Notre site utilise des cookies pour :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Cookies essentiels :</strong> fonctionnement du site, panier d'achat</li>
-                  <li><strong className="text-[#1A1917]">Cookies analytiques :</strong> analyse de l'utilisation du site</li>
+                  <li><strong className="text-[#1A1917]">Cookies essentiels :</strong> fonctionnement du site, panier d&apos;achat</li>
+                  <li><strong className="text-[#1A1917]">Cookies analytiques :</strong> analyse de l&apos;utilisation du site</li>
                   <li><strong className="text-[#1A1917]">Cookies de préférence :</strong> mémorisation de vos choix</li>
                 </ul>
                 <p>
@@ -211,7 +211,7 @@ export default function Confidentialite() {
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>
                   Si vous estimez que vos droits ne sont pas respectés, vous pouvez adresser une réclamation
-                  à la Commission Nationale de l'Informatique et des Libertés (CNIL) :
+                  à la Commission Nationale de l&apos;Informatique et des Libertés (CNIL) :
                 </p>
                 <p>
                   CNIL<br />

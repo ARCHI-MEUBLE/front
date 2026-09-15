@@ -433,7 +433,7 @@ export function DashboardCatalogue() {
             <form id="catalogue-form" onSubmit={handleSubmit} className="space-y-4 pb-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="name">Nom de l'article</Label>
+                  <Label htmlFor="name">Nom de l&apos;article</Label>
                   <Input id="name" name="name" value={formState.name} onChange={handleInputChange} required placeholder="Ex: Porte Chêne Massif" />
                 </div>
                 <div className="space-y-2">
@@ -519,7 +519,7 @@ export function DashboardCatalogue() {
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="variation_label">Libellé des variations</Label>
                   <Input id="variation_label" name="variation_label" value={formState.variation_label} onChange={handleInputChange} placeholder="Ex: Couleur / Finition, Taille, Modèle..." />
-                  <p className="text-[10px] text-muted-foreground italic">Ce texte s'affichera au dessus des boutons de sélection sur le site.</p>
+                  <p className="text-[10px] text-muted-foreground italic">Ce texte s&apos;affichera au dessus des boutons de sélection sur le site.</p>
                 </div>
                 <div className="flex items-center space-x-2 sm:col-span-2">
                   <input

@@ -92,14 +92,14 @@ export default function MentionsLegales() {
               </h2>
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>
-                  L'ensemble du contenu de ce site (textes, images, vidéos, logos, graphismes, icônes, etc.)
-                  est la propriété exclusive d'ArchiMeuble ou de ses partenaires et est protégé par les lois
+                  L&apos;ensemble du contenu de ce site (textes, images, vidéos, logos, graphismes, icônes, etc.)
+                  est la propriété exclusive d&apos;ArchiMeuble ou de ses partenaires et est protégé par les lois
                   françaises et internationales relatives à la propriété intellectuelle.
                 </p>
                 <p>
                   Toute reproduction, représentation, modification, publication, adaptation de tout ou partie
                   des éléments du site, quel que soit le moyen ou le procédé utilisé, est interdite, sauf
-                  autorisation écrite préalable d'ArchiMeuble.
+                  autorisation écrite préalable d&apos;ArchiMeuble.
                 </p>
               </div>
             </section>
@@ -112,18 +112,18 @@ export default function MentionsLegales() {
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>
                   Conformément à la loi « Informatique et Libertés » du 6 janvier 1978 modifiée et au
-                  Règlement Général sur la Protection des Données (RGPD), vous disposez d'un droit d'accès,
-                  de rectification, de suppression et d'opposition aux données personnelles vous concernant.
+                  Règlement Général sur la Protection des Données (RGPD), vous disposez d&apos;un droit d&apos;accès,
+                  de rectification, de suppression et d&apos;opposition aux données personnelles vous concernant.
                 </p>
                 <p>
                   Pour exercer ces droits, vous pouvez nous contacter par email à{' '}
                   <Link href="mailto:pro.archimeuble@gmail.com" className="text-[#1A1917] underline hover:text-[#8B7355]">
                     pro.archimeuble@gmail.com
                   </Link>{' '}
-                  ou par courrier à l'adresse mentionnée ci-dessus.
+                  ou par courrier à l&apos;adresse mentionnée ci-dessus.
                 </p>
                 <p>
-                  Pour plus d'informations, consultez notre{' '}
+                  Pour plus d&apos;informations, consultez notre{' '}
                   <Link href="/confidentialite" className="text-[#1A1917] underline hover:text-[#8B7355]">
                     Politique de Confidentialité
                   </Link>.
@@ -152,14 +152,14 @@ export default function MentionsLegales() {
               </h2>
               <div className="mt-6 space-y-4 text-[#706F6C]">
                 <p>
-                  ArchiMeuble s'efforce d'assurer l'exactitude et la mise à jour des informations diffusées
-                  sur ce site. Toutefois, ArchiMeuble ne peut garantir l'exactitude, la précision ou
-                  l'exhaustivité des informations mises à disposition sur ce site.
+                  ArchiMeuble s&apos;efforce d&apos;assurer l&apos;exactitude et la mise à jour des informations diffusées
+                  sur ce site. Toutefois, ArchiMeuble ne peut garantir l&apos;exactitude, la précision ou
+                  l&apos;exhaustivité des informations mises à disposition sur ce site.
                 </p>
                 <p>
                   ArchiMeuble décline toute responsabilité pour toute imprécision, inexactitude ou omission
                   portant sur des informations disponibles sur ce site, ainsi que pour tout dommage résultant
-                  d'une intrusion frauduleuse d'un tiers.
+                  d&apos;une intrusion frauduleuse d&apos;un tiers.
                 </p>
               </div>
             </section>

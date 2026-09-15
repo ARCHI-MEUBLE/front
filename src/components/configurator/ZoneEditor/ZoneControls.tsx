@@ -513,7 +513,7 @@ export default function ZoneControls({
             </div>
 
             <p className="mt-3 text-center text-[10px] text-[#706F6C]">
-              La porte recouvrira l'intégralité de la zone sélectionnée.
+              La porte recouvrira l&apos;intégralité de la zone sélectionnée.
             </p>
           </div>
         )}
@@ -581,7 +581,7 @@ export default function ZoneControls({
                 {doorSideDialog.isOpen && (
                   <div className="mt-4 border border-[#E8E6E3] bg-[#FAFAF9] p-4" style={{ borderRadius: '2px' }}>
                     <p className="mb-2 text-sm font-medium text-[#1A1917]">
-                      Côté d'ouverture
+                      Côté d&apos;ouverture
                     </p>
                     <p className="mb-4 text-xs text-[#706F6C]">
                       {doorSideDialog.doorType === 'push'
@@ -707,7 +707,7 @@ export default function ZoneControls({
                         <div className="mt-4 flex items-center justify-between border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '4px' }}>
                           <div className="flex items-center gap-2">
                             <Square className="h-4 w-4 text-[#706F6C]" />
-                            <span className="text-sm font-medium text-[#1A1917]">Nombre d'étagères</span>
+                            <span className="text-sm font-medium text-[#1A1917]">Nombre d&apos;étagères</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
@@ -876,7 +876,7 @@ export default function ZoneControls({
                         </div>
                         <details className="mt-3">
                           <summary className="cursor-pointer text-sm font-medium text-[#706F6C] hover:text-[#1A1917]">
-                            Plus d'options (6 à 10 niveaux)
+                            Plus d&apos;options (6 à 10 niveaux)
                           </summary>
                           <div className="mt-3 grid grid-cols-5 gap-2">
                             {[6, 7, 8, 9, 10].map((count) => (
@@ -920,7 +920,7 @@ export default function ZoneControls({
                         </div>
                         <details className="mt-3">
                           <summary className="cursor-pointer text-sm font-medium text-[#706F6C] hover:text-[#1A1917]">
-                            Plus d'options (6 à 10 colonnes)
+                            Plus d&apos;options (6 à 10 colonnes)
                           </summary>
                           <div className="mt-3 grid grid-cols-5 gap-2">
                             {[6, 7, 8, 9, 10].map((count) => (

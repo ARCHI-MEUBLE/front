@@ -2594,14 +2594,14 @@ export default function ConfiguratorPage() {
         <IconInfoCircle className="h-12 w-12 text-[#8B7355] mb-4" />
         <h1 className="font-serif text-2xl text-[#1A1917] mb-2">Configuration introuvable</h1>
         <p className="text-[#706F6C] max-w-md mb-8">
-          Désolé, nous ne parvenons pas à charger cette configuration. Elle n'existe peut-être plus ou le lien est incorrect.
+          Désolé, nous ne parvenons pas à charger cette configuration. Elle n&apos;existe peut-être plus ou le lien est incorrect.
         </p>
         <button 
           onClick={() => router.push('/')}
           className="bg-[#1A1917] text-white px-8 py-3 text-sm font-medium hover:bg-[#2A2927] transition-colors"
           style={{ borderRadius: '2px' }}
         >
-          Retour à l'accueil
+          Retour à l&apos;accueil
         </button>
       </div>
     );
@@ -2624,10 +2624,10 @@ export default function ConfiguratorPage() {
             </h1>
             <p className="mt-4 text-base text-[#706F6C]">
               Pour une meilleure expérience de configuration de votre meuble sur mesure,
-              nous vous recommandons d'utiliser un ordinateur.
+              nous vous recommandons d&apos;utiliser un ordinateur.
             </p>
             <p className="mt-2 text-sm text-[#706F6C]">
-              Le configurateur 3D est optimisé pour les écrans larges et l'utilisation de la souris.
+              Le configurateur 3D est optimisé pour les écrans larges et l&apos;utilisation de la souris.
             </p>
             <div className="mt-8 space-y-3">
               <button
@@ -2661,7 +2661,7 @@ export default function ConfiguratorPage() {
             className="mt-6 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white"
             style={{ borderRadius: '2px' }}
           >
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </button>
         </div>
       </div>
@@ -3446,8 +3446,8 @@ export default function ConfiguratorPage() {
               </h2>
               <p className="mb-6 text-center text-base text-[#706F6C]">
                 {isAdminEditModel 
-                  ? <>Le modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été mis à jour avec succès dans le catalogue.</>
-                  : <>Votre nouveau modèle <span className="font-semibold text-[#1A1917]">"{modelForm.name}"</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
+                  ? <>Le modèle <span className="font-semibold text-[#1A1917]">&quot;{modelForm.name}&quot;</span> a été mis à jour avec succès dans le catalogue.</>
+                  : <>Votre nouveau modèle <span className="font-semibold text-[#1A1917]">&quot;{modelForm.name}&quot;</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
                 }
               </p>
 
@@ -3599,7 +3599,7 @@ export default function ConfiguratorPage() {
                       className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
                       style={{ borderRadius: '2px' }}
                     >
-                      Retour à l'accueil
+                      Retour à l&apos;accueil
                     </button>
                   </>
                 )}

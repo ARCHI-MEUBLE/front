@@ -198,7 +198,7 @@ export function DashboardAvis() {
         <Card>
           <CardHeader>
             <CardTitle>Distribution des Notes</CardTitle>
-            <CardDescription>Répartition des avis par nombre d'étoiles</CardDescription>
+            <CardDescription>Répartition des avis par nombre d&apos;étoiles</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

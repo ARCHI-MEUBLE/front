@@ -97,7 +97,7 @@ export function DashboardSamples() {
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">Aucun échantillon</h3>
                 <p className="mb-4 mt-2 text-sm text-muted-foreground">
-                  Vous n'avez pas encore ajouté de types d'échantillons. Commencez par en créer un à droite.
+                  Vous n&apos;avez pas encore ajouté de types d&apos;échantillons. Commencez par en créer un à droite.
                 </p>
               </div>
             </div>

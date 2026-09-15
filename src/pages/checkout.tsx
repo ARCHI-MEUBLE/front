@@ -601,7 +601,7 @@ export default function CheckoutStripe() {
                           <div className="h-5 w-5 border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917] peer-checked:bg-[#1A1917]" />
                           <Check className="absolute h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
                         </div>
-                        <span className="text-sm text-[#1A1917]">Identique à l'adresse de livraison</span>
+                        <span className="text-sm text-[#1A1917]">Identique à l&apos;adresse de livraison</span>
                       </label>
 
                       {!formData.billing_same && (

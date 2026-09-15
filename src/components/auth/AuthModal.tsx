@@ -1,6 +1,7 @@
 // src/components/auth/AuthModal.tsx
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useCustomer } from '@/context/CustomerContext'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -217,12 +218,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 <p className="text-xs text-zinc-500">Minimum 8 caractères</p>
               )}
               {mode === 'login' && (
-                <a
+                <Link
                   href="/auth/forgot-password"
                   className="text-xs text-zinc-500 hover:text-[#1A1917] hover:underline transition-colors"
                 >
                   Mot de passe oublié ?
-                </a>
+                </Link>
               )}
             </div>
 
