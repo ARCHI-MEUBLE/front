@@ -2827,8 +2827,11 @@ export default function ConfiguratorPage() {
                 {generating && (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/40 backdrop-blur-[1px] z-10">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-                      <p className="text-sm text-[#706F6C]">Mise à jour de la fabrication...</p>
+                      <img
+                        src="/images/logo-icon.png"
+                        alt=""
+                        className="h-16 w-16 animate-pulse"
+                      />
                     </div>
                   </div>
                 )}
