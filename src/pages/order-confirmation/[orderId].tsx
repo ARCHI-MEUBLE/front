@@ -338,7 +338,7 @@ export default function OrderConfirmationPage() {
                               width={dimensions.width || 1000}
                               height={dimensions.height || 2000}
                               depth={dimensions.depth || 400}
-                              hexColor={styling.color || '#D8C7A1'}
+                              color={styling.color || '#D8C7A1'}
                               imageUrl={styling.colorImage}
                               hasSocle={styling.socle && styling.socle !== 'none'}
                               socle={styling.socle || 'none'}

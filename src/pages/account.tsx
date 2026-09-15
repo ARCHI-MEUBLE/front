@@ -803,7 +803,7 @@ export default function Account() {
                                           width={configData.dimensions?.width || 1500}
                                           height={configData.dimensions?.height || 730}
                                           depth={configData.dimensions?.depth || 500}
-                                          hexColor={configData.styling?.color || '#D8C7A1'}
+                                          color={configData.styling?.color || '#D8C7A1'}
                                           imageUrl={configData.styling?.colorImage}
                                           hasSocle={configData.styling?.socle && configData.styling?.socle !== 'none'}
                                           socle={configData.styling?.socle || 'none'}
@@ -1237,7 +1237,7 @@ export default function Account() {
                                   color={config.config_data.styling?.color || '#D8C7A1'}
                                   hasSocle={config.config_data.styling?.socle !== 'none'}
                                   rootZone={config.config_data.advancedZones || { id: 'root', type: 'leaf', content: 'empty' } as Zone}
-                                  selectedZoneId={null}
+                                  selectedZoneIds={[]}
                                   onSelectZone={() => {}}
                                   isBuffet={false}
                                   doorsOpen={config.config_data.features?.doorsOpen ?? false}
