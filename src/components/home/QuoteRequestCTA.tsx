@@ -1,95 +1,57 @@
-import Link from 'next/link';
-import { IconCamera, IconVideo, IconArrowRight } from '@tabler/icons-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import Link from "next/link";
+import { HOME_SECTION } from "@/components/home/homeLayout";
+
+const FILE_TYPES = ["JPG", "PNG", "HEIC", "MP4", "MOV", "AVI"];
 
 export function QuoteRequestCTA() {
   return (
-    <section className="py-16 px-4 sm:py-20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      <div className="container mx-auto max-w-6xl">
-        <Card className="border-2 border-primary/20 shadow-xl overflow-hidden">
-          <CardContent className="p-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-              {/* Left side - Text content */}
-              <div className="p-8 sm:p-12 flex flex-col justify-center">
-                <div className="inline-flex items-center gap-2 text-primary font-semibold text-sm mb-4">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <IconCamera className="w-4 h-4" />
-                  </div>
-                  Nouveau service
-                </div>
-
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                  Un meuble vous plaît ?
-                </h2>
-
-                <p className="text-lg text-muted-foreground mb-6">
-                  Vous avez vu un meuble en magasin ou ailleurs qui vous inspire ?
-                  Envoyez-nous une <strong>photo ou vidéo</strong> et nous vous ferons
-                  un <strong>devis personnalisé</strong> pour le reproduire sur mesure.
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <IconCamera className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">Photos acceptées</p>
-                      <p className="text-xs text-muted-foreground">Formats: JPG, PNG, HEIC</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <IconVideo className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">Vidéos acceptées</p>
-                      <p className="text-xs text-muted-foreground">Formats: MP4, MOV, AVI</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Link href="/demande-devis">
-                  <Button size="lg" className="w-full sm:w-auto group">
-                    Demander un devis
-                    <IconArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
-              </div>
-
-              {/* Right side - Visual/Illustration */}
-              <div className="relative bg-gradient-to-br from-primary/10 to-accent/10 p-8 sm:p-12 flex items-center justify-center min-h-[300px] lg:min-h-0">
-                <div className="relative w-full max-w-sm">
-                  {/* Decorative elements */}
-                  <div className="absolute top-0 left-0 w-24 h-24 bg-primary/20 rounded-full blur-3xl" />
-                  <div className="absolute bottom-0 right-0 w-32 h-32 bg-accent/20 rounded-full blur-3xl" />
-
-                  {/* Central illustration */}
-                  <div className="relative bg-background rounded-2xl shadow-2xl p-6 border-2 border-border">
-                    <div className="flex flex-col items-center text-center space-y-4">
-                      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                        <IconCamera className="w-10 h-10 text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-3 bg-muted rounded w-32 mx-auto" />
-                        <div className="h-3 bg-muted rounded w-24 mx-auto" />
-                      </div>
-                      <div className="w-full h-32 bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center">
-                        <IconVideo className="w-12 h-12 text-muted-foreground/30" />
-                      </div>
-                      <div className="flex gap-2 w-full">
-                        <div className="h-8 bg-primary/20 rounded flex-1" />
-                        <div className="h-8 bg-muted rounded flex-1" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <section aria-labelledby="inspi-title" className={HOME_SECTION}>
+      <div className="grid grid-cols-1 items-end gap-10 rounded-[20px] bg-[#161513] p-[clamp(28px,5vw,64px)] text-[#F7F6F2] lg:grid-cols-2">
+        <div>
+          <h2
+            id="inspi-title"
+            className="m-0 mb-5 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#F7F6F2]"
+            style={{ fontSize: "clamp(36px,5vw,72px)" }}
+          >
+            Un meuble vous plaît ?
+          </h2>
+          <p className="m-0 max-w-[46ch] text-[18px] text-[#D9D6CE]">
+            Vous avez vu un meuble en magasin ou ailleurs qui vous inspire ? Envoyez-nous une{" "}
+            <strong className="font-medium text-[#F7F6F2]">photo ou vidéo</strong> et nous vous ferons un{" "}
+            <strong className="font-medium text-[#F7F6F2]">devis personnalisé</strong> pour le reproduire sur
+            mesure.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/demande-devis"
+            className="flex w-full items-center gap-[18px] rounded-2xl border-[1.5px] border-dashed border-[#5F5B53] bg-white/[0.04] p-[22px] text-left text-[#F7F6F2] transition-colors duration-200 hover:border-[#D4FF3A] hover:bg-[#D4FF3A]/[0.06]"
+          >
+            <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-[#D4FF3A]" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#161513" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 16V4" />
+                <path d="m6 10 6-6 6 6" />
+                <path d="M4 20h16" />
+              </svg>
+            </span>
+            <span className="flex min-w-0 flex-col gap-2">
+              <span className="text-[17px] font-medium tracking-[-0.01em]">Déposez la photo ou la vidéo du meuble</span>
+              <span className="flex flex-wrap gap-1.5">
+                {FILE_TYPES.map((type) => (
+                  <span key={type} className="rounded-full border border-[#3B3832] px-2.5 py-1 font-[Geist_Mono] text-[11px] text-[#D9D6CE]">
+                    {type}
+                  </span>
+                ))}
+              </span>
+            </span>
+          </Link>
+          <Link
+            href="/demande-devis"
+            className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#D4FF3A] px-7 py-4 text-[16px] font-medium text-[#161513] transition-transform duration-200 hover:-translate-y-0.5"
+          >
+            Demander un devis →
+          </Link>
+        </div>
       </div>
     </section>
   );

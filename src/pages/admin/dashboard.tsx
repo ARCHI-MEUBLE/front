@@ -11,6 +11,7 @@ import { DashboardConfigs } from '@/components/admin/DashboardConfigs';
 import { DashboardOrders } from '@/components/admin/DashboardOrders';
 import DashboardPayments from '@/components/admin/DashboardPayments';
 import { DashboardAppointments } from '@/components/admin/DashboardAppointments';
+import { DashboardLeads } from '@/components/admin/DashboardLeads';
 import { DashboardCalendar } from '@/components/admin/DashboardCalendar';
 import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
@@ -41,6 +42,7 @@ const sectionTitles: Record<DashboardSection, { title: string; description: stri
   configs: { title: 'Configurations clients', description: 'Configurations enregistrées par les clients' },
   orders: { title: 'Gestion des commandes', description: 'Toutes les commandes et leur statut' },
   payments: { title: 'Paiements', description: 'Historique et gestion des paiements' },
+  leads: { title: 'Demandes clients', description: 'Demandes de devis et messages de contact reçus sur le site' },
   appointments: { title: 'Demandes de rendez-vous', description: 'Nouvelles demandes de rendez-vous' },
   calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
   avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
@@ -223,6 +225,7 @@ export default function AdminDashboardPage() {
                 {selectedSection === 'configs' && <DashboardConfigs />}
                 {selectedSection === 'orders' && <DashboardOrders />}
                 {selectedSection === 'payments' && <DashboardPayments />}
+                {selectedSection === 'leads' && <DashboardLeads />}
                 {selectedSection === 'appointments' && <DashboardAppointments />}
                 {selectedSection === 'calendar' && <DashboardCalendar />}
                 {selectedSection === 'avis' && <DashboardAvis />}

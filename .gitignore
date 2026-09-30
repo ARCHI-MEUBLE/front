@@ -83,3 +83,4 @@ public/uploads/
 # Modèles 3D générés
 public/models/*.glb
 public/models/*.dxf
+.claude/worktrees/
