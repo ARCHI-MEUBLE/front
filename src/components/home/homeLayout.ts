@@ -1,6 +1,6 @@
-export const HOME_SECTION = "mx-auto max-w-[1360px] px-5 pt-20 sm:px-6 lg:px-12 lg:pt-36";
-export const HOME_SECTION_NO_TOP = "mx-auto max-w-[1360px] px-5 sm:px-6 lg:px-12";
-export const HOME_MONO = "font-[Geist_Mono] uppercase tracking-[0.04em]";
+export const HOME_SECTION = "mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-[clamp(80px,10vw,144px)]";
+export const HOME_SECTION_NO_TOP = "mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)]";
+export const HOME_MONO = "font-[Geist_Mono] uppercase tracking-[0.04em] text-[#5F5B53]";
 export const HOME_HEADING = "font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]";
 export const HOME_BODY = "text-[#3B3832]";
 export const HOME_PILL_DARK =
