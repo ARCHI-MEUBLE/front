@@ -65,23 +65,24 @@ export default function ContactRequestPage() {
         setIsLoading(true);
 
         try {
-            const formDataToSend = new FormData();
-            formDataToSend.append('name', formData.name);
-            formDataToSend.append('email', formData.email);
-            formDataToSend.append('phone', formData.phone);
-            formDataToSend.append('company', formData.company || '');
-            formDataToSend.append('subject', formData.subject || 'Demande de contact');
-            formDataToSend.append('message', formData.message);
-
-            const response = await fetch('https://formspree.io/f/xkgpvjke', {
+            const response = await fetch('/backend/api/contact-request/index.php', {
                 method: 'POST',
-                body: formDataToSend,
                 headers: {
-                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    company: formData.company || '',
+                    subject: formData.subject || 'Demande de contact',
+                    message: formData.message,
+                }),
             });
 
-            if (response.ok) {
+            const data = await response.json();
+
+            if (response.ok && data.success) {
                 setSuccess(true);
                 setFormData({
                     name: '',
@@ -96,7 +97,7 @@ export default function ContactRequestPage() {
                     router.push('/');
                 }, 3000);
             } else {
-                throw new Error('Erreur lors de l\'envoi du formulaire');
+                throw new Error(data.error || 'Erreur lors de l\'envoi du formulaire');
             }
         } catch (err: any) {
             setError(err.message || 'Erreur lors de l\'envoi du formulaire. Veuillez réessayer.');
