@@ -5,8 +5,12 @@ import path from "path";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
+import { ProductsMarquee } from "@/components/home/ProductsMarquee";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
-import { CategoriesSection } from "@/components/home/CategoriesSection";
+import { ProcessSection } from "@/components/home/ProcessSection";
+import { ServiceAreaSection } from "@/components/home/ServiceAreaSection";
+import { FaqSection } from "@/components/home/FaqSection";
+import { FinalCtaSection } from "@/components/home/FinalCtaSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
 import { QuoteRequestCTA } from "@/components/home/QuoteRequestCTA";
 import { ConfiguratorDemoSection } from "@/components/home/ConfiguratorDemoSection";
@@ -22,7 +26,7 @@ type HomePageProps = {
 
 export default function HomePage({ colors }: HomePageProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-[#F7F6F2] font-[Geist]">
       <Head>
         <title>Archimeuble | Menuisier sur mesure a Lille</title>
         <meta
@@ -33,12 +37,16 @@ export default function HomePage({ colors }: HomePageProps) {
       <Header />
       <main className="flex flex-1 flex-col">
         <HeroSection />
+        <ProductsMarquee />
         <ConfiguratorDemoSection />
         <ColorsAndFinishesSection colors={colors} />
         <WhyChooseUs />
+        <ProcessSection />
         <QuoteRequestCTA />
-        <CategoriesSection />
         <TestimonialsSection />
+        <ServiceAreaSection />
+        <FaqSection />
+        <FinalCtaSection />
       </main>
       <Footer />
     </div>
@@ -154,11 +162,9 @@ export const getStaticProps: GetStaticProps<HomePageProps> = async () => {
     })))
     .filter((color): color is ColorOption => color !== null)
     .sort((a, b) => {
-      // Forcer armoire_bleu.png en premier (car bleu_clair est vide)
       const primaryImage = 'armoire_bleu.png';
       if (a.image.includes(primaryImage)) return -1;
       if (b.image.includes(primaryImage)) return 1;
-      // Tri alphabétique pour le reste
       return a.fancyName.localeCompare(b.fancyName, "fr");
     });
 
