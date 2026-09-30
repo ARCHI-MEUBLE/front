@@ -24,6 +24,7 @@ export interface FurnitureModel {
   price: number | null;
   image_url: string | null;
   hover_image_url: string | null;
+  category: string | null;
   created_at: string;
 }
 
