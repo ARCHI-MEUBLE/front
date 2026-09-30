@@ -18,6 +18,7 @@ import {
   IconColorSwatch,
   IconCategory,
   IconCamera,
+  IconMailbox,
 } from "@tabler/icons-react"
 
 import {
@@ -50,6 +51,7 @@ export type DashboardSection =
   | 'configs'
   | 'orders'
   | 'payments'
+  | 'leads'
   | 'appointments'
   | 'calendar'
   | 'avis'
@@ -96,6 +98,11 @@ const navMain = [
     id: "payments" as DashboardSection,
     title: "Paiements",
     icon: IconCreditCard,
+  },
+  {
+    id: "leads" as DashboardSection,
+    title: "Demandes clients",
+    icon: IconMailbox,
   },
   {
     id: "appointments" as DashboardSection,
