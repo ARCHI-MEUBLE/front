@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/dateUtils';
-import { IconFileText, IconPaperclip } from '@tabler/icons-react';
+import { IconDownload, IconFileText, IconPaperclip, IconPhoto, IconVideo } from '@tabler/icons-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+
+interface QuoteRequestFile {
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+}
 
 interface QuoteRequest {
   id: number;
@@ -18,6 +25,7 @@ interface QuoteRequest {
   status: string;
   created_at: string;
   file_count: number;
+  files: QuoteRequestFile[];
 }
 
 export function QuoteRequestsPanel() {
@@ -133,8 +141,27 @@ export function QuoteRequestsPanel() {
                     <p className="whitespace-pre-wrap text-sm">{selected.description}</p>
                   </div>
                 )}
-                {selected.file_count > 0 && (
-                  <p className="text-sm text-muted-foreground">{selected.file_count} fichier(s) joint(s) — non téléchargeables depuis cette vue pour le moment.</p>
+                {selected.files.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Fichiers joints</p>
+                    <div className="flex flex-col gap-2">
+                      {selected.files.map((file, index) => (
+                        <a
+                          key={index}
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm hover:bg-muted"
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            {file.type === 'video' ? <IconVideo className="h-4 w-4 shrink-0" /> : <IconPhoto className="h-4 w-4 shrink-0" />}
+                            <span className="truncate">{file.name}</span>
+                          </span>
+                          <IconDownload className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <p className="text-xs text-muted-foreground">Reçu le {formatDate(selected.created_at)}</p>
               </div>
