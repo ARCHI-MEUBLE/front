@@ -449,3 +449,57 @@ h4,
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
 }
+
+@keyframes home-marquee-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes home-marquee-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@keyframes home-marquee-down {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
+
+.home-marquee-products {
+  animation: home-marquee-x 40s linear infinite;
+}
+
+.home-marquee-up {
+  animation: home-marquee-up 36s linear infinite;
+}
+
+.home-marquee-down {
+  animation: home-marquee-down 36s linear infinite;
+}
+
+.home-marquee-products:hover,
+.home-marquee-up:hover,
+.home-marquee-down:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-marquee-products,
+  .home-marquee-up,
+  .home-marquee-down,
+  .home-fade-slide {
+    animation: none;
+  }
+}
+
+@keyframes home-fade-cycle {
+  0% { opacity: 1; }
+  16% { opacity: 1; }
+  20% { opacity: 0; }
+  96% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.home-fade-slide {
+  animation: home-fade-cycle 18000ms infinite;
+}
