@@ -3,11 +3,12 @@ import { HOME_SECTION } from "@/components/home/homeLayout";
 
 export function FinalCtaSection() {
   return (
-    <section aria-labelledby="cta-title" className={`${HOME_SECTION} pb-20 lg:pb-36`}>
-      <div className="flex flex-col gap-10 rounded-[20px] border border-[#161513] bg-[#D4FF3A] p-7 sm:p-10 lg:p-20">
+    <section aria-labelledby="cta-title" className={HOME_SECTION}>
+      <div className="flex flex-col gap-10 rounded-[20px] border border-[#161513] bg-[#D4FF3A] p-[clamp(32px,6vw,80px)]">
         <h2
           id="cta-title"
-          className="m-0 max-w-[13ch] text-balance text-[44px] font-medium leading-[0.95] tracking-[-0.055em] text-[#161513] sm:text-[72px] lg:text-[120px]"
+          className="m-0 max-w-[13ch] font-[Geist] font-medium leading-[0.95] tracking-[-0.055em] text-[#161513]"
+          style={{ fontSize: "clamp(44px,8vw,120px)" }}
         >
           Prêt à créer votre meuble unique ?
         </h2>

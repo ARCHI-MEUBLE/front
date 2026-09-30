@@ -1,43 +1,31 @@
-const products = [
-  "Dressings",
-  "Bibliothèques",
-  "Buffets",
-  "Bureaux",
-  "Meubles TV",
-  "Sous-escalier"
-];
+import { PRODUCTS } from "@/components/home/homeData";
 
 export function ProductsMarquee() {
-  const loop = [...products, ...products];
-
   return (
-    <section aria-label="Produits" className="pt-14 sm:pt-16 lg:pt-24">
+    <section aria-label="Produits" className="pt-[clamp(56px,7vw,96px)]">
       <div className="overflow-hidden border-y border-[#E5E2D9]">
-        <div className="flex w-max animate-home-marquee">
-          {loop.map((item, index) => (
-            <span
-              key={`${item}-${index}`}
-              className="flex items-center gap-7 whitespace-nowrap py-6 pl-7 text-[22px] font-medium tracking-[-0.04em] text-[#161513] sm:text-[28px] lg:gap-14 lg:pl-14 lg:text-[32px]"
-            >
-              {item}
-              <span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-[#161513] bg-[#D4FF3A]" />
-            </span>
+        <div className="home-marquee-products flex w-max">
+          {PRODUCTS.map((product) => (
+            <ProductItem key={product} product={product} />
+          ))}
+          {PRODUCTS.map((product) => (
+            <ProductItem key={product} product={product} hidden />
           ))}
         </div>
       </div>
-      <style jsx>{`
-        @keyframes home-marquee {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
-        }
-        .animate-home-marquee {
-          animation: home-marquee 26s linear infinite;
-        }
-      `}</style>
     </section>
+  );
+}
+
+function ProductItem({ product, hidden }: { product: string; hidden?: boolean }) {
+  return (
+    <span
+      aria-hidden={hidden}
+      className="flex items-center gap-[clamp(28px,4vw,56px)] whitespace-nowrap py-[26px] pl-[clamp(28px,4vw,56px)] font-medium tracking-[-0.04em] text-[#161513]"
+      style={{ fontSize: "clamp(22px,2.4vw,32px)" }}
+    >
+      <span>{product}</span>
+      <span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-[#161513] bg-[#D4FF3A]" />
+    </span>
   );
 }
