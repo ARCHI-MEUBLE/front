@@ -12,6 +12,7 @@ import { TestimonialsSection } from "@/components/home/TestimonialsSection";
 import { QuoteRequestCTA } from "@/components/home/QuoteRequestCTA";
 import { ConfiguratorDemoSection } from "@/components/home/ConfiguratorDemoSection";
 import { ColorsAndFinishesSection } from "@/components/home/ColorsAndFinishesSection";
+import { ContactUniqueSection } from "@/components/shared/ContactUniqueSection";
 
 export default function HomePage() {
   return (
@@ -34,6 +35,7 @@ export default function HomePage() {
         <QuoteRequestCTA />
         <TestimonialsSection />
         <ServiceAreaSection />
+        <ContactUniqueSection />
         <FaqSection />
         <FinalCtaSection />
       </main>
