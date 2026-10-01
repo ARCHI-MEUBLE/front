@@ -39,12 +39,6 @@ export const PROCESS: { title: string; tag: string; text: string; image: string 
   { title: "Pose", tag: "Finitions", text: "La pose et les finitions sont réalisées sur place pour une intégration parfaite.", image: "https://images.unsplash.com/photo-1631396326838-de37e5f8bcbc?auto=format&fit=crop&w=900&q=70" },
 ];
 
-export const REASONS: { title: string; text: string }[] = [
-  { title: "Au millimètre", text: "Chaque meuble épouse parfaitement votre espace. Pas de compromis sur les dimensions." },
-  { title: "Votre style", text: "Essences, teintes, poignées : vous composez un meuble unique qui vous ressemble." },
-  { title: "Fait à Lille", text: "Notre atelier lillois allie savoir-faire traditionnel et précision moderne." },
-];
-
 export const TESTIMONIALS: { quote: string; name: string; city: string; rating: number; avatarParams: string }[] = [
   { quote: "Un travail remarquable du début à la fin. Notre bibliothèque s'intègre parfaitement dans le salon, comme si elle avait toujours été là.", name: "Marie-Claire D.", city: "Lille", rating: 5, avatarParams: "&hair=variant02&beardProbability=0" },
   { quote: "Le configurateur en ligne est vraiment bien fait. J'ai pu visualiser mon dressing avant de commander.", name: "Thomas L.", city: "Roubaix", rating: 4, avatarParams: "&hair=variant05&beardProbability=0" },
