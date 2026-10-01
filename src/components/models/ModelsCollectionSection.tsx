@@ -39,7 +39,7 @@ export function ModelsCollectionSection({
       className={HOME_SECTION_NO_TOP}
       style={{ paddingTop: "clamp(64px,8vw,112px)" }}
     >
-      <div className="sticky top-16 z-10 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E2D9] bg-[#F7F6F2]/95 py-4 backdrop-blur-md">
+      <div className="sticky top-[68px] z-10 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E2D9] bg-[#F7F6F2]/95 py-4 backdrop-blur-md">
         <h2
           id="collection-title"
           className="m-0 font-[Geist] font-medium tracking-[-0.04em] text-[#161513]"

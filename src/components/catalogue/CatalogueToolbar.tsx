@@ -25,7 +25,7 @@ export function CatalogueToolbar({
   cartCount: number;
 }) {
   return (
-    <div className="sticky top-16 z-10 mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E2D9] bg-[#F7F6F2]/95 py-4 backdrop-blur-md">
+    <div className="sticky top-[68px] z-10 mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E2D9] bg-[#F7F6F2]/95 py-4 backdrop-blur-md">
       <div role="tablist" aria-label="Catégories" className="flex flex-wrap gap-2">
         <button
           type="button"

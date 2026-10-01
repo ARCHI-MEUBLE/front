@@ -1,5 +1,5 @@
 import { HOME_SECTION } from "@/components/home/homeLayout";
-import { REASONS } from "@/components/home/homeData";
+import { SavoirFaireStepsGrid } from "@/components/shared/SavoirFaireSteps";
 
 export function WhyChooseUs() {
   return (
@@ -18,21 +18,7 @@ export function WhyChooseUs() {
             années.
           </p>
         </div>
-        <div className="border-t border-[#161513]">
-          {REASONS.map((reason, index) => (
-            <div key={reason.title} className="grid gap-4 border-b border-[#E5E2D9] py-7" style={{ gridTemplateColumns: "48px minmax(0,1fr)" }}>
-              <span className="pt-1.5 font-[Geist_Mono] text-[13px] text-[#5F5B53]">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <h3 className="m-0 mb-2 font-[Geist] font-medium tracking-[-0.035em] text-[#161513]" style={{ fontSize: "clamp(24px,2.4vw,32px)" }}>
-                  {reason.title}
-                </h3>
-                <p className="m-0 max-w-[52ch] text-[#5F5B53]">{reason.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <SavoirFaireStepsGrid />
       </div>
     </section>
   );
