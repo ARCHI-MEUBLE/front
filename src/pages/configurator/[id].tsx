@@ -20,7 +20,7 @@ const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'
 });
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import ActionBar from '@/components/configurator/ActionBar';
-import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META, PanelPlanCanvas } from '@/components/configurator/ZoneEditor';
+import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
@@ -69,7 +69,7 @@ import {
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 
-type ConfigTab = 'dimensions' | 'materials';
+type ConfigStep = 1 | 2 | 3;
 
 export default function ConfiguratorPage() {
   const router = useRouter();
@@ -727,7 +727,7 @@ export default function ConfiguratorPage() {
     };
   }, [glbUrl, templatePrompt, shelfCount]);
 
-  const [activeTab, setActiveTab] = useState<ConfigTab>('dimensions');
+  const [activeStep, setActiveStep] = useState<ConfigStep>(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pendingSaveRef = useRef(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -2444,11 +2444,6 @@ export default function ConfiguratorPage() {
     );
   }
 
-  const TABS: { id: ConfigTab; label: string; icon: typeof Settings }[] = [
-    { id: 'dimensions', label: 'Dimensions', icon: Settings },
-    { id: 'materials', label: 'Finitions', icon: Palette },
-  ];
-
   return (
     <>
       <Head>
@@ -2638,31 +2633,45 @@ export default function ConfiguratorPage() {
           <div className="viewer-section relative flex flex-col bg-[#FAFAF9] lg:flex-1">
             <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
               <div className="absolute inset-0">
-                <ThreeViewer
-                  width={width}
-                  height={height}
-                  depth={depth}
-                  color={color}
-                  imageUrl={selectedColorImage}
-                  hasSocle={socle !== 'none'}
-                  socle={socle}
-                  rootZone={rootZone}
-                  selectedZoneIds={isViewMode ? [] : selectedZoneIds}
-                  onSelectZone={isViewMode ? undefined : handleZoneSelect}
-                  isBuffet={furnitureStructure?.isBuffet}
-                  doorsOpen={doorsOpen}
-                  showDecorations={showDecorations}
-                  onToggleDoors={isViewMode ? undefined : handleToggleDoors}
-                  componentColors={componentColors}
-                  useMultiColor={useMultiColor}
-                  doorType={doorType}
-                  doorSide={doorSide}
-                  mountingStyle={mountingStyle}
-                  selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
-                  onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
-                  deletedPanelIds={deletedPanelIds}
-                />
-
+                {activeStep === 2 ? (
+                  <div className="h-full w-full overflow-auto bg-white p-4 sm:p-8">
+                    <ZoneEditor
+                      rootZone={rootZone}
+                      selectedZoneIds={selectedZoneIds}
+                      onRootZoneChange={setRootZone}
+                      onSelectedZoneIdsChange={setSelectedZoneIds}
+                      width={width}
+                      height={height}
+                      onSelectZone={handleZoneSelect}
+                      hideControls
+                    />
+                  </div>
+                ) : (
+                  <ThreeViewer
+                    width={width}
+                    height={height}
+                    depth={depth}
+                    color={color}
+                    imageUrl={selectedColorImage}
+                    hasSocle={socle !== 'none'}
+                    socle={socle}
+                    rootZone={rootZone}
+                    selectedZoneIds={isViewMode ? [] : selectedZoneIds}
+                    onSelectZone={isViewMode ? undefined : handleZoneSelect}
+                    isBuffet={furnitureStructure?.isBuffet}
+                    doorsOpen={doorsOpen}
+                    showDecorations={showDecorations}
+                    onToggleDoors={isViewMode ? undefined : handleToggleDoors}
+                    componentColors={componentColors}
+                    useMultiColor={useMultiColor}
+                    doorType={doorType}
+                    doorSide={doorSide}
+                    mountingStyle={mountingStyle}
+                    selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
+                    onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
+                    deletedPanelIds={deletedPanelIds}
+                  />
+                )}
                 {!isViewMode && isSelectedZoneColorizable && selectedZone && (
                   <ZoneColorPicker
                     zone={selectedZone}
@@ -2869,25 +2878,38 @@ export default function ConfiguratorPage() {
               />
             ) : (
               <>
-                <div className="flex flex-shrink-0 border-b border-[#E8E6E3]">
-                  {TABS.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-medium transition-colors sm:gap-2 sm:py-4 sm:text-sm ${
-                        activeTab === tab.id
-                          ? 'border-[#1A1917] text-[#1A1917]'
-                          : 'border-transparent text-[#706F6C] hover:text-[#1A1917]'
-                      }`}
-                    >
-                      <tab.icon className="h-4 w-4" />
-                      <span>{tab.label}</span>
-                    </button>
-                  ))}
+                <div className="flex flex-shrink-0 items-center justify-between border-b border-[#E8E6E3] px-4 py-3 sm:px-6">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#706F6C]">Configurer</p>
+                    <h2 className="mt-1 font-serif text-lg text-[#1A1917]">Personnalisez votre meuble</h2>
+                  </div>
+                  <span className="font-mono text-[11px] text-[#706F6C]">0{activeStep}/03</span>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-                  {activeTab === 'dimensions' && (
+                  <div className="mb-4 grid grid-cols-3 gap-1.5">
+                    {([
+                      [1, 'Dimensions'],
+                      [2, 'Composition'],
+                      [3, 'Finitions'],
+                    ] as const).map(([step, label]) => (
+                      <button
+                        key={step}
+                        type="button"
+                        onClick={() => setActiveStep(step)}
+                        className={`border px-2 py-2 text-left transition-colors ${
+                          activeStep === step
+                            ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                            : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917]'
+                        }`}
+                      >
+                        <span className="block font-mono text-[10px]">0{step}</span>
+                        <span className="mt-1 block text-[10px] font-medium sm:text-[11px]">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeStep === 1 && (
                     <div className="space-y-4 pb-32 lg:pb-0">
                       {initialConfig && (
                         <div className="flex justify-end">
@@ -2903,6 +2925,30 @@ export default function ConfiguratorPage() {
                         </div>
                       )}
 
+                      <DimensionsPanel
+                        width={width}
+                        depth={depth}
+                        height={height}
+                        onWidthChange={setWidth}
+                        onDepthChange={setDepth}
+                        onHeightChange={setHeight}
+                      />
+
+                      <div className="border border-dashed border-[#C9C6BF] bg-[#FAFAF9] px-3 py-3 text-xs text-[#706F6C]">
+                        Ajustez les dimensions avec les curseurs ou saisissez une valeur précise en millimètres.
+                      </div>
+                    </div>
+                  )}
+
+                  {activeStep === 2 && (
+                    <div className="space-y-4 pb-32 lg:pb-0">
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#706F6C]">Étape 02</p>
+                        <h3 className="mt-1 font-serif text-base text-[#1A1917]">Organisez les compartiments</h3>
+                        <p className="mt-1 text-xs leading-relaxed text-[#706F6C]">
+                          Sélectionnez une zone sur le meuble pour la diviser, ajouter une porte, un tiroir ou une penderie.
+                        </p>
+                      </div>
                       <ZoneEditor
                         rootZone={rootZone}
                         selectedZoneIds={selectedZoneIds}
@@ -2918,30 +2964,31 @@ export default function ConfiguratorPage() {
                         height={height}
                         onSelectZone={handleZoneSelect}
                         isAdminCreateModel={isAdminCreateModel}
-                        renderAfterCanvas={
-                          <DimensionsPanel
-                            width={width}
-                            depth={depth}
-                            height={height}
-                            onWidthChange={setWidth}
-                            onDepthChange={setDepth}
-                            onHeightChange={setHeight}
-                          />
-                        }
+                        hideCanvas
                       />
 
-                      {showPanelTool && (
-                        <div ref={panelToolRef}>
-                          <PanelPlanCanvas
-                            zone={rootZone}
-                            width={width}
-                            height={height}
-                            selectedPanelIds={selectedPanelIds}
-                            onSelectPanel={handlePanelSelect}
-                            deletedPanelIds={deletedPanelIds}
-                          />
-                        </div>
-                      )}
+                    </div>
+                  )}
+
+                  {activeStep === 3 && (
+                    <div className="space-y-5 pb-32 lg:pb-0">
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#706F6C]">Étape 03</p>
+                        <h3 className="mt-1 font-serif text-base text-[#1A1917]">Choisissez vos finitions</h3>
+                      </div>
+
+                      <MaterialSelector
+                        materialsMap={materialsMap}
+                        selectedMaterialKey={selectedMaterialLabel}
+                        selectedColorId={selectedColorId}
+                        onMaterialChange={handleMaterialChange}
+                        onColorChange={handleColorChange}
+                        loading={materialsLoading}
+                        useMultiColor={useMultiColor}
+                        onUseMultiColorChange={handleUseMultiColorChange}
+                        componentColors={componentColors}
+                        onComponentColorChange={handleComponentColorChange}
+                      />
 
                       <SocleSelector
                         value={socle}
@@ -2997,22 +3044,33 @@ export default function ConfiguratorPage() {
                     </div>
                   )}
 
-                  {activeTab === 'materials' && (
-                    <div className="pb-32 lg:pb-0">
-                      <MaterialSelector
-                        materialsMap={materialsMap}
-                        selectedMaterialKey={selectedMaterialLabel}
-                        selectedColorId={selectedColorId}
-                        onMaterialChange={handleMaterialChange}
-                        onColorChange={handleColorChange}
-                        loading={materialsLoading}
-                        useMultiColor={useMultiColor}
-                        onUseMultiColorChange={handleUseMultiColorChange}
-                        componentColors={componentColors}
-                        onComponentColorChange={handleComponentColorChange}
-                      />
-                    </div>
-                  )}
+                  <div className="mt-6 flex items-center justify-between border-t border-[#E8E6E3] pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep((step) => (step === 1 ? 1 : (step - 1) as ConfigStep))}
+                      disabled={activeStep === 1}
+                      className="border border-[#E8E6E3] px-4 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Retour
+                    </button>
+                    {activeStep < 3 ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveStep((step) => (step + 1) as ConfigStep)}
+                        className="bg-[#1A1917] px-5 py-2 text-xs font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      >
+                        Étape suivante
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
+                        className="bg-[#D4FF3A] px-5 py-2 text-xs font-medium text-[#161513] transition-colors hover:bg-[#C4EF2A]"
+                      >
+                        Valider la configuration
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
