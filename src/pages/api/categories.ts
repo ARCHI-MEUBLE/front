@@ -6,7 +6,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(req.query)) {
-      if (key !== 'id' && key !== 'active') continue;
       if (value === undefined) continue;
       for (const item of Array.isArray(value) ? value : [value]) {
         query.append(key, item);
@@ -14,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const queryString = query.toString();
-    const backendUrl = `${BACKEND_URL}/backend/api/models.php${queryString ? `?${queryString}` : ''}`;
+    const backendUrl = `${BACKEND_URL}/backend/api/categories.php${queryString ? `?${queryString}` : ''}`;
     const response = await fetch(backendUrl, {
       method: req.method || 'GET',
       headers: {
@@ -34,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(response.status).json(data);
   } catch (error) {
-    console.error('Erreur lors de la communication avec le backend des modèles', error);
+    console.error('Erreur lors de la communication avec le backend des catégories', error);
     return res.status(502).json({ error: 'Erreur de connexion au backend' });
   }
 }
