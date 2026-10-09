@@ -728,6 +728,7 @@ export default function ConfiguratorPage() {
   }, [glbUrl, templatePrompt, shelfCount]);
 
   const [activeStep, setActiveStep] = useState<ConfigStep>(1);
+  const [show3DView, setShow3DView] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pendingSaveRef = useRef(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -2633,7 +2634,7 @@ export default function ConfiguratorPage() {
           <div className="viewer-section relative flex flex-col bg-[#FAFAF9] lg:flex-1">
             <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
               <div className="absolute inset-0">
-                {activeStep === 2 ? (
+                {activeStep === 2 && !show3DView ? (
                   <div className="h-full w-full overflow-auto bg-white p-4 sm:p-8">
                     <ZoneEditor
                       rootZone={rootZone}
@@ -2671,6 +2672,35 @@ export default function ConfiguratorPage() {
                     onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
                     deletedPanelIds={deletedPanelIds}
                   />
+                )}
+                {activeStep === 2 && (
+                  <div className="absolute right-4 top-4 z-20 flex overflow-hidden border border-[#E8E6E3] bg-white shadow-sm" style={{ borderRadius: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShow3DView(false)}
+                      aria-pressed={!show3DView}
+                      className={`px-3 py-2 text-xs font-medium transition-colors ${
+                        !show3DView
+                          ? 'bg-[#1A1917] text-white'
+                          : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                      }`}
+                    >
+                      Plan 2D
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShow3DView(true)}
+                      aria-pressed={show3DView}
+                      className={`flex items-center gap-1.5 border-l border-[#E8E6E3] px-3 py-2 text-xs font-medium transition-colors ${
+                        show3DView
+                          ? 'bg-[#1A1917] text-white'
+                          : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                      }`}
+                    >
+                      <Box className="h-3.5 w-3.5" />
+                      Vue 3D
+                    </button>
+                  </div>
                 )}
                 {!isViewMode && isSelectedZoneColorizable && selectedZone && (
                   <ZoneColorPicker
@@ -2896,7 +2926,10 @@ export default function ConfiguratorPage() {
                       <button
                         key={step}
                         type="button"
-                        onClick={() => setActiveStep(step)}
+                        onClick={() => {
+                          setActiveStep(step);
+                          setShow3DView(step !== 2);
+                        }}
                         className={`border px-2 py-2 text-left transition-colors ${
                           activeStep === step
                             ? 'border-[#1A1917] bg-[#1A1917] text-white'
