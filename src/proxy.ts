@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const ADMIN_PATH = process.env.NEXT_PUBLIC_ADMIN_PATH;
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Bloquer l'acces direct a /admin/* (pages uniquement, pas /api/admin/*)

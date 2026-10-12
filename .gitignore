@@ -59,8 +59,7 @@ tmp/
 temp/
 *.tmp
 
-# Fichiers de lock (éviter conflits)
-package-lock.json
+# Lockfile npm : garantit des installations reproductibles
 yarn.lock
 pnpm-lock.yaml
 
@@ -84,3 +83,5 @@ public/uploads/
 public/models/*.glb
 public/models/*.dxf
 .claude/worktrees/
+.env
+.env.example

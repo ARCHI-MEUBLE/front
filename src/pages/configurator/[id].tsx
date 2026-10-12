@@ -176,7 +176,11 @@ export default function ConfiguratorPage() {
           console.log('❌ Pas de session admin (data.admin = false ou undefined)');
         }
       } catch (e) {
-        console.error('❌ Erreur lors de la vérification admin:', e);
+        if (e instanceof Error && 'statusCode' in e && e.statusCode === 401) {
+          console.info('ℹ️ Aucune session administrateur active');
+        } else {
+          console.error('❌ Erreur lors de la vérification admin:', e);
+        }
       }
     };
     checkAdmin();
