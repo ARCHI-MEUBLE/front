@@ -29,7 +29,7 @@ export default function StepNav({ steps, activeStep, visited, onSelect }: StepNa
 
         {steps.map((step) => {
           const isActive = step.id === activeStep;
-          const isDone = !isActive && (step.id < activeStep || visited.has(step.id));
+          const isDone = !isActive &&  visited.has(step.id);
 
           return (
             <li key={step.id} className="relative flex justify-center">
@@ -49,7 +49,7 @@ export default function StepNav({ steps, activeStep, visited, onSelect }: StepNa
                   }`}
                   style={{ borderRadius: '50%' }}
                 >
-                  {isDone ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : step.id}
+                  {step.id}
                 </span>
                 <span
                   className={`text-center text-[10px] leading-tight transition-colors sm:text-[11px] ${
