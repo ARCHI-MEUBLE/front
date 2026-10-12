@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
 interface UseHistoryOptions {
   maxHistory?: number;
@@ -27,15 +27,8 @@ export function useHistory<T>(
   // L'historique futur (pour redo)
   const [future, setFuture] = useState<T[]>([]);
 
-  // Ref pour éviter d'enregistrer les changements pendant undo/redo
-  const isUndoingRef = useRef(false);
-
+  // undo/redo passent par setPresent : ils n'enregistrent rien, setState n'a pas à se bloquer après eux
   const setState = useCallback((newState: T | ((prev: T) => T)) => {
-    if (isUndoingRef.current) {
-      isUndoingRef.current = false;
-      return;
-    }
-
     setPresent((currentPresent) => {
       const resolvedNewState = typeof newState === 'function'
         ? (newState as (prev: T) => T)(currentPresent)
@@ -66,8 +59,6 @@ export function useHistory<T>(
   const undo = useCallback(() => {
     if (past.length === 0) return;
 
-    isUndoingRef.current = true;
-
     const newPast = [...past];
     const previousState = newPast.pop()!;
 
@@ -78,8 +69,6 @@ export function useHistory<T>(
 
   const redo = useCallback(() => {
     if (future.length === 0) return;
-
-    isUndoingRef.current = true;
 
     const newFuture = [...future];
     const nextState = newFuture.shift()!;

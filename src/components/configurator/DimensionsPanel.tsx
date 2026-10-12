@@ -81,6 +81,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           style={{ width: `${percentage}%`, borderRadius: '2px' }}
         />
       </div>
+      {hint && <p className="text-[10px] text-[#706F6C]">{hint}</p>}
 
       <style jsx>{`
         .dimension-slider {
@@ -144,7 +145,7 @@ export default function DimensionsPanel({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions du meuble</h3>
+        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions extérieures</h3>
         <span className="font-mono text-[10px] text-[#706F6C]">{width} × {depth} × {height} mm</span>
       </div>
 
@@ -176,6 +177,7 @@ export default function DimensionsPanel({
         max={4000}
         step={10}
         unit="mm"
+        hint="Hauteur totale, pieds compris."
       />
     </div>
   );

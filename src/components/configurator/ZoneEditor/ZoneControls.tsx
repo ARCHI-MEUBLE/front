@@ -1,6 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
-import { Zone, ZoneContent, HandleType, ZONE_CONTENT_META } from './types';
+import { Zone, ZoneContent, HandleType } from './types';
+import { getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
+
+// Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie
+export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'handles' | 'accessories';
+
+export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'handles', 'accessories', 'division'];
+
+// Au-delà de 5 parties, les compartiments deviennent trop étroits pour être utiles
+export const MAX_SPLIT_PARTS = 5;
+
+const SPLIT_COUNTS = Array.from({ length: MAX_SPLIT_PARTS - 1 }, (_, i) => i + 2);
 
 interface ZoneControlsProps {
   selectedZone: Zone;
@@ -23,6 +34,7 @@ interface ZoneControlsProps {
   zoneHeightMm?: number; // Hauteur de la zone en mm
   zoneWidthMm?: number; // Largeur de la zone en mm
   isAdminCreateModel?: boolean;
+  sections?: ZoneControlSection[]; // Sections à afficher (toutes par défaut)
 }
 
 // Composant pour l'éditeur visuel de position des étagères
@@ -337,632 +349,590 @@ export function SelectedZoneDimensions({
   );
 }
 
-export default function ZoneControls({
-                                       selectedZone,
-                                       selectedZoneIds,
-                                       parentZone,
-                                       onSplitZone,
-                                       onSetContent,
-                                       onSetDoorContent,
-                                       onResetZone,
-                                       onSetSplitRatio,
-                                       onSetSplitRatios,
-                                       onSelectParent,
-                                       onToggleLight,
-                                       onToggleCableHole,
-                                       onToggleDressing,
-                                       onGroupZones,
-                                       onSetHandleType,
-                                       onSetGlassShelfCount,
-                                       onSetGlassShelfPositions,
-                                       zoneHeightMm,
-                                       zoneWidthMm,
-                                       isAdminCreateModel,
-                                     }: ZoneControlsProps) {
-  const isLeaf = selectedZone.type === 'leaf';
+// ─────────────────────────────────────────────────────────────
+// Petits blocs d'interface partagés par toutes les sections
+// ─────────────────────────────────────────────────────────────
 
-  // State pour le dialogue de choix de côté d'ouverture
+function SectionLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="mb-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#706F6C]">{children}</p>
+      {hint && <p className="mt-1 text-xs text-[#706F6C]">{hint}</p>}
+    </div>
+  );
+}
+
+function InfoNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="border border-dashed border-[#C9C6BF] bg-white px-3 py-3 text-xs leading-relaxed text-[#706F6C]"
+      style={{ borderRadius: '2px' }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function OptionTile({
+  icon: Icon,
+  label,
+  desc,
+  active,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  desc: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex flex-col items-center justify-center gap-1.5 border-2 p-3 transition-all ${
+        active
+          ? 'border-[#1A1917] bg-[#1A1917] text-white'
+          : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+      }`}
+      style={{ borderRadius: '4px' }}
+    >
+      <Icon className="h-5 w-5" />
+      <div className="text-center">
+        <span className="block text-[13px] font-semibold leading-tight">{label}</span>
+        <span className={`mt-0.5 block text-[11px] leading-tight ${active ? 'text-white/70' : 'text-[#706F6C]'}`}>{desc}</span>
+      </div>
+    </button>
+  );
+}
+
+function ToggleRow({
+  icon: Icon,
+  iconActiveClass,
+  label,
+  desc,
+  active,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  iconActiveClass: string;
+  label: string;
+  desc: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex items-center justify-between gap-3 border-2 p-3 transition-all ${
+        active
+          ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
+          : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+      }`}
+      style={{ borderRadius: '4px' }}
+    >
+      <div className="flex items-center gap-3">
+        <Icon className={`h-5 w-5 flex-shrink-0 ${active ? iconActiveClass : ''}`} />
+        <div className="text-left">
+          <span className="block text-sm font-semibold">{label}</span>
+          <span className="block text-xs text-[#706F6C]">{desc}</span>
+        </div>
+      </div>
+      <div className={`relative h-6 w-10 flex-shrink-0 rounded-full border-2 transition-all ${active ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
+        <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${active ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
+      </div>
+    </button>
+  );
+}
+
+function SplitCard({
+  icon: Icon,
+  title,
+  desc,
+  onSplit,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+  onSplit: (count: number) => void;
+}) {
+  return (
+    <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '4px' }}>
+      <div className="mb-3 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center bg-[#FAFAF9]" style={{ borderRadius: '4px' }}>
+          <Icon className="h-5 w-5 text-[#1A1917]" />
+        </div>
+        <div>
+          <span className="block text-base font-semibold text-[#1A1917]">{title}</span>
+          <p className="text-xs text-[#706F6C]">{desc}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {SPLIT_COUNTS.map((count) => (
+          <button
+            key={count}
+            type="button"
+            onClick={() => onSplit(count)}
+            className="flex h-12 items-center justify-center border-2 border-[#E8E6E3] bg-white text-base font-bold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
+            style={{ borderRadius: '4px' }}
+          >
+            {count}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const STORAGE_OPTIONS = [
+  { id: 'drawer' as ZoneContent, icon: Archive, label: 'Tiroir', desc: 'Avec poignée' },
+  { id: 'push_drawer' as ZoneContent, icon: BoxSelect, label: 'Tiroir Push', desc: 'Sans poignée' },
+  { id: 'glass_shelf' as ZoneContent, icon: Square, label: 'Étagère verre', desc: 'Transparente' },
+];
+
+const DOOR_OPTIONS = [
+  { id: 'door' as ZoneContent, icon: DoorClosed, label: 'Porte gauche', desc: 'Une seule porte' },
+  { id: 'door_right' as ZoneContent, icon: DoorClosed, label: 'Porte droite', desc: 'Une seule porte' },
+  { id: 'door_double' as ZoneContent, icon: DoorClosed, label: 'Double porte', desc: 'Deux portes' },
+  { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
+  { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Porte vitrée', desc: 'Vitrage transparent', needsSideChoice: true, dialogType: 'mirror' as const },
+];
+
+const HANDLE_OPTIONS = [
+  { type: 'vertical_bar' as HandleType, icon: GripVertical, label: 'Barre V' },
+  { type: 'horizontal_bar' as HandleType, icon: GripHorizontal, label: 'Barre H' },
+  { type: 'knob' as HandleType, icon: Circle, label: 'Bouton' },
+  { type: 'recessed' as HandleType, icon: RectangleHorizontal, label: 'Encastrée' },
+];
+
+export default function ZoneControls({
+  selectedZone,
+  selectedZoneIds,
+  parentZone,
+  onSplitZone,
+  onSetContent,
+  onSetDoorContent,
+  onResetZone,
+  onSelectParent,
+  onToggleLight,
+  onToggleCableHole,
+  onToggleDressing,
+  onGroupZones,
+  onSetHandleType,
+  onSetGlassShelfCount,
+  onSetGlassShelfPositions,
+  zoneHeightMm,
+  sections,
+}: ZoneControlsProps) {
+  const isLeaf = selectedZone.type === 'leaf';
+  const isRoot = selectedZone.id === 'root';
+  const visibleSections = sections ?? ALL_ZONE_SECTIONS;
+  const show = (section: ZoneControlSection) => visibleSections.includes(section);
+  const isMultiSelection = selectedZoneIds.length > 1;
+
+  // Choix du côté d'ouverture pour les portes Push / vitrées
   const [doorSideDialog, setDoorSideDialog] = useState<{
     isOpen: boolean;
     doorType: 'push' | 'mirror' | null;
   }>({ isOpen: false, doorType: null });
 
-  const canAdjustRatio = selectedZone.type !== 'leaf' &&
-      selectedZone.children?.length === 2;
+  const facade = getZoneFacade(selectedZone);
+  const currentFacade = isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty');
+  const glassShelfCount = selectedZone.glassShelfCount || 1;
 
-  const canAdjustMultipleRatios = selectedZone.type !== 'leaf' &&
-      (selectedZone.children?.length ?? 0) > 2;
-
-  const parentCanAdjust = parentZone &&
-      parentZone.type !== 'leaf' &&
-      (parentZone.children?.length ?? 0) >= 2;
-
-  const getCurrentRatios = (): number[] => {
-    const children = selectedZone.children ?? [];
-    if (children.length === 2 && selectedZone.splitRatio !== undefined) {
-      return [selectedZone.splitRatio, 100 - selectedZone.splitRatio];
-    }
-    if (children.length > 2 && selectedZone.splitRatios?.length === children.length) {
-      return selectedZone.splitRatios;
-    }
-    return children.map(() => Math.round(100 / children.length));
-  };
-
-  const handleRatioSliderChange = (index: number, newValue: number) => {
-    if (!onSetSplitRatios) return;
-    const currentRatios = getCurrentRatios();
-    const oldValue = currentRatios[index];
-    const delta = newValue - oldValue;
-
-    const adjustIndex = index < currentRatios.length - 1 ? index + 1 : index - 1;
-    const newRatios = [...currentRatios];
-    newRatios[index] = newValue;
-    newRatios[adjustIndex] = Math.max(10, currentRatios[adjustIndex] - delta);
-
-    const sum = newRatios.reduce((a, b) => a + b, 0);
-    const normalized = newRatios.map(r => Math.round((r / sum) * 100));
-    onSetSplitRatios(selectedZone.id, normalized);
-  };
-
-  // ✅ Options de contenu organisées par catégories
-  const STORAGE_OPTIONS = [
-    { id: 'empty' as ZoneContent, icon: Minus, label: 'Vide', desc: 'Espace libre' },
-    { id: 'drawer' as ZoneContent, icon: Archive, label: 'Tiroir', desc: 'Avec poignée' },
-    { id: 'push_drawer' as ZoneContent, icon: BoxSelect, label: 'Tiroir Push', desc: 'Sans poignée' },
-    { id: 'glass_shelf' as ZoneContent, icon: Square, label: 'Étagère verre', desc: 'Transparente' },
-  ];
-
-  const DOOR_OPTIONS = [
-    { id: 'door' as ZoneContent, icon: DoorClosed, label: 'Porte gauche', desc: 'Une seule porte' },
-    { id: 'door_right' as ZoneContent, icon: DoorClosed, label: 'Porte droite', desc: 'Une seule porte' },
-    { id: 'door_double' as ZoneContent, icon: DoorClosed, label: 'Double porte', desc: 'Deux portes' },
-    { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
-    { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Porte vitrée', desc: 'Porte vitrée', needsSideChoice: true, dialogType: 'mirror' as const },
-  ];
-
-  // Fonction pour gérer le clic sur une option de porte
-  const handleDoorOptionClick = (option: typeof DOOR_OPTIONS[0]) => {
-    if (option.needsSideChoice) {
-      setDoorSideDialog({ isOpen: true, doorType: option.dialogType! });
+  const applyFacade = (content: ZoneContent) => {
+    if (isLeaf) {
+      onSetContent(selectedZone.id, content);
     } else {
-      if (isLeaf) {
-        onSetContent(selectedZone.id, option.id);
-      } else {
-        onSetDoorContent?.(selectedZone.id, option.id);
-      }
+      onSetDoorContent?.(selectedZone.id, content);
     }
   };
 
-  // Fonction pour appliquer le choix de côté
+  const handleDoorOptionClick = (option: (typeof DOOR_OPTIONS)[number]) => {
+    if ('needsSideChoice' in option && option.needsSideChoice) {
+      setDoorSideDialog({ isOpen: true, doorType: option.dialogType });
+    } else {
+      setDoorSideDialog({ isOpen: false, doorType: null });
+      applyFacade(option.id);
+    }
+  };
+
   const handleDoorSideChoice = (side: 'left' | 'right') => {
     const contentId = doorSideDialog.doorType === 'push'
       ? (side === 'left' ? 'push_door' : 'push_door_right')
       : (side === 'left' ? 'mirror_door' : 'mirror_door_right');
 
-    if (isLeaf) {
-      onSetContent(selectedZone.id, contentId as ZoneContent);
-    } else {
-      onSetDoorContent?.(selectedZone.id, contentId as ZoneContent);
-    }
+    applyFacade(contentId as ZoneContent);
     setDoorSideDialog({ isOpen: false, doorType: null });
   };
 
-  // Calculer le fil d'Ariane (Breadcrumbs)
+  const defaultShelfPositions = (count: number) =>
+    Array.from({ length: count }, (_, i) => Math.round(((i + 1) / (count + 1)) * 100));
+
   const renderBreadcrumbs = () => {
     if (!onSelectParent || !parentZone) {
       return (
-        <div className="flex items-center gap-2 mb-4 text-xs font-medium text-[#1A1917]">
-          <span className="flex items-center gap-1 bg-[#1A1917] text-white px-2 py-0.5" style={{ borderRadius: '2px' }}>
+        <div className="flex items-center gap-2 text-xs font-medium text-[#1A1917]">
+          <span className="bg-[#1A1917] px-2 py-0.5 text-white" style={{ borderRadius: '2px' }}>
             Meuble entier
           </span>
-          <span className="text-[#E8E6E3]">/</span>
-          <span className="text-[#706F6C]">Sélectionnez une zone pour modifier</span>
         </div>
       );
     }
 
     return (
-      <div className="flex items-center gap-2 mb-4 text-xs font-medium text-[#706F6C]">
+      <div className="flex items-center gap-2 text-xs font-medium text-[#706F6C]">
         <button
+          type="button"
           onClick={() => onSelectParent()}
-          className="flex items-center gap-1 hover:text-[#1A1917] transition-colors"
+          className="flex items-center gap-1 transition-colors hover:text-[#1A1917]"
         >
-          <BoxSelect className="h-3 w-3 text-[#706F6C]" />
+          <BoxSelect className="h-3 w-3" />
           <span className="underline decoration-dotted underline-offset-2">Groupe parent</span>
         </button>
         <span className="text-[#E8E6E3]">/</span>
-        <span className="text-[#1A1917] font-bold">Zone actuelle</span>
+        <span className="font-bold text-[#1A1917]">Zone actuelle</span>
       </div>
     );
   };
 
-  return (
-      <div className="space-y-5">
+  // ── Plusieurs compartiments sélectionnés : on ne propose que de poser une porte commune ──
+  if (isMultiSelection) {
+    if (!show('facades')) {
+      return (
+        <InfoNote>
+          {selectedZoneIds.length} compartiments sélectionnés. Sélectionnez-en un seul pour modifier cette étape.
+        </InfoNote>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
         {renderBreadcrumbs()}
-
-        {selectedZoneIds.length > 1 && (
-          <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-5" style={{ borderRadius: '2px' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-white" style={{ borderRadius: '2px' }}>
-                <DoorClosed className="h-5 w-5 text-[#1A1917]" />
-              </div>
-              <div>
-                <span className="block text-base font-semibold text-[#1A1917]">{selectedZoneIds.length} compartiments sélectionnés</span>
-                <p className="text-xs text-[#706F6C]">Poser une porte sur cet ensemble</p>
-              </div>
+        <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '2px' }}>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-[#FAFAF9]" style={{ borderRadius: '2px' }}>
+              <DoorClosed className="h-5 w-5 text-[#1A1917]" />
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
-                className="flex items-center justify-center gap-2 w-full bg-[#1A1917] text-white py-3 px-4 text-sm font-medium transition-all hover:bg-[#2A2927]"
-                style={{ borderRadius: '2px' }}
-              >
-                Porte simple
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
-                className="flex items-center justify-center gap-2 w-full border border-[#E8E6E3] bg-white text-[#1A1917] py-3 px-4 text-sm font-medium transition-all hover:border-[#1A1917]"
-                style={{ borderRadius: '2px' }}
-              >
-                Double porte
-              </button>
-            </div>
-
-            <p className="mt-3 text-center text-[10px] text-[#706F6C]">
-              La porte recouvrira l&apos;intégralité de la zone sélectionnée.
-            </p>
-          </div>
-        )}
-
-        {selectedZoneIds.length <= 1 && (
-          <>
-            {/* Catégorie: Portes & Façades (Affiché pour leaf et parent) */}
             <div>
-              <p className="mb-4 text-lg font-semibold text-[#1A1917]">
-                {isLeaf ? "Que mettre dans cette zone ?" : "Ajouter des portes sur ce groupe"}
+              <span className="block text-base font-semibold text-[#1A1917]">{selectedZoneIds.length} compartiments sélectionnés</span>
+              <p className="text-xs text-[#706F6C]">Poser une porte sur cet ensemble</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
+              className="flex w-full items-center justify-center gap-2 bg-[#1A1917] px-4 py-3 text-sm font-medium text-white transition-all hover:bg-[#2A2927]"
+              style={{ borderRadius: '2px' }}
+            >
+              Porte simple
+            </button>
+            <button
+              type="button"
+              onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
+              className="flex w-full items-center justify-center gap-2 border border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-all hover:border-[#1A1917]"
+              style={{ borderRadius: '2px' }}
+            >
+              Double porte
+            </button>
+          </div>
+
+          <p className="mt-3 text-center text-[11px] text-[#706F6C]">
+            La porte recouvrira l&apos;intégralité de la zone sélectionnée.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {renderBreadcrumbs()}
+
+      {/* ── Portes & façades ─────────────────────────────── */}
+      {show('facades') && (
+        <div>
+          <SectionLabel
+            hint={
+              isLeaf
+                ? undefined
+                : isRoot
+                  ? 'Une seule façade couvrira tout le meuble.'
+                  : 'Les portes recouvriront tout ce groupe de compartiments.'
+            }
+          >
+            {isLeaf ? 'Portes & façades' : isRoot ? 'Portes sur tout le meuble' : 'Portes sur ce groupe'}
+          </SectionLabel>
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            <OptionTile
+              icon={Minus}
+              label="Aucune"
+              desc={isLeaf ? 'Compartiment ouvert' : 'Pas de porte'}
+              active={currentFacade === 'empty'}
+              onClick={() => {
+                setDoorSideDialog({ isOpen: false, doorType: null });
+                applyFacade('empty');
+              }}
+            />
+            {DOOR_OPTIONS.map((option) => {
+              const { id, icon, label, desc } = option;
+              const hasSideChoice = 'needsSideChoice' in option && option.needsSideChoice;
+              const isActive = hasSideChoice
+                ? currentFacade === id || currentFacade === `${id}_right`
+                : currentFacade === id;
+              return (
+                <OptionTile
+                  key={id}
+                  icon={icon}
+                  label={label}
+                  desc={desc}
+                  active={isActive}
+                  onClick={() => handleDoorOptionClick(option)}
+                />
+              );
+            })}
+          </div>
+
+          {doorSideDialog.isOpen && (
+            <div className="mt-3 border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '2px' }}>
+              <p className="mb-1 text-sm font-medium text-[#1A1917]">Côté d&apos;ouverture</p>
+              <p className="mb-3 text-xs text-[#706F6C]">
+                {doorSideDialog.doorType === 'push'
+                  ? "Choisissez le côté d'ouverture de la porte Push"
+                  : "Choisissez le côté d'ouverture de la porte vitrée"}
               </p>
-              
-              <div className="mb-5">
-                <p className="mb-3 text-sm font-medium uppercase tracking-wide text-[#706F6C]">
-                  Portes & Façades
-                </p>
-                <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDoorSideChoice('left')}
+                  className="flex flex-col items-center justify-center gap-1 border border-[#E8E6E3] bg-white px-2 py-3 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  <span className="text-xs font-medium">Gauche</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDoorSideChoice('right')}
+                  className="flex flex-col items-center justify-center gap-1 border border-[#E8E6E3] bg-white px-2 py-3 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                  <span className="text-xs font-medium">Droite</span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
+                className="mt-3 w-full text-center text-xs text-[#706F6C] hover:text-[#1A1917]"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tiroirs & rangements (compartiments uniquement) ─── */}
+      {show('storage') && (
+        isLeaf ? (
+          <div>
+            <SectionLabel hint="Un tiroir ou une étagère remplace la porte de ce compartiment.">
+              Tiroirs & rangements
+            </SectionLabel>
+            <div className="grid grid-cols-3 gap-2.5">
+              {STORAGE_OPTIONS.map(({ id, icon, label, desc }) => (
+                <OptionTile
+                  key={id}
+                  icon={icon}
+                  label={label}
+                  desc={desc}
+                  active={(selectedZone.content ?? 'empty') === id}
+                  onClick={() => {
+                    setDoorSideDialog({ isOpen: false, doorType: null });
+                    onSetContent(selectedZone.id, id);
+                  }}
+                />
+              ))}
+            </div>
+
+            {selectedZone.content === 'glass_shelf' && onSetGlassShelfCount && (
+              <div className="mt-3 flex items-center justify-between border border-[#E8E6E3] bg-white p-3" style={{ borderRadius: '4px' }}>
+                <div className="flex items-center gap-2">
+                  <Square className="h-4 w-4 text-[#706F6C]" />
+                  <span className="text-sm font-medium text-[#1A1917]">Nombre d&apos;étagères</span>
+                </div>
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => isLeaf ? onSetContent(selectedZone.id, 'empty') : onSetDoorContent?.(selectedZone.id, 'empty')}
-                    className={`flex flex-col items-center justify-center gap-2 border-2 p-4 transition-all ${
-                      (isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty')) === 'empty'
+                    onClick={() => onSetGlassShelfCount(selectedZone.id, Math.max(1, glassShelfCount - 1))}
+                    disabled={glassShelfCount <= 1}
+                    className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-30"
+                    style={{ borderRadius: '4px' }}
+                    aria-label="Retirer une étagère"
+                  >
+                    −
+                  </button>
+                  <span className="w-8 text-center font-mono text-base font-bold text-[#1A1917]">{glassShelfCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => onSetGlassShelfCount(selectedZone.id, Math.min(5, glassShelfCount + 1))}
+                    disabled={glassShelfCount >= 5}
+                    className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-30"
+                    style={{ borderRadius: '4px' }}
+                    aria-label="Ajouter une étagère"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selectedZone.content === 'glass_shelf' && onSetGlassShelfPositions && zoneHeightMm && glassShelfCount >= 2 && (
+              <ShelfPositionEditor
+                shelfCount={glassShelfCount}
+                positions={
+                  selectedZone.glassShelfPositions?.length === glassShelfCount
+                    ? selectedZone.glassShelfPositions
+                    : defaultShelfPositions(glassShelfCount)
+                }
+                zoneHeightMm={zoneHeightMm}
+                onChange={(index, position) => {
+                  const positions = selectedZone.glassShelfPositions?.length === glassShelfCount
+                    ? [...selectedZone.glassShelfPositions]
+                    : defaultShelfPositions(glassShelfCount);
+                  positions[index] = position;
+                  onSetGlassShelfPositions(selectedZone.id, positions);
+                }}
+                onReset={() => onSetGlassShelfPositions(selectedZone.id, defaultShelfPositions(glassShelfCount))}
+              />
+            )}
+          </div>
+        ) : !show('facades') ? (
+          <InfoNote>Ce groupe est divisé : cliquez sur l&apos;un de ses compartiments pour y mettre un tiroir.</InfoNote>
+        ) : null
+      )}
+
+      {/* ── Poignées ─────────────────────────────────────── */}
+      {show('handles') && (
+        <div>
+          <SectionLabel>Poignées</SectionLabel>
+          {!facade ? (
+            <InfoNote>Posez d&apos;abord une porte ou un tiroir : vous pourrez alors choisir sa poignée.</InfoNote>
+          ) : isPushContent(facade) ? (
+            <InfoNote>Cette façade s&apos;ouvre par simple pression (Push-to-Open) : elle n&apos;a pas de poignée.</InfoNote>
+          ) : onSetHandleType ? (
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {HANDLE_OPTIONS.map(({ type, icon: Icon, label }) => {
+                const isActive = (selectedZone.handleType || 'vertical_bar') === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => onSetHandleType(selectedZone.id, type)}
+                    aria-pressed={isActive}
+                    className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
+                      isActive
                         ? 'border-[#1A1917] bg-[#1A1917] text-white'
                         : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
                     }`}
                     style={{ borderRadius: '4px' }}
                   >
-                    <Minus className="h-6 w-6" />
-                    <div className="text-center">
-                      <span className="block text-sm font-semibold">Aucune</span>
-                      <span className="block text-xs text-[#706F6C] mt-1">Pas de porte</span>
-                    </div>
+                    <Icon className="h-5 w-5" />
+                    <span className="text-xs font-medium">{label}</span>
                   </button>
-
-                  {DOOR_OPTIONS.map((option) => {
-                    const { id, icon: Icon, label, desc, needsSideChoice } = option;
-                    const currentContent = isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty');
-                    // Pour push_door et mirror_door, vérifier aussi les variantes _right
-                    const isActive = needsSideChoice
-                      ? (currentContent === id || currentContent === `${id}_right`)
-                      : currentContent === id;
-                    return (
-                        <button
-                            key={id}
-                            type="button"
-                            onClick={() => handleDoorOptionClick(option)}
-                            className={`flex flex-col items-center justify-center gap-2 border-2 p-4 transition-all ${
-                                isActive
-                                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                                    : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                            }`}
-                            style={{ borderRadius: '4px' }}
-                        >
-                          <Icon className="h-6 w-6" />
-                          <div className="text-center">
-                            <span className="block text-sm font-semibold">{label}</span>
-                            <span className="block text-xs text-[#706F6C] mt-1">{desc}</span>
-                          </div>
-                        </button>
-                    );
-                  })}
-                </div>
-
-                {/* Dialogue de choix de côté pour porte Push ou Vitrée */}
-                {doorSideDialog.isOpen && (
-                  <div className="mt-4 border border-[#E8E6E3] bg-[#FAFAF9] p-4" style={{ borderRadius: '2px' }}>
-                    <p className="mb-2 text-sm font-medium text-[#1A1917]">
-                      Côté d&apos;ouverture
-                    </p>
-                    <p className="mb-4 text-xs text-[#706F6C]">
-                      {doorSideDialog.doorType === 'push'
-                        ? 'Choisissez le côté d\'ouverture de la porte Push'
-                        : 'Choisissez le côté d\'ouverture de la porte vitrée'}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDoorSideChoice('left')}
-                        className="flex flex-col items-center justify-center gap-1.5 border border-[#E8E6E3] bg-white py-3 px-2 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
-                        style={{ borderRadius: '2px' }}
-                      >
-                        <ChevronLeft className="h-5 w-5" />
-                        <span className="text-xs font-medium">Gauche</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDoorSideChoice('right')}
-                        className="flex flex-col items-center justify-center gap-1.5 border border-[#E8E6E3] bg-white py-3 px-2 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
-                        style={{ borderRadius: '2px' }}
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                        <span className="text-xs font-medium">Droite</span>
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
-                      className="mt-3 w-full text-center text-xs text-[#706F6C] hover:text-[#1A1917]"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Sélecteur de poignée (pour leaf et parent) */}
-              {onSetHandleType && (
-                (isLeaf && (
-                  selectedZone.content === 'drawer' ||
-                  selectedZone.content === 'door' ||
-                  selectedZone.content === 'door_right' ||
-                  selectedZone.content === 'door_double' ||
-                  selectedZone.content === 'mirror_door' ||
-                  selectedZone.content === 'mirror_door_right' ||
-                  selectedZone.content === 'push_drawer' ||
-                  selectedZone.content === 'push_door' ||
-                  selectedZone.content === 'push_door_right'
-                )) ||
-                (!isLeaf && (selectedZone.doorContent && selectedZone.doorContent !== 'empty'))
-              ) && (
-                <div className="mb-5">
-                  <p className="mb-3 text-sm font-medium uppercase tracking-wide text-[#706F6C]">
-                    Type de poignée
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {[
-                      { type: 'vertical_bar' as HandleType, icon: GripVertical, label: 'Barre V' },
-                      { type: 'horizontal_bar' as HandleType, icon: GripHorizontal, label: 'Barre H' },
-                      { type: 'knob' as HandleType, icon: Circle, label: 'Bouton' },
-                      { type: 'recessed' as HandleType, icon: RectangleHorizontal, label: 'Encastrée' },
-                    ].map(({ type, icon: Icon, label }) => {
-                      const isActive = (selectedZone.handleType || 'vertical_bar') === type;
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => onSetHandleType(selectedZone.id, type)}
-                          className={`flex flex-col items-center gap-2 border-2 p-3 transition-all ${
-                            isActive
-                              ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                              : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                          }`}
-                          style={{ borderRadius: '4px' }}
-                        >
-                          <Icon className="h-5 w-5" />
-                          <span className="text-xs font-medium">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
+          ) : null}
+        </div>
+      )}
 
-            {/* Actions pour zones vides (feuilles) uniquement */}
-            {isLeaf && (
-                <>
-                  <div>
-                    {/* Catégorie: Rangements */}
-                    <div className="mb-5">
-                      <p className="mb-3 text-sm font-medium uppercase tracking-wide text-[#706F6C]">
-                        Rangements internes
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {STORAGE_OPTIONS.map(({ id, icon: Icon, label, desc }) => {
-                          const isActive = (selectedZone.content ?? 'empty') === id;
-                          return (
-                              <button
-                                  key={id}
-                                  type="button"
-                                  onClick={() => onSetContent(selectedZone.id, id)}
-                                  className={`flex flex-col items-center justify-center gap-2 border-2 p-4 transition-all ${
-                                      isActive
-                                          ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                                          : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                                  }`}
-                                  style={{ borderRadius: '4px' }}
-                              >
-                                <Icon className="h-6 w-6" />
-                                <div className="text-center">
-                                  <span className="block text-sm font-semibold">{label}</span>
-                                  <span className="block text-xs text-[#706F6C] mt-1">{desc}</span>
-                                </div>
-                              </button>
-                          );
-                        })}
-                      </div>
+      {/* ── Accessoires (compartiments uniquement) ───────── */}
+      {show('accessories') && (
+        <div>
+          <SectionLabel>Accessoires</SectionLabel>
+          {isLeaf ? (
+            <div className="grid grid-cols-1 gap-2.5">
+              <ToggleRow
+                icon={Lightbulb}
+                iconActiveClass="fill-yellow-200 text-yellow-500"
+                label="Éclairage LED"
+                desc="Lumière intégrée"
+                active={!!selectedZone.hasLight}
+                onClick={() => onToggleLight?.(selectedZone.id)}
+              />
+              <ToggleRow
+                icon={Plug}
+                iconActiveClass="text-blue-500"
+                label="Passe-câble"
+                desc="Trou dans le fond"
+                active={!!selectedZone.hasCableHole}
+                onClick={() => onToggleCableHole?.(selectedZone.id)}
+              />
+              <ToggleRow
+                icon={Shirt}
+                iconActiveClass="text-indigo-500"
+                label="Penderie"
+                desc="Tringle intégrée"
+                active={!!selectedZone.hasDressing}
+                onClick={() => onToggleDressing?.(selectedZone.id)}
+              />
+            </div>
+          ) : (
+            <InfoNote>Ce groupe est divisé : cliquez sur l&apos;un de ses compartiments pour y ajouter des accessoires.</InfoNote>
+          )}
+        </div>
+      )}
 
-                      {/* Nombre d'étagères en verre */}
-                      {selectedZone.content === 'glass_shelf' && onSetGlassShelfCount && (
-                        <div className="mt-4 flex items-center justify-between border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '4px' }}>
-                          <div className="flex items-center gap-2">
-                            <Square className="h-4 w-4 text-[#706F6C]" />
-                            <span className="text-sm font-medium text-[#1A1917]">Nombre d&apos;étagères</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => onSetGlassShelfCount(selectedZone.id, Math.max(1, (selectedZone.glassShelfCount || 1) - 1))}
-                              disabled={(selectedZone.glassShelfCount || 1) <= 1}
-                              className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:opacity-30 disabled:cursor-not-allowed"
-                              style={{ borderRadius: '4px' }}
-                            >
-                              −
-                            </button>
-                            <span className="w-8 text-center font-mono text-base font-bold text-[#1A1917]">
-                              {selectedZone.glassShelfCount || 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => onSetGlassShelfCount(selectedZone.id, Math.min(5, (selectedZone.glassShelfCount || 1) + 1))}
-                              disabled={(selectedZone.glassShelfCount || 1) >= 5}
-                              className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:opacity-30 disabled:cursor-not-allowed"
-                              style={{ borderRadius: '4px' }}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Éditeur de position des étagères (affiché si 2+ étagères) */}
-                      {selectedZone.content === 'glass_shelf' && onSetGlassShelfPositions && zoneHeightMm && (selectedZone.glassShelfCount || 1) >= 2 && (
-                        <ShelfPositionEditor
-                          shelfCount={selectedZone.glassShelfCount || 1}
-                          positions={
-                            selectedZone.glassShelfPositions?.length === (selectedZone.glassShelfCount || 1)
-                              ? selectedZone.glassShelfPositions
-                              : Array.from({ length: selectedZone.glassShelfCount || 1 }, (_, i) =>
-                                  Math.round(((i + 1) / ((selectedZone.glassShelfCount || 1) + 1)) * 100)
-                                )
-                          }
-                          zoneHeightMm={zoneHeightMm}
-                          onChange={(index, position) => {
-                            const currentPositions = selectedZone.glassShelfPositions?.length === (selectedZone.glassShelfCount || 1)
-                              ? [...selectedZone.glassShelfPositions]
-                              : Array.from({ length: selectedZone.glassShelfCount || 1 }, (_, i) =>
-                                  Math.round(((i + 1) / ((selectedZone.glassShelfCount || 1) + 1)) * 100)
-                                );
-                            currentPositions[index] = position;
-                            onSetGlassShelfPositions(selectedZone.id, currentPositions);
-                          }}
-                          onReset={() => {
-                            const defaultPositions = Array.from({ length: selectedZone.glassShelfCount || 1 }, (_, i) =>
-                              Math.round(((i + 1) / ((selectedZone.glassShelfCount || 1) + 1)) * 100)
-                            );
-                            onSetGlassShelfPositions(selectedZone.id, defaultPositions);
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    {/* Catégorie: Accessoires */}
-                    <div className="mb-5">
-                      <p className="mb-3 text-sm font-medium uppercase tracking-wide text-[#706F6C]">
-                        Accessoires
-                      </p>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => onToggleLight?.(selectedZone.id)}
-                        className={`flex items-center justify-between border-2 p-4 transition-all ${
-                          selectedZone.hasLight
-                            ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
-                            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                        }`}
-                        style={{ borderRadius: '4px' }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Lightbulb className={`h-6 w-6 ${selectedZone.hasLight ? 'text-yellow-500 fill-yellow-200' : ''}`} />
-                          <div className="text-left">
-                            <span className="block text-base font-semibold">Éclairage LED</span>
-                            <span className="block text-sm text-[#706F6C]">Lumière intégrée</span>
-                          </div>
-                        </div>
-                        <div className={`h-6 w-10 rounded-full border-2 transition-all relative ${selectedZone.hasLight ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
-                          <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${selectedZone.hasLight ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onToggleCableHole?.(selectedZone.id)}
-                        className={`flex items-center justify-between border-2 p-4 transition-all ${
-                          selectedZone.hasCableHole
-                            ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
-                            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                        }`}
-                        style={{ borderRadius: '4px' }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Plug className={`h-6 w-6 ${selectedZone.hasCableHole ? 'text-blue-500' : ''}`} />
-                          <div className="text-left">
-                            <span className="block text-base font-semibold">Passe-câble</span>
-                            <span className="block text-sm text-[#706F6C]">Trou dans le fond</span>
-                          </div>
-                        </div>
-                        <div className={`h-6 w-10 rounded-full border-2 transition-all relative ${selectedZone.hasCableHole ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
-                          <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${selectedZone.hasCableHole ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onToggleDressing?.(selectedZone.id)}
-                        className={`flex items-center justify-between border-2 p-4 transition-all ${
-                          selectedZone.hasDressing
-                            ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
-                            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                        }`}
-                        style={{ borderRadius: '4px' }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Shirt className={`h-6 w-6 ${selectedZone.hasDressing ? 'text-indigo-500' : ''}`} />
-                          <div className="text-left">
-                            <span className="block text-base font-semibold">Penderie</span>
-                            <span className="block text-sm text-[#706F6C]">Tringle intégrée</span>
-                          </div>
-                        </div>
-                        <div className={`h-6 w-10 rounded-full border-2 transition-all relative ${selectedZone.hasDressing ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
-                          <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${selectedZone.hasDressing ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
-                        </div>
-                      </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ═══════════════════════════════════════════════════════════
-                  DIVISION - Termes simplifiés pour seniors
-              ═══════════════════════════════════════════════════════════ */}
-                  <div className="border-t border-[#E8E6E3] pt-5">
-                    <p className="mb-3 text-base font-semibold text-[#1A1917]">
-                      Diviser cette zone
-                    </p>
-
-                    <div className="space-y-5">
-                      {/* Étagères (horizontal) */}
-                      <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
-                        <div className="mb-4 flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center bg-[#FAFAF9]" style={{ borderRadius: '4px' }}>
-                            <Rows3 className="h-6 w-6 text-[#1A1917]" />
-                          </div>
-                          <div>
-                            <span className="block text-lg font-semibold text-[#1A1917]">Ajouter des étagères</span>
-                            <p className="text-sm text-[#706F6C]">Divise en niveaux superposés</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-4 gap-3">
-                          {[2, 3, 4, 5].map((count) => (
-                              <button
-                                  key={`h-${count}`}
-                                  type="button"
-                                  onClick={() => onSplitZone(selectedZone.id, 'horizontal', count)}
-                                  className="flex h-14 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-                                  style={{ borderRadius: '4px' }}
-                              >
-                                {count}
-                              </button>
-                          ))}
-                        </div>
-                        <details className="mt-3">
-                          <summary className="cursor-pointer text-sm font-medium text-[#706F6C] hover:text-[#1A1917]">
-                            Plus d&apos;options (6 à 10 niveaux)
-                          </summary>
-                          <div className="mt-3 grid grid-cols-5 gap-2">
-                            {[6, 7, 8, 9, 10].map((count) => (
-                                <button
-                                    key={`h-${count}`}
-                                    type="button"
-                                    onClick={() => onSplitZone(selectedZone.id, 'horizontal', count)}
-                                    className="flex h-10 items-center justify-center border-2 border-[#E8E6E3] bg-white text-sm font-semibold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-                                    style={{ borderRadius: '4px' }}
-                                >
-                                  {count}
-                                </button>
-                            ))}
-                          </div>
-                        </details>
-                      </div>
-
-                      {/* Colonnes (vertical) */}
-                      <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
-                        <div className="mb-4 flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center bg-[#FAFAF9]" style={{ borderRadius: '4px' }}>
-                            <Columns3 className="h-6 w-6 text-[#1A1917]" />
-                          </div>
-                          <div>
-                            <span className="block text-lg font-semibold text-[#1A1917]">Ajouter des colonnes</span>
-                            <p className="text-sm text-[#706F6C]">Divise en compartiments côte à côte</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-4 gap-3">
-                          {[2, 3, 4, 5].map((count) => (
-                              <button
-                                  key={`v-${count}`}
-                                  type="button"
-                                  onClick={() => onSplitZone(selectedZone.id, 'vertical', count)}
-                                  className="flex h-14 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-                                  style={{ borderRadius: '4px' }}
-                              >
-                                {count}
-                              </button>
-                          ))}
-                        </div>
-                        <details className="mt-3">
-                          <summary className="cursor-pointer text-sm font-medium text-[#706F6C] hover:text-[#1A1917]">
-                            Plus d&apos;options (6 à 10 colonnes)
-                          </summary>
-                          <div className="mt-3 grid grid-cols-5 gap-2">
-                            {[6, 7, 8, 9, 10].map((count) => (
-                                <button
-                                    key={`v-${count}`}
-                                    type="button"
-                                    onClick={() => onSplitZone(selectedZone.id, 'vertical', count)}
-                                    className="flex h-10 items-center justify-center border-2 border-[#E8E6E3] bg-white text-sm font-semibold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-                                    style={{ borderRadius: '4px' }}
-                                >
-                                  {count}
-                                </button>
-                            ))}
-                          </div>
-                        </details>
-                      </div>
-                    </div>
-                  </div>
-                </>
-            )}
-
-            {/* ═══════════════════════════════════════════════════════════
-              ACTIONS SECONDAIRES - Boutons clairs
-          ═══════════════════════════════════════════════════════════ */}
-            {(!isLeaf || (parentZone && parentZone.type !== 'leaf')) && (
-                <div className="flex flex-col gap-3 border-t border-[#E8E6E3] pt-5">
-                  {/* Supprimer la division actuelle */}
-                  {!isLeaf && (
-                      <button
-                          type="button"
-                          onClick={() => onResetZone(selectedZone.id)}
-                          className="flex items-center justify-center gap-3 border-2 border-[#E8E6E3] bg-white py-3 text-base font-medium text-[#706F6C] transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
-                          style={{ borderRadius: '4px' }}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                        <span>Annuler cette division</span>
-                      </button>
-                  )}
-                </div>
-            )}
-          </>
-        )}
-      </div>
+      {/* ── Division ─────────────────────────────────────── */}
+      {show('division') && (
+        <div>
+          {isLeaf ? (
+            <>
+              <SectionLabel hint="Choisissez le nombre de parties : elles seront ensuite ajustables au curseur ou en millimètres.">
+                Diviser cette zone
+              </SectionLabel>
+              <div className="space-y-3">
+                <SplitCard
+                  icon={Rows3}
+                  title="En étagères"
+                  desc="Niveaux superposés"
+                  onSplit={(count) => onSplitZone(selectedZone.id, 'horizontal', count)}
+                />
+                <SplitCard
+                  icon={Columns3}
+                  title="En colonnes"
+                  desc="Compartiments côte à côte"
+                  onSplit={(count) => onSplitZone(selectedZone.id, 'vertical', count)}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <InfoNote>
+                {isRoot ? 'Le meuble' : 'Cette zone'} est divisé en {selectedZone.children?.length ?? 0}{' '}
+                {selectedZone.type === 'horizontal' ? 'niveaux' : 'colonnes'}. Cliquez sur l&apos;un des compartiments pour le diviser à son tour.
+              </InfoNote>
+              <button
+                type="button"
+                onClick={() => onResetZone(selectedZone.id)}
+                className="flex w-full items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white py-3 text-sm font-medium text-[#706F6C] transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+                style={{ borderRadius: '4px' }}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Annuler cette division</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

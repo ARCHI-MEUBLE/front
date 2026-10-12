@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
-import ZoneControls, { SelectedZoneDimensions } from './ZoneControls';
+import ZoneControls, { MAX_SPLIT_PARTS, SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
+import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 
 export { default as PanelPlanCanvas } from './PanelPlanCanvas';
+export type { ZoneControlSection } from './ZoneControls';
 export { type Zone, type ZoneContent, type ZoneColor, type PanelId, type PanelType, PANEL_META, panelIdToString, stringToPanelId } from './types';
 
 interface ZoneEditorProps {
@@ -15,6 +17,12 @@ interface ZoneEditorProps {
   height: number;
   hideControls?: boolean;
   hideCanvas?: boolean;
+  // Masque les champs largeur/hauteur de la zone sélectionnée (utile hors de l'étape Division)
+  hideDimensions?: boolean;
+  // Hauteur maximale du plan 2D en pixels
+  canvasMaxHeight?: number;
+  // Sections de réglages affichées sous le plan (toutes par défaut)
+  controlSections?: ZoneControlSection[];
   showNumbers?: boolean;
   // Contenu à afficher entre le canvas et les contrôles
   renderAfterCanvas?: React.ReactNode;
@@ -51,6 +59,9 @@ export default function ZoneEditor({
   height,
   hideControls,
   hideCanvas,
+  hideDimensions,
+  canvasMaxHeight,
+  controlSections,
   showNumbers,
   renderAfterCanvas,
   onToggleLight,
@@ -58,6 +69,7 @@ export default function ZoneEditor({
   onToggleDressing,
   onGroupZones,
   onSetHandleType,
+  onSetZoneContent,
   onSetDoorContent,
   isAdminCreateModel,
   exposeActions,
@@ -212,7 +224,8 @@ export default function ZoneEditor({
 
   // Diviser une zone
   const splitZone = useCallback(
-    (zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
+    (zoneId: string, direction: 'horizontal' | 'vertical', requestedCount: number = 2) => {
+      const count = Math.min(Math.max(requestedCount, 2), MAX_SPLIT_PARTS);
       const updateZone = (z: Zone): Zone => {
         if (z.id === zoneId) {
           // Pour 2 enfants: utiliser splitRatio
@@ -253,19 +266,13 @@ export default function ZoneEditor({
   // Modifier le contenu
   const setZoneContent = useCallback(
     (zoneId: string, content: ZoneContent) => {
-      const updateZone = (z: Zone): Zone => {
-        if (z.id === zoneId && z.type === 'leaf') {
-          return { ...z, content };
-        }
-        if (z.children) {
-          return { ...z, children: z.children.map(updateZone) };
-        }
-        return z;
-      };
-
-      onRootZoneChange(updateZone(rootZone));
+      if (onSetZoneContent) {
+        onSetZoneContent(zoneId, content);
+      } else {
+        onRootZoneChange(setZoneFacade(rootZone, zoneId, content).root);
+      }
     },
-    [rootZone, onRootZoneChange]
+    [rootZone, onRootZoneChange, onSetZoneContent]
   );
 
   // Modifier les portes
@@ -274,16 +281,7 @@ export default function ZoneEditor({
       if (onSetDoorContent) {
         onSetDoorContent(zoneId, content);
       } else {
-        const updateZone = (z: Zone): Zone => {
-          if (z.id === zoneId) {
-            return { ...z, doorContent: content === 'empty' ? undefined : content };
-          }
-          if (z.children) {
-            return { ...z, children: z.children.map(updateZone) };
-          }
-          return z;
-        };
-        onRootZoneChange(updateZone(rootZone));
+        onRootZoneChange(setZoneFacade(rootZone, zoneId, content).root);
       }
     },
     [rootZone, onRootZoneChange, onSetDoorContent]
@@ -419,7 +417,8 @@ export default function ZoneEditor({
           return {
             ...z,
             type: 'leaf',
-            content: 'empty',
+            content: z.doorContent ?? 'empty',
+            doorContent: undefined,
             children: undefined,
             splitRatio: undefined,
             splitRatios: undefined,
@@ -682,11 +681,12 @@ export default function ZoneEditor({
           width={width}
           height={height}
           showNumbers={showNumbers}
+          maxCanvasHeight={canvasMaxHeight}
         />
       )}
 
       {/* Dimensions de la zone sélectionnée - simplifié */}
-      {!hideControls && selectedZone && selectedZoneIds.length === 1 && (
+      {!hideControls && !hideDimensions && selectedZone && selectedZoneIds.length === 1 && (
         <SelectedZoneDimensions
           widthMm={selectedZoneWidthMm}
           heightMm={selectedZoneHeightMm}
@@ -754,7 +754,7 @@ export default function ZoneEditor({
       )}
 
       {/* Dimensions du groupe quand plusieurs zones avec même parent sont sélectionnées */}
-      {!hideControls && multiSelectInfo && multiSelectInfo.allChildrenSelected && (() => {
+      {!hideControls && !hideDimensions && multiSelectInfo && multiSelectInfo.allChildrenSelected && (() => {
         const commonParent = multiSelectInfo.commonParent;
         const grandParent = findZoneWithParent(rootZone, commonParent.id)?.parent;
 
@@ -852,6 +852,7 @@ export default function ZoneEditor({
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}
             onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
+            sections={controlSections}
           />
         </div>
       )}

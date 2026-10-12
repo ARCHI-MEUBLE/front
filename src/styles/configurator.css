@@ -25,6 +25,13 @@
     position: relative;
 }
 
+/* Le viewer reste collé en haut sur mobile : overflow-x: hidden sur html/body (globals.css)
+   empêcherait position: sticky ; clip masque le débordement sans créer de zone de défilement */
+html.configurator-sticky,
+html.configurator-sticky body {
+    overflow-x: clip;
+}
+
 /* ===== ACTION BAR ===== */
 .action-bar {
     flex-shrink: 0;

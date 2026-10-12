@@ -167,9 +167,6 @@ export default function MaterialSelector({
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-4">
-          <h3 className="font-serif text-lg text-[#1A1917]">Matériaux & Finitions</h3>
-        </div>
         <div className="flex items-center justify-center py-8">
           <div className="h-6 w-6 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
         </div>
@@ -179,17 +176,10 @@ export default function MaterialSelector({
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-[#E8E6E3] pb-4">
-        <h3 className="font-serif text-lg text-[#1A1917]">Matériaux & Finitions</h3>
-        <p className="mt-1 text-xs text-[#706F6C]">
-          Sélectionnez la structure puis la finition
-        </p>
-      </div>
-
       {/* Sélection du matériau */}
       <div className="space-y-3">
         <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-          Structure
+          Matière
         </span>
         <div className="flex flex-wrap gap-2">
           {orderedMaterialLabels.map((label) => {
@@ -390,7 +380,7 @@ export default function MaterialSelector({
         colorsForMaterial.length > 0 && (
           <div className="space-y-3">
             <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-              Finition
+              Couleur
             </span>
             <div className="grid grid-cols-1 gap-2 xs:grid-cols-2">
               {colorsForMaterial.map((color) => {

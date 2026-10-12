@@ -19,7 +19,22 @@ const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'
   ),
 });
 import DimensionsPanel from '@/components/configurator/DimensionsPanel';
-import ActionBar from '@/components/configurator/ActionBar';
+import StepNav from '@/components/configurator/steps/StepNav';
+import StepIntro from '@/components/configurator/steps/StepIntro';
+import StepSection from '@/components/configurator/steps/StepSection';
+import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
+import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
+import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
+import MountingStyleSelector from '@/components/configurator/steps/MountingStyleSelector';
+import FacadeColorSelector from '@/components/configurator/steps/FacadeColorSelector';
+import {
+  CONFIG_STEPS,
+  DOMAIN_STEP,
+  LAST_STEP,
+  STEP,
+  type ConfigStep,
+  type ZoneDomain,
+} from '@/components/configurator/steps/steps';
 import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
@@ -30,7 +45,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ChevronLeft, Settings, Palette, Box, Monitor, RotateCcw, Sparkles, Flower2, Download, Undo2, Redo2, Edit3, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Settings, Palette, Box, RotateCcw, Sparkles, Flower2, Download, Undo2, Redo2, Edit3, Trash2 } from 'lucide-react';
 import { 
   IconRuler2, 
   IconPalette as IconTablerPalette, 
@@ -56,7 +71,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   MATERIAL_LABEL_BY_KEY,
@@ -68,8 +83,14 @@ import {
 } from '@/lib/configurator/materials';
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
+import { computeZoneStats, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 
-type ConfigStep = 1 | 2 | 3;
+// Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
+function notifyRemovedFacades(removed: number) {
+  if (removed === 1) toast('La porte ou le tiroir qui se superposait a été retiré.');
+  else if (removed > 1) toast(`${removed} portes ou tiroirs qui se superposaient ont été retirés.`);
+}
 
 export default function ConfiguratorPage() {
   const router = useRouter();
@@ -79,7 +100,6 @@ export default function ConfiguratorPage() {
   const isAdminCreateModel = adminMode === 'createModel';
   const isAdminEditModel = adminMode === 'editModel';
   const isMobile = useIsMobile();
-  const [showMobileWarning, setShowMobileWarning] = useState(true);
 
   const [isCreateModelDialogOpen, setIsCreateModelDialogOpen] = useState(false);
   const [showModelCreatedModal, setShowModelCreatedModal] = useState(false);
@@ -186,6 +206,12 @@ export default function ConfiguratorPage() {
     checkAdmin();
   }, [fromAdmin]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('configurator-sticky');
+    return () => root.classList.remove('configurator-sticky');
+  }, []);
+
   const localStorageKey = useMemo(() => `configurator_config_${id}`, [id]);
 
   const [initialConfig, setInitialConfig] = useState<{
@@ -247,6 +273,8 @@ export default function ConfiguratorPage() {
   }, [doorsOpen]);
 
   const [useMultiColor, setUseMultiColor] = useState(false);
+  // Vrai quand l'utilisateur a activé lui-même les couleurs par composant (réglage avancé)
+  const [advancedColorsFlag, setAdvancedColorsFlag] = useState(false);
   const [componentColors, setComponentColors] = useState<ComponentColors>({
     structure: { colorId: null, hex: null },
     drawers: { colorId: null, hex: null },
@@ -467,16 +495,9 @@ export default function ConfiguratorPage() {
   }, [rootZone]);
 
   const setZoneContent = useCallback((zoneId: string, content: ZoneContent) => {
-    const updateZone = (z: Zone): Zone => {
-      if (z.id === zoneId && z.type === 'leaf') {
-        return { ...z, content };
-      }
-      if (z.children) {
-        return { ...z, children: z.children.map(updateZone) };
-      }
-      return z;
-    };
-    setRootZone(updateZone(rootZone));
+    const { root, removed } = setZoneFacade(rootZone, zoneId, content);
+    setRootZone(root);
+    notifyRemovedFacades(removed);
   }, [rootZone]);
 
   const toggleZoneLight = useCallback((zoneId: string) => {
@@ -521,143 +542,26 @@ export default function ConfiguratorPage() {
   const groupZones = useCallback((zoneIds: string[], forceContent?: ZoneContent) => {
     if (zoneIds.length <= 1) return;
 
-    const findParentAndIndices = (current: Zone, targetIds: string[]): { parent: Zone, indices: number[] } | null => {
-      if (!current.children) return null;
-      
-      const indices = targetIds.map(id => current.children!.findIndex(c => c.id === id)).filter(idx => idx !== -1);
-      
-      if (indices.length === targetIds.length) {
-        return { parent: current, indices: indices.sort((a, b) => a - b) };
-      }
-
-      for (const child of current.children) {
-        const found = findParentAndIndices(child, targetIds);
-        if (found) return found;
-      }
-      return null;
-    };
-
-    const result = findParentAndIndices(rootZone, zoneIds);
-    if (!result) {
+    const result = groupSiblingZones(rootZone, zoneIds, forceContent);
+    if (result.error === 'not-siblings') {
       toast.error("Les zones doivent faire partie du même groupe.");
       return;
     }
-
-    const { parent, indices } = result;
-    
-    for (let i = 0; i < indices.length - 1; i++) {
-      if (indices[i+1] !== indices[i] + 1) {
-        toast.error("Les zones doivent être côte à côte pour être groupées.");
-        return;
-      }
+    if (result.error === 'not-adjacent') {
+      toast.error("Les zones doivent être côte à côte pour être groupées.");
+      return;
     }
 
-    let createdGroupId = "";
-
-    const updateZoneTree = (z: Zone): Zone => {
-      if (z.id === parent.id) {
-        const newChildren: Zone[] = [];
-        const groupedChildren: Zone[] = [];
-        const groupedRatios: number[] = [];
-        
-        const currentRatios = z.splitRatios || (z.children!.length === 2 ? [z.splitRatio!, 100 - z.splitRatio!] : z.children!.map(() => 100 / z.children!.length));
-        
-        let groupedRatioSum = 0;
-        
-        z.children!.forEach((child, idx) => {
-          if (indices.includes(idx)) {
-            groupedChildren.push(child);
-            groupedRatioSum += currentRatios[idx];
-            groupedRatios.push(currentRatios[idx]);
-          } else {
-            if (groupedChildren.length > 0 && newChildren.every(c => !c.id.startsWith('group-'))) {
-              const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
-              createdGroupId = groupId;
-              const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
-              
-              newChildren.push({
-                id: groupId,
-                type: z.type,
-                children: groupedChildren.map(c => ({...c})),
-                splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
-                splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
-                doorContent: forceContent || undefined,
-              });
-              groupedChildren.length = 0;
-            }
-            newChildren.push(child);
-          }
-        });
-
-        if (groupedChildren.length > 0) {
-          const groupId = `group-${Math.random().toString(36).substr(2, 9)}`;
-          createdGroupId = groupId;
-          const normalizedGroupedRatios = groupedRatios.map(r => (r / groupedRatioSum) * 100);
-          
-          newChildren.push({
-            id: groupId,
-            type: z.type,
-            children: groupedChildren.map(c => ({...c})),
-            splitRatio: groupedChildren.length === 2 ? normalizedGroupedRatios[0] : undefined,
-            splitRatios: groupedChildren.length > 2 ? normalizedGroupedRatios : undefined,
-            doorContent: forceContent || undefined,
-          });
-        }
-
-        const newParentRatios: number[] = [];
-        let groupAdded = false;
-        z.children!.forEach((_, idx) => {
-          if (indices.includes(idx)) {
-            if (!groupAdded) {
-              newParentRatios.push(groupedRatioSum);
-              groupAdded = true;
-            }
-          } else {
-            newParentRatios.push(currentRatios[idx]);
-          }
-        });
-
-        return {
-          ...z,
-          children: newChildren,
-          splitRatio: newChildren.length === 2 ? newParentRatios[0] : undefined,
-          splitRatios: newChildren.length > 2 ? newParentRatios : undefined,
-        };
-      }
-      
-      if (z.children) {
-        return { ...z, children: z.children.map(updateZoneTree) };
-      }
-      return z;
-    };
-
-    const newRoot = updateZoneTree(rootZone);
-    setRootZone(newRoot);
-    
-    if (createdGroupId) {
-      setSelectedZoneIds([createdGroupId]);
-    } else {
-      setSelectedZoneIds([]);
-    }
-    
-    if (forceContent) {
-      toast.success("Porte ajoutée sur l'ensemble sélectionné");
-    } else {
-      toast.success("Zones groupées avec succès");
-    }
+    setRootZone(result.root);
+    setSelectedZoneIds(result.groupId ? [result.groupId] : []);
+    toast.success(forceContent ? "Porte ajoutée sur l'ensemble sélectionné" : 'Zones groupées avec succès');
+    notifyRemovedFacades(result.removed);
   }, [rootZone]);
 
   const setZoneDoorContent = useCallback((zoneId: string, content: ZoneContent) => {
-    const updateZone = (z: Zone): Zone => {
-      if (z.id === zoneId) {
-        return { ...z, doorContent: content === 'empty' ? undefined : content };
-      }
-      if (z.children) {
-        return { ...z, children: z.children.map(updateZone) };
-      }
-      return z;
-    };
-    setRootZone(updateZone(rootZone));
+    const { root, removed } = setZoneFacade(rootZone, zoneId, content);
+    setRootZone(root);
+    notifyRemovedFacades(removed);
   }, [rootZone]);
 
   const setZoneHandleType = useCallback((zoneId: string, handleType: 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed') => {
@@ -732,7 +636,16 @@ export default function ConfiguratorPage() {
   }, [glbUrl, templatePrompt, shelfCount]);
 
   const [activeStep, setActiveStep] = useState<ConfigStep>(1);
-  const [show3DView, setShow3DView] = useState(false);
+  const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<ConfigStep>>(() => new Set<ConfigStep>([1]));
+  // Vue du viewer : 3D par défaut ; le plan 2D s'ouvre de lui-même à l'étape Division tant que
+  // l'utilisateur n'a pas choisi sa vue
+  const [show3DView, setShow3DView] = useState(true);
+  const [viewLocked, setViewLocked] = useState(false);
+  const chooseView = useCallback((view3D: boolean) => {
+    setShow3DView(view3D);
+    setViewLocked(true);
+  }, []);
+  const stepContentRef = useRef<HTMLDivElement>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pendingSaveRef = useRef(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -773,6 +686,147 @@ export default function ConfiguratorPage() {
     if (selectedColorId == null) return null;
     return colorsForMaterial.find((option) => option.id === selectedColorId) || null;
   }, [colorsForMaterial, selectedColorId]);
+
+  // ── Parcours en étapes ─────────────────────────────────────────────
+  const goToStep = useCallback((step: ConfigStep) => {
+    setActiveStep(step);
+    setVisitedSteps((prev) => (prev.has(step) ? prev : new Set(prev).add(step)));
+    if (!viewLocked) setShow3DView(CONFIG_STEPS[step - 1].view !== 'plan');
+    stepContentRef.current?.scrollTo({ top: 0 });
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Les étapes Portes et Finitions agissent sur un compartiment précis : on en présélectionne un
+    const firstLeafId = (zone: Zone | null) => (zone ? listLeafZones(zone)[0]?.id : undefined);
+    if (step === STEP.DOORS) {
+      const keepSelection =
+        selectedZoneIds.length > 1 ||
+        (selectedZone !== null && !(selectedZone.id === 'root' && selectedZone.type !== 'leaf'));
+      if (!keepSelection) {
+        const leafId = firstLeafId(rootZone);
+        if (leafId) setSelectedZoneIds([leafId]);
+      }
+    } else if (step === STEP.FINISHES) {
+      if (!(selectedZoneIds.length === 1 && selectedZone?.type === 'leaf')) {
+        const leafId = firstLeafId(selectedZone ?? rootZone);
+        if (leafId) setSelectedZoneIds([leafId]);
+      }
+    }
+  }, [rootZone, selectedZone, selectedZoneIds, viewLocked]);
+
+  // Maj / Ctrl / Cmd maintenu pendant un clic : regroupe des compartiments voisins (étape Portes)
+  const multiSelectKeyRef = useRef(false);
+  useEffect(() => {
+    const track = (e: KeyboardEvent) => {
+      multiSelectKeyRef.current = e.shiftKey || e.ctrlKey || e.metaKey;
+    };
+    const reset = () => {
+      multiSelectKeyRef.current = false;
+    };
+    window.addEventListener('keydown', track);
+    window.addEventListener('keyup', track);
+    window.addEventListener('blur', reset);
+    return () => {
+      window.removeEventListener('keydown', track);
+      window.removeEventListener('keyup', track);
+      window.removeEventListener('blur', reset);
+    };
+  }, []);
+
+  // Sur clic : une seule zone à la fois, sauf à l'étape Portes avec Maj enfoncé, où deux
+  // compartiments voisins peuvent être regroupés sous une même porte
+  const handleZoneClick = useCallback((zoneId: string | null) => {
+    if (activeStep === STEP.DOORS && multiSelectKeyRef.current) {
+      handleZoneSelect(zoneId);
+      return;
+    }
+    setSelectedPanelIds(new Set());
+    setSelectedZoneIds(zoneId ? [zoneId] : []);
+  }, [activeStep, handleZoneSelect]);
+
+  const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
+  const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
+
+  const quickMenu = useMemo(() => {
+    if (selectedZoneIds.length === 0 || !selectedZone) return null;
+
+    const isMulti = selectedZoneIds.length > 1;
+    const leafIndex = !isMulti && selectedZone.type === 'leaf' ? leafZones.findIndex((z) => z.id === selectedZone.id) : -1;
+
+    let title = 'Meuble entier';
+    if (isMulti) {
+      title = `${selectedZoneIds.length} compartiments`;
+    } else if (selectedZone.type === 'leaf') {
+      if (leafZones.length > 1) title = `Compartiment ${leafIndex + 1} sur ${leafZones.length}`;
+    } else if (selectedZone.id !== 'root') {
+      title = `Groupe · ${selectedZone.children?.length ?? 0} ${selectedZone.type === 'horizontal' ? 'niveaux' : 'colonnes'}`;
+    }
+
+    return {
+      title,
+      leafIndex,
+      size: isMulti ? null : getZoneSize(rootZone, selectedZone.id, width, height),
+    };
+  }, [selectedZone, selectedZoneIds, leafZones, rootZone, width, height]);
+
+  const selectAdjacentLeaf = useCallback((delta: 1 | -1) => {
+    if (!quickMenu || quickMenu.leafIndex < 0 || leafZones.length < 2) return;
+    const next = leafZones[(quickMenu.leafIndex + delta + leafZones.length) % leafZones.length];
+    setSelectedZoneIds([next.id]);
+  }, [leafZones, quickMenu]);
+
+  // Couleur des façades : elle suit la structure tant qu'on ne choisit pas une autre couleur
+  const facadeSameAsStructure =
+    !useMultiColor ||
+    (componentColors.doors.colorId === componentColors.structure.colorId &&
+      componentColors.drawers.colorId === componentColors.structure.colorId);
+  // Réglage avancé : activé à la main, ou déduit d'une configuration enregistrée dont le corps du meuble
+  // n'a pas une couleur uniforme (un simple changement de couleur de façade ne le déclenche pas)
+  const coreColorsUniform = (['shelves', 'back', 'base'] as const).every(
+    (key) =>
+      componentColors[key].colorId === componentColors.structure.colorId &&
+      componentColors[key].hex === componentColors.structure.hex
+  );
+  const advancedColors = useMultiColor && (advancedColorsFlag || !coreColorsUniform);
+  useEffect(() => {
+    if (!useMultiColor) setAdvancedColorsFlag(false);
+  }, [useMultiColor]);
+  const facadeColorId = useMultiColor ? componentColors.doors.colorId : selectedColorId;
+  const facadeColorLabel = facadeSameAsStructure
+    ? null
+    : colorsForMaterial.find((option) => option.id === componentColors.doors.colorId)?.name || 'Personnalisée';
+
+  const handleFacadeColorChange = (option: SampleColor) => {
+    const facade = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
+
+    if (useMultiColor) {
+      setComponentColors((prev) => ({ ...prev, doors: facade, drawers: facade }));
+      return;
+    }
+
+    // Première couleur de façade : on passe en couleurs par composant, le reste garde la couleur actuelle
+    const current = { colorId: selectedColorId, hex: color || DEFAULT_COLOR_HEX, imageUrl: selectedColorImage };
+    setUseMultiColor(true);
+    setComponentColors({
+      structure: current,
+      shelves: current,
+      back: current,
+      base: current,
+      doors: facade,
+      drawers: facade,
+    });
+  };
+
+  const handleFacadeColorReset = () => {
+    if (!useMultiColor) return;
+    if (!advancedColors) {
+      // Seules les façades avaient une couleur à part : on revient à une couleur unique
+      setUseMultiColor(false);
+      return;
+    }
+    setComponentColors((prev) => ({ ...prev, doors: prev.structure, drawers: prev.structure }));
+  };
 
   const priceDisplaySettings = useMemo(() => {
     const displayConfig = pricingParams?.display?.price;
@@ -1479,11 +1533,14 @@ export default function ConfiguratorPage() {
         case 'door': doorCode = zone.id === 'root' ? '' : 'Pg'; break;
         case 'door_right': doorCode = 'Pd'; break;
         case 'door_double': doorCode = 'P2'; break;
-        case 'mirror_door': doorCode = 'Pm'; break;
-        case 'push_door': doorCode = 'Po'; break;
+        // Le format n'a pas de côté pour les portes vitrées et Push : la porte est transmise sans son sens d'ouverture
+        case 'mirror_door':
+        case 'mirror_door_right': doorCode = 'Pm'; break;
+        case 'push_door':
+        case 'push_door_right': doorCode = 'Po'; break;
       }
       
-      if (doorCode && ['door', 'door_right', 'door_double', 'mirror_door'].includes(currentDoor)) {
+      if (doorCode && ['door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right'].includes(currentDoor)) {
         const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
         if (hCode) doorCode += hCode;
       }
@@ -2059,6 +2116,23 @@ export default function ConfiguratorPage() {
     setFinish(key);
     setSelectedColorId(null);
     setSelectedColorImage(null);
+
+    // Les couleurs appartiennent à une matière : celles choisies pour l'ancienne ne sont plus valables
+    const hasZoneColors = (zone: Zone): boolean => !!zone.zoneColor || !!zone.children?.some(hasZoneColors);
+    const clearZoneColors = (zone: Zone): Zone => {
+      const { zoneColor: _removed, ...rest } = zone;
+      return rest.children ? { ...rest, children: rest.children.map(clearZoneColors) } : rest;
+    };
+    const resetZoneColors = hasZoneColors(rootZone);
+
+    if (useMultiColor || resetZoneColors) {
+      if (useMultiColor) {
+        setUseMultiColor(false);
+        setAdvancedColorsFlag(false);
+      }
+      if (resetZoneColors) setRootZone(clearZoneColors(rootZone));
+      toast('Couleurs réinitialisées : choisissez-les dans la nouvelle matière.');
+    }
   };
 
   const handleColorChange = (option: SampleColor) => {
@@ -2066,6 +2140,29 @@ export default function ConfiguratorPage() {
     setColor(option.hex || DEFAULT_COLOR_HEX);
     setColorLabel(option.name || selectedMaterialLabel);
     setSelectedColorImage(option.image_url || null);
+
+    // Les façades colorées à part gardent leur couleur ; le reste du meuble suit la nouvelle couleur
+    if (useMultiColor) {
+      const entry = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
+      setComponentColors((prev) => ({
+        structure: entry,
+        shelves: entry,
+        back: entry,
+        base: entry,
+        doors: facadeSameAsStructure ? entry : prev.doors,
+        drawers: facadeSameAsStructure ? entry : prev.drawers,
+      }));
+    }
+  };
+
+  const handleAdvancedColorsChange = (value: boolean) => {
+    setAdvancedColorsFlag(value);
+    if (value) {
+      // Les composants sont déjà initialisés si les façades avaient une couleur à part
+      if (!useMultiColor) handleUseMultiColorChange(true);
+    } else {
+      setUseMultiColor(false);
+    }
   };
 
   const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string, imageUrl?: string | null) => {
@@ -2389,49 +2486,6 @@ export default function ConfiguratorPage() {
     );
   }
 
-  if (isMobile && showMobileWarning) {
-    return (
-      <>
-        <Head>
-          <title>Configurateur - {model?.name || 'ArchiMeuble'} | ArchiMeuble</title>
-        </Head>
-        <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6">
-          <div className="max-w-md text-center">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center bg-[#1A1917]" style={{ borderRadius: '4px' }}>
-              <Monitor className="h-10 w-10 text-white" />
-            </div>
-            <h1 className="font-serif text-2xl text-[#1A1917]">
-              Configuration sur ordinateur recommandée
-            </h1>
-            <p className="mt-4 text-base text-[#706F6C]">
-              Pour une meilleure expérience de configuration de votre meuble sur mesure,
-              nous vous recommandons d&apos;utiliser un ordinateur.
-            </p>
-            <p className="mt-2 text-sm text-[#706F6C]">
-              Le configurateur 3D est optimisé pour les écrans larges et l&apos;utilisation de la souris.
-            </p>
-            <div className="mt-8 space-y-3">
-              <button
-                onClick={() => setShowMobileWarning(false)}
-                className="w-full border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
-                style={{ borderRadius: '2px' }}
-              >
-                Continuer sur mobile quand même
-              </button>
-              <Link
-                href="/models"
-                className="block w-full bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
-                style={{ borderRadius: '2px' }}
-              >
-                Voir les modèles
-              </Link>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   if (!model) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
@@ -2449,11 +2503,32 @@ export default function ConfiguratorPage() {
     );
   }
 
+  // Réglages communs à tous les panneaux de zone (Division, Portes, Finitions)
+  const zoneEditorProps = {
+    rootZone,
+    selectedZoneIds,
+    onRootZoneChange: setRootZone,
+    onSelectedZoneIdsChange: setSelectedZoneIds,
+    onToggleLight: toggleZoneLight,
+    onToggleCableHole: toggleZoneCableHole,
+    onToggleDressing: toggleZoneDressing,
+    onGroupZones: groupZones,
+    onSetZoneContent: setZoneContent,
+    onSetDoorContent: setZoneDoorContent,
+    onSetHandleType: setZoneHandleType,
+    width,
+    height,
+    onSelectZone: handleZoneClick,
+    isAdminCreateModel,
+    hideCanvas: true,
+  };
+
   return (
     <>
       <Head>
         <title>Configurateur - {model.name} | ArchiMeuble</title>
       </Head>
+      <Toaster position="top-center" />
 
       <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -2578,7 +2653,7 @@ export default function ConfiguratorPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex h-screen flex-col overflow-hidden bg-[#FAFAF9]">
+      <div className="flex min-h-screen flex-col bg-[#FAFAF9] lg:h-screen lg:overflow-hidden">
         <header className="flex-shrink-0 border-b border-[#E8E6E3] bg-white">
           <div className="mx-auto flex h-14 items-center justify-between px-4 lg:h-16 lg:max-w-screen-2xl lg:px-6">
             <div className="flex items-center gap-3 lg:gap-4">
@@ -2634,12 +2709,12 @@ export default function ConfiguratorPage() {
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-          <div className="viewer-section relative flex flex-col bg-[#FAFAF9] lg:flex-1">
-            <div className="viewer-wrapper relative h-[35vh] min-h-[240px] flex-1 lg:h-auto">
+        <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden">
+          <div className="sticky top-0 z-30 flex flex-col bg-[#FAFAF9] lg:static lg:z-auto lg:flex-1">
+            <div className="relative h-[40vh] min-h-[260px] lg:h-auto lg:flex-1">
               <div className="absolute inset-0">
-                {activeStep === 2 && !show3DView ? (
-                  <div className="h-full w-full overflow-auto bg-white p-4 sm:p-8">
+                {!show3DView ? (
+                  <div className="h-full w-full overflow-auto bg-white px-3 pb-3 pt-14 sm:p-8">
                     <ZoneEditor
                       rootZone={rootZone}
                       selectedZoneIds={selectedZoneIds}
@@ -2647,7 +2722,8 @@ export default function ConfiguratorPage() {
                       onSelectedZoneIdsChange={setSelectedZoneIds}
                       width={width}
                       height={height}
-                      onSelectZone={handleZoneSelect}
+                      onSelectZone={isViewMode ? undefined : handleZoneClick}
+                      canvasMaxHeight={isMobile ? 190 : undefined}
                       hideControls
                     />
                   </div>
@@ -2662,7 +2738,8 @@ export default function ConfiguratorPage() {
                     socle={socle}
                     rootZone={rootZone}
                     selectedZoneIds={isViewMode ? [] : selectedZoneIds}
-                    onSelectZone={isViewMode ? undefined : handleZoneSelect}
+                    selectionTint={activeStep !== STEP.MATERIALS}
+                    onSelectZone={isViewMode ? undefined : handleZoneClick}
                     isBuffet={furnitureStructure?.isBuffet}
                     doorsOpen={doorsOpen}
                     showDecorations={showDecorations}
@@ -2677,47 +2754,49 @@ export default function ConfiguratorPage() {
                     deletedPanelIds={deletedPanelIds}
                   />
                 )}
-                {activeStep === 2 && (
-                  <div className="absolute right-4 top-4 z-20 flex overflow-hidden border border-[#E8E6E3] bg-white shadow-sm" style={{ borderRadius: '2px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShow3DView(false)}
-                      aria-pressed={!show3DView}
-                      className={`px-3 py-2 text-xs font-medium transition-colors ${
-                        !show3DView
-                          ? 'bg-[#1A1917] text-white'
-                          : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
-                      }`}
-                    >
-                      Plan 2D
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShow3DView(true)}
-                      aria-pressed={show3DView}
-                      className={`flex items-center gap-1.5 border-l border-[#E8E6E3] px-3 py-2 text-xs font-medium transition-colors ${
-                        show3DView
-                          ? 'bg-[#1A1917] text-white'
-                          : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
-                      }`}
-                    >
-                      <Box className="h-3.5 w-3.5" />
-                      Vue 3D
-                    </button>
-                  </div>
-                )}
-                {!isViewMode && isSelectedZoneColorizable && selectedZone && (
-                  <ZoneColorPicker
-                    zone={selectedZone}
-                    materialsMap={materialsMap}
-                    selectedMaterialKey={selectedMaterialLabel}
-                    defaultColor={color}
-                    defaultImageUrl={selectedColorImage}
-                    onColorChange={setZoneColor}
+                <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-[#E8E6E3] bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
+                  <button
+                    type="button"
+                    onClick={() => chooseView(false)}
+                    aria-pressed={!show3DView}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      !show3DView
+                        ? 'bg-[#1A1917] text-white'
+                        : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                    }`}
+                  >
+                    Plan 2D
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => chooseView(true)}
+                    aria-pressed={show3DView}
+                    className={`flex items-center gap-1.5 border-l border-[#E8E6E3] px-3 py-2 text-xs font-medium transition-colors ${
+                      show3DView
+                        ? 'bg-[#1A1917] text-white'
+                        : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                    }`}
+                  >
+                    <Box className="h-3.5 w-3.5" />
+                    Vue 3D
+                  </button>
+                </div>
+                {!isViewMode && quickMenu && !showPanelTool && !(
+                  selectedZoneIds.length === 1 && selectedZone?.id === 'root' && (selectedZone.type !== 'leaf' || activeStep === STEP.DIMENSIONS || activeStep === STEP.MATERIALS)
+                ) && (
+                  <ZoneQuickMenu
+                    title={quickMenu.title}
+                    size={quickMenu.size}
+                    canNavigate={quickMenu.leafIndex >= 0 && leafZones.length > 1}
+                    onPrev={() => selectAdjacentLeaf(-1)}
+                    onNext={() => selectAdjacentLeaf(1)}
+                    activeDomain={
+                      (Object.keys(DOMAIN_STEP) as ZoneDomain[]).find((domain) => DOMAIN_STEP[domain] === activeStep) ?? null
+                    }
+                    onDomain={(domain) => goToStep(DOMAIN_STEP[domain])}
                     onClose={() => setSelectedZoneIds([])}
                   />
                 )}
-
                 <div className="absolute bottom-4 right-4 z-20 hidden flex-col gap-2 lg:flex">
                   {!isViewMode && (
                     <button
@@ -2814,7 +2893,7 @@ export default function ConfiguratorPage() {
                 )}
 
                 {selectedPanelIds.size > 0 && !isViewMode && showPanelTool && (
-                  <div className="absolute top-4 right-4 z-20 hidden lg:block">
+                  <div className="absolute right-4 top-16 z-20 hidden lg:block">
                     <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
                       <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
                       <span className="text-sm font-medium text-[#1A1917]">
@@ -2868,29 +2947,20 @@ export default function ConfiguratorPage() {
                 )}
 
                 {generating && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAF9]/40 backdrop-blur-[1px] z-10">
-                    <div className="flex flex-col items-center gap-3">
-                      <img
-                        src="/images/logo-icon.png"
-                        alt=""
-                        className="h-16 w-16 animate-pulse"
-                      />
-                    </div>
+                  <div
+                    role="status"
+                    className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-[#E8E6E3] bg-white/95 px-3 py-1.5 text-[11px] font-medium text-[#706F6C] shadow-sm lg:bottom-4"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    <span className="h-3 w-3 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+                    Mise à jour…
                   </div>
                 )}
               </div>
             </div>
-
-            {!isViewMode && (
-              <div className="hidden flex-shrink-0 lg:block">
-                <ActionBar
-                  selectedZoneId={selectedZone?.type === 'leaf' ? selectedZoneIds[0] : null}
-                />
-              </div>
-            )}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col border-t border-[#E8E6E3] bg-white lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
+          <div className="flex flex-col border-t border-[#E8E6E3] bg-white lg:min-h-0 lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
             {isViewMode ? (
               <ConfigurationSummary
                 width={width}
@@ -2912,197 +2982,207 @@ export default function ConfiguratorPage() {
               />
             ) : (
               <>
-                <div className="flex flex-shrink-0 items-center justify-between border-b border-[#E8E6E3] px-4 py-3 sm:px-6">
-                  <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#706F6C]">Configurer</p>
-                    <h2 className="mt-1 font-serif text-lg text-[#1A1917]">Personnalisez votre meuble</h2>
-                  </div>
-                  <span className="font-mono text-[11px] text-[#706F6C]">0{activeStep}/03</span>
+                <div className="flex-shrink-0 border-b border-[#E8E6E3] px-4 pb-3 pt-4 sm:px-6">
+                  <StepNav
+                    steps={CONFIG_STEPS}
+                    activeStep={activeStep}
+                    visited={visitedSteps}
+                    onSelect={goToStep}
+                  />
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-                  <div className="mb-4 grid grid-cols-3 gap-1.5">
-                    {([
-                      [1, 'Dimensions'],
-                      [2, 'Composition'],
-                      [3, 'Finitions'],
-                    ] as const).map(([step, label]) => (
-                      <button
-                        key={step}
-                        type="button"
-                        onClick={() => {
-                          setActiveStep(step);
-                          setShow3DView(step !== 2);
-                        }}
-                        className={`border px-2 py-2 text-left transition-colors ${
-                          activeStep === step
-                            ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                            : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917]'
-                        }`}
-                      >
-                        <span className="block font-mono text-[10px]">0{step}</span>
-                        <span className="mt-1 block text-[10px] font-medium sm:text-[11px]">{label}</span>
-                      </button>
-                    ))}
+                <div ref={stepContentRef} className="px-4 pb-24 pt-5 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pb-0">
+                  <div className="space-y-6 pb-6">
+                    <StepIntro step={CONFIG_STEPS[activeStep - 1]} total={LAST_STEP} />
+
+                    {activeStep === STEP.DIMENSIONS && (
+                      <div className="space-y-4">
+                        {initialConfig && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={resetConfiguration}
+                              className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                              style={{ borderRadius: '2px' }}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              Réinitialiser au modèle par défaut
+                            </button>
+                          </div>
+                        )}
+
+                        <DimensionsPanel
+                          width={width}
+                          depth={depth}
+                          height={height}
+                          onWidthChange={setWidth}
+                          onDepthChange={setDepth}
+                          onHeightChange={setHeight}
+                        />
+                      </div>
+                    )}
+
+                    {activeStep === STEP.DIVISION && (
+                      <div className="space-y-4">
+                        {selectedZoneIds.length === 0 ? (
+                          <ZoneEmptyState>
+                            Cliquez sur un compartiment du plan pour le diviser en étagères ou en colonnes.
+                          </ZoneEmptyState>
+                        ) : (
+                          <ZoneEditor {...zoneEditorProps} controlSections={['division']} />
+                        )}
+                        <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                          Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
+                        </p>
+                      </div>
+                    )}
+
+                    {activeStep === STEP.DOORS && (
+                      <>
+                        <StepSection title="Montage des façades" aside="Pour tout le meuble">
+                          <MountingStyleSelector value={mountingStyle} onChange={setMountingStyle} />
+                        </StepSection>
+
+                        <StepSection title="Portes, tiroirs & poignées" aside="Pour le compartiment sélectionné">
+                          {selectedZoneIds.length === 0 ? (
+                            <ZoneEmptyState>
+                              Cliquez sur un compartiment du meuble pour lui poser une porte ou un tiroir.
+                            </ZoneEmptyState>
+                          ) : (
+                            <ZoneEditor
+                              {...zoneEditorProps}
+                              hideDimensions
+                              controlSections={['facades', 'storage', 'handles']}
+                            />
+                          )}
+                          <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                            Astuce : maintenez Maj et cliquez sur un compartiment voisin pour poser une seule porte sur l&apos;ensemble.
+                          </p>
+                        </StepSection>
+                      </>
+                    )}
+
+                    {activeStep === STEP.MATERIALS && (
+                      <>
+                        <MaterialSelector
+                          materialsMap={materialsMap}
+                          selectedMaterialKey={selectedMaterialLabel}
+                          selectedColorId={selectedColorId}
+                          onMaterialChange={handleMaterialChange}
+                          onColorChange={handleColorChange}
+                          loading={materialsLoading}
+                          useMultiColor={advancedColors}
+                          onUseMultiColorChange={handleAdvancedColorsChange}
+                          componentColors={componentColors}
+                          onComponentColorChange={handleComponentColorChange}
+                        />
+
+                        <StepSection title="Couleur des façades" aside="Portes et tiroirs">
+                          {zoneStats.doors + zoneStats.drawers === 0 ? (
+                            <p className="text-xs leading-relaxed text-[#706F6C]">
+                              Vous n&apos;avez pas encore posé de porte ni de tiroir. Revenez à l&apos;étape Portes pour en ajouter : vous pourrez ensuite les colorer ici.
+                            </p>
+                          ) : (
+                            <FacadeColorSelector
+                              colors={colorsForMaterial}
+                              selectedColorId={facadeColorId}
+                              sameAsStructure={facadeSameAsStructure}
+                              loading={materialsLoading}
+                              onSelect={handleFacadeColorChange}
+                              onReset={handleFacadeColorReset}
+                            />
+                          )}
+                        </StepSection>
+
+                        {isSelectedZoneColorizable && selectedZone ? (
+                          <StepSection title="Une façade en particulier" aside="Compartiment sélectionné">
+                            <ZoneColorPicker
+                              inline
+                              zone={selectedZone}
+                              materialsMap={materialsMap}
+                              selectedMaterialKey={selectedMaterialLabel}
+                              defaultColor={color}
+                              defaultImageUrl={selectedColorImage}
+                              onColorChange={setZoneColor}
+                              onClose={() => setSelectedZoneIds([])}
+                            />
+                          </StepSection>
+                        ) : (
+                          zoneStats.doors + zoneStats.drawers > 0 && (
+                            <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                              Astuce : cliquez sur une porte ou un tiroir du meuble pour lui donner une couleur différente.
+                            </p>
+                          )
+                        )}
+                      </>
+                    )}
+
+                    {activeStep === STEP.FINISHES && (
+                      <>
+                        <StepSection title="Pieds & socle" aside="Pour tout le meuble">
+                          <SocleSelector value={socle} onChange={setSocle} />
+                        </StepSection>
+
+                        <StepSection title="Accessoires" aside="Pour le compartiment sélectionné">
+                          {selectedZoneIds.length === 0 ? (
+                            <ZoneEmptyState>
+                              Cliquez sur un compartiment du meuble pour y ajouter un éclairage, une penderie ou un passe-câble.
+                            </ZoneEmptyState>
+                          ) : (
+                            <ZoneEditor
+                              {...zoneEditorProps}
+                              hideDimensions
+                              controlSections={['accessories']}
+                            />
+                          )}
+                        </StepSection>
+
+                        <StepSection title="Récapitulatif">
+                          <ConfigRecap
+                            width={width}
+                            depth={depth}
+                            height={height}
+                            finish={finish}
+                            colorLabel={colorLabel}
+                            colorHex={color}
+                            colorImage={selectedColorImage}
+                            facadeColorLabel={facadeColorLabel}
+                            mountingStyle={mountingStyle}
+                            socle={socle}
+                            stats={zoneStats}
+                          />
+                        </StepSection>
+                      </>
+                    )}
                   </div>
 
-                  {activeStep === 1 && (
-                    <div className="space-y-4 pb-32 lg:pb-0">
-                      {initialConfig && (
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={resetConfiguration}
-                            className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
-                            style={{ borderRadius: '2px' }}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Réinitialiser au modèle par défaut
-                          </button>
-                        </div>
-                      )}
-
-                      <DimensionsPanel
-                        width={width}
-                        depth={depth}
-                        height={height}
-                        onWidthChange={setWidth}
-                        onDepthChange={setDepth}
-                        onHeightChange={setHeight}
-                      />
-
-                      <div className="border border-dashed border-[#C9C6BF] bg-[#FAFAF9] px-3 py-3 text-xs text-[#706F6C]">
-                        Ajustez les dimensions avec les curseurs ou saisissez une valeur précise en millimètres.
-                      </div>
-                    </div>
-                  )}
-
-                  {activeStep === 2 && (
-                    <div className="space-y-4 pb-32 lg:pb-0">
-                      <div>
-                        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#706F6C]">Étape 02</p>
-                        <h3 className="mt-1 font-serif text-base text-[#1A1917]">Organisez les compartiments</h3>
-                        <p className="mt-1 text-xs leading-relaxed text-[#706F6C]">
-                          Sélectionnez une zone sur le meuble pour la diviser, ajouter une porte, un tiroir ou une penderie.
-                        </p>
-                      </div>
-                      <ZoneEditor
-                        rootZone={rootZone}
-                        selectedZoneIds={selectedZoneIds}
-                        onRootZoneChange={setRootZone}
-                        onSelectedZoneIdsChange={setSelectedZoneIds}
-                        onToggleLight={toggleZoneLight}
-                        onToggleCableHole={toggleZoneCableHole}
-                        onToggleDressing={toggleZoneDressing}
-                        onGroupZones={groupZones}
-                        onSetDoorContent={setZoneDoorContent}
-                        onSetHandleType={setZoneHandleType}
-                        width={width}
-                        height={height}
-                        onSelectZone={handleZoneSelect}
-                        isAdminCreateModel={isAdminCreateModel}
-                        hideCanvas
-                      />
-
-                    </div>
-                  )}
-
-                  {activeStep === 3 && (
-                    <div className="space-y-5 pb-32 lg:pb-0">
-                      <div>
-                        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#706F6C]">Étape 03</p>
-                        <h3 className="mt-1 font-serif text-base text-[#1A1917]">Choisissez vos finitions</h3>
-                      </div>
-
-                      <MaterialSelector
-                        materialsMap={materialsMap}
-                        selectedMaterialKey={selectedMaterialLabel}
-                        selectedColorId={selectedColorId}
-                        onMaterialChange={handleMaterialChange}
-                        onColorChange={handleColorChange}
-                        loading={materialsLoading}
-                        useMultiColor={useMultiColor}
-                        onUseMultiColorChange={handleUseMultiColorChange}
-                        componentColors={componentColors}
-                        onComponentColorChange={handleComponentColorChange}
-                      />
-
-                      <SocleSelector
-                        value={socle}
-                        onChange={setSocle}
-                      />
-
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
-                          <h3 className="font-serif text-xs text-[#1A1917]">Montage façades</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setMountingStyle('applique')}
-                            className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
-                              mountingStyle === 'applique'
-                                ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                            }`}
-                            style={{ borderRadius: '4px' }}
-                          >
-                            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" className="opacity-80">
-                              <rect x="2" y="4" width="28" height="16" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                              <rect x="0" y="2" width="12" height="20" fill="currentColor" opacity="0.3"/>
-                              <rect x="0" y="2" width="12" height="20" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                            </svg>
-                            <span className="text-[11px] font-medium">Applique</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMountingStyle('encastre')}
-                            className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
-                              mountingStyle === 'encastre'
-                                ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                            }`}
-                            style={{ borderRadius: '4px' }}
-                          >
-                            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" className="opacity-80">
-                              <rect x="2" y="4" width="28" height="16" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                              <rect x="4" y="6" width="10" height="12" fill="currentColor" opacity="0.3"/>
-                              <rect x="4" y="6" width="10" height="12" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                            </svg>
-                            <span className="text-[11px] font-medium">Encastré</span>
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-[#706F6C]">
-                          {mountingStyle === 'applique'
-                            ? 'Portes et tiroirs en saillie sur le cadre'
-                            : 'Portes et tiroirs affleurant avec le cadre'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-6 flex items-center justify-between border-t border-[#E8E6E3] pt-4">
+                  <div className="-mx-4 flex items-center justify-between gap-3 border-t border-[#E8E6E3] bg-white px-4 py-3 sm:-mx-6 sm:px-6 sticky bottom-[69px] z-10 lg:bottom-0">
                     <button
                       type="button"
-                      onClick={() => setActiveStep((step) => (step === 1 ? 1 : (step - 1) as ConfigStep))}
-                      disabled={activeStep === 1}
-                      className="border border-[#E8E6E3] px-4 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => goToStep((activeStep - 1) as ConfigStep)}
+                      disabled={activeStep === STEP.DIMENSIONS}
+                      className="flex items-center gap-1.5 border border-[#E8E6E3] px-4 py-2.5 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ borderRadius: '2px' }}
                     >
+                      <ArrowLeft className="h-3.5 w-3.5" />
                       Retour
                     </button>
-                    {activeStep < 3 ? (
+                    {activeStep < LAST_STEP ? (
                       <button
                         type="button"
-                        onClick={() => setActiveStep((step) => (step + 1) as ConfigStep)}
-                        className="bg-[#1A1917] px-5 py-2 text-xs font-medium text-white transition-colors hover:bg-[#2A2927]"
+                        onClick={() => goToStep((activeStep + 1) as ConfigStep)}
+                        className="flex items-center gap-1.5 bg-[#1A1917] px-5 py-2.5 text-xs font-medium text-white transition-colors hover:bg-[#2A2927]"
+                        style={{ borderRadius: '2px' }}
                       >
-                        Étape suivante
+                        Suivant : {CONFIG_STEPS[activeStep].label}
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
-                        className="bg-[#D4FF3A] px-5 py-2 text-xs font-medium text-[#161513] transition-colors hover:bg-[#C4EF2A]"
+                        className="bg-[#D4FF3A] px-5 py-2.5 text-xs font-medium text-[#161513] transition-colors hover:bg-[#C4EF2A]"
+                        style={{ borderRadius: '2px' }}
                       >
                         Valider la configuration
                       </button>

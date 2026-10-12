@@ -29,6 +29,8 @@ interface ThreeViewerProps {
     socle?: string;
     rootZone: Zone | null;
     selectedZoneIds?: string[];
+    // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé (choix des couleurs)
+    selectionTint?: boolean;
     onSelectZone?: (id: string | null) => void;
     selectedPanelIds?: Set<string>;
     onSelectPanel?: (panelId: string | null) => void;
@@ -55,6 +57,7 @@ function Furniture({
                        useMultiColor = false,
                        mountingStyle = 'applique',
                        selectedZoneIds = [],
+                       selectionTint = true,
                        onSelectZone,
                        selectedPanelIds = new Set(),
                        onSelectPanel,
@@ -66,7 +69,9 @@ function Furniture({
         if (rootZone) {
             const newOpenStates: Record<string, boolean> = {};
             const applyOpenState = (zone: Zone) => {
-                if (zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right')) {
+                const hasLeafFacade = zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right');
+                const hasGroupDoor = !!zone.doorContent && zone.doorContent !== 'empty';
+                if (hasLeafFacade || hasGroupDoor) {
                     newOpenStates[zone.id] = doorsOpen || false;
                 }
                 if (zone.children) {
@@ -1095,17 +1100,19 @@ function Furniture({
                         <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
                         <meshBasicMaterial
                             transparent
-                            opacity={selectedZoneIds.includes(zone.id) ? 0.5 : 0.01}
+                            opacity={selectedZoneIds.includes(zone.id) && selectionTint ? 0.5 : 0.01}
                             color="#FF9800"
                             depthWrite={false}
                             toneMapped={false}
                         />
                         {selectedZoneIds.includes(zone.id) && (
                             <>
-                                <mesh>
-                                    <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
-                                    <meshBasicMaterial color="#FF9800" wireframe transparent opacity={0.4} toneMapped={false} />
-                                </mesh>
+                                {selectionTint && (
+                                    <mesh>
+                                        <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
+                                        <meshBasicMaterial color="#FF9800" wireframe transparent opacity={0.4} toneMapped={false} />
+                                    </mesh>
+                                )}
                                 <lineSegments>
                                     <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, hitboxDepth)]} />
                                     <lineBasicMaterial color="#FF9800" linewidth={4} toneMapped={false} />
@@ -1207,9 +1214,10 @@ function Furniture({
                                     height={height - compartmentGap + totalDoorOverlap}
                                     handleType={zone.handleType}
                                     isOpen={openCompartments[zone.id]}
-                                    onClick={() => {
+                                    onClick={(e: any) => {
+                                        e.stopPropagation();
+                                        onSelectZone?.(zone.id);
                                         toggleCompartment(zone.id);
-                                        onSelectZone?.(selectedZoneIds.includes(zone.id) ? null : zone.id);
                                     }}
                                 />
                             </group>
@@ -1249,6 +1257,7 @@ function Furniture({
                                         onClick={(e: any) => {
                                             e.stopPropagation();
                                             onSelectZone?.(zone.id);
+                                            toggleCompartment(zone.id);
                                         }}
                                     />
                                 )}
@@ -1265,6 +1274,7 @@ function Furniture({
                                         onClick={(e: any) => {
                                             e.stopPropagation();
                                             onSelectZone?.(zone.id);
+                                            toggleCompartment(zone.id);
                                         }}
                                     />
                                 )}
@@ -1290,25 +1300,6 @@ function Furniture({
                                 thickness={0.5}
                             />
                         </mesh>
-                    );
-                } else if (zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
-                    const isMirrorRightLeaf = zone.content === 'mirror_door_right';
-                    items.push(
-                        <group key={zone.id} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
-                            <AnimatedMirrorDoor
-                                side={isMirrorRightLeaf ? "right" : "left"}
-                                position={[isMirrorRightLeaf ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
-                                width={doorZoneWidth - compartmentGap}
-                                height={height - compartmentGap + totalDoorOverlap}
-                                handleType={zone.handleType}
-                                isOpen={openCompartments[zone.id]}
-                                onClick={(e: any) => {
-                                    e.stopPropagation();
-                                    onSelectZone?.(zone.id);
-                                    toggleCompartment(zone.id);
-                                }}
-                            />
-                        </group>
                     );
                 } else {
                     if (showDecorations) {
@@ -1457,7 +1448,7 @@ function Furniture({
         finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
-        openCompartments, showDecorations, selectedZoneIds, onSelectZone, toggleCompartment,
+        openCompartments, showDecorations, selectedZoneIds, selectionTint, onSelectZone, toggleCompartment,
         selectedPanelIds, onSelectPanel
     ]);
 

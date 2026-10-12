@@ -28,6 +28,8 @@ export interface ThreeViewerProps {
   socle?: string;
   rootZone: Zone | null;
   selectedZoneIds?: string[];
+  // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé
+  selectionTint?: boolean;
   onSelectZone?: (id: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;

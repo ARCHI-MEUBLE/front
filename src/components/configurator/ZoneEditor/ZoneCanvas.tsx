@@ -173,7 +173,7 @@ function ZoneNode({
                 type="button"
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
-                className={`relative flex h-full w-full flex-col items-center justify-center border-2 transition-all duration-200 ${
+                className={`relative flex h-full w-full flex-col items-center justify-center overflow-hidden border-2 transition-all duration-200 ${
                     isOpenSpace
                         ? isSelected
                             ? 'border-[#4CAF50] bg-[#4CAF50]/20 text-[#2E7D32] z-10 shadow-[0_0_8px_rgba(76,175,80,0.3)]'
@@ -197,8 +197,8 @@ function ZoneNode({
                     </>
                 ) : (
                     <>
-                        <span className="text-lg font-semibold">{meta.shortLabel}</span>
-                        <span className="mt-2 font-mono text-base text-[#706F6C]">
+                        <span className="text-xs font-semibold leading-tight sm:text-lg">{meta.shortLabel}</span>
+                        <span className="mt-1 text-center font-mono text-[9px] leading-tight text-[#706F6C] sm:mt-2 sm:text-base">
                             {Math.round(realWidth)} × {Math.round(realHeight)} mm
                         </span>
                     </>
@@ -315,6 +315,8 @@ interface ZoneCanvasProps {
     width: number;
     height: number;
     showNumbers?: boolean;
+    // Hauteur maximale du dessin en pixels (400 par défaut)
+    maxCanvasHeight?: number;
 }
 
 export default function ZoneCanvas({
@@ -325,11 +327,12 @@ export default function ZoneCanvas({
                                        width,
                                        height,
                                        showNumbers = false,
+                                       maxCanvasHeight = 400,
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
     const maxWidth = 500;
-    const maxHeight = 400;
+    const maxHeight = maxCanvasHeight;
 
     // Calcul du ratio réel du meuble (identique au modèle 3D)
     const aspectRatio = width / height;
