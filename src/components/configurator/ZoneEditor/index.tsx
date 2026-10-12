@@ -14,6 +14,7 @@ interface ZoneEditorProps {
   width: number;
   height: number;
   hideControls?: boolean;
+  hideCanvas?: boolean;
   showNumbers?: boolean;
   // Contenu à afficher entre le canvas et les contrôles
   renderAfterCanvas?: React.ReactNode;
@@ -49,6 +50,7 @@ export default function ZoneEditor({
   width,
   height,
   hideControls,
+  hideCanvas,
   showNumbers,
   renderAfterCanvas,
   onToggleLight,
@@ -671,18 +673,20 @@ export default function ZoneEditor({
   return (
     <div className="space-y-3">
       {/* Canvas avec titre intégré */}
-      <ZoneCanvas
-        zone={rootZone}
-        selectedZoneIds={selectedZoneIds}
-        onSelect={onSelectZone || (() => {})}
-        onRatioChange={handleRatioChange}
-        width={width}
-        height={height}
-        showNumbers={showNumbers}
-      />
+      {!hideCanvas && (
+        <ZoneCanvas
+          zone={rootZone}
+          selectedZoneIds={selectedZoneIds}
+          onSelect={onSelectZone || (() => {})}
+          onRatioChange={handleRatioChange}
+          width={width}
+          height={height}
+          showNumbers={showNumbers}
+        />
+      )}
 
       {/* Dimensions de la zone sélectionnée - simplifié */}
-      {selectedZone && selectedZoneIds.length === 1 && (
+      {!hideControls && selectedZone && selectedZoneIds.length === 1 && (
         <SelectedZoneDimensions
           widthMm={selectedZoneWidthMm}
           heightMm={selectedZoneHeightMm}
@@ -750,7 +754,7 @@ export default function ZoneEditor({
       )}
 
       {/* Dimensions du groupe quand plusieurs zones avec même parent sont sélectionnées */}
-      {multiSelectInfo && multiSelectInfo.allChildrenSelected && (() => {
+      {!hideControls && multiSelectInfo && multiSelectInfo.allChildrenSelected && (() => {
         const commonParent = multiSelectInfo.commonParent;
         const grandParent = findZoneWithParent(rootZone, commonParent.id)?.parent;
 

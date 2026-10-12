@@ -25,6 +25,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <Head>
         <link rel="icon" href="/images/logo.jpg" />
         <link rel="apple-touch-icon" href="/images/logo.jpg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <CustomerProvider>
         <SampleCartProvider>

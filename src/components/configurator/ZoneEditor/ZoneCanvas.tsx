@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent, MouseEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 
 interface ZoneNodeProps {
@@ -57,14 +57,14 @@ function ZoneNode({
         return children.map(() => 100 / children.length);
     }, [zone]);
 
-    const handleDragStart = (index: number) => (e: MouseEvent) => {
+    const handleDragStart = (index: number) => (e: React.PointerEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(true);
         setDragIndex(index);
     };
 
-    const handleDragMove = useCallback((e: globalThis.MouseEvent) => {
+    const handleDragMove = useCallback((e: PointerEvent) => {
         if (!isDragging || dragIndex === null || !containerRef.current || !onRatioChange) return;
 
         const rect = containerRef.current.getBoundingClientRect();
@@ -143,8 +143,9 @@ function ZoneNode({
                 (scrollableParent as HTMLElement).style.overflow = 'hidden';
             }
 
-            window.addEventListener('mousemove', handleDragMove);
-            window.addEventListener('mouseup', handleDragEnd);
+            window.addEventListener('pointermove', handleDragMove);
+            window.addEventListener('pointerup', handleDragEnd);
+            window.addEventListener('pointercancel', handleDragEnd);
 
             return () => {
                 document.body.style.overflow = '';
@@ -155,8 +156,9 @@ function ZoneNode({
                     (scrollableParent as HTMLElement).style.overflow = '';
                 }
 
-                window.removeEventListener('mousemove', handleDragMove);
-                window.removeEventListener('mouseup', handleDragEnd);
+                window.removeEventListener('pointermove', handleDragMove);
+                window.removeEventListener('pointerup', handleDragEnd);
+                window.removeEventListener('pointercancel', handleDragEnd);
             };
         }
     }, [isDragging, handleDragMove, handleDragEnd]);
@@ -283,7 +285,7 @@ function ZoneNode({
                                         ? 'bottom-0 left-0 right-0 h-8 -mb-4 cursor-row-resize'
                                         : 'right-0 top-0 bottom-0 w-8 -mr-4 cursor-col-resize'
                                 }`}
-                                onMouseDown={handleDragStart(index)}
+                                onPointerDown={handleDragStart(index)}
                                 style={{ touchAction: 'none' }}
                             >
                                 <div
@@ -324,30 +326,40 @@ export default function ZoneCanvas({
                                        height,
                                        showNumbers = false,
                                    }: ZoneCanvasProps) {
-    // ✅ GRAND CANVAS - Prend toute la largeur disponible du panneau
-    // Le panneau fait 560px, moins padding = ~500px disponibles
+                                       const canvasContainerRef = useRef<HTMLDivElement>(null);
+                                       const [availableWidth, setAvailableWidth] = useState<number | null>(null);
     const maxWidth = 500;
     const maxHeight = 400;
 
     // Calcul du ratio réel du meuble (identique au modèle 3D)
     const aspectRatio = width / height;
 
-    let canvasWidth: number;
-    let canvasHeight: number;
+    let naturalCanvasWidth: number;
+    let naturalCanvasHeight: number;
 
     if (aspectRatio > maxWidth / maxHeight) {
-        // Meuble large → limité par la largeur
-        canvasWidth = maxWidth;
-        canvasHeight = maxWidth / aspectRatio;
+        naturalCanvasWidth = maxWidth;
+        naturalCanvasHeight = maxWidth / aspectRatio;
     } else {
-        // Meuble haut → limité par la hauteur
-        canvasHeight = maxHeight;
-        canvasWidth = maxHeight * aspectRatio;
+        naturalCanvasHeight = maxHeight;
+        naturalCanvasWidth = maxHeight * aspectRatio;
     }
 
-    // Assurer une taille minimum lisible
-    canvasWidth = Math.max(canvasWidth, 300);
-    canvasHeight = Math.max(canvasHeight, 200);
+    const maxAvailableCanvasWidth = availableWidth === null ? maxWidth : Math.max(1, availableWidth - 32);
+    const scale = Math.min(1, maxAvailableCanvasWidth / naturalCanvasWidth);
+    const canvasWidth = Math.max(1, naturalCanvasWidth * scale);
+    const canvasHeight = Math.max(1, naturalCanvasHeight * scale);
+
+    useEffect(() => {
+        const element = canvasContainerRef.current;
+        if (!element) return;
+
+        const updateWidth = () => setAvailableWidth(element.clientWidth);
+        updateWidth();
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
 
     // ✅ Calculer les numéros de feuilles de manière pure
     const leafNumbers: Record<string, number> = {};
@@ -375,13 +387,11 @@ export default function ZoneCanvas({
 
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
-                className="mx-auto inline-flex items-center justify-center overflow-x-auto bg-[#FAFAF9] p-4 cursor-default"
+                ref={canvasContainerRef}
+                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-[#FAFAF9] p-2 cursor-default sm:p-4"
                 onClick={() => onSelect(null)}
                 style={{
                     borderRadius: '4px',
-                    width: canvasWidth + 32, // canvas + padding (16px * 2)
-                    minWidth: canvasWidth + 32,
-                    maxWidth: '100%', // Empêcher le débordement
                 }}
             >
                 <div

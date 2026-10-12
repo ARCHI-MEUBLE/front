@@ -1,28 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  eslint: {
-    // Désactiver ESLint pendant le build de production pour Vercel
-    ignoreDuringBuilds: true
-  },
   typescript: {
-    // Désactiver TypeScript pendant le build de production pour Vercel
-    ignoreBuildErrors: true
+    ignoreBuildErrors: false
   },
-  webpack: (config, { isServer }) => {
-    // Éviter les instances multiples de Three.js
-    if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        'three': require.resolve('three')
-      };
-      // Désactiver les avertissements de chunk size
-      config.performance = {
-        ...config.performance,
-        hints: false,
-      };
+  turbopack: {
+    resolveAlias: {
+      three: 'three'
     }
-    return config;
   },
   images: {
     remotePatterns: [

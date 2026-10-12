@@ -36,9 +36,9 @@ export function HeroSection() {
           className="object-cover"
           priority
         />
-        <figcaption className="absolute bottom-4 left-4 flex flex-col gap-0.5 rounded-[10px] border border-[#161513] bg-[#F7F6F2] px-3.5 py-2.5">
+        <figcaption className="absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] flex-col gap-0.5 rounded-[10px] border border-[#161513] bg-[#F7F6F2] px-3.5 py-2.5">
           <span className={`text-[11px] ${HOME_MONO}`}>Réalisation récente</span>
-          <span className="text-[15px] font-medium text-[#161513]">Bibliothèque sur mesure, Lille, 2024</span>
+          <span className="text-[15px] font-medium leading-tight text-[#161513]">Bibliothèque sur mesure, Lille, 2024</span>
         </figcaption>
       </figure>
     </section>
