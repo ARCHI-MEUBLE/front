@@ -106,9 +106,11 @@ body {
   font-feature-settings: 'ss01' on, 'ss02' on;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 * {
