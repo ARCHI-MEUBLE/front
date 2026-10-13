@@ -1,23 +1,23 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { Zone, ZoneContent, HandleType } from './types';
-import { getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
+import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
+import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
+import { getDivisionCount, isShelfGrid, shelfColumnWidths, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 
 // Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie
 export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'handles' | 'accessories';
 
 export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'handles', 'accessories', 'division'];
 
-// Au-delà de 5 parties, les compartiments deviennent trop étroits pour être utiles
-export const MAX_SPLIT_PARTS = 5;
 
-const SPLIT_COUNTS = Array.from({ length: MAX_SPLIT_PARTS - 1 }, (_, i) => i + 2);
 
 interface ZoneControlsProps {
   selectedZone: Zone;
   selectedZoneIds: string[];
   parentZone: Zone | null;
   onSplitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count: number) => void;
+  onSetDivisionCount?: (zoneId: string, direction: DivisionDirection, count: number) => void;
   onSetContent: (zoneId: string, content: ZoneContent) => void;
   onSetDoorContent?: (zoneId: string, content: ZoneContent) => void;
   onResetZone: (zoneId: string) => void;
@@ -33,6 +33,8 @@ interface ZoneControlsProps {
   onSetGlassShelfPositions?: (zoneId: string, positions: number[]) => void;
   zoneHeightMm?: number; // Hauteur de la zone en mm
   zoneWidthMm?: number; // Largeur de la zone en mm
+  depthMm?: number; // Profondeur du meuble en mm
+  selectionWidthMm?: number; // Largeur totale de plusieurs compartiments sélectionnés
   isAdminCreateModel?: boolean;
   sections?: ZoneControlSection[]; // Sections à afficher (toutes par défaut)
 }
@@ -378,30 +380,44 @@ function OptionTile({
   label,
   desc,
   active,
+  disabledReason,
   onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   desc: string;
   active: boolean;
+  // Limite physique non respectée : l'option est grisée et affiche la raison
+  disabledReason?: string;
   onClick: () => void;
 }) {
+  const disabled = !!disabledReason && !active;
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
+      title={disabledReason}
       className={`flex flex-col items-center justify-center gap-1.5 border-2 p-3 transition-all ${
         active
           ? 'border-[#1A1917] bg-[#1A1917] text-white'
-          : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+          : disabled
+            ? 'cursor-not-allowed border-[#F0EFED] bg-[#FAFAF9] text-[#C9C6BF]'
+            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
       }`}
       style={{ borderRadius: '4px' }}
     >
       <Icon className="h-5 w-5" />
       <div className="text-center">
         <span className="block text-[13px] font-semibold leading-tight">{label}</span>
-        <span className={`mt-0.5 block text-[11px] leading-tight ${active ? 'text-white/70' : 'text-[#706F6C]'}`}>{desc}</span>
+        <span
+          className={`mt-0.5 block text-[11px] leading-tight ${
+            disabledReason ? (active ? 'text-[#FDBA8C]' : 'text-[#B45309]') : active ? 'text-white/70' : 'text-[#706F6C]'
+          }`}
+        >
+          {disabledReason ?? desc}
+        </span>
       </div>
     </button>
   );
@@ -413,6 +429,7 @@ function ToggleRow({
   label,
   desc,
   active,
+  disabledReason,
   onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -420,17 +437,23 @@ function ToggleRow({
   label: string;
   desc: string;
   active: boolean;
+  disabledReason?: string;
   onClick: () => void;
 }) {
+  const disabled = !!disabledReason && !active;
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
+      title={disabledReason}
       className={`flex items-center justify-between gap-3 border-2 p-3 transition-all ${
         active
           ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
-          : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+          : disabled
+            ? 'cursor-not-allowed border-[#F0EFED] bg-[#FAFAF9] text-[#C9C6BF]'
+            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
       }`}
       style={{ borderRadius: '4px' }}
     >
@@ -438,7 +461,7 @@ function ToggleRow({
         <Icon className={`h-5 w-5 flex-shrink-0 ${active ? iconActiveClass : ''}`} />
         <div className="text-left">
           <span className="block text-sm font-semibold">{label}</span>
-          <span className="block text-xs text-[#706F6C]">{desc}</span>
+          <span className={`block text-xs ${disabledReason ? 'text-[#B45309]' : 'text-[#706F6C]'}`}>{disabledReason ?? desc}</span>
         </div>
       </div>
       <div className={`relative h-6 w-10 flex-shrink-0 rounded-full border-2 transition-all ${active ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
@@ -448,41 +471,86 @@ function ToggleRow({
   );
 }
 
-function SplitCard({
+// Compteur − / + avec curseur (comme Pickawood) : le maximum vient de la taille minimale d'une case
+function DivisionStepper({
   icon: Icon,
-  title,
-  desc,
-  onSplit,
+  label,
+  value,
+  max,
+  sizeLabel,
+  reason,
+  blockedReason,
+  onChange,
 }: {
   icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  desc: string;
-  onSplit: (count: number) => void;
+  label: string;
+  // null : les sous-zones n'ont pas toutes le même nombre
+  value: number | null;
+  max: number;
+  // Taille de chaque partie pour la valeur actuelle (ex. « 38 cm »)
+  sizeLabel?: string;
+  // Pourquoi on ne peut pas aller au-delà de `max`
+  reason: string;
+  // Réglage impossible pour cette zone (désactive tout le compteur)
+  blockedReason?: string;
+  onChange: (count: number) => void;
 }) {
+  const current = value ?? 1;
+  const blocked = !!blockedReason;
+  const atMax = current >= max;
+  const stepButton =
+    'flex h-9 w-9 flex-shrink-0 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold text-[#1A1917] transition-all hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#E8E6E3]';
+
   return (
     <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '4px' }}>
-      <div className="mb-3 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center bg-[#FAFAF9]" style={{ borderRadius: '4px' }}>
-          <Icon className="h-5 w-5 text-[#1A1917]" />
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 flex-shrink-0 text-[#1A1917]" />
+        <div className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-[#1A1917]">{label}</span>
+          {sizeLabel && current > 1 && <span className="block text-xs text-[#706F6C]">{sizeLabel}</span>}
         </div>
-        <div>
-          <span className="block text-base font-semibold text-[#1A1917]">{title}</span>
-          <p className="text-xs text-[#706F6C]">{desc}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => onChange(current - 1)}
+          disabled={blocked || current <= 1}
+          className={stepButton}
+          style={{ borderRadius: '4px' }}
+          aria-label={`Retirer : ${label}`}
+        >
+          −
+        </button>
+        <span className="w-10 text-center font-mono text-base font-bold text-[#1A1917]" aria-live="polite">
+          {value ?? '–'}
+        </span>
+        <button
+          type="button"
+          onClick={() => onChange(current + 1)}
+          disabled={blocked || atMax}
+          title={blocked ? blockedReason : atMax ? reason : undefined}
+          className={stepButton}
+          style={{ borderRadius: '4px' }}
+          aria-label={`Ajouter : ${label}`}
+        >
+          +
+        </button>
       </div>
-      <div className="grid grid-cols-4 gap-2">
-        {SPLIT_COUNTS.map((count) => (
-          <button
-            key={count}
-            type="button"
-            onClick={() => onSplit(count)}
-            className="flex h-12 items-center justify-center border-2 border-[#E8E6E3] bg-white text-base font-bold text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#1A1917] hover:text-white"
-            style={{ borderRadius: '4px' }}
-          >
-            {count}
-          </button>
-        ))}
-      </div>
+      {max > 1 && !blocked && (
+        <input
+          type="range"
+          min={1}
+          max={max}
+          step={1}
+          value={Math.min(current, max)}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="mt-3 w-full accent-[#1A1917]"
+          aria-label={label}
+        />
+      )}
+      {blocked ? (
+        <p className="mt-2 text-[11px] text-[#706F6C]">{blockedReason}</p>
+      ) : (
+        atMax && reason && <p className="mt-2 text-[11px] text-[#B45309]">{reason}</p>
+      )}
     </div>
   );
 }
@@ -512,7 +580,7 @@ export default function ZoneControls({
   selectedZone,
   selectedZoneIds,
   parentZone,
-  onSplitZone,
+  onSetDivisionCount,
   onSetContent,
   onSetDoorContent,
   onResetZone,
@@ -525,6 +593,9 @@ export default function ZoneControls({
   onSetGlassShelfCount,
   onSetGlassShelfPositions,
   zoneHeightMm,
+  zoneWidthMm,
+  depthMm,
+  selectionWidthMm,
   sections,
 }: ZoneControlsProps) {
   const isLeaf = selectedZone.type === 'leaf';
@@ -540,6 +611,29 @@ export default function ZoneControls({
   }>({ isOpen: false, doorType: null });
 
   const facade = getZoneFacade(selectedZone);
+
+  // Limites physiques : une taille inconnue n'impose aucune restriction
+  const zoneWidth = zoneWidthMm ?? 0;
+  const zoneHeight = zoneHeightMm ?? 0;
+  const depth = depthMm ?? Infinity;
+  const knownSize = zoneWidth > 0 && zoneHeight > 0;
+  const facadeReason = (content: ZoneContent, width = zoneWidth) =>
+    width > 0 ? facadeAvailability(content, width, depth).reason : undefined;
+  // Colonnes : chaque rangée garde la largeur de la zone. Étagères : elles se posent dans chaque colonne,
+  // c'est donc la colonne la plus contraignante qui fixe le maximum. Impossible quand des groupes sont
+  // imbriqués dans l'autre sens : il faut alors choisir la colonne à régler.
+  const columnsSplit = knownSize ? splitAvailability('vertical', zoneWidth, zoneHeight) : { maxParts: 1, reason: '' };
+  const shelvesGrid = isShelfGrid(selectedZone);
+  const shelvesSplit = (() => {
+    if (!knownSize || !shelvesGrid) return { maxParts: 1, reason: '' };
+    return shelfColumnWidths(selectedZone, zoneWidth)
+      .map((width) => splitAvailability('horizontal', width, zoneHeight))
+      .reduce((tightest, option) => (option.maxParts < tightest.maxParts ? option : tightest));
+  })();
+  const columnCount = getDivisionCount(selectedZone, 'vertical');
+  const shelfCount = getDivisionCount(selectedZone, 'horizontal');
+  const cmLabel = (mm: number) => `${Math.round(mm / 10)} cm`;
+  const railReason = knownSize ? hangingRailAvailability(zoneWidth, zoneHeight, depth).reason : undefined;
   const currentFacade = isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty');
   const glassShelfCount = selectedZone.glassShelfCount || 1;
 
@@ -624,22 +718,22 @@ export default function ZoneControls({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
+            <OptionTile
+              icon={DoorClosed}
+              label="Porte simple"
+              desc="Un seul vantail"
+              active={false}
+              disabledReason={selectionWidthMm ? facadeReason('door', selectionWidthMm) : undefined}
               onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
-              className="flex w-full items-center justify-center gap-2 bg-[#1A1917] px-4 py-3 text-sm font-medium text-white transition-all hover:bg-[#2A2927]"
-              style={{ borderRadius: '2px' }}
-            >
-              Porte simple
-            </button>
-            <button
-              type="button"
+            />
+            <OptionTile
+              icon={DoorClosed}
+              label="Double porte"
+              desc="Deux vantaux"
+              active={false}
+              disabledReason={selectionWidthMm ? facadeReason('door_double', selectionWidthMm) : undefined}
               onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
-              className="flex w-full items-center justify-center gap-2 border border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-all hover:border-[#1A1917]"
-              style={{ borderRadius: '2px' }}
-            >
-              Double porte
-            </button>
+            />
           </div>
 
           <p className="mt-3 text-center text-[11px] text-[#706F6C]">
@@ -693,6 +787,7 @@ export default function ZoneControls({
                   label={label}
                   desc={desc}
                   active={isActive}
+                  disabledReason={facadeReason(id)}
                   onClick={() => handleDoorOptionClick(option)}
                 />
               );
@@ -754,6 +849,7 @@ export default function ZoneControls({
                   label={label}
                   desc={desc}
                   active={(selectedZone.content ?? 'empty') === id}
+                  disabledReason={facadeReason(id)}
                   onClick={() => {
                     setDoorSideDialog({ isOpen: false, doorType: null });
                     onSetContent(selectedZone.id, id);
@@ -882,6 +978,7 @@ export default function ZoneControls({
                 label="Penderie"
                 desc="Tringle intégrée"
                 active={!!selectedZone.hasDressing}
+                disabledReason={railReason}
                 onClick={() => onToggleDressing?.(selectedZone.id)}
               />
             </div>
@@ -894,32 +991,30 @@ export default function ZoneControls({
       {/* ── Division ─────────────────────────────────────── */}
       {show('division') && (
         <div>
-          {isLeaf ? (
-            <>
-              <SectionLabel hint="Choisissez le nombre de parties : elles seront ensuite ajustables au curseur ou en millimètres.">
-                Diviser cette zone
-              </SectionLabel>
-              <div className="space-y-3">
-                <SplitCard
-                  icon={Rows3}
-                  title="En étagères"
-                  desc="Niveaux superposés"
-                  onSplit={(count) => onSplitZone(selectedZone.id, 'horizontal', count)}
-                />
-                <SplitCard
-                  icon={Columns3}
-                  title="En colonnes"
-                  desc="Compartiments côte à côte"
-                  onSplit={(count) => onSplitZone(selectedZone.id, 'vertical', count)}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="space-y-3">
-              <InfoNote>
-                {isRoot ? 'Le meuble' : 'Cette zone'} est divisé en {selectedZone.children?.length ?? 0}{' '}
-                {selectedZone.type === 'horizontal' ? 'niveaux' : 'colonnes'}. Cliquez sur l&apos;un des compartiments pour le diviser à son tour.
-              </InfoNote>
+          <SectionLabel hint="Réglez le nombre de colonnes et d'étagères : le maximum dépend de la taille minimale d'une case. Les tailles s'ajustent ensuite sur le plan ou en millimètres.">
+            {isRoot ? 'Colonnes et étagères du meuble' : 'Colonnes et étagères de cette zone'}
+          </SectionLabel>
+          <div className="space-y-3">
+            <DivisionStepper
+              icon={Columns3}
+              label="Colonnes"
+              value={columnCount}
+              max={Math.max(columnsSplit.maxParts, columnCount ?? 1)}
+              sizeLabel={columnCount && knownSize ? `Colonnes de ${cmLabel(partSize(zoneWidth, columnCount))}` : undefined}
+              reason={columnsSplit.reason}
+              onChange={(count) => onSetDivisionCount?.(selectedZone.id, 'vertical', count)}
+            />
+            <DivisionStepper
+              icon={Rows3}
+              label={selectedZone.type === 'vertical' ? 'Étagères par colonne' : 'Étagères'}
+              value={shelfCount}
+              max={Math.max(shelvesSplit.maxParts, shelfCount ?? 1)}
+              sizeLabel={shelfCount && knownSize ? `Casiers de ${cmLabel(partSize(zoneHeight, shelfCount))} de haut` : undefined}
+              reason={shelvesSplit.reason}
+              blockedReason={shelvesGrid ? undefined : 'Cette zone contient des groupes imbriqués : sélectionnez une colonne pour régler ses étagères.'}
+              onChange={(count) => onSetDivisionCount?.(selectedZone.id, 'horizontal', count)}
+            />
+            {!isLeaf && (
               <button
                 type="button"
                 onClick={() => onResetZone(selectedZone.id)}
@@ -929,8 +1024,8 @@ export default function ZoneControls({
                 <Trash2 className="h-4 w-4" />
                 <span>Annuler cette division</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

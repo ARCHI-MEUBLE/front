@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
-import { Canvas, useThree, RootState } from '@react-three/fiber';
+import { Canvas, useThree, RootState, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Environment, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -16,6 +16,13 @@ import { JapaneseMinimalist, ScandinavianLandscape, BauhausGeometric, WallClock 
 import { Room, HumanSilhouette } from './scene/Room';
 import { Books, Plant, Vase, Lamp, CompartmentLight, CableHole, ShelfDecoration } from './scene/Decor';
 import { ScreenshotCapture } from './scene/ScreenshotCapture';
+import { ZoneHighlights } from './scene/ZoneHighlights';
+import { ZoneHoverTag } from './scene/ZoneHoverTag';
+import { CameraRig, type CameraApi } from './scene/CameraRig';
+import { CameraToolbar } from './scene/CameraToolbar';
+import { createDoubleClickDetector, isRealClick } from './scene/pointer';
+import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box } from '@/lib/configurator/zoneBounds';
+import { getZoneFacade } from '@/lib/configurator/zoneStats';
 
 export type { ThreeCanvasHandle };
 
@@ -89,19 +96,54 @@ function Furniture({
             [id]: !prev[id]
         }));
     }, []);
+    const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
     const { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
-        const w = (width || 1500) / 1000;
+        const { width: w, depth: d, sideHeight, yOffset, thickness } = layout;
         const h = (height || 730) / 1000;
-        const d = (depth || 500) / 1000;
-        const thickness = 0.019;
-        const sideHeight = hasSocle ? h - 0.1 : h;
-        const yOffset = hasSocle ? 0.1 : 0;
         const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
         const doorRecess = 0;
         return { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
-    }, [width, height, depth, hasSocle, mountingStyle]);
+    }, [layout, height, mountingStyle]);
+
+    // ── Pointeur : survol, sélection et ouverture des façades ──────────────────
+    // Un seul endroit gère le pointeur pour les compartiments, les portes et les tiroirs : ils se
+    // comportent tous pareil, et un glissement pour tourner la caméra n'y est jamais pris pour un clic.
+    const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null);
+    const doubleClick = useMemo(() => createDoubleClickDetector(), []);
+
+    useEffect(() => () => {
+        document.body.style.cursor = 'default';
+    }, []);
+
+    const zoneHandlers = useCallback((zoneId: string, openable: boolean) => ({
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation();
+            setHoveredZoneId(zoneId);
+            document.body.style.cursor = 'pointer';
+        },
+        onPointerOut: () => {
+            setHoveredZoneId((current) => (current === zoneId ? null : current));
+            document.body.style.cursor = 'default';
+        },
+        onClick: (e: ThreeEvent<MouseEvent>) => {
+            e.stopPropagation();
+            if (!isRealClick(e)) return;
+
+            // Consultation : rien à sélectionner, un clic ouvre ou ferme
+            if (!onSelectZone) {
+                if (openable) toggleCompartment(zoneId);
+                return;
+            }
+            // Édition : un clic sélectionne, un double-clic ouvre ou ferme la porte ou le tiroir
+            if (openable && doubleClick.register(zoneId, performance.now())) {
+                toggleCompartment(zoneId);
+                return;
+            }
+            onSelectZone(zoneId);
+        },
+    }), [onSelectZone, toggleCompartment, doubleClick]);
 
     const DEFAULT_COLOR = '#D8C7A1';
 
@@ -1011,39 +1053,10 @@ function Furniture({
                         <mesh
                             key={`${zone.id}-hitbox`}
                             position={[x, y, 0]}
-                            visible={true}
-                            onPointerOver={(e) => {
-                                e.stopPropagation();
-                                document.body.style.cursor = 'pointer';
-                            }}
-                            onPointerOut={() => {
-                                document.body.style.cursor = 'default';
-                            }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectZone?.(zone.id);
-                            }}
+                            visible={false}
+                            {...zoneHandlers(zone.id, false)}
                         >
                             <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
-                            <meshBasicMaterial
-                                transparent
-                                opacity={selectedZoneIds.includes(zone.id) ? 0.3 : 0.01}
-                                color="#4CAF50"
-                                depthWrite={false}
-                                toneMapped={false}
-                            />
-                            {selectedZoneIds.includes(zone.id) && (
-                                <>
-                                    <mesh>
-                                        <boxGeometry args={[width + 0.002, height + 0.002, d + 0.002]} />
-                                        <meshBasicMaterial color="#4CAF50" wireframe transparent opacity={0.4} toneMapped={false} />
-                                    </mesh>
-                                    <lineSegments>
-                                        <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, d + 0.002)]} />
-                                        <lineBasicMaterial color="#4CAF50" linewidth={4} toneMapped={false} />
-                                    </lineSegments>
-                                </>
-                            )}
                         </mesh>
                     );
                     return;
@@ -1076,49 +1089,21 @@ function Furniture({
                 const hitboxRecess = hitboxBehindDoor ? 0.005 : 0;
                 const hitboxDepth = d - hitboxRecess + 0.002;
                 const hitboxZ = -hitboxRecess / 2;
+                // Les compartiments du bord englobent aussi les panneaux extérieurs : cliquer sur le côté, le
+                // dessus ou le dessous du meuble sélectionne le compartiment voisin au lieu de ne rien faire
+                const shell = (atEdge: boolean) => (atEdge ? thickness : 0.001);
+                const growLeft = shell(isAtLeft);
+                const growRight = shell(isAtRight);
+                const growTop = shell(isAtTop);
+                const growBottom = shell(isAtBottom);
                 items.push(
                     <mesh
                         key={`${zone.id}-hitbox`}
-                        position={[x, y, hitboxZ]}
-                        visible={true}
-                        onPointerOver={(e) => {
-                            e.stopPropagation();
-                            document.body.style.cursor = 'pointer';
-                        }}
-                        onPointerOut={() => {
-                            document.body.style.cursor = 'default';
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectZone?.(zone.id);
-
-                            if (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') {
-                                toggleCompartment(zone.id);
-                            }
-                        }}
+                        position={[x + (growRight - growLeft) / 2, y + (growTop - growBottom) / 2, hitboxZ]}
+                        visible={false}
+                        {...zoneHandlers(zone.id, !!getZoneFacade(zone))}
                     >
-                        <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
-                        <meshBasicMaterial
-                            transparent
-                            opacity={selectedZoneIds.includes(zone.id) && selectionTint ? 0.5 : 0.01}
-                            color="#FF9800"
-                            depthWrite={false}
-                            toneMapped={false}
-                        />
-                        {selectedZoneIds.includes(zone.id) && (
-                            <>
-                                {selectionTint && (
-                                    <mesh>
-                                        <boxGeometry args={[width + 0.002, height + 0.002, hitboxDepth]} />
-                                        <meshBasicMaterial color="#FF9800" wireframe transparent opacity={0.4} toneMapped={false} />
-                                    </mesh>
-                                )}
-                                <lineSegments>
-                                    <edgesGeometry args={[new THREE.BoxGeometry(width + 0.002, height + 0.002, hitboxDepth)]} />
-                                    <lineBasicMaterial color="#FF9800" linewidth={4} toneMapped={false} />
-                                </lineSegments>
-                            </>
-                        )}
+                        <boxGeometry args={[width + growLeft + growRight, height + growTop + growBottom, hitboxDepth]} />
                     </mesh>
                 );
 
@@ -1143,8 +1128,8 @@ function Furniture({
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
-                        <AnimatedDrawer
-                            key={zone.id}
+                        <group key={zone.id} {...zoneHandlers(zone.id, true)}>
+                            <AnimatedDrawer
                             position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
@@ -1153,19 +1138,15 @@ function Furniture({
                             imageUrl={drawerImageUrl}
                             handleType={zone.handleType}
                             isOpen={openCompartments[zone.id]}
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                onSelectZone?.(zone.id);
-                                toggleCompartment(zone.id);
-                            }}
-                        />
+                            />
+                        </group>
                     );
                 } else if (zone.content === 'push_drawer') {
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
-                        <AnimatedPushDrawer
-                            key={zone.id}
+                        <group key={zone.id} {...zoneHandlers(zone.id, true)}>
+                            <AnimatedPushDrawer
                             position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
@@ -1173,12 +1154,8 @@ function Furniture({
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
                             isOpen={openCompartments[zone.id]}
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                onSelectZone?.(zone.id);
-                                toggleCompartment(zone.id);
-                            }}
-                        />
+                            />
+                        </group>
                     );
                 }
 
@@ -1206,7 +1183,7 @@ function Furniture({
 
                     if (isMirror) {
                         items.push(
-                            <group key={`${zone.id}-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
+                            <group key={`${zone.id}-door`} {...zoneHandlers(zone.id, true)} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                                 <AnimatedMirrorDoor
                                     side={isMirrorRight ? "right" : "left"}
                                     position={[isMirrorRight ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
@@ -1214,17 +1191,12 @@ function Furniture({
                                     height={height - compartmentGap + totalDoorOverlap}
                                     handleType={zone.handleType}
                                     isOpen={openCompartments[zone.id]}
-                                    onClick={(e: any) => {
-                                        e.stopPropagation();
-                                        onSelectZone?.(zone.id);
-                                        toggleCompartment(zone.id);
-                                    }}
                                 />
                             </group>
                         );
                     } else if (isPush) {
                         items.push(
-                            <group key={`${zone.id}-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
+                            <group key={`${zone.id}-door`} {...zoneHandlers(zone.id, true)} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                                 <AnimatedPushDoor
                                     side={isPushRight ? "right" : "left"}
                                     position={[isPushRight ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
@@ -1233,17 +1205,12 @@ function Furniture({
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
                                     isOpen={openCompartments[zone.id]}
-                                    onClick={(e: any) => {
-                                        e.stopPropagation();
-                                        onSelectZone?.(zone.id);
-                                        toggleCompartment(zone.id);
-                                    }}
                                 />
                             </group>
                         );
                     } else {
                         items.push(
-                            <group key={`${zone.id}-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
+                            <group key={`${zone.id}-door`} {...zoneHandlers(zone.id, true)} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                                 {(isDouble || !isRight) && (
                                     <AnimatedDoor
                                         side="left"
@@ -1254,11 +1221,6 @@ function Furniture({
                                         imageUrl={doorImageUrl}
                                         handleType={zone.handleType}
                                         isOpen={openCompartments[zone.id]}
-                                        onClick={(e: any) => {
-                                            e.stopPropagation();
-                                            onSelectZone?.(zone.id);
-                                            toggleCompartment(zone.id);
-                                        }}
                                     />
                                 )}
                                 {(isDouble || isRight) && (
@@ -1271,11 +1233,6 @@ function Furniture({
                                         imageUrl={doorImageUrl}
                                         handleType={zone.handleType}
                                         isOpen={openCompartments[zone.id]}
-                                        onClick={(e: any) => {
-                                            e.stopPropagation();
-                                            onSelectZone?.(zone.id);
-                                            toggleCompartment(zone.id);
-                                        }}
                                     />
                                 )}
                             </group>
@@ -1327,7 +1284,7 @@ function Furniture({
 
                 if (isMirror) {
                     items.push(
-                        <group key={`${zone.id}-group-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={`${zone.id}-group-door`} {...zoneHandlers(zone.id, true)} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             <AnimatedMirrorDoor
                                 side={isMirrorRightGroup ? "right" : "left"}
                                 position={[isMirrorRightGroup ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
@@ -1335,17 +1292,12 @@ function Furniture({
                                 height={height - compartmentGap + totalDoorOverlap}
                                 handleType={zone.handleType}
                                 isOpen={openCompartments[zone.id]}
-                                onClick={(e: any) => {
-                                    e.stopPropagation();
-                                    onSelectZone?.(zone.id);
-                                    toggleCompartment(zone.id);
-                                }}
                             />
                         </group>
                     );
                 } else if (isPush) {
                     items.push(
-                        <group key={`${zone.id}-group-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={`${zone.id}-group-door`} {...zoneHandlers(zone.id, true)} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             <AnimatedPushDoor
                                 side={isPushRightGroup ? "right" : "left"}
                                 position={[isPushRightGroup ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
@@ -1354,17 +1306,12 @@ function Furniture({
                                 hexColor={doorHexColor}
                                 imageUrl={doorImageUrl}
                                 isOpen={openCompartments[zone.id]}
-                                onClick={(e: any) => {
-                                    e.stopPropagation();
-                                    onSelectZone?.(zone.id);
-                                    toggleCompartment(zone.id);
-                                }}
                             />
                         </group>
                     );
                 } else {
                     items.push(
-                        <group key={`${zone.id}-group-door`} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
+                        <group key={`${zone.id}-group-door`} {...zoneHandlers(zone.id, true)} position={[x + doorXOffset, y + doorYOffset, d/2 + mountingOffset]}>
                             {(isDouble || !isRight) && (
                                 <AnimatedDoor
                                     side="left"
@@ -1375,11 +1322,6 @@ function Furniture({
                                     imageUrl={doorImageUrl}
                                     handleType={zone.handleType}
                                     isOpen={openCompartments[zone.id]}
-                                    onClick={(e: any) => {
-                                        e.stopPropagation();
-                                        onSelectZone?.(zone.id);
-                                        toggleCompartment(zone.id);
-                                    }}
                                 />
                             )}
                             {(isDouble || isRight) && (
@@ -1392,11 +1334,6 @@ function Furniture({
                                     imageUrl={doorImageUrl}
                                     handleType={zone.handleType}
                                     isOpen={openCompartments[zone.id]}
-                                    onClick={(e: any) => {
-                                        e.stopPropagation();
-                                        onSelectZone?.(zone.id);
-                                        toggleCompartment(zone.id);
-                                    }}
                                 />
                             )}
                         </group>
@@ -1448,7 +1385,7 @@ function Furniture({
         finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
-        openCompartments, showDecorations, selectedZoneIds, selectionTint, onSelectZone, toggleCompartment,
+        openCompartments, showDecorations, zoneHandlers,
         selectedPanelIds, onSelectPanel
     ]);
 
@@ -1459,6 +1396,44 @@ function Furniture({
         }
         onSelectPanel?.(panelId);
     }, [onSelectPanel, onSelectZone]);
+
+    // Les panneaux ne réagissent au pointeur que pendant l'outil « retirer des planches ». Le reste du temps,
+    // un clic sur un panneau (côté, dessus, cloison...) tombe sur le compartiment qu'il borde : avant, il
+    // était avalé par le panneau, qui effaçait en plus la sélection.
+    const panelToolActive = !!onSelectPanel;
+    const backPanelHandlers = panelToolActive
+        ? {
+            onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+                e.stopPropagation();
+                document.body.style.cursor = 'pointer';
+            },
+            onPointerOut: () => {
+                document.body.style.cursor = 'default';
+            },
+            onClick: (e: ThreeEvent<MouseEvent>) => {
+                e.stopPropagation();
+                if (!isRealClick(e)) return;
+                handlePanelSelect(selectedPanelIds.has('panel-back') ? null : 'panel-back');
+            },
+        }
+        : {};
+
+    // Porte globale (ancien format) : un clic ouvre ou ferme les portes et sélectionne le meuble entier
+    const rootDoorHandlers = {
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation();
+            document.body.style.cursor = 'pointer';
+        },
+        onPointerOut: () => {
+            document.body.style.cursor = 'default';
+        },
+        onClick: (e: ThreeEvent<MouseEvent>) => {
+            e.stopPropagation();
+            if (!isRealClick(e)) return;
+            onToggleDoors?.();
+            onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
+        },
+    };
 
     return (
         <group>
@@ -1473,7 +1448,7 @@ function Furniture({
                     />
                 )
             ))}
-            {panelSegments.leftSegments.map((segment) => (
+            {panelToolActive && panelSegments.leftSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
                     panelId={segment.id}
@@ -1496,7 +1471,7 @@ function Furniture({
                     />
                 )
             ))}
-            {panelSegments.rightSegments.map((segment) => (
+            {panelToolActive && panelSegments.rightSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
                     panelId={segment.id}
@@ -1519,7 +1494,7 @@ function Furniture({
                     />
                 )
             ))}
-            {panelSegments.topSegments.map((segment) => (
+            {panelToolActive && panelSegments.topSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
                     panelId={segment.id}
@@ -1561,7 +1536,7 @@ function Furniture({
                     />
                 );
             })}
-            {panelSegments.bottomSegments.map((segment) => (
+            {panelToolActive && panelSegments.bottomSegments.map((segment) => (
                 <PanelSegmentHitbox
                     key={segment.id}
                     panelId={segment.id}
@@ -1586,7 +1561,7 @@ function Furniture({
                     />
                 );
             })}
-            {panelSegments.separatorSegments.map((segment) => {
+            {panelToolActive && panelSegments.separatorSegments.map((segment) => {
                 const sepHitDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
                 const sepHitZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
                 return <PanelSegmentHitbox
@@ -1602,8 +1577,27 @@ function Furniture({
 
             {elements}
 
+            <ZoneHighlights
+                rootZone={rootZone}
+                layout={layout}
+                selectedZoneIds={selectedZoneIds}
+                // L'outil « retirer des planches » travaille sur les panneaux : pas de survol de zone
+                hoveredZoneId={onSelectPanel ? null : hoveredZoneId}
+                selectionTint={selectionTint}
+            />
+            {hoveredZoneId && rootZone && !onSelectPanel && (
+                <ZoneHoverTag
+                    rootZone={rootZone}
+                    zoneId={hoveredZoneId}
+                    layout={layout}
+                    widthMm={width}
+                    heightMm={height}
+                    clickToOpen={!onSelectZone}
+                />
+            )}
+
             {rootZone && doorType !== 'none' && !hasZoneSpecificDoors && (
-                <group position={[0, sideHeight/2 + yOffset, d/2]}>
+                <group position={[0, sideHeight/2 + yOffset, d/2]} {...rootDoorHandlers}>
                     {(doorType === 'double' || (doorType === 'single' && doorSide === 'left')) && (
                         <AnimatedDoor
                             side="left"
@@ -1613,10 +1607,6 @@ function Furniture({
                             hexColor={finalDoorColor}
                             imageUrl={finalDoorImageUrl}
                             isOpen={doorsOpen}
-                            onClick={() => {
-                                onToggleDoors?.();
-                                onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
-                            }}
                         />
                     )}
                     {(doorType === 'double' || (doorType === 'single' && doorSide === 'right')) && (
@@ -1628,10 +1618,6 @@ function Furniture({
                             hexColor={finalDoorColor}
                             imageUrl={finalDoorImageUrl}
                             isOpen={doorsOpen}
-                            onClick={() => {
-                                onToggleDoors?.();
-                                onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
-                            }}
                         />
                     )}
                 </group>
@@ -1641,11 +1627,7 @@ function Furniture({
                 <mesh
                     position={[0, sideHeight/2 + yOffset, d/2 + 0.01]}
                     visible={false}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleDoors?.();
-                        onSelectZone?.(selectedZoneIds.includes('root') ? null : 'root');
-                    }}
+                    {...rootDoorHandlers}
                 >
                     <boxGeometry args={[w, sideHeight, 0.02]} />
                 </mesh>
@@ -1724,7 +1706,7 @@ function Furniture({
                             />
                         )
                     ))}
-                    {panelSegments.backSegments.map((segment) => (
+                    {panelToolActive && panelSegments.backSegments.map((segment) => (
                         <PanelSegmentHitbox
                             key={segment.id}
                             panelId={segment.id}
@@ -1737,19 +1719,7 @@ function Furniture({
                     ))}
                 </>
             ) : (
-                <group
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handlePanelSelect(selectedPanelIds.has('panel-back') ? null : 'panel-back');
-                    }}
-                    onPointerOver={(e) => {
-                        e.stopPropagation();
-                        document.body.style.cursor = 'pointer';
-                    }}
-                    onPointerOut={() => {
-                        document.body.style.cursor = 'default';
-                    }}
-                >
+                <group {...backPanelHandlers}>
                     <BackPanelWithOpenings
                         totalWidth={w - 0.01}
                         totalHeight={sideHeight - 0.01}
@@ -1772,9 +1742,30 @@ function Furniture({
 }
 
 
+// Le rappel des gestes n'est montré qu'une fois par visite : pas à chaque retour du plan 2D
+let navigationHintSeen = false;
+
+// Rappel des gestes, affiché au début puis masqué dès la première interaction
+function NavigationHint() {
+    const touch = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+
+    return (
+        <div
+            role="note"
+            className="pointer-events-none absolute bottom-14 left-3 z-10 max-w-[calc(100%-1.5rem)] rounded-sm bg-[#1A1917]/80 px-3 py-1.5 text-[11px] leading-snug text-white lg:bottom-16 lg:left-4 lg:max-w-[calc(100%-14rem)]"
+        >
+            {touch
+                ? 'Glisser : tourner · Pincer : zoomer · Double-tap : ouvrir / fermer'
+                : 'Glisser : tourner · Molette : zoomer · Clic droit : déplacer · Double-clic : ouvrir / fermer'}
+        </div>
+    );
+}
+
 const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
-    const { onSelectZone } = props;
+    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle } = props;
     const captureRef = useRef<(() => string | null) | null>(null);
+    const cameraApi = useRef<CameraApi | null>(null);
+    const [hintVisible, setHintVisible] = useState(!navigationHintSeen);
 
     useImperativeHandle(ref, () => ({
         captureScreenshot: () => {
@@ -1785,16 +1776,39 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
         }
     }), []);
 
+    useEffect(() => {
+        const timer = setTimeout(() => setHintVisible(false), 9000);
+        return () => {
+            clearTimeout(timer);
+            navigationHintSeen = true;
+        };
+    }, []);
+
     const handleCapture = (fn: () => string | null) => {
         captureRef.current = fn;
     };
 
+    // Ce que la caméra doit cadrer : le meuble entier, ou les zones sélectionnées
+    const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
+    const furnitureBox = useMemo(() => getFurnitureBox(layout), [layout]);
+    const selectionBox = useMemo(() => {
+        if (!rootZone || !selectedZoneIds?.length) return null;
+        return unionBoxes(selectedZoneIds.map((id) => getZoneBox(rootZone, id, layout)).filter((box): box is Box => !!box));
+    }, [rootZone, selectedZoneIds, layout]);
+    const sizeKey = `${layout.width.toFixed(3)}|${(layout.sideHeight + layout.yOffset).toFixed(3)}|${layout.depth.toFixed(3)}`;
+
     return (
-        <div style={{ width: '100%', height: '100%', background: '#FAFAF9', position: 'relative' }}>
+        <div
+            style={{ width: '100%', height: '100%', background: '#FAFAF9', position: 'relative' }}
+            onPointerDownCapture={() => {
+                navigationHintSeen = true;
+                setHintVisible(false);
+            }}
+        >
             <Canvas
                 shadows
                 dpr={[1, 2]}
-                camera={{ position: [4, 2.5, 5], fov: 35 }}
+                camera={{ position: [4, 2.5, 5], fov: 35, near: 0.05 }}
                 onPointerMissed={() => onSelectZone?.(null)}
                 onCreated={({ gl }) => {
                     gl.setClearColor('#FAFAF9');
@@ -1804,12 +1818,16 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                 gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
             >
                 <OrbitControls
+                    makeDefault
                     enableDamping
-                    minDistance={1.5}
-                    maxDistance={10}
+                    dampingFactor={0.1}
+                    // La molette zoome vers le curseur : on peut viser un petit compartiment
+                    zoomToCursor
+                    minDistance={0.6}
+                    maxDistance={14}
                     maxPolarAngle={Math.PI / 2 - 0.05}
-                    target={[0, 0.8, 0]}
                 />
+                <CameraRig furnitureBox={furnitureBox} selectionBox={selectionBox} sizeKey={sizeKey} apiRef={cameraApi} />
                 <ambientLight intensity={0.4} />
                 <hemisphereLight intensity={0.5} groundColor="#ffffff" color="#ffffff" />
                 <pointLight position={[10, 10, 10]} intensity={1.0} />
@@ -1836,6 +1854,8 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                     <Environment preset="city" background={false} />
                 </Suspense>
             </Canvas>
+            <CameraToolbar apiRef={cameraApi} hasSelection={!!selectionBox} />
+            {hintVisible && <NavigationHint />}
         </div>
     );
 });

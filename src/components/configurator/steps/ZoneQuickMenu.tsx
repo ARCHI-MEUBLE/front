@@ -1,51 +1,41 @@
-import { ChevronLeft, ChevronRight, DoorClosed, Lightbulb, Rows3, X } from 'lucide-react';
-import type { ZoneDomain } from './steps';
+import { ChevronLeft, ChevronRight, CornerLeftUp, X } from 'lucide-react';
 
 interface ZoneQuickMenuProps {
   title: string;
   size?: { width: number; height: number } | null;
-  // Navigation entre compartiments (précédent / suivant)
-  canNavigate: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-  // Famille d'actions de l'étape en cours, mise en avant
-  activeDomain: ZoneDomain | null;
-  onDomain: (domain: ZoneDomain) => void;
+  // Zone voisine (même niveau) précédente / suivante : absent s'il n'y en a pas
+  onPrev?: () => void;
+  onNext?: () => void;
+  // Sélectionne le groupe qui contient la zone : absent pour le meuble entier
+  onParent?: () => void;
   onClose: () => void;
 }
-
-const DOMAINS: { id: ZoneDomain; label: string; hint: string; icon: typeof Rows3 }[] = [
-  { id: 'division', label: 'Diviser', hint: 'Diviser cette zone en étagères ou en colonnes', icon: Rows3 },
-  { id: 'facade', label: 'Façades', hint: 'Portes, tiroirs et poignées', icon: DoorClosed },
-  { id: 'accessory', label: 'Accessoires', hint: 'Éclairage, passe-câble, penderie', icon: Lightbulb },
-];
 
 const iconButton =
   'flex h-8 w-8 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]';
 
-// Menu « sur clic » : s'affiche sur le viewer dès qu'une zone est sélectionnée
+// Menu « sur clic » : indique la zone sélectionnée sur le viewer, permet de passer à la voisine
+// ou de remonter au groupe parent
 export default function ZoneQuickMenu({
   title,
   size,
-  canNavigate,
   onPrev,
   onNext,
-  activeDomain,
-  onDomain,
+  onParent,
   onClose,
 }: ZoneQuickMenuProps) {
   return (
     // Réservé aux grands écrans (sur mobile il recouvrirait le viewer). Le conteneur laisse la place aux
     // boutons annuler/rétablir (gauche) et au sélecteur Plan/3D (droite)
-    <div className="pointer-events-none absolute z-20 hidden justify-center lg:left-[7.5rem] lg:right-[11.5rem] lg:top-4 lg:flex">
+    <div className="pointer-events-none absolute z-20 hidden justify-center @container lg:left-[7.5rem] lg:right-[11.5rem] lg:top-4 lg:flex">
       <div
         role="toolbar"
-        aria-label="Actions sur la zone sélectionnée"
+        aria-label="Zone sélectionnée"
         className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-0.5 border border-[#E8E6E3] bg-white p-1 shadow-md"
         style={{ borderRadius: '2px' }}
       >
-        {canNavigate && (
-          <button type="button" onClick={onPrev} className={iconButton} aria-label="Compartiment précédent" title="Compartiment précédent">
+        {onPrev && (
+          <button type="button" onClick={onPrev} className={iconButton} aria-label="Zone précédente" title="Zone précédente">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
@@ -59,33 +49,31 @@ export default function ZoneQuickMenu({
           )}
         </div>
 
-        {canNavigate && (
-          <button type="button" onClick={onNext} className={iconButton} aria-label="Compartiment suivant" title="Compartiment suivant">
+        {onNext && (
+          <button type="button" onClick={onNext} className={iconButton} aria-label="Zone suivante" title="Zone suivante">
             <ChevronRight className="h-4 w-4" />
           </button>
         )}
 
-        <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
-
-        {DOMAINS.map(({ id, label, hint, icon: Icon }) => {
-          const isActive = activeDomain === id;
-          return (
+        {onParent && (
+          <>
+            <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
             <button
-              key={id}
               type="button"
-              onClick={() => onDomain(id)}
-              title={hint}
-              aria-pressed={isActive}
-              className={`flex h-8 items-center gap-1.5 px-2 text-[11px] font-medium transition-colors ${
-                isActive ? 'bg-[#1A1917] text-white' : 'text-[#706F6C] hover:bg-[#F5F5F4] hover:text-[#1A1917]'
-              }`}
+              onClick={onParent}
+              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
               style={{ borderRadius: '2px' }}
+              aria-label="Sélectionner le groupe parent"
+              title="Sélectionner le groupe qui contient cette zone"
             >
-              <Icon className="h-3.5 w-3.5" />
-              {isActive && <span>{label}</span>}
+              <CornerLeftUp className="h-3.5 w-3.5" />
+              {/* Icône seule quand la place manque (viewer étroit) */}
+              <span className="hidden @min-[22.5rem]:inline">Groupe parent</span>
             </button>
-          );
-        })}
+          </>
+        )}
+
+        <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
 
         <button type="button" onClick={onClose} className={iconButton} aria-label="Désélectionner" title="Désélectionner">
           <X className="h-4 w-4" />

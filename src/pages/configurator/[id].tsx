@@ -26,20 +26,17 @@ import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
 import MountingStyleSelector from '@/components/configurator/steps/MountingStyleSelector';
-import FacadeColorSelector from '@/components/configurator/steps/FacadeColorSelector';
 import {
   CONFIG_STEPS,
-  DOMAIN_STEP,
   LAST_STEP,
   STEP,
   type ConfigStep,
-  type ZoneDomain,
 } from '@/components/configurator/steps/steps';
 import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import DoorSelector from '@/components/configurator/DoorSelector';
-import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
+import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/Header';
@@ -83,7 +80,8 @@ import {
 } from '@/lib/configurator/materials';
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
-import { computeZoneStats, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
@@ -273,8 +271,6 @@ export default function ConfiguratorPage() {
   }, [doorsOpen]);
 
   const [useMultiColor, setUseMultiColor] = useState(false);
-  // Vrai quand l'utilisateur a activé lui-même les couleurs par composant (réglage avancé)
-  const [advancedColorsFlag, setAdvancedColorsFlag] = useState(false);
   const [componentColors, setComponentColors] = useState<ComponentColors>({
     structure: { colorId: null, hex: null },
     drawers: { colorId: null, hex: null },
@@ -639,6 +635,8 @@ export default function ConfiguratorPage() {
   const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<ConfigStep>>(() => new Set<ConfigStep>([1]));
   // Vue du viewer : 3D par défaut ; le plan 2D s'ouvre de lui-même à l'étape Division tant que
   // l'utilisateur n'a pas choisi sa vue
+  // Faux tant qu'aucune zone n'a été choisie : la sélection du meuble entier est alors celle par défaut
+  const [zoneTouched, setZoneTouched] = useState(false);
   const [show3DView, setShow3DView] = useState(true);
   const [viewLocked, setViewLocked] = useState(false);
   const chooseView = useCallback((view3D: boolean) => {
@@ -705,12 +703,18 @@ export default function ConfiguratorPage() {
         (selectedZone !== null && !(selectedZone.id === 'root' && selectedZone.type !== 'leaf'));
       if (!keepSelection) {
         const leafId = firstLeafId(rootZone);
-        if (leafId) setSelectedZoneIds([leafId]);
+        if (leafId) {
+          setSelectedZoneIds([leafId]);
+          setZoneTouched(true);
+        }
       }
     } else if (step === STEP.FINISHES) {
       if (!(selectedZoneIds.length === 1 && selectedZone?.type === 'leaf')) {
         const leafId = firstLeafId(selectedZone ?? rootZone);
-        if (leafId) setSelectedZoneIds([leafId]);
+        if (leafId) {
+          setSelectedZoneIds([leafId]);
+          setZoneTouched(true);
+        }
       }
     }
   }, [rootZone, selectedZone, selectedZoneIds, viewLocked]);
@@ -739,19 +743,45 @@ export default function ConfiguratorPage() {
   const handleZoneClick = useCallback((zoneId: string | null) => {
     if (activeStep === STEP.DOORS && multiSelectKeyRef.current) {
       handleZoneSelect(zoneId);
+      if (zoneId) setZoneTouched(true);
       return;
     }
     setSelectedPanelIds(new Set());
     setSelectedZoneIds(zoneId ? [zoneId] : []);
+    if (zoneId) setZoneTouched(true);
   }, [activeStep, handleZoneSelect]);
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
 
+  // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
+  // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
+  const constraintIssues = useMemo(
+    () => findConstraintIssues(rootZone, { width, height, depth }),
+    [rootZone, width, height, depth]
+  );
+  const hasZoneIssues = constraintIssues.length > 0;
+
+  // Ouvre l'étape où se corrige le premier problème, avec la zone concernée sélectionnée
+  const focusZoneIssue = useCallback(() => {
+    const issue = constraintIssues[0];
+    if (!issue) return;
+    const stepByKind: Record<IssueKind, ConfigStep> = {
+      dimensions: STEP.DIMENSIONS,
+      division: STEP.DIVISION,
+      facade: STEP.DOORS,
+      accessory: STEP.FINISHES,
+    };
+    goToStep(stepByKind[issue.kind]);
+    if (issue.zoneId) setSelectedZoneIds([issue.zoneId]);
+  }, [constraintIssues, goToStep]);
+
+  // Menu de la zone sélectionnée : son titre, sa taille, ses voisines et son groupe parent
   const quickMenu = useMemo(() => {
     if (selectedZoneIds.length === 0 || !selectedZone) return null;
 
     const isMulti = selectedZoneIds.length > 1;
+    const parent = findParentZone(rootZone, selectedZone.id);
     const leafIndex = !isMulti && selectedZone.type === 'leaf' ? leafZones.findIndex((z) => z.id === selectedZone.id) : -1;
 
     let title = 'Meuble entier';
@@ -763,70 +793,92 @@ export default function ConfiguratorPage() {
       title = `Groupe · ${selectedZone.children?.length ?? 0} ${selectedZone.type === 'horizontal' ? 'niveaux' : 'colonnes'}`;
     }
 
+    // Zone voisine : un compartiment passe au suivant dans l'ordre du plan, un groupe à son voisin direct
+    let neighbours: { prev: string; next: string } | null = null;
+    if (!isMulti && leafIndex >= 0 && leafZones.length > 1) {
+      neighbours = {
+        prev: leafZones[(leafIndex - 1 + leafZones.length) % leafZones.length].id,
+        next: leafZones[(leafIndex + 1) % leafZones.length].id,
+      };
+    } else if (!isMulti && selectedZone.type !== 'leaf' && parent?.children && parent.children.length > 1) {
+      const siblings = parent.children;
+      const index = siblings.findIndex((z) => z.id === selectedZone.id);
+      neighbours = {
+        prev: siblings[(index - 1 + siblings.length) % siblings.length].id,
+        next: siblings[(index + 1) % siblings.length].id,
+      };
+    }
+
     return {
       title,
-      leafIndex,
       size: isMulti ? null : getZoneSize(rootZone, selectedZone.id, width, height),
+      neighbours,
+      parentId: parent?.id ?? null,
     };
   }, [selectedZone, selectedZoneIds, leafZones, rootZone, width, height]);
 
-  const selectAdjacentLeaf = useCallback((delta: 1 | -1) => {
-    if (!quickMenu || quickMenu.leafIndex < 0 || leafZones.length < 2) return;
-    const next = leafZones[(quickMenu.leafIndex + delta + leafZones.length) % leafZones.length];
-    setSelectedZoneIds([next.id]);
-  }, [leafZones, quickMenu]);
+  // Hauteur disponible pour le plan 2D : il remplit le viewer au lieu d'être plafonné, ce qui laisse
+  // assez de place aux meubles très divisés
+  const planViewportRef = useRef<HTMLDivElement>(null);
+  const [planViewportHeight, setPlanViewportHeight] = useState(0);
+  useEffect(() => {
+    const element = planViewportRef.current;
+    if (!element) return;
+    const update = () => setPlanViewportHeight(element.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [show3DView, loading, model]);
 
-  // Couleur des façades : elle suit la structure tant qu'on ne choisit pas une autre couleur
+  // Choisit une zone depuis le menu (voisine ou groupe parent)
+  const selectZoneFromMenu = useCallback((zoneId: string) => {
+    setSelectedPanelIds(new Set());
+    setSelectedZoneIds([zoneId]);
+    setZoneTouched(true);
+  }, []);
+
+  // Zones mises en évidence dans la vue 3D. La sélection par défaut (le meuble entier, jamais choisie par
+  // l'utilisateur) n'en fait pas partie : elle teinterait tout le meuble dès le chargement.
+  const highlightedZoneIds = useMemo(
+    () =>
+      isViewMode || (!zoneTouched && selectedZoneIds.length === 1 && selectedZoneIds[0] === 'root') ? [] : selectedZoneIds,
+    [isViewMode, zoneTouched, selectedZoneIds]
+  );
+
+  // Le menu reste affiché à toutes les étapes, sauf pour la sélection par défaut (meuble entier) aux étapes
+  // Dimensions et Matières où il n'apporte rien tant qu'aucune zone n'a été choisie
+  const showQuickMenu =
+    !!quickMenu &&
+    !showPanelTool &&
+    !(
+      !zoneTouched &&
+      selectedZoneIds.length === 1 &&
+      selectedZoneIds[0] === 'root' &&
+      (activeStep === STEP.DIMENSIONS || activeStep === STEP.MATERIALS)
+    );
+
+  // Couleur de chaque partie du meuble telle qu'affichée : en couleur unique, toutes les parties la partagent
+  const singleColorEntry = { colorId: selectedColorId, hex: color || DEFAULT_COLOR_HEX, imageUrl: selectedColorImage };
+  const displayedComponentColors: ComponentColors = useMultiColor
+    ? componentColors
+    : {
+        structure: singleColorEntry,
+        doors: singleColorEntry,
+        drawers: singleColorEntry,
+        shelves: singleColorEntry,
+        back: singleColorEntry,
+        base: singleColorEntry,
+      };
+
+  // Récapitulatif : couleur des façades seulement si elle diffère de la structure
   const facadeSameAsStructure =
     !useMultiColor ||
     (componentColors.doors.colorId === componentColors.structure.colorId &&
       componentColors.drawers.colorId === componentColors.structure.colorId);
-  // Réglage avancé : activé à la main, ou déduit d'une configuration enregistrée dont le corps du meuble
-  // n'a pas une couleur uniforme (un simple changement de couleur de façade ne le déclenche pas)
-  const coreColorsUniform = (['shelves', 'back', 'base'] as const).every(
-    (key) =>
-      componentColors[key].colorId === componentColors.structure.colorId &&
-      componentColors[key].hex === componentColors.structure.hex
-  );
-  const advancedColors = useMultiColor && (advancedColorsFlag || !coreColorsUniform);
-  useEffect(() => {
-    if (!useMultiColor) setAdvancedColorsFlag(false);
-  }, [useMultiColor]);
-  const facadeColorId = useMultiColor ? componentColors.doors.colorId : selectedColorId;
   const facadeColorLabel = facadeSameAsStructure
     ? null
     : colorsForMaterial.find((option) => option.id === componentColors.doors.colorId)?.name || 'Personnalisée';
-
-  const handleFacadeColorChange = (option: SampleColor) => {
-    const facade = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
-
-    if (useMultiColor) {
-      setComponentColors((prev) => ({ ...prev, doors: facade, drawers: facade }));
-      return;
-    }
-
-    // Première couleur de façade : on passe en couleurs par composant, le reste garde la couleur actuelle
-    const current = { colorId: selectedColorId, hex: color || DEFAULT_COLOR_HEX, imageUrl: selectedColorImage };
-    setUseMultiColor(true);
-    setComponentColors({
-      structure: current,
-      shelves: current,
-      back: current,
-      base: current,
-      doors: facade,
-      drawers: facade,
-    });
-  };
-
-  const handleFacadeColorReset = () => {
-    if (!useMultiColor) return;
-    if (!advancedColors) {
-      // Seules les façades avaient une couleur à part : on revient à une couleur unique
-      setUseMultiColor(false);
-      return;
-    }
-    setComponentColors((prev) => ({ ...prev, doors: prev.structure, drawers: prev.structure }));
-  };
 
   const priceDisplaySettings = useMemo(() => {
     const displayConfig = pricingParams?.display?.price;
@@ -2053,7 +2105,7 @@ export default function ConfiguratorPage() {
       setGlbUrl(glbUrlAbsolute);
       setDxfUrl(result.dxf_url || null);
     } catch (error) {
-      console.error('Erreur génération:', error);
+      console.warn('Génération 3D impossible :', error instanceof Error ? error.message : error);
     } finally {
       setGenerating(false);
     }
@@ -2104,9 +2156,11 @@ export default function ConfiguratorPage() {
       componentColors
     }));
 
+    if (hasZoneIssues) return;
+
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId]);
+  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
 
   const handleToggleDoors = useCallback(() => {
     setDoorsOpen(prev => !prev);
@@ -2126,72 +2180,41 @@ export default function ConfiguratorPage() {
     const resetZoneColors = hasZoneColors(rootZone);
 
     if (useMultiColor || resetZoneColors) {
-      if (useMultiColor) {
-        setUseMultiColor(false);
-        setAdvancedColorsFlag(false);
-      }
+      if (useMultiColor) setUseMultiColor(false);
       if (resetZoneColors) setRootZone(clearZoneColors(rootZone));
       toast('Couleurs réinitialisées : choisissez-les dans la nouvelle matière.');
     }
   };
 
-  const handleColorChange = (option: SampleColor) => {
+  const applySingleColor = (option: SampleColor) => {
     setSelectedColorId(option.id);
     setColor(option.hex || DEFAULT_COLOR_HEX);
     setColorLabel(option.name || selectedMaterialLabel);
     setSelectedColorImage(option.image_url || null);
-
-    // Les façades colorées à part gardent leur couleur ; le reste du meuble suit la nouvelle couleur
-    if (useMultiColor) {
-      const entry = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
-      setComponentColors((prev) => ({
-        structure: entry,
-        shelves: entry,
-        back: entry,
-        base: entry,
-        doors: facadeSameAsStructure ? entry : prev.doors,
-        drawers: facadeSameAsStructure ? entry : prev.drawers,
-      }));
-    }
   };
 
-  const handleAdvancedColorsChange = (value: boolean) => {
-    setAdvancedColorsFlag(value);
-    if (value) {
-      // Les composants sont déjà initialisés si les façades avaient une couleur à part
-      if (!useMultiColor) handleUseMultiColorChange(true);
-    } else {
-      setUseMultiColor(false);
-    }
+  // Couleur d'une partie du meuble : les autres parties gardent la leur
+  const handleComponentColorChange = (component: ColorComponent, option: SampleColor) => {
+    const entry = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
+    setUseMultiColor(true);
+    setComponentColors({ ...displayedComponentColors, [component]: entry });
+    // La structure donne la couleur principale (récapitulatif, enregistrement)
+    if (component === 'structure') applySingleColor(option);
   };
 
-  const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string, imageUrl?: string | null) => {
-    setComponentColors((prev) => ({
-      ...prev,
-      [component]: { colorId, hex, imageUrl },
-    }));
-  };
-
-  const handleUseMultiColorChange = (value: boolean) => {
-    setUseMultiColor(value);
-
-    if (value) {
-      const currentHex = color || '#D8C7A1';
-      const currentImageUrl = selectedColorImage;
-      const currentColorId = selectedColorId;
-
-      setComponentColors({
-        structure: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        drawers: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        doors: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        shelves: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        back: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        base: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-      });
-    }
+  // Une seule couleur pour tout le meuble
+  const handleApplyColorToAll = (option: SampleColor) => {
+    applySingleColor(option);
+    setUseMultiColor(false);
   };
 
   const saveAsModel = async () => {
+    if (hasZoneIssues) {
+      toast.error(`Ce meuble dépasse une limite de fabrication : ${constraintIssues[0].message}`);
+      focusZoneIssue();
+      return;
+    }
+
     console.log('🔵 FONCTION saveAsModel APPELEE !');
     console.log('🔵 isAdmin:', isAdmin);
     console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
@@ -2305,6 +2328,12 @@ export default function ConfiguratorPage() {
   };
 
   const saveConfiguration = async () => {
+    if (hasZoneIssues) {
+      toast.error(`Ce meuble dépasse une limite de fabrication : ${constraintIssues[0].message}`);
+      focusZoneIssue();
+      return;
+    }
+
     const isAdminEditingConfig = isEditMode && editingConfigId;
 
     if (!isAdmin && !isAdminEditingConfig && (!isAuthenticated || !customer)) {
@@ -2518,6 +2547,7 @@ export default function ConfiguratorPage() {
     onSetHandleType: setZoneHandleType,
     width,
     height,
+    depth,
     onSelectZone: handleZoneClick,
     isAdminCreateModel,
     hideCanvas: true,
@@ -2714,7 +2744,7 @@ export default function ConfiguratorPage() {
             <div className="relative h-[40vh] min-h-[260px] lg:h-auto lg:flex-1">
               <div className="absolute inset-0">
                 {!show3DView ? (
-                  <div className="h-full w-full overflow-auto bg-white px-3 pb-3 pt-14 sm:p-8">
+                  <div ref={planViewportRef} className="h-full w-full overflow-auto bg-white px-3 pb-3 pt-14 sm:p-8">
                     <ZoneEditor
                       rootZone={rootZone}
                       selectedZoneIds={selectedZoneIds}
@@ -2723,7 +2753,7 @@ export default function ConfiguratorPage() {
                       width={width}
                       height={height}
                       onSelectZone={isViewMode ? undefined : handleZoneClick}
-                      canvasMaxHeight={isMobile ? 190 : undefined}
+                      canvasMaxHeight={isMobile ? 190 : planViewportHeight ? Math.min(720, Math.max(240, planViewportHeight - 230)) : undefined}
                       hideControls
                     />
                   </div>
@@ -2737,7 +2767,7 @@ export default function ConfiguratorPage() {
                     hasSocle={socle !== 'none'}
                     socle={socle}
                     rootZone={rootZone}
-                    selectedZoneIds={isViewMode ? [] : selectedZoneIds}
+                    selectedZoneIds={highlightedZoneIds}
                     selectionTint={activeStep !== STEP.MATERIALS}
                     onSelectZone={isViewMode ? undefined : handleZoneClick}
                     isBuffet={furnitureStructure?.isBuffet}
@@ -2781,19 +2811,13 @@ export default function ConfiguratorPage() {
                     Vue 3D
                   </button>
                 </div>
-                {!isViewMode && quickMenu && !showPanelTool && !(
-                  selectedZoneIds.length === 1 && selectedZone?.id === 'root' && (selectedZone.type !== 'leaf' || activeStep === STEP.DIMENSIONS || activeStep === STEP.MATERIALS)
-                ) && (
+                {!isViewMode && showQuickMenu && quickMenu && (
                   <ZoneQuickMenu
                     title={quickMenu.title}
                     size={quickMenu.size}
-                    canNavigate={quickMenu.leafIndex >= 0 && leafZones.length > 1}
-                    onPrev={() => selectAdjacentLeaf(-1)}
-                    onNext={() => selectAdjacentLeaf(1)}
-                    activeDomain={
-                      (Object.keys(DOMAIN_STEP) as ZoneDomain[]).find((domain) => DOMAIN_STEP[domain] === activeStep) ?? null
-                    }
-                    onDomain={(domain) => goToStep(DOMAIN_STEP[domain])}
+                    onPrev={quickMenu.neighbours ? () => selectZoneFromMenu(quickMenu.neighbours!.prev) : undefined}
+                    onNext={quickMenu.neighbours ? () => selectZoneFromMenu(quickMenu.neighbours!.next) : undefined}
+                    onParent={quickMenu.parentId ? () => selectZoneFromMenu(quickMenu.parentId!) : undefined}
                     onClose={() => setSelectedZoneIds([])}
                   />
                 )}
@@ -2893,13 +2917,18 @@ export default function ConfiguratorPage() {
                 )}
 
                 {selectedPanelIds.size > 0 && !isViewMode && showPanelTool && (
-                  <div className="absolute right-4 top-16 z-20 hidden lg:block">
-                    <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
+                  // Même emplacement que le menu de zone (jamais affichés ensemble) : la colonne des commandes de caméra occupe le bord droit
+                  <div className="pointer-events-none absolute z-20 hidden justify-center lg:left-[7.5rem] lg:right-[11.5rem] lg:top-4 lg:flex">
+                    <div className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
                       <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
                       <span className="text-sm font-medium text-[#1A1917]">
                         {selectedPanelIds.size === 1 ? (
                           (() => {
                             const panelId = Array.from(selectedPanelIds)[0];
+                            // Les cloisons n'ont pas le préfixe « panel- » attendu par stringToPanelId : sans ceci, l'identifiant brut s'affichait
+                            if (panelId.startsWith('separator-')) {
+                              return `Séparateur ${panelId.startsWith('separator-h-') ? 'horizontal' : 'vertical'}`;
+                            }
                             const panelInfo = stringToPanelId(panelId);
                             if (panelInfo) {
                               if (panelInfo.type === 'separator') {
@@ -2993,6 +3022,29 @@ export default function ConfiguratorPage() {
 
                 <div ref={stepContentRef} className="px-4 pb-24 pt-5 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pb-0">
                   <div className="space-y-6 pb-6">
+                    {hasZoneIssues && (
+                      <div className="flex items-start gap-3 border border-[#F2C4B8] bg-[#FDF3F0] px-4 py-3" style={{ borderRadius: '2px' }} role="alert">
+                        <IconInfoCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#C2410C]" />
+                        <div className="min-w-0 flex-1 text-xs leading-relaxed text-[#7C2D12]">
+                          <p className="font-semibold">Ce meuble ne peut pas être fabriqué tel quel</p>
+                          <ul className="mt-1 space-y-0.5">
+                            {constraintIssues.slice(0, 3).map((issue, index) => (
+                              <li key={`${issue.kind}-${issue.zoneId}-${index}`}>{issue.message}</li>
+                            ))}
+                            {constraintIssues.length > 3 && <li>Et {constraintIssues.length - 3} autre(s) point(s).</li>}
+                          </ul>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={focusZoneIssue}
+                          className="flex-shrink-0 border border-[#7C2D12] px-3 py-1.5 text-[11px] font-medium text-[#7C2D12] transition-colors hover:bg-[#7C2D12] hover:text-white"
+                          style={{ borderRadius: '2px' }}
+                        >
+                          Corriger
+                        </button>
+                      </div>
+                    )}
+
                     <StepIntro step={CONFIG_STEPS[activeStep - 1]} total={LAST_STEP} />
 
                     {activeStep === STEP.DIMENSIONS && (
@@ -3067,35 +3119,19 @@ export default function ConfiguratorPage() {
                         <MaterialSelector
                           materialsMap={materialsMap}
                           selectedMaterialKey={selectedMaterialLabel}
-                          selectedColorId={selectedColorId}
                           onMaterialChange={handleMaterialChange}
-                          onColorChange={handleColorChange}
                           loading={materialsLoading}
-                          useMultiColor={advancedColors}
-                          onUseMultiColorChange={handleAdvancedColorsChange}
-                          componentColors={componentColors}
+                          componentColors={displayedComponentColors}
                           onComponentColorChange={handleComponentColorChange}
+                          onApplyToAll={handleApplyColorToAll}
+                          hiddenComponents={[
+                            ...(zoneStats.doors === 0 ? (['doors'] as const) : []),
+                            ...(zoneStats.drawers === 0 ? (['drawers'] as const) : []),
+                          ]}
                         />
 
-                        <StepSection title="Couleur des façades" aside="Portes et tiroirs">
-                          {zoneStats.doors + zoneStats.drawers === 0 ? (
-                            <p className="text-xs leading-relaxed text-[#706F6C]">
-                              Vous n&apos;avez pas encore posé de porte ni de tiroir. Revenez à l&apos;étape Portes pour en ajouter : vous pourrez ensuite les colorer ici.
-                            </p>
-                          ) : (
-                            <FacadeColorSelector
-                              colors={colorsForMaterial}
-                              selectedColorId={facadeColorId}
-                              sameAsStructure={facadeSameAsStructure}
-                              loading={materialsLoading}
-                              onSelect={handleFacadeColorChange}
-                              onReset={handleFacadeColorReset}
-                            />
-                          )}
-                        </StepSection>
-
                         {isSelectedZoneColorizable && selectedZone ? (
-                          <StepSection title="Une façade en particulier" aside="Compartiment sélectionné">
+                          <StepSection title="Une porte ou un tiroir en particulier" aside="Compartiment sélectionné">
                             <ZoneColorPicker
                               inline
                               zone={selectedZone}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeZoneStats, getZoneFacade, getZoneSize, isPushContent, listLeafZones } from './zoneStats';
+import { computeZoneStats, findParentZone, getZoneFacade, getZoneSize, isPushContent, listLeafZones } from './zoneStats';
 import type { Zone } from '@/components/configurator/ZoneEditor/types';
 
 function leaf(id: string, extra: Partial<Zone> = {}): Zone {
@@ -143,5 +143,25 @@ describe('getZoneSize', () => {
 
   it('returns null for an unknown zone', () => {
     expect(getZoneSize(root, 'nope', 1000, 800)).toBeNull();
+  });
+});
+
+describe('findParentZone', () => {
+  const root: Zone = {
+    id: 'root',
+    type: 'vertical',
+    children: [leaf('a'), { id: 'g', type: 'horizontal', children: [leaf('b'), { id: 'h', type: 'vertical', children: [leaf('c')] }] }],
+  };
+
+  it('finds the direct parent at every depth', () => {
+    expect(findParentZone(root, 'a')?.id).toBe('root');
+    expect(findParentZone(root, 'g')?.id).toBe('root');
+    expect(findParentZone(root, 'b')?.id).toBe('g');
+    expect(findParentZone(root, 'c')?.id).toBe('h');
+  });
+
+  it('returns null for the root and for unknown ids', () => {
+    expect(findParentZone(root, 'root')).toBeNull();
+    expect(findParentZone(root, 'nope')).toBeNull();
   });
 });

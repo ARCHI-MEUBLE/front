@@ -1,7 +1,5 @@
 export type ConfigStep = 1 | 2 | 3 | 4 | 5;
 
-export type ZoneDomain = 'division' | 'facade' | 'accessory';
-
 // Ordre du parcours : du global (taille) au local (compartiments), puis matières et finitions
 export const STEP = {
   DIMENSIONS: 1,
@@ -32,7 +30,7 @@ export const CONFIG_STEPS: StepDefinition[] = [
     id: STEP.DIVISION,
     label: 'Division',
     title: "Divisez l'intérieur",
-    hint: 'Cliquez sur une zone pour la découper en étagères ou en colonnes.',
+    hint: 'Réglez le nombre de colonnes et d\'étagères, ou cliquez sur une zone pour la diviser à part.',
     view: 'plan',
   },
   {
@@ -46,7 +44,7 @@ export const CONFIG_STEPS: StepDefinition[] = [
     id: STEP.MATERIALS,
     label: 'Matières',
     title: 'Matières & couleurs',
-    hint: 'Choisissez la matière et la couleur du meuble, puis celle des façades.',
+    hint: 'Choisissez la matière, puis la couleur de chaque partie du meuble.',
     view: '3d',
   },
   {
@@ -59,10 +57,3 @@ export const CONFIG_STEPS: StepDefinition[] = [
 ];
 
 export const LAST_STEP: ConfigStep = STEP.FINISHES;
-
-// Étape qui regroupe chaque famille d'actions sur une zone (utilisé par le menu "sur clic")
-export const DOMAIN_STEP: Record<ZoneDomain, ConfigStep> = {
-  division: STEP.DIVISION,
-  facade: STEP.DOORS,
-  accessory: STEP.FINISHES,
-};

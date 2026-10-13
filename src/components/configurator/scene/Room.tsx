@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { JapaneseMinimalist, ScandinavianLandscape, BauhausGeometric, WallClock } from './wall-art';
 
+// Inclinaison de chaque feuille de la plante. Fixe : tirée au hasard à chaque rendu, la plante changeait de
+// forme à chaque clic sur le meuble.
+const PLANT_LEAF_TILTS: [number, number][] = Array.from({ length: 12 }, (_, i) => [
+    0.4 + 0.4 * Math.sin(i * 12.9898),
+    0.4 + 0.4 * Math.sin(i * 78.233),
+]);
+
 export function Room() {
     return (
         <group>
@@ -44,7 +51,7 @@ export function Room() {
                     <mesh
                         key={i}
                         position={[0, 0.5, 0]}
-                        rotation={[Math.random() * 0.8, i * Math.PI/6, Math.random() * 0.8]}
+                        rotation={[PLANT_LEAF_TILTS[i][0], i * Math.PI/6, PLANT_LEAF_TILTS[i][1]]}
                         castShadow
                     >
                         <capsuleGeometry args={[0.03, 0.6, 4, 8]} />

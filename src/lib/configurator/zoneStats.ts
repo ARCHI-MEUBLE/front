@@ -119,3 +119,23 @@ export function getZoneSize(
   }
   return null;
 }
+
+// Parent direct d'une zone (null pour la racine ou une zone inconnue)
+export function findParentZone(root: Zone, id: string): Zone | null {
+  for (const child of root.children ?? []) {
+    if (child.id === id) return root;
+    const found = findParentZone(child, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+// Zone de l'arbre portant cet identifiant
+export function findZoneById(root: Zone, id: string): Zone | null {
+  if (root.id === id) return root;
+  for (const child of root.children ?? []) {
+    const found = findZoneById(child, id);
+    if (found) return found;
+  }
+  return null;
+}

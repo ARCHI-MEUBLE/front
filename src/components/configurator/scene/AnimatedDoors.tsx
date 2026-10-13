@@ -1,47 +1,40 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 import { getSafeColor } from './utils';
 import { TexturedMaterial } from './TexturedMaterial';
 import { Handle } from './StructuralElements';
+import { useSmoothedRotationY } from './useSmoothed';
 
-export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick, handleType }: any) {
+// Les portes ne gèrent pas elles-mêmes le pointeur : la scène les enveloppe dans un groupe qui s'en charge
+// (survol, sélection, ouverture), ce qui garde un comportement identique pour toutes les façades.
+
+type Vec3 = [number, number, number];
+
+interface DoorProps {
+    position: Vec3;
+    width: number;
+    height: number;
+    side: 'left' | 'right';
+    isOpen?: boolean;
+    hexColor?: string | null;
+    imageUrl?: string | null;
+    handleType?: string;
+}
+
+const DOOR_OPEN_ANGLE = Math.PI * 0.39;
+
+function useDoorSwing(side: 'left' | 'right', isOpen?: boolean) {
     const groupRef = useRef<THREE.Group>(null);
-    const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
+    useSmoothedRotationY(groupRef, isOpen ? (side === 'left' ? -DOOR_OPEN_ANGLE : DOOR_OPEN_ANGLE) : 0);
+    return groupRef;
+}
 
+export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, handleType }: DoorProps) {
+    const groupRef = useDoorSwing(side, isOpen);
     const safeHexColor = getSafeColor(hexColor);
 
-    useEffect(() => {
-        let animationFrameId: number;
-
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetRot]);
-
     return (
-        <group
-            ref={groupRef}
-            position={position}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
+        <group ref={groupRef} position={position}>
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
@@ -56,40 +49,11 @@ export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side
     );
 }
 
-export function AnimatedMirrorDoor({ position, width, height, side, isOpen, onClick, handleType }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetRot]);
+export function AnimatedMirrorDoor({ position, width, height, side, isOpen, handleType }: Omit<DoorProps, 'hexColor' | 'imageUrl'>) {
+    const groupRef = useDoorSwing(side, isOpen);
 
     return (
-        <group
-            ref={groupRef}
-            position={position}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
+        <group ref={groupRef} position={position}>
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <meshStandardMaterial
@@ -111,42 +75,12 @@ export function AnimatedMirrorDoor({ position, width, height, side, isOpen, onCl
     );
 }
 
-export function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen, onClick }: any) {
-    const groupRef = useRef<THREE.Group>(null);
-    const targetRot = isOpen ? (side === 'left' ? -Math.PI * 0.39 : Math.PI * 0.39) : 0;
-
+export function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen }: Omit<DoorProps, 'handleType'>) {
+    const groupRef = useDoorSwing(side, isOpen);
     const safeHexColor = getSafeColor(hexColor);
 
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetRot]);
-
     return (
-        <group
-            ref={groupRef}
-            position={position}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
+        <group ref={groupRef} position={position}>
             <mesh position={[side === 'left' ? width/2 : -width/2, 0, 0.014]} castShadow>
                 <boxGeometry args={[width - 0.005, height, 0.018]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />

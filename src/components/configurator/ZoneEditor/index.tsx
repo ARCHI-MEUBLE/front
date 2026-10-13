@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
-import ZoneControls, { MAX_SPLIT_PARTS, SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
+import ZoneControls, { SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
+import { setDivisionCount, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 
 export { default as PanelPlanCanvas } from './PanelPlanCanvas';
 export type { ZoneControlSection } from './ZoneControls';
@@ -15,6 +17,8 @@ interface ZoneEditorProps {
   onSelectedZoneIdsChange: (ids: string[]) => void;
   width: number;
   height: number;
+  // Profondeur du meuble : certaines options en dépendent (tiroirs, penderie)
+  depth?: number;
   hideControls?: boolean;
   hideCanvas?: boolean;
   // Masque les champs largeur/hauteur de la zone sélectionnée (utile hors de l'étape Division)
@@ -57,6 +61,7 @@ export default function ZoneEditor({
   onSelectedZoneIdsChange,
   width,
   height,
+  depth,
   hideControls,
   hideCanvas,
   hideDimensions,
@@ -222,10 +227,19 @@ export default function ZoneEditor({
     [calculateZoneWidth, selectedZone.id]
   );
 
+  // Largeur couverte par plusieurs compartiments voisins (porte commune)
+  const multiSelectionWidthMm = useMemo(() => {
+    if (selectedZoneIds.length < 2) return undefined;
+    const parent = findZoneWithParent(rootZone, selectedZoneIds[0])?.parent;
+    if (!parent) return undefined;
+    if (parent.type !== 'vertical') return Math.round(calculateZoneWidth(selectedZoneIds[0]));
+    return Math.round(selectedZoneIds.reduce((sum, id) => sum + calculateZoneWidth(id), 0));
+  }, [selectedZoneIds, rootZone, findZoneWithParent, calculateZoneWidth]);
+
   // Diviser une zone
   const splitZone = useCallback(
     (zoneId: string, direction: 'horizontal' | 'vertical', requestedCount: number = 2) => {
-      const count = Math.min(Math.max(requestedCount, 2), MAX_SPLIT_PARTS);
+      const count = Math.max(requestedCount, 2);
       const updateZone = (z: Zone): Zone => {
         if (z.id === zoneId) {
           // Pour 2 enfants: utiliser splitRatio
@@ -642,6 +656,15 @@ export default function ZoneEditor({
     [setSplitRatio, setSplitRatios]
   );
 
+  // Compteurs Colonnes / Étagères : la zone reste sélectionnée pour continuer à l'ajuster
+  const setZoneDivisionCount = useCallback(
+    (zoneId: string, direction: DivisionDirection, count: number) => {
+      onRootZoneChange(setDivisionCount(rootZone, zoneId, direction, count));
+      onSelectedZoneIdsChange([zoneId]);
+    },
+    [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
+  );
+
   // Grouper des zones
   const groupZones = useCallback(
     (zoneIds: string[], forceContent?: ZoneContent) => {
@@ -708,7 +731,7 @@ export default function ZoneEditor({
             const currentSizesMm = currentRatios.map(r => (r / 100) * parentWidthMm);
 
             // Limiter la nouvelle largeur
-            const minSize = 50;
+            const minSize = MIN_COMPARTMENT_WIDTH_MM;
             const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
             const clampedNewWidth = Math.max(minSize, Math.min(maxSize, newWidthMm));
 
@@ -737,7 +760,7 @@ export default function ZoneEditor({
             const currentSizesMm = currentRatios.map(r => (r / 100) * parentHeightMm);
 
             // Limiter la nouvelle hauteur
-            const minSize = 50;
+            const minSize = MIN_COMPARTMENT_HEIGHT_MM;
             const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
             const clampedNewHeight = Math.max(minSize, Math.min(maxSize, newHeightMm));
 
@@ -786,7 +809,7 @@ export default function ZoneEditor({
 
               const currentSizesMm = currentRatios.map(r => (r / 100) * grandParentWidthMm);
 
-              const minSize = 50;
+              const minSize = MIN_COMPARTMENT_WIDTH_MM;
               const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
               const clampedNewWidth = Math.max(minSize, Math.min(maxSize, newWidthMm));
 
@@ -811,7 +834,7 @@ export default function ZoneEditor({
 
               const currentSizesMm = currentRatios.map(r => (r / 100) * grandParentHeightMm);
 
-              const minSize = 50;
+              const minSize = MIN_COMPARTMENT_HEIGHT_MM;
               const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
               const clampedNewHeight = Math.max(minSize, Math.min(maxSize, newHeightMm));
 
@@ -837,6 +860,7 @@ export default function ZoneEditor({
             selectedZoneIds={selectedZoneIds}
             parentZone={parentZone}
             onSplitZone={splitZone}
+            onSetDivisionCount={setZoneDivisionCount}
             onSetContent={setZoneContent}
             onSetDoorContent={onSetDoorContent || setDoorContent}
             onResetZone={resetZone}
@@ -851,6 +875,8 @@ export default function ZoneEditor({
             onSetGlassShelfPositions={setGlassShelfPositions}
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}
+            depthMm={depth}
+            selectionWidthMm={multiSelectionWidthMm}
             onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
             sections={controlSections}
           />
