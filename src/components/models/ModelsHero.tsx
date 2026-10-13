@@ -52,6 +52,7 @@ export function ModelsHero() {
             fill
             className="object-cover"
             unoptimized
+            loading="eager"
           />
         </div>
       </div>

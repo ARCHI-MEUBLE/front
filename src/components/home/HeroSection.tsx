@@ -33,6 +33,7 @@ export function HeroSection() {
           src="/images/accueil image/img.png"
           alt="Bibliothèque sur mesure ArchiMeuble"
           fill
+          sizes="(min-width: 1360px) 1264px, 100vw"
           className="object-cover"
           priority
         />

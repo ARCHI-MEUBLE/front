@@ -1160,3 +1160,6 @@ export default function Cart() {
     </>
   );
 }
+
+// Lu par _app.tsx : seule cette page affiche des <model-viewer>, le script du composant n'est chargé que pour elle
+Cart.needsModelViewer = true;

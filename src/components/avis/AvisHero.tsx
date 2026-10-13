@@ -82,6 +82,7 @@ export function AvisHero({
               alt=""
               fill
               unoptimized
+              loading="eager"
               className="object-cover"
             />
           </div>

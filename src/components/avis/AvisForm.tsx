@@ -73,6 +73,7 @@ export function AvisForm({
                 src="/images/gauthier-hue.jpeg"
                 alt=""
                 fill
+                sizes="52px"
                 className="object-cover"
                 style={{ objectPosition: "50% 25%" }}
               />

@@ -50,6 +50,10 @@ interface ZoneNodeProps {
     leafNumbers?: Record<string, number>;
     // Pixels par millimètre : permet d'adapter le texte à la taille de la case à l'écran
     pxPerMm?: number;
+    // Planches retirées avec l'outil 3D, et chemin de la zone au format des identifiants de ThreeCanvas
+    // (séparateur « separator-h-<chemin>h<i>-<segment> »)
+    deletedPanelIds?: ReadonlySet<string>;
+    panelPath?: string;
 }
 
 function ZoneNode({
@@ -63,6 +67,8 @@ function ZoneNode({
                       showNumbers = false,
                       leafNumbers,
                       pxPerMm,
+                      deletedPanelIds,
+                      panelPath = '',
                   }: ZoneNodeProps) {
     const isSelected = selectedZoneIds.includes(zone.id);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -334,6 +340,14 @@ function ZoneNode({
                     : Infinity;
                 const grip = Number.isFinite(smallestPx) ? clamp(smallestPx * 0.4, 10, 32) : 32;
 
+                const childPath = orderedChildren.length === 1
+                    ? `${panelPath}c0-`
+                    : `${panelPath}${isHorizontal ? 'r' : 'c'}${index}-`;
+                const axis = isHorizontal ? 'h' : 'v';
+                const separatorPrefix = `separator-${axis}-${panelPath}${axis}${index}-`;
+                const dividerRemoved =
+                    showDivider && !!deletedPanelIds && Array.from(deletedPanelIds).some((id) => id.startsWith(separatorPrefix));
+
                 return (
                     <div
                         key={child.id}
@@ -356,7 +370,28 @@ function ZoneNode({
                             showNumbers={showNumbers}
                             leafNumbers={leafNumbers}
                             pxPerMm={pxPerMm}
+                            deletedPanelIds={deletedPanelIds}
+                            panelPath={childPath}
                         />
+
+                        {dividerRemoved && (
+                            // Planche retirée dans la vue 3D : le plan la montre en pointillés au lieu d'un séparateur plein
+                            <div
+                                className={`pointer-events-none absolute z-30 flex items-center justify-center ${
+                                    isHorizontal ? 'bottom-0 left-0 right-0 h-0' : 'right-0 top-0 bottom-0 w-0'
+                                }`}
+                                title="Planche retirée"
+                            >
+                                <div
+                                    className={`absolute border-dashed border-[#E64A19] ${
+                                        isHorizontal ? 'left-0 right-0 border-t-2' : 'top-0 bottom-0 border-l-2'
+                                    }`}
+                                />
+                                <span className="relative whitespace-nowrap rounded-sm bg-[#E64A19] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                                    Planche retirée
+                                </span>
+                            </div>
+                        )}
 
                         {showDivider && onRatioChange && (
                             <div
@@ -401,6 +436,8 @@ interface ZoneCanvasProps {
     showNumbers?: boolean;
     // Hauteur maximale du dessin en pixels (400 par défaut)
     maxCanvasHeight?: number;
+    // Planches retirées avec l'outil 3D « Retirer planches »
+    deletedPanelIds?: ReadonlySet<string>;
 }
 
 export default function ZoneCanvas({
@@ -412,6 +449,7 @@ export default function ZoneCanvas({
                                        height,
                                        showNumbers = false,
                                        maxCanvasHeight = 400,
+                                       deletedPanelIds,
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
@@ -495,6 +533,7 @@ export default function ZoneCanvas({
                         showNumbers={showNumbers}
                         leafNumbers={leafNumbers}
                         pxPerMm={canvasWidth / width}
+                        deletedPanelIds={deletedPanelIds}
                     />
                 </div>
             </div>

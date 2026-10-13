@@ -19,8 +19,8 @@ export function ContactUniqueSection() {
           <Image
             src="/images/devis-illustration.svg"
             alt=""
-            width={200}
-            height={200}
+            width={289}
+            height={286}
             style={{ width: "clamp(140px,16vw,200px)", height: "auto", alignSelf: "flex-end", marginBottom: "auto" }}
           />
           <h2
@@ -47,7 +47,7 @@ export function ContactUniqueSection() {
             <div className="flex items-center justify-between rounded-t-[10px] bg-[#D4FF3A] px-[22px] py-[18px] shadow-[0_0_0_1px_rgba(22,21,19,0.06),0_24px_48px_-20px_rgba(22,21,19,0.25)]">
               <span className="flex items-center gap-3">
                 <div className="relative h-[52px] w-[52px] overflow-hidden rounded-full border-[3px] border-white">
-                  <Image src="/images/gauthier-hue.jpeg" alt="" fill className="object-cover" style={{ objectPosition: "50% 25%" }} />
+                  <Image src="/images/gauthier-hue.jpeg" alt="" fill sizes="52px" className="object-cover" style={{ objectPosition: "50% 25%" }} />
                 </div>
                 <span className="text-[15px] font-semibold">Gauthier Hue</span>
               </span>

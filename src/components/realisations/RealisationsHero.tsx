@@ -28,6 +28,7 @@ export function RealisationsHero() {
               alt=""
               fill
               unoptimized
+              loading="eager"
               className="object-cover"
             />
           </div>

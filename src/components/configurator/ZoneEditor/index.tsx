@@ -28,6 +28,8 @@ interface ZoneEditorProps {
   // Sections de réglages affichées sous le plan (toutes par défaut)
   controlSections?: ZoneControlSection[];
   showNumbers?: boolean;
+  // Planches retirées avec l'outil 3D : montrées en pointillés sur le plan
+  deletedPanelIds?: ReadonlySet<string>;
   // Contenu à afficher entre le canvas et les contrôles
   renderAfterCanvas?: React.ReactNode;
   // Expose les actions pour une utilisation externe (ActionBar)
@@ -68,6 +70,7 @@ export default function ZoneEditor({
   canvasMaxHeight,
   controlSections,
   showNumbers,
+  deletedPanelIds,
   renderAfterCanvas,
   onToggleLight,
   onToggleCableHole,
@@ -705,6 +708,7 @@ export default function ZoneEditor({
           height={height}
           showNumbers={showNumbers}
           maxCanvasHeight={canvasMaxHeight}
+          deletedPanelIds={deletedPanelIds}
         />
       )}
 
