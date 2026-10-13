@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DIMENSION_LIMITS } from '@/lib/configurator/constraints';
 
 interface DimensionInputProps {
   label: string;
@@ -45,7 +46,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
     onChange(newValue);
   };
 
-  const percentage = ((value - min) / (max - min)) * 100;
+  const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
   return (
     <div className="space-y-1.5">
@@ -81,6 +82,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           style={{ width: `${percentage}%`, borderRadius: '2px' }}
         />
       </div>
+      {hint && <p className="text-[10px] text-[#706F6C]">{hint}</p>}
 
       <style jsx>{`
         .dimension-slider {
@@ -144,7 +146,7 @@ export default function DimensionsPanel({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions du meuble</h3>
+        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions extérieures</h3>
         <span className="font-mono text-[10px] text-[#706F6C]">{width} × {depth} × {height} mm</span>
       </div>
 
@@ -152,30 +154,33 @@ export default function DimensionsPanel({
         label="Largeur"
         value={width}
         onChange={onWidthChange}
-        min={300}
-        max={6000}
+        min={DIMENSION_LIMITS.width.min}
+        max={DIMENSION_LIMITS.width.max}
         step={10}
         unit="mm"
+        hint={`De ${DIMENSION_LIMITS.width.min} à ${DIMENSION_LIMITS.width.max} mm : le dessus et le dessous sont d'un seul tenant.`}
       />
 
       <DimensionInput
         label="Profondeur"
         value={depth}
         onChange={onDepthChange}
-        min={200}
-        max={800}
+        min={DIMENSION_LIMITS.depth.min}
+        max={DIMENSION_LIMITS.depth.max}
         step={10}
         unit="mm"
+        hint={`De ${DIMENSION_LIMITS.depth.min} à ${DIMENSION_LIMITS.depth.max} mm.`}
       />
 
       <DimensionInput
         label="Hauteur"
         value={height}
         onChange={onHeightChange}
-        min={100}
-        max={4000}
+        min={DIMENSION_LIMITS.height.min}
+        max={DIMENSION_LIMITS.height.max}
         step={10}
         unit="mm"
+        hint={`Hauteur totale, pieds compris : ${DIMENSION_LIMITS.height.max} mm maximum.`}
       />
     </div>
   );

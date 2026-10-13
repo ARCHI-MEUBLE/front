@@ -1,0 +1,84 @@
+import { ChevronLeft, ChevronRight, CornerLeftUp, X } from 'lucide-react';
+
+interface ZoneQuickMenuProps {
+  title: string;
+  size?: { width: number; height: number } | null;
+  // Zone voisine (même niveau) précédente / suivante : absent s'il n'y en a pas
+  onPrev?: () => void;
+  onNext?: () => void;
+  // Sélectionne le groupe qui contient la zone : absent pour le meuble entier
+  onParent?: () => void;
+  onClose: () => void;
+}
+
+const iconButton =
+  'flex h-8 w-8 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]';
+
+// Menu « sur clic » : indique la zone sélectionnée sur le viewer, permet de passer à la voisine
+// ou de remonter au groupe parent
+export default function ZoneQuickMenu({
+  title,
+  size,
+  onPrev,
+  onNext,
+  onParent,
+  onClose,
+}: ZoneQuickMenuProps) {
+  return (
+    // Réservé aux grands écrans (sur mobile il recouvrirait le viewer). Le conteneur laisse la place aux
+    // boutons annuler/rétablir (gauche) et au sélecteur Plan/3D (droite)
+    <div className="pointer-events-none absolute z-20 hidden justify-center @container lg:left-[7.5rem] lg:right-[11.5rem] lg:top-4 lg:flex">
+      <div
+        role="toolbar"
+        aria-label="Zone sélectionnée"
+        className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-0.5 border border-[#E8E6E3] bg-white p-1 shadow-md"
+        style={{ borderRadius: '2px' }}
+      >
+        {onPrev && (
+          <button type="button" onClick={onPrev} className={iconButton} aria-label="Zone précédente" title="Zone précédente">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+
+        <div className="min-w-[96px] px-2 text-center leading-tight">
+          <span className="block text-xs font-semibold text-[#1A1917]">{title}</span>
+          {size && (
+            <span className="block font-mono text-[10px] text-[#706F6C]">
+              {Math.round(size.width)} × {Math.round(size.height)} mm
+            </span>
+          )}
+        </div>
+
+        {onNext && (
+          <button type="button" onClick={onNext} className={iconButton} aria-label="Zone suivante" title="Zone suivante">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+
+        {onParent && (
+          <>
+            <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
+            <button
+              type="button"
+              onClick={onParent}
+              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
+              style={{ borderRadius: '2px' }}
+              aria-label="Sélectionner le groupe parent"
+              title="Sélectionner le groupe qui contient cette zone"
+            >
+              <CornerLeftUp className="h-3.5 w-3.5" />
+              {/* Icône seule quand la place manque (viewer étroit) */}
+              <span className="hidden @min-[22.5rem]:inline">Groupe parent</span>
+            </button>
+          </>
+        )}
+
+        <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
+
+        <button type="button" onClick={onClose} className={iconButton} aria-label="Désélectionner" title="Désélectionner">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}

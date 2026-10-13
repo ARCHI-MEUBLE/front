@@ -11,6 +11,8 @@ interface ZoneColorPickerProps {
   defaultImageUrl?: string | null;
   onColorChange: (zoneId: string, color: ZoneColor) => void;
   onClose: () => void;
+  // Intégré dans le panneau latéral au lieu de flotter sur le viewer
+  inline?: boolean;
 }
 
 // Labels pour les types de contenu
@@ -34,6 +36,7 @@ export default function ZoneColorPicker({
   defaultImageUrl,
   onColorChange,
   onClose,
+  inline = false,
 }: ZoneColorPickerProps) {
   // Récupérer les couleurs disponibles pour le matériau sélectionné
   const colorsForMaterial = useMemo<SampleColor[]>(() => {
@@ -82,19 +85,27 @@ export default function ZoneColorPicker({
   };
 
   return (
-    <div className="absolute bottom-4 left-4 z-30 w-72 bg-white shadow-2xl border border-[#E8E6E3] overflow-hidden" style={{ borderRadius: '4px' }}>
+    <div
+      className={
+        inline
+          ? 'overflow-hidden border border-[#E8E6E3] bg-white'
+          : 'absolute bottom-4 left-4 z-30 w-72 overflow-hidden border border-[#E8E6E3] bg-white shadow-2xl'
+      }
+      style={{ borderRadius: inline ? '2px' : '4px' }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#E8E6E3] bg-[#FAFAF9]">
         <div className="flex items-center gap-2">
           <Palette className="h-4 w-4 text-[#1A1917]" />
           <span className="text-sm font-medium text-[#1A1917]">
-            Couleur du {contentLabel}
+            Couleur · {contentLabel}
           </span>
         </div>
         <button
           type="button"
           onClick={onClose}
           className="p-1 text-[#706F6C] hover:text-[#1A1917] transition-colors"
+          aria-label="Fermer"
         >
           <X className="h-4 w-4" />
         </button>
@@ -133,7 +144,7 @@ export default function ZoneColorPicker({
       {/* Color grid */}
       <div className="p-3 max-h-48 overflow-y-auto">
         {colorsForMaterial.length > 0 ? (
-          <div className="grid grid-cols-6 gap-2">
+          <div className={inline ? 'grid grid-cols-6 gap-2 sm:grid-cols-8' : 'grid grid-cols-6 gap-2'}>
             {colorsForMaterial.map((colorOption) => {
               const isSelected = zone.zoneColor?.colorId === colorOption.id;
               return (
@@ -141,7 +152,7 @@ export default function ZoneColorPicker({
                   key={colorOption.id}
                   type="button"
                   onClick={() => handleSelectColor(colorOption)}
-                  className={`relative w-9 h-9 border-2 transition-all hover:scale-110 ${
+                  className={`relative aspect-square border-2 transition-all hover:scale-110 ${inline ? '' : 'h-9 w-9'} ${
                     isSelected
                       ? 'border-[#1A1917] ring-2 ring-[#1A1917] ring-offset-1'
                       : 'border-[#E8E6E3] hover:border-[#706F6C]'
@@ -175,7 +186,7 @@ export default function ZoneColorPicker({
       {/* Footer hint */}
       <div className="px-4 py-2 bg-[#FAFAF9] border-t border-[#E8E6E3]">
         <p className="text-xs text-[#706F6C]">
-          Cliquez sur une couleur pour l&apos;appliquer à ce {contentLabel.toLowerCase()}
+          Cliquez sur une couleur pour l&apos;appliquer à cette façade
         </p>
       </div>
     </div>

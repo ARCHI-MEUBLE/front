@@ -1,49 +1,43 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 import { getSafeColor } from './utils';
 import { TexturedMaterial } from './TexturedMaterial';
 import { Handle } from './StructuralElements';
+import { useSmoothedPositionZ } from './useSmoothed';
 
-export function AnimatedPushDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, onClick }: any) {
+// Les tiroirs ne gèrent pas eux-mêmes le pointeur : la scène les enveloppe dans un groupe qui s'en charge
+// (survol, sélection, ouverture), ce qui garde un comportement identique pour toutes les façades.
+
+interface DrawerProps {
+    position: [number, number, number];
+    width: number;
+    height: number;
+    depth: number;
+    hexColor?: string | null;
+    imageUrl?: string | null;
+    isOpen?: boolean;
+    handleType?: string;
+}
+
+// Un tiroir ouvert sort de 60 % de la profondeur du meuble
+const DRAWER_TRAVEL = 0.6;
+
+function useDrawerSlide(initialZ: number, depth: number, isOpen?: boolean) {
     const groupRef = useRef<THREE.Group>(null);
+    useSmoothedPositionZ(groupRef, isOpen ? initialZ + depth * DRAWER_TRAVEL : initialZ);
+    return groupRef;
+}
+
+export function AnimatedPushDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen }: Omit<DrawerProps, 'handleType'>) {
     const initialZ = position[2];
-    const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
-
+    const groupRef = useDrawerSlide(initialZ, depth, isOpen);
     const safeHexColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetZ]);
 
     const boxDepth = depth * 0.8;
     const boxHeight = height * 0.8;
 
     return (
-        <group
-            ref={groupRef}
-            position={[position[0], position[1], initialZ]}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
+        <group ref={groupRef} position={[position[0], position[1], initialZ]}>
             <mesh castShadow>
                 <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
@@ -60,46 +54,16 @@ export function AnimatedPushDrawer({ position, width, height, depth, hexColor, i
     );
 }
 
-export function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, onClick, handleType }: any) {
-    const groupRef = useRef<THREE.Group>(null);
+export function AnimatedDrawer({ position, width, height, depth, hexColor, imageUrl, isOpen, handleType }: DrawerProps) {
     const initialZ = position[2];
-    const targetZ = isOpen ? initialZ + depth * 0.6 : initialZ;
-
+    const groupRef = useDrawerSlide(initialZ, depth, isOpen);
     const safeHexColor = getSafeColor(hexColor);
-
-    useEffect(() => {
-        let animationFrameId: number;
-        const animate = () => {
-            if (groupRef.current) {
-                groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.1);
-            }
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [targetZ]);
 
     const boxDepth = depth * 0.8;
     const boxHeight = height * 0.8;
 
     return (
-        <group
-            ref={groupRef}
-            position={[position[0], position[1], initialZ]}
-            onClick={(e) => {
-                if (onClick) {
-                    e.stopPropagation();
-                    onClick(e);
-                }
-            }}
-            onPointerOver={(e) => {
-                e.stopPropagation();
-                document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-                document.body.style.cursor = 'default';
-            }}
-        >
+        <group ref={groupRef} position={[position[0], position[1], initialZ]}>
             <mesh castShadow>
                 <boxGeometry args={[width - 0.01, height - 0.01, 0.02]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
