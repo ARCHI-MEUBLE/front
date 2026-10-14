@@ -8,6 +8,7 @@ export function DevisInterlocutorCard() {
           src="/images/gauthier-hue.jpeg"
           alt="Gauthier Hue, fondateur d'ArchiMeuble"
           fill
+          sizes="72px"
           className="object-cover"
           style={{ objectPosition: "50% 25%" }}
         />

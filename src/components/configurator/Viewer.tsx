@@ -8,7 +8,7 @@ export default function Viewer({ glb }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    // We use <model-viewer> web component — ensure it's loaded in _app.tsx or add script tag
+    // We use <model-viewer> web component — the page using this component must load its script (see cart.tsx)
   }, [glb])
 
   return (
