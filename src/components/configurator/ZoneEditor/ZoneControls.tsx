@@ -21,6 +21,8 @@ interface ZoneControlsProps {
   onSetContent: (zoneId: string, content: ZoneContent) => void;
   onSetDoorContent?: (zoneId: string, content: ZoneContent) => void;
   onResetZone: (zoneId: string) => void;
+  // Supprime la section : absent pour le meuble entier
+  onDeleteSection?: (zoneId: string) => void;
   onSetSplitRatio: (zoneId: string, ratio: number) => void;
   onSetSplitRatios?: (zoneId: string, ratios: number[]) => void;
   onSelectParent?: () => void;
@@ -584,6 +586,7 @@ export default function ZoneControls({
   onSetContent,
   onSetDoorContent,
   onResetZone,
+  onDeleteSection,
   onSelectParent,
   onToggleLight,
   onToggleCableHole,
@@ -1023,6 +1026,18 @@ export default function ZoneControls({
               >
                 <Trash2 className="h-4 w-4" />
                 <span>Annuler cette division</span>
+              </button>
+            )}
+            {onDeleteSection && !isRoot && !isMultiSelection && (
+              <button
+                type="button"
+                onClick={() => onDeleteSection(selectedZone.id)}
+                title="La section voisine prend sa place"
+                className="flex w-full items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white py-3 text-sm font-medium text-[#706F6C] transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+                style={{ borderRadius: '4px' }}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Supprimer cette section</span>
               </button>
             )}
           </div>

@@ -72,6 +72,7 @@ import { ConfigurationSummary } from '@/components/configurator/ConfigurationSum
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
@@ -318,18 +319,47 @@ export default function ConfiguratorPage() {
   }, [showPanelTool]);
 
   const toggleSelectedPanelsDeleted = useCallback((action: 'delete' | 'restore') => {
+    // Une planche intérieure retirée réunit les deux sections qu'elle séparait (au lieu d'être seulement
+    // cachée) ; les panneaux extérieurs, eux, restent simplement masqués
+    const separatorIds = Array.from(selectedPanelIds).filter(id => id.startsWith('separator-'));
+    if (action === 'delete' && separatorIds.length > 0) {
+      const result = removeSeparators(rootZone, separatorIds);
+      if (result.removed > 0) {
+        setRootZone(result.root);
+        toast.success(result.removed > 1 ? 'Planches retirées : les sections sont réunies' : 'Planche retirée : les deux sections sont réunies');
+      }
+      if (result.blocked > 0) {
+        toast.error("Cette planche sépare deux zones elles-mêmes découpées : supprimez d'abord les sections de l'une d'elles.");
+      }
+    }
+
     setDeletedPanelIds(prev => {
       const next = new Set(prev);
       selectedPanelIds.forEach(panelId => {
         if (action === 'delete') {
-          next.add(panelId);
+          if (!panelId.startsWith('separator-')) next.add(panelId);
         } else {
           next.delete(panelId);
         }
       });
       return next;
     });
-  }, [selectedPanelIds]);
+    if (action === 'delete') setSelectedPanelIds(new Set());
+  }, [selectedPanelIds, rootZone, setRootZone]);
+
+  // Configurations enregistrées avant ce changement : une planche intérieure « retirée » y était seulement
+  // cachée. On réunit ses deux sections une fois la configuration chargée.
+  // Une planche entre deux zones découpées ne peut pas être fusionnée : elle reste cachée comme avant.
+  useEffect(() => {
+    const legacySeparators = Array.from(deletedPanelIds).filter(id => id.startsWith('separator-'));
+    if (legacySeparators.length === 0) return;
+    const result = removeSeparators(rootZone, legacySeparators);
+    const kept = new Set(result.blockedIds);
+    const dropped = legacySeparators.filter(id => !kept.has(id));
+    if (dropped.length === 0) return;
+    if (result.removed > 0) setRootZone(result.root);
+    setDeletedPanelIds(prev => new Set(Array.from(prev).filter(id => !dropped.includes(id))));
+  }, [deletedPanelIds, rootZone, setRootZone]);
 
   const handlePanelSelect = useCallback((panelId: string | null) => {
     if (!panelId) {
@@ -495,6 +525,16 @@ export default function ConfiguratorPage() {
     toast.success(forceContent ? "Porte ajoutée sur l'ensemble sélectionné" : 'Zones groupées avec succès');
     notifyRemovedFacades(result.removed);
   }, [rootZone]);
+
+  // Supprimer une section : sa voisine (au-dessus ou à gauche, sinon en dessous ou à droite) prend sa place
+  const deleteSection = useCallback((zoneId: string) => {
+    const result = removeSection(rootZone, zoneId);
+    if (!result.root) return;
+    setRootZone(result.root);
+    setSelectedZoneIds([result.keptId]);
+    setSelectedPanelIds(new Set());
+    toast.success('Section supprimée (Ctrl+Z pour annuler)');
+  }, [rootZone, setRootZone]);
 
   const setZoneDoorContent = useCallback((zoneId: string, content: ZoneContent) => {
     const { root, removed } = setZoneFacade(rootZone, zoneId, content);
@@ -777,6 +817,7 @@ export default function ConfiguratorPage() {
       size: isMulti ? null : getZoneSize(rootZone, selectedZone.id, width, height),
       neighbours,
       parentId: parent?.id ?? null,
+      canDelete: !isMulti && !!parent,
     };
   }, [selectedZone, selectedZoneIds, leafZones, rootZone, width, height]);
 
@@ -2516,6 +2557,7 @@ export default function ConfiguratorPage() {
     onSetZoneContent: setZoneContent,
     onSetDoorContent: setZoneDoorContent,
     onSetHandleType: setZoneHandleType,
+    onDeleteSection: deleteSection,
     width,
     height,
     depth,
@@ -2790,6 +2832,7 @@ export default function ConfiguratorPage() {
                     onPrev={quickMenu.neighbours ? () => selectZoneFromMenu(quickMenu.neighbours!.prev) : undefined}
                     onNext={quickMenu.neighbours ? () => selectZoneFromMenu(quickMenu.neighbours!.next) : undefined}
                     onParent={quickMenu.parentId ? () => selectZoneFromMenu(quickMenu.parentId!) : undefined}
+                    onDelete={quickMenu.canDelete ? () => deleteSection(selectedZoneIds[0]) : undefined}
                     onClose={() => setSelectedZoneIds([])}
                   />
                 )}
@@ -2928,6 +2971,9 @@ export default function ConfiguratorPage() {
                               `${selectedPanelIds.size} panneaux sélectionnés`
                             )}
                           </span>
+                          {Array.from(selectedPanelIds).some(id => id.startsWith('separator-')) && (
+                            <span className="text-xs text-[#706F6C]">· les sections de part et d&apos;autre seront réunies</span>
+                          )}
                           <button
                             type="button"
                             onClick={() => toggleSelectedPanelsDeleted('delete')}

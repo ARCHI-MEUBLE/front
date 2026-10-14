@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CornerLeftUp, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CornerLeftUp, Trash2, X } from 'lucide-react';
 
 interface ZoneQuickMenuProps {
   title: string;
@@ -8,6 +8,8 @@ interface ZoneQuickMenuProps {
   onNext?: () => void;
   // Sélectionne le groupe qui contient la zone : absent pour le meuble entier
   onParent?: () => void;
+  // Supprime la section (sa voisine récupère sa place) : absent pour le meuble entier
+  onDelete?: () => void;
   onClose: () => void;
 }
 
@@ -15,13 +17,14 @@ const iconButton =
   'flex h-8 w-8 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]';
 
 // Menu « sur clic » : indique la zone sélectionnée sur le viewer, permet de passer à la voisine
-// ou de remonter au groupe parent
+// ou de remonter au groupe parent, ou de supprimer la section
 export default function ZoneQuickMenu({
   title,
   size,
   onPrev,
   onNext,
   onParent,
+  onDelete,
   onClose,
 }: ZoneQuickMenuProps) {
   return (
@@ -69,6 +72,23 @@ export default function ZoneQuickMenu({
               <CornerLeftUp className="h-3.5 w-3.5" />
               {/* Icône seule quand la place manque (viewer étroit) */}
               <span className="hidden @min-[22.5rem]:inline">Groupe parent</span>
+            </button>
+          </>
+        )}
+
+        {onDelete && (
+          <>
+            <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-[#706F6C] transition-colors hover:bg-red-50 hover:text-red-600"
+              style={{ borderRadius: '2px' }}
+              aria-label="Supprimer la section"
+              title="Supprimer cette section : la section voisine prend sa place"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="hidden @min-[22.5rem]:inline">Supprimer</span>
             </button>
           </>
         )}
