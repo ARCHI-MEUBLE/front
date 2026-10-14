@@ -84,7 +84,7 @@ export default function ModelsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>Nos Modèles — ArchiMeuble</title>
         <meta

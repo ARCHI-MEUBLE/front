@@ -8,12 +8,12 @@ export function WhyChooseUs() {
         <div>
           <h2
             id="why-title"
-            className="m-0 mb-5 max-w-[10ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+            className="m-0 mb-5 max-w-[10ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             La précision du sur-mesure.
           </h2>
-          <p className="m-0 max-w-[40ch] text-[18px] text-[#3B3832]">
+          <p className="m-0 max-w-[40ch] text-[18px] text-black/85">
             Du premier croquis à l&apos;installation, chaque détail est pensé pour créer un meuble qui traverse les
             années.
           </p>

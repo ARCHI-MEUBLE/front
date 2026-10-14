@@ -85,6 +85,15 @@
   }
 }
 
+/* Palette du site (texte : noir ou blanc, le reste vient d'ici) */
+:root {
+  --am-navy: #3B3E58; /* bleu-gris foncé : boutons et blocs sombres */
+  --am-mist: #B2B6CC; /* bleu clair : surbrillances, pastilles, grands panneaux, survols */
+  --am-red: #B72F2B; /* rouge : appels à l'action principaux */
+  --am-wine: #6A2025; /* bordeaux : blocs sombres, bandeaux */
+  --am-paper: #FFFFFF; /* fond des pages (essayer #F4EEE3 pour un blanc nacré) */
+}
+
 :root {
   color: #1A1A1A;
   background-color: #FAF9F7;
@@ -490,20 +499,15 @@ h4,
 @media (prefers-reduced-motion: reduce) {
   .home-marquee-products,
   .home-marquee-up,
-  .home-marquee-down,
-  .home-fade-slide {
+  .home-marquee-down {
     animation: none;
   }
 }
 
-@keyframes home-fade-cycle {
-  0% { opacity: 1; }
-  16% { opacity: 1; }
-  20% { opacity: 0; }
-  96% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.home-fade-slide {
-  animation: home-fade-cycle 18000ms infinite;
+/* Surlignage bleu des titres : la bande reste dans la hauteur de ligne, sinon elle mord sur la ligne du dessus quand le titre passe à la ligne */
+.am-highlight {
+  background: linear-gradient(transparent 14%, var(--am-mist) 14%, var(--am-mist) 86%, transparent 86%);
+  padding: 0 0.12em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }

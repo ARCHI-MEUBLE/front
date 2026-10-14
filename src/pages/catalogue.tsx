@@ -142,7 +142,7 @@ export default function Catalogue() {
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>Boutique — ArchiMeuble</title>
         <meta
@@ -181,15 +181,15 @@ export default function Catalogue() {
             <div className="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex flex-col gap-3.5">
-                  <div className="animate-pulse rounded bg-[#ECE9E1]" style={{ aspectRatio: "1/1" }} />
-                  <div className="h-3 w-1/3 animate-pulse rounded bg-[#ECE9E1]" />
-                  <div className="h-4 w-2/3 animate-pulse rounded bg-[#ECE9E1]" />
+                  <div className="animate-pulse rounded bg-am-mist/25" style={{ aspectRatio: "1/1" }} />
+                  <div className="h-3 w-1/3 animate-pulse rounded bg-am-mist/25" />
+                  <div className="h-4 w-2/3 animate-pulse rounded bg-am-mist/25" />
                 </div>
               ))}
             </div>
           ) : items.length === 0 ? (
             <div className="py-20 text-center">
-              <p className="text-[#5F5B53]">
+              <p className="text-black/70">
                 Nous n&apos;avons trouvé aucun produit correspondant à vos critères.
               </p>
               <button
@@ -198,7 +198,7 @@ export default function Catalogue() {
                   setSearchTerm("");
                   setSelectedCategory("");
                 }}
-                className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-full border border-[#161513] bg-[#161513] px-6 py-3 text-[15px] font-medium text-[#F7F6F2]"
+                className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-full border border-black bg-am-navy px-6 py-3 text-[15px] font-medium text-white"
               >
                 Réinitialiser les filtres
               </button>

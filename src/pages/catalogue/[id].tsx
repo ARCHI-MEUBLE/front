@@ -107,10 +107,10 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F7F6F2]">
+      <div className="flex min-h-screen flex-col bg-am-paper">
         <Header />
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#161513] border-b-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-b-transparent" />
         </div>
         <Footer />
       </div>
@@ -122,7 +122,7 @@ export default function ProductDetail() {
   const currentImage = item.variations?.[selectedVariationIdx]?.image_url || item.image_url;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>{item.name} — ArchiMeuble</title>
         <meta name="description" content={item.description || item.name} />
@@ -136,7 +136,7 @@ export default function ProductDetail() {
         >
           <ProductBreadcrumb category={item.category} name={item.name} />
           <div className="grid grid-cols-1 items-start gap-[clamp(32px,5vw,80px)] lg:grid-cols-2">
-            <div className="relative overflow-hidden rounded bg-[#ECE9E1]" style={{ aspectRatio: "1/1" }}>
+            <div className="relative overflow-hidden rounded bg-am-mist/25" style={{ aspectRatio: "1/1" }}>
               {currentImage && (
                 <Image src={currentImage} alt={item.name} fill unoptimized priority className="object-cover" />
               )}
@@ -159,7 +159,7 @@ export default function ProductDetail() {
           <section aria-labelledby="related-title" className={HOME_SECTION}>
             <h2
               id="related-title"
-              className="m-0 mb-8 font-[Geist] font-medium tracking-[-0.045em] text-[#161513]"
+              className="m-0 mb-8 font-[Geist] font-medium tracking-[-0.045em] text-black"
               style={{ fontSize: "clamp(28px,3vw,44px)" }}
             >
               Vous aimerez aussi

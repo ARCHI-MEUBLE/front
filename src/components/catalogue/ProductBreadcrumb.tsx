@@ -10,7 +10,7 @@ export function ProductBreadcrumb({ category, name }: { category: string; name: 
       <span aria-hidden="true">/</span>
       <span>{category}</span>
       <span aria-hidden="true">/</span>
-      <span className="text-[#161513]">{name}</span>
+      <span className="text-black">{name}</span>
     </nav>
   );
 }

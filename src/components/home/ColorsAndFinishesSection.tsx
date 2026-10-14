@@ -13,14 +13,14 @@ export function ColorsAndFinishesSection() {
   return (
     <section aria-labelledby="teintes-title" className={HOME_SECTION}>
       <div className="grid grid-cols-1 items-center gap-[clamp(32px,5vw,72px)] lg:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-2xl border border-[#E5E2D9] bg-[#ECE9E1]">
+        <div className="relative aspect-square overflow-hidden rounded-2xl border border-black/15 bg-am-mist/25">
           <Image
             src={swatchImage(active.file)}
             alt={`Armoire ArchiMeuble teinte ${active.name}`}
             fill
             className="object-cover"
           />
-          <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-[#161513] bg-[#F7F6F2] px-3.5 py-1.5 text-[14px] text-[#161513]">
+          <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-black bg-am-paper px-3.5 py-1.5 text-[14px] text-black">
             <span className={`text-[11px] ${HOME_MONO}`}>Teinte</span>
             {active.name}
           </div>
@@ -29,16 +29,16 @@ export function ColorsAndFinishesSection() {
         <div>
           <h2
             id="teintes-title"
-            className="m-0 mb-5 max-w-[12ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+            className="m-0 mb-5 max-w-[12ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             Toutes les teintes sont possibles.
           </h2>
-          <p className="m-0 mb-7 max-w-[46ch] text-[18px] text-[#3B3832]">
+          <p className="m-0 mb-7 max-w-[46ch] text-[18px] text-black/85">
             Bois naturels, nuances contemporaines, finitions mates ou satinées : votre meuble sera exactement comme
             vous l&apos;imaginez.
           </p>
-          <div role="radiogroup" aria-label="Choisir une teinte" className="mb-8 flex flex-wrap gap-1.5">
+          <div role="radiogroup" aria-label="Choisir une teinte" className="mb-3 flex flex-wrap gap-1.5">
             {SWATCHES.map((swatch, index) => {
               const isActive = index === selected;
               return (
@@ -52,13 +52,16 @@ export function ColorsAndFinishesSection() {
                   className="h-11 w-11 rounded-full transition-transform duration-200 hover:scale-110"
                   style={{
                     background: swatch.hex,
-                    border: isActive ? "2px solid #161513" : "1px solid rgba(22,21,19,0.18)",
-                    boxShadow: isActive ? "0 0 0 3px #F7F6F2, 0 0 0 4px #161513" : "none",
+                    border: isActive ? "2px solid #000000" : "1px solid rgba(0,0,0,0.18)",
+                    boxShadow: isActive ? "0 0 0 3px var(--am-paper), 0 0 0 4px #000000" : "none",
                   }}
                 />
               );
             })}
           </div>
+          <p aria-live="polite" className={`m-0 mb-8 text-xs ${HOME_MONO}`}>
+            Teinte sélectionnée : <span className="text-black">{active.name}</span>
+          </p>
           <div className="flex flex-wrap gap-2.5">
             <Link href="/samples" className={HOME_PILL_DARK}>
               Commander un échantillon

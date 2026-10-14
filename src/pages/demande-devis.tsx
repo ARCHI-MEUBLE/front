@@ -11,7 +11,7 @@ import { DevisInterlocutorCard } from "@/components/devis/DevisInterlocutorCard"
 import { DevisChecklist } from "@/components/devis/DevisChecklist";
 
 const INPUT_CLASS =
-  "min-h-[52px] w-full rounded-xl border border-[#161513] bg-[#FBFDF1] px-4 py-3.5 text-[17px] text-[#161513] outline-none";
+  "min-h-[52px] w-full rounded-xl border border-black bg-white px-4 py-3.5 text-[17px] text-black outline-none";
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim().replace(/\s+/g, " ");
@@ -92,7 +92,7 @@ export default function DemandeDevisPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>Demande de devis — ArchiMeuble</title>
         <meta
@@ -112,32 +112,32 @@ export default function DemandeDevisPage() {
           </Link>
 
           {success ? (
-            <div className="rounded-3xl bg-[#EAF4C4] p-[clamp(28px,6vw,88px)] text-center">
+            <div className="rounded-3xl bg-am-mist p-[clamp(28px,6vw,88px)] text-center">
               <h1
                 id="devis-title"
-                className="m-0 mb-3 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+                className="m-0 mb-3 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
                 style={{ fontSize: "clamp(36px,5vw,64px)" }}
               >
                 Demande envoyée !
               </h1>
-              <p className="m-0 text-[18px] text-[#3B3832]">
+              <p className="m-0 text-[18px] text-black/85">
                 Nous avons bien reçu votre demande de devis. Nous vous recontacterons très prochainement.
               </p>
             </div>
           ) : (
             <div
-              className="grid grid-cols-1 gap-[clamp(40px,6vw,96px)] overflow-hidden rounded-3xl bg-[#EAF4C4] lg:grid-cols-2"
+              className="grid grid-cols-1 gap-[clamp(40px,6vw,96px)] overflow-hidden rounded-3xl bg-am-mist lg:grid-cols-2"
               style={{ padding: "clamp(28px,6vw,88px) clamp(20px,6vw,88px) 0" }}
             >
               <div className="flex min-w-0 flex-col gap-6">
                 <h1
                   id="devis-title"
-                  className="m-0 max-w-[11ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+                  className="m-0 max-w-[11ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
                   style={{ fontSize: "clamp(44px,6vw,92px)" }}
                 >
                   Parlez-nous de votre projet.
                 </h1>
-                <p className="m-0 max-w-[34ch] text-[#161513]" style={{ fontSize: "clamp(17px,1.4vw,20px)", lineHeight: 1.45 }}>
+                <p className="m-0 max-w-[34ch] text-black" style={{ fontSize: "clamp(17px,1.4vw,20px)", lineHeight: 1.45 }}>
                   Demande de devis. Gauthier vous répond personnellement
                 </p>
                 <div className="relative mt-6 min-h-[360px] flex-1">
@@ -220,10 +220,10 @@ export default function DemandeDevisPage() {
                       multiple
                       onChange={handleFileChange}
                       disabled={isSubmitting}
-                      className="min-h-[52px] w-full cursor-pointer rounded-xl border-[1.5px] border-dashed border-[#161513] bg-[#FBFDF1] px-4 py-3.5 text-[15px]"
+                      className="min-h-[52px] w-full cursor-pointer rounded-xl border-[1.5px] border-dashed border-black bg-white px-4 py-3.5 text-[15px]"
                     />
                     {files.length > 0 && (
-                      <span className="text-[13px] text-[#5F5B53]">
+                      <span className="text-[13px] text-black/70">
                         {files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""}
                       </span>
                     )}
@@ -250,7 +250,7 @@ export default function DemandeDevisPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="min-h-[56px] self-start rounded-full bg-[#161513] px-8 py-4 text-[16px] font-semibold text-[#F7F6F2] disabled:opacity-60"
+                    className="min-h-[56px] self-start rounded-full bg-am-navy px-8 py-4 text-[16px] font-semibold text-white disabled:opacity-60"
                   >
                     {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande →"}
                   </button>

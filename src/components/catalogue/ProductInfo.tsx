@@ -35,17 +35,17 @@ export function ProductInfo({
       <div className="flex flex-col gap-3">
         <span className={`text-xs ${HOME_MONO}`}>{item.category}</span>
         <h1
-          className="m-0 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+          className="m-0 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
           style={{ fontSize: "clamp(36px,4.4vw,64px)" }}
         >
           {item.name}
         </h1>
-        <span className="text-[28px] font-medium tracking-[-0.03em] text-[#161513]">
+        <span className="text-[28px] font-medium tracking-[-0.03em] text-black">
           {formatPrice(Number(item.unit_price))}
         </span>
       </div>
 
-      <p className="m-0 max-w-[46ch] text-[18px] text-[#3B3832]">
+      <p className="m-0 max-w-[46ch] text-[18px] text-black/85">
         {item.description || "Aucune description disponible pour ce produit."}
       </p>
 
@@ -60,8 +60,8 @@ export function ProductInfo({
                 onClick={() => onSelectVariation(index)}
                 className={`rounded-full border px-4 py-2 text-[14px] font-medium ${
                   index === selectedVariationIdx
-                    ? "border-[#161513] bg-[#161513] text-[#F7F6F2]"
-                    : "border-[#E5E2D9] bg-white text-[#161513]"
+                    ? "border-black bg-am-navy text-white"
+                    : "border-black/15 bg-white text-black"
                 }`}
               >
                 {variation.color_name}
@@ -75,13 +75,13 @@ export function ProductInfo({
         <div
           role="group"
           aria-label="Quantité"
-          className="flex h-[52px] items-center rounded-full border border-[#CFCBC0] bg-white"
+          className="flex h-[52px] items-center rounded-full border border-black/30 bg-white"
         >
           <button
             type="button"
             aria-label="Retirer un"
             onClick={() => onQuantityChange(Math.max(minQuantity, quantity - 1))}
-            className="flex h-[50px] w-12 items-center justify-center text-[20px] text-[#161513]"
+            className="flex h-[50px] w-12 items-center justify-center text-[20px] text-black"
           >
             −
           </button>
@@ -92,7 +92,7 @@ export function ProductInfo({
             type="button"
             aria-label="Ajouter un"
             onClick={() => onQuantityChange(quantity + 1)}
-            className="flex h-[50px] w-12 items-center justify-center text-[20px] text-[#161513]"
+            className="flex h-[50px] w-12 items-center justify-center text-[20px] text-black"
           >
             +
           </button>
@@ -101,14 +101,14 @@ export function ProductInfo({
           type="button"
           onClick={onAddToCart}
           disabled={adding}
-          className="min-h-[52px] min-w-[220px] flex-1 rounded-full border border-[#161513] bg-[#D4FF3A] px-6 py-3.5 text-[15px] font-medium text-[#161513] transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60"
+          className="min-h-[52px] min-w-[220px] flex-1 rounded-full border border-black bg-am-mist px-6 py-3.5 text-[15px] font-medium text-black transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60"
         >
           {adding ? "Ajout en cours..." : `Ajouter au panier · ${formatPrice(total)}`}
         </button>
       </div>
 
       {minQuantity > 1 && (
-        <p className="m-0 -mt-4 text-[13px] italic text-[#5F5B53]">
+        <p className="m-0 -mt-4 text-[13px] italic text-black/70">
           Minimum de commande : {minQuantity} {item.unit}s
         </p>
       )}
@@ -117,23 +117,23 @@ export function ProductInfo({
         <button
           type="button"
           onClick={onGoToCart}
-          className="min-h-[52px] rounded-full border border-[#161513] bg-[#161513] px-6 py-3.5 text-[15px] font-medium text-[#F7F6F2]"
+          className="min-h-[52px] rounded-full border border-black bg-am-navy px-6 py-3.5 text-[15px] font-medium text-white"
         >
           Aller au panier →
         </button>
       )}
 
-      <dl className="m-0 grid grid-cols-[auto,minmax(0,1fr)] border-t border-[#E5E2D9]">
-        <dt className={`border-b border-[#E5E2D9] py-3.5 pr-6 text-xs ${HOME_MONO}`}>Matière</dt>
-        <dd className="m-0 border-b border-[#E5E2D9] py-3.5 text-[15px] text-[#161513]">
+      <dl className="m-0 grid grid-cols-[auto,minmax(0,1fr)] border-t border-black/15">
+        <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Matière</dt>
+        <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">
           {item.material || "Non spécifié"}
         </dd>
-        <dt className={`border-b border-[#E5E2D9] py-3.5 pr-6 text-xs ${HOME_MONO}`}>Dimensions</dt>
-        <dd className="m-0 border-b border-[#E5E2D9] py-3.5 text-[15px] text-[#161513]">
+        <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Dimensions</dt>
+        <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">
           {item.dimensions || "Standard"}
         </dd>
-        <dt className={`border-b border-[#E5E2D9] py-3.5 pr-6 text-xs ${HOME_MONO}`}>Livraison</dt>
-        <dd className="m-0 border-b border-[#E5E2D9] py-3.5 text-[15px] text-[#161513]">3 à 5 jours ouvrés</dd>
+        <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Livraison</dt>
+        <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">3 à 5 jours ouvrés</dd>
       </dl>
     </div>
   );

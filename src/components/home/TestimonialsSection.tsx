@@ -3,10 +3,10 @@ import { HOME_MONO, HOME_PILL_DARK, HOME_SECTION } from "@/components/home/homeL
 import { TESTIMONIALS, avatarUrl } from "@/components/home/homeData";
 
 const TINTS = [
-  { bg: "#D4FF3A", ink: "#161513" },
-  { bg: "#EDEBE4", ink: "#161513" },
-  { bg: "#161513", ink: "#F7F6F2" },
-  { bg: "#E8B9A2", ink: "#161513" },
+  { bg: "var(--am-mist)", ink: "#000000" },
+  { bg: "var(--am-navy)", ink: "#FFFFFF" },
+  { bg: "var(--am-red)", ink: "#FFFFFF" },
+  { bg: "var(--am-wine)", ink: "#FFFFFF" },
 ];
 
 export function TestimonialsSection() {
@@ -19,20 +19,20 @@ export function TestimonialsSection() {
         <div className="flex flex-col items-start gap-5">
           <h2
             id="avis-title"
-            className="m-0 max-w-[11ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+            className="m-0 max-w-[11ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             Ils nous font confiance.
           </h2>
           <div className="flex items-center gap-3">
-            <span className="text-[32px] font-semibold leading-none tracking-[-0.04em] text-[#161513]">4,3</span>
+            <span className="text-[32px] font-semibold leading-none tracking-[-0.04em] text-black">4,3</span>
             <span role="img" aria-label="Note de 4,3 sur 5" className="flex gap-[3px]">
               {[0, 1, 2, 3].map((i) => (
-                <span key={i} className="flex h-8 w-8 items-center justify-center bg-[#00B67A] text-[22px] leading-none text-white">★</span>
+                <span key={i} className="flex h-8 w-8 items-center justify-center bg-am-red text-[22px] leading-none text-white">★</span>
               ))}
               <span
                 className="flex h-8 w-8 items-center justify-center text-[22px] leading-none text-white"
-                style={{ background: "linear-gradient(90deg,#00B67A 30%,#DCDCE6 30%)" }}
+                style={{ background: "linear-gradient(90deg,var(--am-red) 30%,rgba(0,0,0,0.15) 30%)" }}
               >
                 ★
               </span>
@@ -78,7 +78,7 @@ function TestimonialCard({
   tint: { bg: string; ink: string };
 }) {
   return (
-    <figure className="m-0 flex flex-col gap-5 rounded-2xl border border-[#E5E2D9] bg-white p-6 shadow-[0_1px_2px_rgba(22,21,19,0.04)]">
+    <figure className="m-0 flex flex-col gap-5 rounded-2xl border border-black/15 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <span role="img" aria-label={`${testimonial.rating} étoiles sur 5`} className="flex gap-0.5">
         {[0, 1, 2, 3, 4].map((i) => (
           <span
@@ -90,7 +90,7 @@ function TestimonialCard({
           </span>
         ))}
       </span>
-      <blockquote className="m-0 text-[16px] leading-[1.55] text-[#5F5B53]">{testimonial.quote}</blockquote>
+      <blockquote className="m-0 text-[16px] leading-[1.55] text-black/70">{testimonial.quote}</blockquote>
       <figcaption className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -99,11 +99,11 @@ function TestimonialCard({
           width={48}
           height={48}
           loading="lazy"
-          className="block h-12 w-12 flex-none rounded-full border border-[#E5E2D9] bg-[#EDEBE4]"
+          className="block h-12 w-12 flex-none rounded-full border border-black/15 bg-am-mist/25"
         />
         <span>
-          <span className="block text-[16px] font-medium text-[#161513]">{testimonial.name}</span>
-          <span className="block font-[Geist_Mono] text-[12px] text-[#5F5B53]">{testimonial.city}</span>
+          <span className="block text-[16px] font-medium text-black">{testimonial.name}</span>
+          <span className="block font-[Geist_Mono] text-[12px] text-black/70">{testimonial.city}</span>
         </span>
       </figcaption>
     </figure>

@@ -23,7 +23,7 @@ export function RealisationCarousel({ images, className = '', onGalleryOpen }: P
   if (!images || images.length === 0) {
     return (
       <div className={`relative aspect-[4/3] bg-[#E8E4DE] flex items-center justify-center ${className}`}>
-        <Camera className="h-12 w-12 text-[#706F6C]" strokeWidth={1} />
+        <Camera className="h-12 w-12 text-black/70" strokeWidth={1} />
       </div>
     );
   }
@@ -78,17 +78,17 @@ export function RealisationCarousel({ images, className = '', onGalleryOpen }: P
           {/* Bouton précédent */}
           <button
             onClick={handlePrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-white"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-am-mist/30"
           >
-            <ChevronLeft className="h-5 w-5 text-[#1A1917]" />
+            <ChevronLeft className="h-5 w-5 text-black" />
           </button>
 
           {/* Bouton suivant */}
           <button
             onClick={handleNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-white"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-am-mist/30"
           >
-            <ChevronRight className="h-5 w-5 text-[#1A1917]" />
+            <ChevronRight className="h-5 w-5 text-black" />
           </button>
 
           {/* Indicateurs de pagination */}

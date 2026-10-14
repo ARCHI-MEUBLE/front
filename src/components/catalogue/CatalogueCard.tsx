@@ -32,7 +32,7 @@ export function CatalogueCard({
     <article className="flex flex-col gap-3.5">
       <Link
         href={`/catalogue/${item.id}`}
-        className="relative block overflow-hidden rounded bg-[#ECE9E1]"
+        className="relative block overflow-hidden rounded bg-am-mist/25"
         style={{ aspectRatio: "1/1" }}
       >
         {image && (
@@ -48,16 +48,16 @@ export function CatalogueCard({
       </Link>
       <div className="grid items-start gap-x-3 gap-y-1" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-[#5F5B53]">
+          <span className="font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-black/70">
             {item.category}
           </span>
-          <h3 className="m-0 font-[Geist] text-[19px] font-medium tracking-[-0.03em] text-[#161513]">
+          <h3 className="m-0 font-[Geist] text-[19px] font-medium tracking-[-0.03em] text-black">
             <Link href={`/catalogue/${item.id}`} className="underline decoration-transparent underline-offset-4 hover:decoration-current">
               {item.name}
             </Link>
           </h3>
-          <p className="m-0 text-[14px] text-[#5F5B53]">{item.description}</p>
-          <span className="mt-1.5 text-[17px] font-medium text-[#161513]">
+          <p className="m-0 text-[14px] text-black/70">{item.description}</p>
+          <span className="mt-1.5 text-[17px] font-medium text-black">
             {Number(item.unit_price).toFixed(0)} €
           </span>
           {variations.length > 0 && (
@@ -69,9 +69,9 @@ export function CatalogueCard({
                   title={variation.color_name}
                   onClick={() => onSelectVariation(index)}
                   className={`h-6 w-6 rounded-full border-2 bg-cover bg-center ${
-                    index === activeIndex ? "border-[#161513]" : "border-transparent"
+                    index === activeIndex ? "border-black" : "border-transparent"
                   }`}
-                  style={{ backgroundImage: variation.image_url ? `url(${variation.image_url})` : undefined, backgroundColor: "#ECE9E1" }}
+                  style={{ backgroundImage: variation.image_url ? `url(${variation.image_url})` : undefined, backgroundColor: "color-mix(in srgb, var(--am-mist) 30%, transparent)" }}
                 />
               ))}
             </div>
@@ -81,7 +81,7 @@ export function CatalogueCard({
           type="button"
           aria-label={`Ajouter au panier : ${item.name}`}
           onClick={onAddToCart}
-          className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-[#161513] bg-[#D4FF3A] text-[20px] leading-none text-[#161513] transition-transform duration-200 hover:-translate-y-0.5"
+          className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-black bg-am-mist text-[20px] leading-none text-black transition-transform duration-200 hover:-translate-y-0.5"
         >
           +
         </button>

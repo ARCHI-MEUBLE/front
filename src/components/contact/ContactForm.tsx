@@ -10,7 +10,7 @@ const SUBJECTS = [
 ];
 
 const INPUT_CLASS =
-  "min-h-[52px] w-full rounded-xl border border-[#161513] bg-[#FBFDF1] px-4 py-3.5 text-[17px] text-[#161513] outline-none";
+  "min-h-[52px] w-full rounded-xl border border-black bg-white px-4 py-3.5 text-[17px] text-black outline-none";
 
 export type ContactFormData = {
   name: string;
@@ -37,7 +37,7 @@ export function ContactForm({
     <form onSubmit={onSubmit} className="flex flex-col gap-[22px]">
       <fieldset className="m-0 border-0 p-0">
         <legend
-          className="mb-4 font-[Geist] font-semibold leading-[1.05] tracking-[-0.04em] text-[#161513]"
+          className="mb-4 font-[Geist] font-semibold leading-[1.05] tracking-[-0.04em] text-black"
           style={{ fontSize: "clamp(26px,2.6vw,38px)" }}
         >
           Type de projet
@@ -51,8 +51,8 @@ export function ContactForm({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => onChange("subject", subject.value)}
-                className={`min-h-[52px] rounded-full border-[1.5px] border-[#161513] px-6 py-3 text-[16px] ${
-                  isActive ? "bg-[#161513] font-semibold text-[#F7F6F2]" : "bg-transparent font-normal text-[#161513]"
+                className={`min-h-[52px] rounded-full border-[1.5px] border-black px-6 py-3 text-[16px] ${
+                  isActive ? "bg-am-navy font-semibold text-white" : "bg-transparent font-normal text-black"
                 }`}
               >
                 {subject.label}
@@ -122,7 +122,7 @@ export function ContactForm({
       <button
         type="submit"
         disabled={isLoading}
-        className="min-h-[56px] self-start rounded-full bg-[#161513] px-8 py-4 text-[16px] font-semibold text-[#F7F6F2] disabled:opacity-60"
+        className="min-h-[56px] self-start rounded-full bg-am-navy px-8 py-4 text-[16px] font-semibold text-white disabled:opacity-60"
       >
         {isLoading ? "Envoi en cours..." : "Envoyer ma demande →"}
       </button>

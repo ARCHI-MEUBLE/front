@@ -22,7 +22,7 @@ export function CataloguePagination({
         type="button"
         disabled={currentPage === 1}
         onClick={() => onPageChange(currentPage - 1)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E2D9] bg-white text-[#161513] disabled:opacity-30"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-black/15 bg-white text-black disabled:opacity-30"
       >
         ←
       </button>
@@ -33,8 +33,8 @@ export function CataloguePagination({
           onClick={() => onPageChange(page)}
           className={`flex h-11 w-11 items-center justify-center rounded-full font-[Geist_Mono] text-[14px] ${
             page === currentPage
-              ? "border border-[#161513] bg-[#D4FF3A] text-[#161513]"
-              : "border border-[#E5E2D9] bg-white text-[#161513]"
+              ? "border border-black bg-am-mist text-black"
+              : "border border-black/15 bg-white text-black"
           }`}
         >
           {page}
@@ -44,7 +44,7 @@ export function CataloguePagination({
         type="button"
         disabled={currentPage === totalPages}
         onClick={() => onPageChange(currentPage + 1)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E2D9] bg-white text-[#161513] disabled:opacity-30"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-black/15 bg-white text-black disabled:opacity-30"
       >
         →
       </button>

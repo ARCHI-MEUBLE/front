@@ -5,7 +5,7 @@ import { Reviews } from "@/components/Reviews";
 
 export default function AvisPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-bg-light text-text-primary">
+    <div className="flex min-h-screen flex-col bg-am-paper text-text-primary">
       <Head>
         <title>Avis — ArchiMeuble</title>
         <meta name="description" content="Avis clients sur ArchiMeuble" />

@@ -757,36 +757,32 @@ function Furniture({
             uniqueLeftRows.get(key)!.push(cell);
         });
 
+        // Montant latéral découpé par rangée : chaque morceau couvre aussi la moitié de l'étagère qui le sépare
+        // de ses voisins (sinon un vide de l'épaisseur d'une planche apparaît entre deux morceaux)
+        const sideSegmentBounds = (rows: GridCell[]) =>
+            rows.map((cell, index) => {
+                const cellTop = cell.y + cell.height / 2;
+                const cellBottom = cell.y - cell.height / 2;
+                const above = rows[index - 1];
+                const below = rows[index + 1];
+                const top = above ? (cellTop + (above.y - above.height / 2)) / 2 : cellTop + thickness;
+                const bottom = below
+                    ? (cellBottom + (below.y + below.height / 2)) / 2
+                    : cellBottom - Math.max(thickness, cellBottom - yOffset + 0.001);
+                return { y: (top + bottom) / 2, height: top - bottom };
+            });
+
         const sortedLeftRows = Array.from(uniqueLeftRows.entries())
             .sort(([keyA], [keyB]) => keyB - keyA);
 
         if (sortedLeftRows.length > 1) {
-            sortedLeftRows.forEach(([, cells], index) => {
-                const cell = cells[0];
-                const isTopmost = index === 0;
-                const isBottommost = index === sortedLeftRows.length - 1;
-
-                let segY = cell.y;
-                let segHeight = cell.height;
-
-                if (isTopmost) {
-                    segHeight += thickness;
-                    segY += thickness / 2;
-                }
-                if (isBottommost) {
-                    const cellBottom = cell.y - cell.height / 2;
-                    const gapToBottom = cellBottom - yOffset;
-                    const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
-                    segHeight += extensionBottom;
-                    segY -= extensionBottom / 2;
-                }
-
+            sideSegmentBounds(sortedLeftRows.map(([, cells]) => cells[0])).forEach(({ y, height }, index) => {
                 leftSegments.push({
                     id: `panel-left-${index}`,
                     x: -w / 2 + thickness / 2,
-                    y: segY,
+                    y,
                     width: thickness,
-                    height: segHeight
+                    height
                 });
             });
         } else {
@@ -815,32 +811,13 @@ function Furniture({
             .sort(([keyA], [keyB]) => keyB - keyA);
 
         if (sortedRightRows.length > 1) {
-            sortedRightRows.forEach(([, cells], index) => {
-                const cell = cells[0];
-                const isTopmost = index === 0;
-                const isBottommost = index === sortedRightRows.length - 1;
-
-                let segY = cell.y;
-                let segHeight = cell.height;
-
-                if (isTopmost) {
-                    segHeight += thickness;
-                    segY += thickness / 2;
-                }
-                if (isBottommost) {
-                    const cellBottom = cell.y - cell.height / 2;
-                    const gapToBottom = cellBottom - yOffset;
-                    const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
-                    segHeight += extensionBottom;
-                    segY -= extensionBottom / 2;
-                }
-
+            sideSegmentBounds(sortedRightRows.map(([, cells]) => cells[0])).forEach(({ y, height }, index) => {
                 rightSegments.push({
                     id: `panel-right-${index}`,
                     x: w / 2 - thickness / 2,
-                    y: segY,
+                    y,
                     width: thickness,
-                    height: segHeight
+                    height
                 });
             });
         } else {
@@ -1259,7 +1236,15 @@ function Furniture({
                         </mesh>
                     );
                 } else {
-                    if (showDecorations) {
+                    // Pas de décoration posée sur une étagère retirée avec l'outil planches : elle flotterait
+                    const cellBottom = y - height / 2;
+                    const restsOnRemovedShelf = panelSegments.separatorSegments.some((segment) =>
+                        segment.orientation === 'horizontal' &&
+                        deletedPanelIds.has(segment.id) &&
+                        Math.abs(segment.y + thickness / 2 - cellBottom) < 0.01 &&
+                        Math.abs(segment.x - x) < segment.width / 2
+                    );
+                    if (showDecorations && !restsOnRemovedShelf) {
                         items.push(
                             <group key={`${zone.id}-deco`} position={[x, y - height/2 + thickness/2, z]}>
                                 <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
@@ -1381,6 +1366,7 @@ function Furniture({
         parseZone(rootZone, 0, sideHeight/2 + yOffset, 0, w - (thickness * 2), sideHeight - (thickness * 2));
         return items;
     }, [
+        panelSegments, deletedPanelIds,
         rootZone, w, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess, d,
         finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,

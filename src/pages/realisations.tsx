@@ -60,7 +60,7 @@ export default function RealisationsPage() {
     selectedCategory === "all" ? realisations : realisations.filter((r) => r.categorie === selectedCategory);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>Nos Réalisations — ArchiMeuble</title>
         <meta

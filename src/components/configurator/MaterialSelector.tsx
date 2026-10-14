@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { SampleType, SampleColor } from '@/lib/apiClient';
+import ColorCheckBadge from './ColorCheckBadge';
 
 // Composant pour afficher une couleur avec fallback si l'image ne charge pas
 function ColorSwatch({ color, size = 'md' }: { color: SampleColor; size?: 'sm' | 'md' | 'lg' | 'fill' }) {
@@ -155,7 +156,9 @@ export default function MaterialSelector({
   const activeDefinition = COMPONENT_DEFINITIONS.find((c) => c.key === active)!;
   const activeColor = palette.find((c) => isSameColor(componentColors[active], c));
 
-  const swatchButton = (component: ColorComponent, color: SampleColor) => {
+  // Pastille de couleur : la couleur choisie est entourée de bleu et porte une coche, sans être assombrie.
+  // Le nom s'affiche dessous quand la place le permet (sur téléphone, la palette est trop serrée)
+  const swatchButton = (component: ColorComponent, color: SampleColor, showName = false) => {
     const isSelected = isSameColor(componentColors[component], color);
     return (
       <button
@@ -164,19 +167,22 @@ export default function MaterialSelector({
         onClick={() => onComponentColorChange(component, color)}
         aria-pressed={isSelected}
         aria-label={color.name || 'Couleur'}
-        className={`relative aspect-square overflow-hidden border-2 p-0.5 transition-all ${
-          isSelected ? 'border-[#1A1917] ring-2 ring-[#1A1917] ring-offset-1' : 'border-[#E8E6E3] hover:border-[#1A1917]'
-        }`}
-        style={{ borderRadius: '2px' }}
         title={color.name || 'Sans nom'}
+        className="group flex min-w-0 flex-col gap-1.5 text-left"
       >
-        <ColorSwatch color={color} size="fill" />
-        {isSelected && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <svg className="h-4 w-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
+        <div
+          className={`relative aspect-square border-2 p-0.5 transition-all ${
+            isSelected ? 'border-[#2196F3] ring-4 ring-[#2196F3]/15' : 'border-[#E8E6E3] group-hover:border-[#1A1917]'
+          }`}
+          style={{ borderRadius: '2px' }}
+        >
+          <ColorSwatch color={color} size="fill" />
+          {isSelected && <ColorCheckBadge />}
+        </div>
+        {showName && (
+          <span className={`line-clamp-2 text-[11px] leading-tight ${isSelected ? 'font-medium text-[#1A1917]' : 'text-[#706F6C]'}`}>
+            {color.name || 'Sans nom'}
+          </span>
         )}
       </button>
     );
@@ -231,15 +237,16 @@ export default function MaterialSelector({
                 const isActive = active === key;
                 const entry = componentColors[key];
                 return (
+                  // La partie en cours de réglage est cerclée de bleu, comme la palette qui lui correspond dessous
                   <button
                     key={key}
                     type="button"
                     onClick={() => setActiveComponent(key)}
                     aria-pressed={isActive}
-                    className={`flex items-center gap-2 border p-2 text-left transition-all ${
+                    className={`flex items-center gap-2 border p-2 text-left text-[#1A1917] transition-all ${
                       isActive
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                        : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                        ? 'border-[#2196F3] bg-[#EAF4FE] ring-1 ring-[#2196F3]'
+                        : 'border-[#E8E6E3] bg-white hover:border-[#1A1917]'
                     }`}
                     style={{ borderRadius: '2px' }}
                   >
@@ -249,20 +256,22 @@ export default function MaterialSelector({
                         <span className="text-sm">{icon}</span>
                         <span className="truncate text-xs font-medium">{label}</span>
                       </div>
-                      <p className={`truncate text-[10px] ${isActive ? 'text-white/70' : 'text-[#706F6C]'}`}>{colorName(entry)}</p>
+                      <p className="truncate text-[10px] text-[#706F6C]">{colorName(entry)}</p>
                     </div>
                   </button>
                 );
               })}
             </div>
 
-            <div className="border border-[#1A1917] bg-white p-4" style={{ borderRadius: '2px' }}>
-              <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="border border-[#2196F3] bg-white p-4" style={{ borderRadius: '2px' }}>
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{activeDefinition.icon}</span>
                   <div>
                     <h4 className="text-sm font-medium text-[#1A1917]">{activeDefinition.label}</h4>
-                    <p className="text-xs text-[#706F6C]">{activeDefinition.desc}</p>
+                    <p className="text-xs text-[#706F6C]">
+                      {activeDefinition.desc} · <span className="font-medium text-[#1A1917]">{colorName(componentColors[active])}</span>
+                    </p>
                   </div>
                 </div>
                 {activeColor && (
@@ -275,8 +284,8 @@ export default function MaterialSelector({
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6">
-                {palette.map((color) => swatchButton(active, color))}
+              <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 md:grid-cols-5">
+                {palette.map((color) => swatchButton(active, color, true))}
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@ function Stars({ rating, size }: { rating: number; size: number }) {
             width: size,
             height: size,
             fontSize: size * 0.65,
-            background: i < Math.floor(rating) ? "#00B67A" : "#DCDCE6",
+            background: i < Math.floor(rating) ? "var(--am-red)" : "rgba(0,0,0,0.15)",
           }}
         >
           ★
@@ -43,23 +43,23 @@ export function AvisHero({
     >
       <div className="grid grid-cols-1 items-center gap-[clamp(48px,6vw,96px)] lg:grid-cols-2">
         <div className="flex flex-col items-start gap-7">
-          <span className="rounded-lg bg-[#161513] px-3 py-[7px] text-[14px] font-medium text-[#F7F6F2]">
+          <span className="rounded-lg bg-am-navy px-3 py-[7px] text-[14px] font-medium text-white">
             Avis clients
           </span>
           <h1
             id="avis-page-title"
-            className="m-0 font-[Geist] font-medium leading-[0.94] tracking-[-0.055em] text-[#161513]"
+            className="m-0 font-[Geist] font-medium leading-[0.94] tracking-[-0.055em] text-black"
             style={{ fontSize: "clamp(48px,6.6vw,104px)" }}
           >
-            Ils nous font <span className="rounded-[0.08em] bg-[#D4FF3A] px-[0.12em]">confiance.</span>
+            Ils nous font <span className="am-highlight">confiance.</span>
           </h1>
           <div className="flex flex-wrap items-center gap-3.5">
-            <span className="text-[48px] font-semibold leading-none tracking-[-0.04em] text-[#161513]">
+            <span className="text-[48px] font-semibold leading-none tracking-[-0.04em] text-black">
               {avgRating.toFixed(1).replace(".", ",")}
             </span>
             <Stars rating={avgRating} size={32} />
           </div>
-          <p className="m-0 max-w-[42ch] text-[#3B3832]" style={{ fontSize: "clamp(17px,1.4vw,20px)" }}>
+          <p className="m-0 max-w-[42ch] text-black/85" style={{ fontSize: "clamp(17px,1.4vw,20px)" }}>
             Avis clients de la métropole lilloise
           </p>
           <div className="flex flex-wrap gap-2.5">
@@ -74,7 +74,7 @@ export function AvisHero({
 
         <div className="relative mx-auto w-full max-w-[600px]" style={{ aspectRatio: "1/1.02", containerType: "inline-size" }}>
           <div
-            className="absolute left-0 overflow-hidden rounded-[22px] bg-[#ECE9E1]"
+            className="absolute left-0 overflow-hidden rounded-[22px] bg-am-mist/25"
             style={{ top: "6%", width: "68%", height: "84%" }}
           >
             <Image
@@ -82,15 +82,16 @@ export function AvisHero({
               alt=""
               fill
               unoptimized
+              loading="eager"
               className="object-cover"
             />
           </div>
 
           <div
-            className="absolute flex items-center gap-2 rounded-md bg-[#D4FF3A] shadow-[0_0_0_1px_rgba(22,21,19,0.06),0_16px_40px_-12px_rgba(22,21,19,0.22)]"
+            className="absolute flex items-center gap-2 rounded-md bg-am-mist shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_16px_40px_-12px_rgba(0,0,0,0.22)]"
             style={{ left: "-3%", top: "12%", padding: "2.4cqi 3.4cqi" }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#161513" strokeWidth={1.8} strokeLinejoin="round" style={{ width: "4.4cqi", height: "4.4cqi" }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth={1.8} strokeLinejoin="round" style={{ width: "4.4cqi", height: "4.4cqi" }}>
               <path d="M4 5h16v11H9l-5 4z" />
             </svg>
             <span className="whitespace-nowrap font-semibold tracking-[-0.03em]" style={{ fontSize: "clamp(14px,4cqi,24px)" }}>
@@ -99,7 +100,7 @@ export function AvisHero({
           </div>
 
           <div
-            className="absolute right-0 top-0 flex flex-col gap-[2.4cqi] rounded-md bg-white shadow-[0_0_0_1px_rgba(22,21,19,0.06),0_16px_40px_-12px_rgba(22,21,19,0.22)]"
+            className="absolute right-0 top-0 flex flex-col gap-[2.4cqi] rounded-md bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_16px_40px_-12px_rgba(0,0,0,0.22)]"
             style={{ width: "38%", padding: "3.4cqi 3.6cqi" }}
           >
             <div className="flex items-start justify-between gap-[2cqi]">
@@ -108,12 +109,12 @@ export function AvisHero({
               </span>
               <span className="flex flex-col items-end gap-[1cqi] pt-[0.6cqi]">
                 <Stars rating={avgRating} size={12} />
-                <span className="font-[Geist_Mono] uppercase tracking-[0.04em] text-[#5F5B53]" style={{ fontSize: "clamp(9px,1.8cqi,11px)" }}>
+                <span className="font-[Geist_Mono] uppercase tracking-[0.04em] text-black/70" style={{ fontSize: "clamp(9px,1.8cqi,11px)" }}>
                   sur 5
                 </span>
               </span>
             </div>
-            <div className="h-px bg-[#EDEBE4]" />
+            <div className="h-px bg-am-mist/25" />
             <div className="flex flex-col gap-[1.5cqi]">
               {distribution.map(({ star, percent }) => (
                 <div
@@ -121,13 +122,13 @@ export function AvisHero({
                   className="grid items-center gap-[1.6cqi]"
                   style={{ gridTemplateColumns: "auto minmax(0,1fr) 3.2em", fontSize: "clamp(10px,2.1cqi,12px)" }}
                 >
-                  <span className="whitespace-nowrap text-[#161513]">
-                    {star} <span className="text-[#00B67A]">★</span>
+                  <span className="whitespace-nowrap text-black">
+                    {star} <span className="text-am-red">★</span>
                   </span>
-                  <span className="h-1 bg-[#EDEBE4]">
-                    <span className="block h-full bg-[#00B67A]" style={{ width: `${percent}%` }} />
+                  <span className="h-1 bg-am-mist/25">
+                    <span className="block h-full bg-am-red" style={{ width: `${percent}%` }} />
                   </span>
-                  <span className="text-right font-[Geist_Mono] text-[#5F5B53]">{percent}%</span>
+                  <span className="text-right font-[Geist_Mono] text-black/70">{percent}%</span>
                 </div>
               ))}
             </div>
@@ -135,11 +136,11 @@ export function AvisHero({
 
           {featured && (
             <div
-              className="absolute right-0 flex flex-col gap-[2cqi] rounded-md bg-white p-[3.4cqi] shadow-[0_0_0_1px_rgba(22,21,19,0.06),0_16px_40px_-12px_rgba(22,21,19,0.22)]"
+              className="absolute right-0 flex flex-col gap-[2cqi] rounded-md bg-white p-[3.4cqi] shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_16px_40px_-12px_rgba(0,0,0,0.22)]"
               style={{ top: "52%", width: "42%" }}
             >
               <Stars rating={featured.rating} size={16} />
-              <p className="m-0 leading-[1.4] text-[#161513]" style={{ fontSize: "clamp(12px,2.7cqi,16px)" }}>
+              <p className="m-0 leading-[1.4] text-black" style={{ fontSize: "clamp(12px,2.7cqi,16px)" }}>
                 « {featured.text} »
               </p>
               <div className="flex items-center gap-[1.8cqi]">
@@ -153,7 +154,7 @@ export function AvisHero({
                 <span className="leading-[1.25]" style={{ fontSize: "clamp(11px,2.4cqi,14px)" }}>
                   <strong className="font-semibold">{featured.authorName}</strong>
                   {featured.city && <br />}
-                  {featured.city && <span className="text-[#5F5B53]">{featured.city}</span>}
+                  {featured.city && <span className="text-black/70">{featured.city}</span>}
                 </span>
               </div>
             </div>
