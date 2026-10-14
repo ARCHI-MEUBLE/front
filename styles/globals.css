@@ -499,22 +499,9 @@ h4,
 @media (prefers-reduced-motion: reduce) {
   .home-marquee-products,
   .home-marquee-up,
-  .home-marquee-down,
-  .home-fade-slide {
+  .home-marquee-down {
     animation: none;
   }
-}
-
-@keyframes home-fade-cycle {
-  0% { opacity: 1; }
-  16% { opacity: 1; }
-  20% { opacity: 0; }
-  96% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.home-fade-slide {
-  animation: home-fade-cycle 18000ms infinite;
 }
 
 /* Surlignage bleu des titres : la bande reste dans la hauteur de ligne, sinon elle mord sur la ligne du dessus quand le titre passe à la ligne */

@@ -4,7 +4,6 @@ import { Footer } from "@/components/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { ProductsMarquee } from "@/components/home/ProductsMarquee";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
-import { ProcessSection } from "@/components/home/ProcessSection";
 import { ServiceAreaSection } from "@/components/home/ServiceAreaSection";
 import { FaqSection } from "@/components/home/FaqSection";
 import { FinalCtaSection } from "@/components/home/FinalCtaSection";
@@ -29,7 +28,6 @@ export default function HomePage() {
         <ProductsMarquee />
         <ColorsAndFinishesSection />
         <WhyChooseUs />
-        <ProcessSection />
         <QuoteRequestCTA />
         <TestimonialsSection />
         <ServiceAreaSection />
