@@ -22,10 +22,10 @@ export function AppointmentPanel({
       <div className="flex flex-col gap-3">
         {BENEFITS.map((benefit) => (
           <div key={benefit} className="flex items-center gap-3">
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#D4FF3A]">
-              <Check className="h-3.5 w-3.5 text-[#161513]" />
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-am-paper">
+              <Check className="h-3.5 w-3.5 text-black" />
             </span>
-            <span className="text-[15px] text-[#161513]">{benefit}</span>
+            <span className="text-[15px] text-black">{benefit}</span>
           </div>
         ))}
       </div>
@@ -36,14 +36,14 @@ export function AppointmentPanel({
           <button
             type="button"
             onClick={() => onTypeChange("phone")}
-            className={`flex flex-1 items-center gap-3 rounded-xl border-[1.5px] border-[#161513] p-4 text-left ${
-              appointmentType === "phone" ? "bg-[#161513] text-[#F7F6F2]" : "bg-[#FBFDF1] text-[#161513]"
+            className={`flex flex-1 items-center gap-3 rounded-xl border-[1.5px] border-black p-4 text-left ${
+              appointmentType === "phone" ? "bg-am-navy text-white" : "bg-white text-black"
             }`}
           >
             <Phone className="h-5 w-5" strokeWidth={1.5} />
             <span>
               <span className="block font-medium">Téléphone</span>
-              <span className={`block text-[13px] ${appointmentType === "phone" ? "text-[#CFCBC0]" : "text-[#5F5B53]"}`}>
+              <span className={`block text-[13px] ${appointmentType === "phone" ? "text-white/70" : "text-black/70"}`}>
                 30 min
               </span>
             </span>
@@ -51,14 +51,14 @@ export function AppointmentPanel({
           <button
             type="button"
             onClick={() => onTypeChange("visio")}
-            className={`flex flex-1 items-center gap-3 rounded-xl border-[1.5px] border-[#161513] p-4 text-left ${
-              appointmentType === "visio" ? "bg-[#161513] text-[#F7F6F2]" : "bg-[#FBFDF1] text-[#161513]"
+            className={`flex flex-1 items-center gap-3 rounded-xl border-[1.5px] border-black p-4 text-left ${
+              appointmentType === "visio" ? "bg-am-navy text-white" : "bg-white text-black"
             }`}
           >
             <Video className="h-5 w-5" strokeWidth={1.5} />
             <span>
               <span className="block font-medium">Visioconférence</span>
-              <span className={`block text-[13px] ${appointmentType === "visio" ? "text-[#CFCBC0]" : "text-[#5F5B53]"}`}>
+              <span className={`block text-[13px] ${appointmentType === "visio" ? "text-white/70" : "text-black/70"}`}>
                 45 min
               </span>
             </span>
@@ -72,8 +72,8 @@ export function AppointmentPanel({
         ) : (
           <div className="flex h-full min-h-[500px] items-center justify-center p-10 text-center">
             <div>
-              <p className="m-0 text-[#161513]">Calendrier de réservation bientôt disponible.</p>
-              <p className="m-0 mt-2 text-[14px] text-[#5F5B53]">
+              <p className="m-0 text-black">Calendrier de réservation bientôt disponible.</p>
+              <p className="m-0 mt-2 text-[14px] text-black/70">
                 En attendant, contactez-nous par téléphone ou email.
               </p>
             </div>

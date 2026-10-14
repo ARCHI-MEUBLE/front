@@ -88,7 +88,7 @@ export default function ContactRequestPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>Contact — ArchiMeuble</title>
         <meta
@@ -108,18 +108,18 @@ export default function ContactRequestPage() {
           </Link>
 
           <div
-            className="grid grid-cols-1 gap-[clamp(40px,6vw,96px)] overflow-hidden rounded-3xl bg-[#EAF4C4] lg:grid-cols-2"
+            className="grid grid-cols-1 gap-[clamp(40px,6vw,96px)] overflow-hidden rounded-3xl bg-am-mist lg:grid-cols-2"
             style={{ padding: "clamp(28px,6vw,88px) clamp(20px,6vw,88px) 0" }}
           >
             <div className="flex min-w-0 flex-col gap-6">
               <h1
                 id="contact-title"
-                className="m-0 max-w-[13ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
+                className="m-0 max-w-[13ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
                 style={{ fontSize: "clamp(44px,6vw,92px)" }}
               >
                 Comment pouvons-nous vous aider ?
               </h1>
-              <p className="m-0 max-w-[36ch] text-[#161513]" style={{ fontSize: "clamp(17px,1.4vw,20px)", lineHeight: 1.45 }}>
+              <p className="m-0 max-w-[36ch] text-black" style={{ fontSize: "clamp(17px,1.4vw,20px)", lineHeight: 1.45 }}>
                 Envoyez-nous un message ou réservez directement un créneau pour une consultation gratuite.
               </p>
               <div className="relative mt-6 min-h-[360px] flex-1">
@@ -138,7 +138,7 @@ export default function ContactRequestPage() {
               <DevisInterlocutorCard />
 
               {success ? (
-                <p className="m-0 text-[17px] text-[#161513]">
+                <p className="m-0 text-[17px] text-black">
                   Message envoyé ! Nous vous répondrons dans les plus brefs délais. Redirection automatique...
                 </p>
               ) : (

@@ -10,13 +10,12 @@ import { FaqSection } from "@/components/home/FaqSection";
 import { FinalCtaSection } from "@/components/home/FinalCtaSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
 import { QuoteRequestCTA } from "@/components/home/QuoteRequestCTA";
-import { ConfiguratorDemoSection } from "@/components/home/ConfiguratorDemoSection";
 import { ColorsAndFinishesSection } from "@/components/home/ColorsAndFinishesSection";
 import { ContactUniqueSection } from "@/components/shared/ContactUniqueSection";
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-[#F7F6F2] font-[Geist]">
+    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-am-paper font-[Geist]">
       <Head>
         <title>Archimeuble | Menuisier sur mesure a Lille</title>
         <meta
@@ -28,7 +27,6 @@ export default function HomePage() {
       <main className="flex flex-1 flex-col">
         <HeroSection />
         <ProductsMarquee />
-        <ConfiguratorDemoSection />
         <ColorsAndFinishesSection />
         <WhyChooseUs />
         <ProcessSection />

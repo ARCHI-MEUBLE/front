@@ -56,6 +56,13 @@ const config = {
           ring: "hsl(var(--sidebar-ring))",
         },
 
+        // Palette du site, définie dans styles/globals.css
+        'am-navy': 'var(--am-navy)',
+        'am-mist': 'var(--am-mist)',
+        'am-red': 'var(--am-red)',
+        'am-wine': 'var(--am-wine)',
+        'am-paper': 'var(--am-paper)',
+
         // Custom ArchiMeuble colors (kept for backward compatibility)
         cream: '#FAF9F7',
         white: '#FFFFFF',

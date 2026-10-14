@@ -3210,7 +3210,7 @@ export default function ConfiguratorPage() {
                       <button
                         type="button"
                         onClick={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
-                        className="bg-[#D4FF3A] px-5 py-2.5 text-xs font-medium text-[#161513] transition-colors hover:bg-[#C4EF2A]"
+                        className="bg-am-mist px-5 py-2.5 text-xs font-medium text-black transition-colors hover:bg-am-red hover:text-white"
                         style={{ borderRadius: '2px' }}
                       >
                         Valider la configuration
