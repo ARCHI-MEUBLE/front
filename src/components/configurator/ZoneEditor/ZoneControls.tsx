@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Sparkles, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { Zone, ZoneContent, HandleType } from './types';
 import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
@@ -560,7 +560,6 @@ function DivisionStepper({
 const STORAGE_OPTIONS = [
   { id: 'drawer' as ZoneContent, icon: Archive, label: 'Tiroir', desc: 'Avec poignée' },
   { id: 'push_drawer' as ZoneContent, icon: BoxSelect, label: 'Tiroir Push', desc: 'Sans poignée' },
-  { id: 'glass_shelf' as ZoneContent, icon: Square, label: 'Étagère verre', desc: 'Transparente' },
 ];
 
 const DOOR_OPTIONS = [
@@ -568,7 +567,6 @@ const DOOR_OPTIONS = [
   { id: 'door_right' as ZoneContent, icon: DoorClosed, label: 'Porte droite', desc: 'Une seule porte' },
   { id: 'door_double' as ZoneContent, icon: DoorClosed, label: 'Double porte', desc: 'Deux portes' },
   { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
-  { id: 'mirror_door' as ZoneContent, icon: Sparkles, label: 'Porte vitrée', desc: 'Vitrage transparent', needsSideChoice: true, dialogType: 'mirror' as const },
 ];
 
 const HANDLE_OPTIONS = [
@@ -607,10 +605,10 @@ export default function ZoneControls({
   const show = (section: ZoneControlSection) => visibleSections.includes(section);
   const isMultiSelection = selectedZoneIds.length > 1;
 
-  // Choix du côté d'ouverture pour les portes Push / vitrées
+  // Choix du côté d'ouverture pour les portes Push
   const [doorSideDialog, setDoorSideDialog] = useState<{
     isOpen: boolean;
-    doorType: 'push' | 'mirror' | null;
+    doorType: 'push' | null;
   }>({ isOpen: false, doorType: null });
 
   const facade = getZoneFacade(selectedZone);
@@ -658,11 +656,7 @@ export default function ZoneControls({
   };
 
   const handleDoorSideChoice = (side: 'left' | 'right') => {
-    const contentId = doorSideDialog.doorType === 'push'
-      ? (side === 'left' ? 'push_door' : 'push_door_right')
-      : (side === 'left' ? 'mirror_door' : 'mirror_door_right');
-
-    applyFacade(contentId as ZoneContent);
+    applyFacade(side === 'left' ? 'push_door' : 'push_door_right');
     setDoorSideDialog({ isOpen: false, doorType: null });
   };
 
@@ -800,11 +794,7 @@ export default function ZoneControls({
           {doorSideDialog.isOpen && (
             <div className="mt-3 border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '2px' }}>
               <p className="mb-1 text-sm font-medium text-[#1A1917]">Côté d&apos;ouverture</p>
-              <p className="mb-3 text-xs text-[#706F6C]">
-                {doorSideDialog.doorType === 'push'
-                  ? "Choisissez le côté d'ouverture de la porte Push"
-                  : "Choisissez le côté d'ouverture de la porte vitrée"}
-              </p>
+              <p className="mb-3 text-xs text-[#706F6C]">Choisissez le côté d&apos;ouverture de la porte Push</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -841,10 +831,10 @@ export default function ZoneControls({
       {show('storage') && (
         isLeaf ? (
           <div>
-            <SectionLabel hint="Un tiroir ou une étagère remplace la porte de ce compartiment.">
+            <SectionLabel hint="Un tiroir remplace la porte de ce compartiment.">
               Tiroirs & rangements
             </SectionLabel>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
               {STORAGE_OPTIONS.map(({ id, icon, label, desc }) => (
                 <OptionTile
                   key={id}
