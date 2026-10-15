@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DIMENSION_LIMITS } from '@/lib/configurator/constraints';
 
+/* ****************************************
+ * 
+ * A panel for adjusting the dimensions.
+ * It includes inputs for width, depth, and height, each with a slider and a text input.
+ *
+ * 
+ * ******************************************/
 interface DimensionInputProps {
   label: string;
   value: number;

@@ -1,3 +1,10 @@
+/* ****************************************
+ * 
+ * Navigation between the steps of the configurator.
+ * 
+ * ******************************************/
+
+
 import { Check } from 'lucide-react';
 import type { ConfigStep, StepDefinition } from './steps';
 

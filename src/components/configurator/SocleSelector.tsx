@@ -1,3 +1,10 @@
+/* ****************************************
+ * 
+ * Socle and foot selection.
+ *
+ * 
+ * ******************************************/
+
 interface SocleSelectorProps {
   value: string;
   onChange: (value: string) => void;

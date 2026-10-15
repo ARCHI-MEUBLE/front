@@ -1,3 +1,9 @@
+/* ****************************************
+ * 
+ * Selection for mounting type.
+ *
+ * 
+ * ******************************************/
 export type MountingStyle = 'applique' | 'encastre';
 
 interface MountingStyleSelectorProps {

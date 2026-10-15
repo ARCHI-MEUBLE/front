@@ -472,7 +472,7 @@ function ToggleRow({
 }
 
 // Compteur − / + avec curseur (comme Pickawood) : le maximum vient de la taille minimale d'une case
-function DivisionStepper({
+export function DivisionStepper({
   icon: Icon,
   label,
   value,
