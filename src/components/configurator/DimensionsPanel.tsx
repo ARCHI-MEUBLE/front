@@ -58,7 +58,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-medium text-[#1A1917]">{label}</label>
+        <label className="text-[11px] font-medium text-black">{label}</label>
         <div className="flex items-center gap-1.5">
           <input
             type="text"
@@ -67,10 +67,10 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
-            className="w-14 border-2 border-[#E8E6E3] bg-white px-1.5 py-0.5 text-right font-mono text-[11px] text-[#1A1917] outline-none transition-colors hover:border-[#1A1917] focus:border-[#1A1917]"
+            className="w-14 border-2 border-black/10 bg-white px-1.5 py-0.5 text-right font-mono text-[11px] text-black outline-none transition-colors hover:border-am-navy focus:border-am-navy"
             style={{ borderRadius: '2px' }}
           />
-          <span className="text-[10px] text-[#706F6C]">{unit}</span>
+          <span className="text-[10px] text-black/65">{unit}</span>
         </div>
       </div>
 
@@ -85,18 +85,18 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           className="dimension-slider w-full"
         />
         <div
-          className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 bg-[#1A1917]"
+          className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 bg-am-navy"
           style={{ width: `${percentage}%`, borderRadius: '2px' }}
         />
       </div>
-      {hint && <p className="text-[10px] text-[#706F6C]">{hint}</p>}
+      {hint && <p className="text-[10px] text-black/65">{hint}</p>}
 
       <style jsx>{`
         .dimension-slider {
           -webkit-appearance: none;
           appearance: none;
           height: 4px;
-          background: #E8E6E3;
+          background: rgba(0, 0, 0, 0.12);
           border-radius: 2px;
           cursor: pointer;
         }
@@ -105,7 +105,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           appearance: none;
           width: 20px;
           height: 20px;
-          background: #1A1917;
+          background: var(--am-navy);
           border: 2px solid #FFFFFF;
           border-radius: 3px;
           cursor: pointer;
@@ -118,7 +118,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
         .dimension-slider::-moz-range-thumb {
           width: 20px;
           height: 20px;
-          background: #1A1917;
+          background: var(--am-navy);
           border: 2px solid #FFFFFF;
           border-radius: 3px;
           cursor: pointer;
@@ -152,9 +152,9 @@ export default function DimensionsPanel({
 }: DimensionsPanelProps) {
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions extérieures</h3>
-        <span className="font-mono text-[10px] text-[#706F6C]">{width} × {depth} × {height} mm</span>
+      <div className="flex items-center justify-between border-b border-black/10 pb-2">
+        <h3 className="font-serif text-xs text-black">Dimensions extérieures</h3>
+        <span className="font-mono text-[10px] text-black/65">{width} × {depth} × {height} mm</span>
       </div>
 
       <DimensionInput

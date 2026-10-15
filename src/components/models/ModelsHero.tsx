@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { HOME_MONO, HOME_PILL_LIME, HOME_PILL_OUTLINE, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
+import { HOME_MONO, HOME_PILL_DARK, HOME_PILL_OUTLINE, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 
 export function ModelsHero() {
   return (
@@ -14,7 +14,7 @@ export function ModelsHero() {
           <span className={`text-xs ${HOME_MONO}`}>Nos modèles sur mesure</span>
           <h1
             id="modeles-title"
-            className="m-0 font-[Geist] font-medium leading-[0.96] tracking-[-0.055em] text-black"
+            className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
             style={{ fontSize: "clamp(44px,6.2vw,96px)" }}
           >
             Fabriqués à la main,{" "}
@@ -37,7 +37,7 @@ export function ModelsHero() {
             </span>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Link href="/demande-devis" className={HOME_PILL_LIME}>
+            <Link href="/demande-devis" className={HOME_PILL_DARK}>
               Demander un devis gratuit
             </Link>
             <a href="#collection-title" className={HOME_PILL_OUTLINE}>

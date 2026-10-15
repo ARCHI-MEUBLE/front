@@ -196,7 +196,7 @@ export default function PaymentLinkPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-am-paper flex items-center justify-center">
         <div className="text-center space-y-4">
           <IconLoader className="w-12 h-12 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Chargement...</p>
@@ -207,7 +207,7 @@ export default function PaymentLinkPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-am-paper flex items-center justify-center px-4">
         <Card className="max-w-md w-full border-destructive">
           <CardHeader>
             <div className="w-12 h-12 bg-destructive/10 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -247,7 +247,7 @@ export default function PaymentLinkPage() {
         <title>Paiement sécurisé - Commande #{orderData.order.order_number}</title>
       </Head>
 
-      <div className="min-h-screen bg-background py-8 px-4 sm:py-12">
+      <div className="min-h-screen bg-am-paper py-8 px-4 sm:py-12">
         <Toaster position="top-center" />
 
         <div className="max-w-6xl mx-auto">

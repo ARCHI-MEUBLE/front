@@ -57,7 +57,7 @@ export default function PaymentConfirmation() {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-am-paper flex items-center justify-center px-4">
         <div className="text-center">
           <svg className="animate-spin h-16 w-16 text-primary mx-auto mb-6" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -71,7 +71,7 @@ export default function PaymentConfirmation() {
 
   if (paymentStatus === 'failed') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-am-paper flex items-center justify-center px-4">
         <Toaster position="top-center" />
         <div className="max-w-md w-full">
           <Card className="border-2 border-destructive">
@@ -112,7 +112,7 @@ export default function PaymentConfirmation() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-am-paper flex items-center justify-center px-4 py-12">
       <Toaster position="top-center" />
       <div className="max-w-2xl w-full">
         <Card className="border-2">

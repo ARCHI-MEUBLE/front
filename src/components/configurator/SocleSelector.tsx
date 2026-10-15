@@ -63,16 +63,16 @@ export default function SocleSelector({ value, onChange }: SocleSelectorProps) {
               aria-pressed={isActive}
               className={`flex flex-col items-center border-2 p-3 transition-all duration-200 ${
                 isActive
-                  ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                  : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                  ? 'border-am-navy bg-am-navy text-white'
+                  : 'border-black/10 bg-white text-black hover:border-am-navy'
               }`}
               style={{ borderRadius: '2px' }}
             >
-              <div className={`mb-2 h-8 w-12 ${isActive ? 'text-white' : 'text-[#1A1917]'}`}>
+              <div className={`mb-2 h-8 w-12 ${isActive ? 'text-white' : 'text-black'}`}>
                 {option.visual}
               </div>
               <span className="text-[13px] font-semibold leading-tight">{option.label}</span>
-              <span className={`mt-0.5 text-[11px] leading-tight ${isActive ? 'text-white/70' : 'text-[#706F6C]'}`}>
+              <span className={`mt-0.5 text-[11px] leading-tight ${isActive ? 'text-white/70' : 'text-black/65'}`}>
                 {option.description}
               </span>
             </button>

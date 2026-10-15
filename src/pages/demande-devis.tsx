@@ -1,7 +1,5 @@
 import { useState } from "react";
 import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -9,9 +7,12 @@ import { HOME_MONO, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { DevisFurnitureTypePicker } from "@/components/devis/DevisFurnitureTypePicker";
 import { DevisInterlocutorCard } from "@/components/devis/DevisInterlocutorCard";
 import { DevisChecklist } from "@/components/devis/DevisChecklist";
+import { FileDropzone, fileKey, isMediaFile } from "@/components/shared/FileDropzone";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 const INPUT_CLASS =
-  "min-h-[52px] w-full rounded-xl border border-black bg-white px-4 py-3.5 text-[17px] text-black outline-none";
+  "min-h-11 w-full rounded-xl border border-black bg-white px-4 py-2 text-[16px] text-black outline-none";
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim().replace(/\s+/g, " ");
@@ -29,24 +30,27 @@ export default function DemandeDevisPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", city: "", message: "" });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const selected = Array.from(e.target.files).filter((file) => {
-      const isMedia = file.type.startsWith("image/") || file.type.startsWith("video/");
-      const isUnder10MB = file.size <= 10 * 1024 * 1024;
-      if (!isMedia) {
-        setError(`${file.name} : format non supporté. Utilisez des images ou vidéos.`);
+  const addFiles = (incoming: File[]) => {
+    let rejection = "";
+    const accepted = incoming.filter((file) => {
+      if (!isMediaFile(file)) {
+        rejection = `${file.name} : format non supporté. Utilisez des images ou vidéos.`;
         return false;
       }
-      if (!isUnder10MB) {
-        setError(`${file.name} : fichier trop volumineux (max 10 Mo).`);
+      if (file.size > MAX_FILE_BYTES) {
+        rejection = `${file.name} : fichier trop volumineux (max 10 Mo).`;
         return false;
       }
       return true;
     });
-    setFiles(selected);
-    if (selected.length > 0) setError("");
+    setFiles((previous) => {
+      const known = new Set(previous.map(fileKey));
+      return [...previous, ...accepted.filter((file) => !known.has(fileKey(file)))];
+    });
+    setError(rejection);
   };
+
+  const removeFile = (index: number) => setFiles((previous) => previous.filter((_, i) => i !== index));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,20 +106,13 @@ export default function DemandeDevisPage() {
       </Head>
       <Header />
       <main className="flex-1">
-        <section
-          aria-labelledby="devis-title"
-          className={HOME_SECTION_NO_TOP}
-          style={{ paddingTop: "clamp(24px,4vw,48px)" }}
-        >
-          <Link href="/" className={`mb-4 inline-block py-2.5 text-[13px] ${HOME_MONO}`}>
-            ← Accueil
-          </Link>
-
+        {/* Tout le formulaire et les coordonnées tiennent dans l'écran */}
+        <section aria-labelledby="devis-title" className={`${HOME_SECTION_NO_TOP} pb-10 pt-4 sm:pt-6`}>
           {success ? (
-            <div className="rounded-3xl bg-am-mist p-[clamp(28px,6vw,88px)] text-center">
+            <div className="rounded-3xl bg-am-mist p-[clamp(28px,6vw,72px)] text-center">
               <h1
                 id="devis-title"
-                className="m-0 mb-3 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
+                className="m-0 mb-3 font-medium leading-[1.02] tracking-[-0.04em] text-black"
                 style={{ fontSize: "clamp(36px,5vw,64px)" }}
               >
                 Demande envoyée !
@@ -125,139 +122,123 @@ export default function DemandeDevisPage() {
               </p>
             </div>
           ) : (
-            <div
-              className="grid grid-cols-1 gap-[clamp(40px,6vw,96px)] overflow-hidden rounded-3xl bg-am-mist lg:grid-cols-2"
-              style={{ padding: "clamp(28px,6vw,88px) clamp(20px,6vw,88px) 0" }}
-            >
-              <div className="flex min-w-0 flex-col gap-6">
-                <h1
-                  id="devis-title"
-                  className="m-0 max-w-[11ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
-                  style={{ fontSize: "clamp(44px,6vw,92px)" }}
-                >
-                  Parlez-nous de votre projet.
-                </h1>
-                <p className="m-0 max-w-[34ch] text-black" style={{ fontSize: "clamp(17px,1.4vw,20px)", lineHeight: 1.45 }}>
-                  Demande de devis. Gauthier vous répond personnellement
-                </p>
-                <div className="relative mt-6 min-h-[360px] flex-1">
-                  <Image
-                    src="/images/devis-illustration.svg"
-                    alt=""
-                    aria-hidden="true"
-                    fill
-                    className="object-contain"
-                    style={{ objectPosition: "left bottom" }}
-                  />
+            <div className="grid grid-cols-1 gap-6 rounded-3xl bg-am-mist p-[clamp(20px,3vw,36px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-[clamp(32px,4vw,56px)]">
+              <div className="flex min-w-0 flex-col gap-5">
+                <div className="flex flex-col gap-3">
+                  <h1
+                    id="devis-title"
+                    className="m-0 font-medium leading-[1.02] tracking-[-0.04em] text-black"
+                    style={{ fontSize: "clamp(30px,3.2vw,46px)" }}
+                  >
+                    <span className="whitespace-nowrap">Parlez-nous</span> de votre projet.
+                  </h1>
+                  <p className="m-0 max-w-[42ch] text-[16px] leading-[1.4] text-black">
+                    Devis gratuit : Gauthier vous répond personnellement.
+                  </p>
+                </div>
+                <DevisInterlocutorCard />
+                <div className="lg:mt-auto">
+                  <DevisChecklist />
                 </div>
               </div>
 
-              <div className="flex min-w-0 flex-col gap-8" style={{ paddingBottom: "clamp(28px,6vw,88px)" }}>
-                <DevisInterlocutorCard />
+              <form onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-3">
+                <DevisFurnitureTypePicker value={furnitureType} onChange={setFurnitureType} />
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
-                  <DevisFurnitureTypePicker value={furnitureType} onChange={setFurnitureType} />
-
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <label className="flex flex-col gap-2">
-                      <span className={`text-xs ${HOME_MONO}`}>Nom</span>
-                      <input
-                        name="name"
-                        type="text"
-                        required
-                        autoComplete="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                        disabled={isSubmitting}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                      <span className={`text-xs ${HOME_MONO}`}>Email</span>
-                      <input
-                        name="email"
-                        type="email"
-                        required
-                        autoComplete="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                        disabled={isSubmitting}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                      <span className={`text-xs ${HOME_MONO}`}>Téléphone</span>
-                      <input
-                        name="tel"
-                        type="tel"
-                        required
-                        autoComplete="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                        disabled={isSubmitting}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                      <span className={`text-xs ${HOME_MONO}`}>Ville</span>
-                      <input
-                        name="city"
-                        type="text"
-                        autoComplete="address-level2"
-                        value={formData.city}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
-                        disabled={isSubmitting}
-                        className={INPUT_CLASS}
-                      />
-                    </label>
-                  </div>
-
-                  <label className="flex flex-col gap-2">
-                    <span className={`text-xs ${HOME_MONO}`}>Photo ou vidéo d&apos;inspiration</span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5">
+                    <span className={`text-xs ${HOME_MONO}`}>Nom</span>
                     <input
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      onChange={handleFileChange}
+                      name="name"
+                      type="text"
+                      required
+                      autoComplete="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                       disabled={isSubmitting}
-                      className="min-h-[52px] w-full cursor-pointer rounded-xl border-[1.5px] border-dashed border-black bg-white px-4 py-3.5 text-[15px]"
-                    />
-                    {files.length > 0 && (
-                      <span className="text-[13px] text-black/70">
-                        {files.length} fichier{files.length > 1 ? "s" : ""} sélectionné{files.length > 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </label>
-
-                  <label className="flex flex-col gap-2">
-                    <span className={`text-xs ${HOME_MONO}`}>Votre projet</span>
-                    <textarea
-                      name="message"
-                      rows={4}
-                      value={formData.message}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
-                      disabled={isSubmitting}
-                      className={`${INPUT_CLASS} resize-y`}
+                      className={INPUT_CLASS}
                     />
                   </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className={`text-xs ${HOME_MONO}`}>Email</span>
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                      disabled={isSubmitting}
+                      className={INPUT_CLASS}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className={`text-xs ${HOME_MONO}`}>Téléphone</span>
+                    <input
+                      name="tel"
+                      type="tel"
+                      required
+                      autoComplete="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                      disabled={isSubmitting}
+                      className={INPUT_CLASS}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className={`text-xs ${HOME_MONO}`}>Ville</span>
+                    <input
+                      name="city"
+                      type="text"
+                      autoComplete="address-level2"
+                      value={formData.city}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+                      disabled={isSubmitting}
+                      className={INPUT_CLASS}
+                    />
+                  </label>
+                </div>
 
-                  {error && (
-                    <div className="rounded-xl border border-red-300 bg-red-50 p-4">
-                      <p className="m-0 text-[14px] text-red-700">{error}</p>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
+                <div className="flex flex-col gap-1.5">
+                  <span id="devis-files-label" className={`text-xs ${HOME_MONO}`}>
+                    Photo ou vidéo d&apos;inspiration
+                  </span>
+                  <FileDropzone
+                    compact
+                    files={files}
+                    onAdd={addFiles}
+                    onRemove={removeFile}
                     disabled={isSubmitting}
-                    className="min-h-[56px] self-start rounded-full bg-am-navy px-8 py-4 text-[16px] font-semibold text-white disabled:opacity-60"
-                  >
-                    {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande →"}
-                  </button>
-                </form>
+                    labelledBy="devis-files-label"
+                  />
+                </div>
 
-                <DevisChecklist />
-              </div>
+                <label className="flex flex-col gap-1.5">
+                  <span className={`text-xs ${HOME_MONO}`}>Votre projet</span>
+                  <textarea
+                    name="message"
+                    rows={2}
+                    value={formData.message}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                    disabled={isSubmitting}
+                    className={`${INPUT_CLASS} min-h-[72px] resize-y py-2.5`}
+                  />
+                </label>
+
+                {error && (
+                  <div role="alert" className="rounded-xl border border-red-300 bg-red-50 px-4 py-2.5">
+                    <p className="m-0 text-[14px] text-red-700">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="min-h-12 self-start rounded-full bg-am-navy px-7 py-2.5 text-[16px] font-semibold text-white disabled:opacity-60"
+                >
+                  {isSubmitting ? "Envoi en cours..." : "Envoyer ma demande →"}
+                </button>
+              </form>
             </div>
           )}
         </section>

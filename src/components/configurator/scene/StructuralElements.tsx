@@ -49,18 +49,18 @@ export function PanelSegmentHitbox({
                         <meshBasicMaterial
                             transparent
                             opacity={isDeleted ? 0.35 : 0.4}
-                            color={isDeleted ? "#FF5722" : "#2196F3"}
+                            color={isDeleted ? "#6A2025" : "#3B3E58"}
                             depthWrite={false}
                             toneMapped={false}
                         />
                     </mesh>
                     <mesh>
                         <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, size[2] + 0.004]} />
-                        <meshBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} wireframe transparent opacity={0.5} toneMapped={false} />
+                        <meshBasicMaterial color={isDeleted ? "#6A2025" : "#3B3E58"} wireframe transparent opacity={0.5} toneMapped={false} />
                     </mesh>
                     <lineSegments>
                         <edgesGeometry args={[new THREE.BoxGeometry(size[0] + 0.005, size[1] + 0.005, size[2] + 0.005)]} />
-                        <lineBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} linewidth={4} toneMapped={false} />
+                        <lineBasicMaterial color={isDeleted ? "#6A2025" : "#3B3E58"} linewidth={4} toneMapped={false} />
                     </lineSegments>
                 </>
             )}

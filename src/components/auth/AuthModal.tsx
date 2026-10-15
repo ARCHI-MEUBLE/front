@@ -66,18 +66,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border border-[#E8E6E3] shadow-xl bg-white max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-md border border-black/10 shadow-xl bg-white max-h-[90vh] overflow-y-auto">
         <CardHeader className="space-y-1 text-center relative">
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-600 transition-colors"
+            className="absolute right-4 top-4 text-black/45 hover:text-black/70 transition-colors"
           >
             <IconX className="h-5 w-5" />
           </button>
-          <CardTitle className="text-2xl font-bold tracking-tight text-[#1A1917]">
+          <CardTitle className="text-2xl font-bold tracking-tight text-black">
             {mode === 'login' ? 'Connexion' : 'Inscription'}
           </CardTitle>
-          <CardDescription className="text-zinc-500">
+          <CardDescription className="text-black/60">
             {mode === 'login'
               ? 'Accédez à vos configurations sauvegardées'
               : 'Créez votre compte pour sauvegarder vos configurations'
@@ -96,7 +96,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             {mode === 'register' && (
               <>
                 <div className="grid gap-2">
-                  <Label htmlFor="firstName" className="text-sm font-medium text-[#1A1917]">
+                  <Label htmlFor="firstName" className="text-sm font-medium text-black">
                     Prénom <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -105,12 +105,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                     placeholder="Jean"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                    className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                     required
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="lastName" className="text-sm font-medium text-[#1A1917]">
+                  <Label htmlFor="lastName" className="text-sm font-medium text-black">
                     Nom <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -119,12 +119,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                     placeholder="Dupont"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                    className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                     required
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="phone" className="text-sm font-medium text-[#1A1917]">
+                  <Label htmlFor="phone" className="text-sm font-medium text-black">
                     Téléphone <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -133,12 +133,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                     placeholder="0612345678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                    className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                     required
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="address" className="text-sm font-medium text-[#1A1917]">
+                  <Label htmlFor="address" className="text-sm font-medium text-black">
                     Adresse <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -147,13 +147,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                     placeholder="123 rue de Paris"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                    className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                     required
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="city" className="text-sm font-medium text-[#1A1917]">
+                    <Label htmlFor="city" className="text-sm font-medium text-black">
                       Ville <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -162,12 +162,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                       placeholder="Paris"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                      className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                       required
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="postalCode" className="text-sm font-medium text-[#1A1917]">
+                    <Label htmlFor="postalCode" className="text-sm font-medium text-black">
                       Code postal <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -176,7 +176,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                       placeholder="75001"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                      className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                       required
                       maxLength={5}
                     />
@@ -186,7 +186,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="email" className="text-sm font-medium text-[#1A1917]">
+              <Label htmlFor="email" className="text-sm font-medium text-black">
                 Email <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -195,13 +195,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 placeholder="nom@exemple.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="password" className="text-sm font-medium text-[#1A1917]">
+              <Label htmlFor="password" className="text-sm font-medium text-black">
                 Mot de passe <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -210,17 +210,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917]"
+                className="h-11 bg-white border-black/10 rounded-md focus:ring-am-navy"
                 required
                 minLength={8}
               />
               {mode === 'register' && (
-                <p className="text-xs text-zinc-500">Minimum 8 caractères</p>
+                <p className="text-xs text-black/60">Minimum 8 caractères</p>
               )}
               {mode === 'login' && (
                 <Link
                   href="/auth/forgot-password"
-                  className="text-xs text-zinc-500 hover:text-[#1A1917] hover:underline transition-colors"
+                  className="text-xs text-black/60 hover:text-black hover:underline transition-colors"
                 >
                   Mot de passe oublié ?
                 </Link>
@@ -229,7 +229,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
             <Button
               type="submit"
-              className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all shadow-sm mt-2"
+              className="h-11 w-full bg-am-navy text-white hover:bg-am-navy/90 rounded-md transition-all shadow-sm mt-2"
               disabled={loading}
             >
               {loading ? (
@@ -245,13 +245,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4 text-center pt-2 pb-6">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-black/60">
             {mode === 'login' ? (
               <>
                 Pas encore de compte ?{' '}
                 <button
                   onClick={() => { setMode('register'); setError(''); }}
-                  className="font-semibold text-[#1A1917] hover:underline"
+                  className="font-semibold text-black hover:underline"
                 >
                   Créer un compte
                 </button>
@@ -261,7 +261,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 Déjà un compte ?{' '}
                 <button
                   onClick={() => { setMode('login'); setError(''); }}
-                  className="font-semibold text-[#1A1917] hover:underline"
+                  className="font-semibold text-black hover:underline"
                 >
                   Se connecter
                 </button>

@@ -16,11 +16,11 @@ const VIEW_TITLES: Record<ViewPreset, string> = {
   top: 'Vue de dessus',
 };
 
-const panel = 'pointer-events-auto flex items-center border border-[#E8E6E3] bg-white shadow-sm lg:flex-col';
+const panel = 'pointer-events-auto flex items-center border border-black/10 bg-white shadow-sm lg:flex-col';
 const button =
-  'flex h-9 min-w-9 items-center justify-center gap-1.5 px-2 text-xs font-medium text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-[#706F6C] lg:w-14';
+  'flex h-9 min-w-9 items-center justify-center gap-1.5 px-2 text-xs font-medium text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black/65 lg:w-14';
 // Les boutons sont côte à côte sur mobile, empilés sur ordinateur : le trait de séparation suit
-const separator = 'border-l border-[#E8E6E3] lg:border-l-0 lg:border-t';
+const separator = 'border-l border-black/10 lg:border-l-0 lg:border-t';
 
 // Commandes de la caméra : vues prédéfinies, zoom, cadrage du meuble ou de la zone choisie.
 // Sur ordinateur : colonne sur le bord droit, sous le sélecteur Plan 2D / Vue 3D. Le bas du viewer est

@@ -51,15 +51,15 @@ export default function MountingStyleSelector({ value, onChange }: MountingStyle
             aria-pressed={isActive}
             className={`flex flex-col items-center gap-2 border-2 p-3 transition-all ${
               isActive
-                ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                ? 'border-am-navy bg-am-navy text-white'
+                : 'border-black/10 bg-white text-black hover:border-am-navy'
             }`}
             style={{ borderRadius: '4px' }}
           >
             <span className="opacity-90">{option.visual}</span>
             <span className="text-center">
               <span className="block text-[13px] font-semibold leading-tight">{option.label}</span>
-              <span className={`mt-0.5 block text-[11px] leading-tight ${isActive ? 'text-white/70' : 'text-[#706F6C]'}`}>
+              <span className={`mt-0.5 block text-[11px] leading-tight ${isActive ? 'text-white/70' : 'text-black/65'}`}>
                 {option.description}
               </span>
             </span>

@@ -1,16 +1,16 @@
 import { HOME_MONO } from "@/components/home/homeLayout";
 
 const SUBJECTS = [
-  { value: "Dressing", label: "Dressing sur mesure" },
+  { value: "Dressing", label: "Dressing" },
   { value: "Bibliothèque", label: "Bibliothèque" },
   { value: "Meuble TV", label: "Meuble TV" },
   { value: "Bureau", label: "Bureau" },
-  { value: "Rangement", label: "Rangement / Placard" },
-  { value: "Autre", label: "Autre projet" },
+  { value: "Rangement", label: "Placard" },
+  { value: "Autre", label: "Autre" },
 ];
 
 const INPUT_CLASS =
-  "min-h-[52px] w-full rounded-xl border border-black bg-white px-4 py-3.5 text-[17px] text-black outline-none";
+  "min-h-11 w-full rounded-xl border border-black bg-white px-4 py-2 text-[16px] text-black outline-none";
 
 export type ContactFormData = {
   name: string;
@@ -34,15 +34,10 @@ export function ContactForm({
   error: string;
 }) {
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-[22px]">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <fieldset className="m-0 border-0 p-0">
-        <legend
-          className="mb-4 font-[Geist] font-semibold leading-[1.05] tracking-[-0.04em] text-black"
-          style={{ fontSize: "clamp(26px,2.6vw,38px)" }}
-        >
-          Type de projet
-        </legend>
-        <div className="flex flex-wrap gap-2.5">
+        <legend className={`mb-1.5 p-0 text-xs ${HOME_MONO}`}>Type de projet</legend>
+        <div className="flex flex-wrap gap-2">
           {SUBJECTS.map((subject) => {
             const isActive = formData.subject === subject.value;
             return (
@@ -51,7 +46,7 @@ export function ContactForm({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => onChange("subject", subject.value)}
-                className={`min-h-[52px] rounded-full border-[1.5px] border-black px-6 py-3 text-[16px] ${
+                className={`min-h-10 rounded-full border-[1.5px] border-black px-3.5 py-1.5 text-[14px] ${
                   isActive ? "bg-am-navy font-semibold text-white" : "bg-transparent font-normal text-black"
                 }`}
               >
@@ -62,8 +57,8 @@ export function ContactForm({
         </div>
       </fieldset>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
           <span className={`text-xs ${HOME_MONO}`}>Nom</span>
           <input
             type="text"
@@ -75,7 +70,7 @@ export function ContactForm({
             className={INPUT_CLASS}
           />
         </label>
-        <label className="flex flex-col gap-2">
+        <label className="flex flex-col gap-1.5">
           <span className={`text-xs ${HOME_MONO}`}>Email</span>
           <input
             type="email"
@@ -87,7 +82,7 @@ export function ContactForm({
             className={INPUT_CLASS}
           />
         </label>
-        <label className="flex flex-col gap-2 sm:col-span-2">
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className={`text-xs ${HOME_MONO}`}>Téléphone</span>
           <input
             type="tel"
@@ -101,20 +96,20 @@ export function ContactForm({
         </label>
       </div>
 
-      <label className="flex flex-col gap-2">
+      <label className="flex flex-col gap-1.5">
         <span className={`text-xs ${HOME_MONO}`}>Votre projet</span>
         <textarea
-          rows={4}
+          rows={3}
           required
           value={formData.message}
           onChange={(e) => onChange("message", e.target.value)}
           disabled={isLoading}
-          className={`${INPUT_CLASS} resize-y`}
+          className={`${INPUT_CLASS} min-h-[84px] resize-y py-2.5`}
         />
       </label>
 
       {error && (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-4">
+        <div role="alert" className="rounded-xl border border-red-300 bg-red-50 px-4 py-2.5">
           <p className="m-0 text-[14px] text-red-700">{error}</p>
         </div>
       )}
@@ -122,7 +117,7 @@ export function ContactForm({
       <button
         type="submit"
         disabled={isLoading}
-        className="min-h-[56px] self-start rounded-full bg-am-navy px-8 py-4 text-[16px] font-semibold text-white disabled:opacity-60"
+        className="min-h-12 self-start rounded-full bg-am-navy px-7 py-2.5 text-[16px] font-semibold text-white disabled:opacity-60"
       >
         {isLoading ? "Envoi en cours..." : "Envoyer ma demande →"}
       </button>

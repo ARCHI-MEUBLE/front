@@ -1,5 +1,5 @@
 import { HOME_MONO, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
-import { SavoirFaireStepsGrid } from "@/components/shared/SavoirFaireSteps";
+import { SavoirFaireStepsList } from "@/components/shared/SavoirFaireSteps";
 
 export function RealisationsSavoirFaire() {
   return (
@@ -13,7 +13,7 @@ export function RealisationsSavoirFaire() {
           <span className={`text-xs ${HOME_MONO}`}>Notre savoir-faire</span>
           <h2
             id="real-savoir"
-            className="m-0 font-[Geist] font-medium leading-none tracking-[-0.05em] text-black"
+            className="m-0 font-sans font-medium leading-none tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(32px,4vw,56px)" }}
           >
             L&apos;artisanat français au service de vos projets
@@ -23,7 +23,7 @@ export function RealisationsSavoirFaire() {
             premier croquis à la pose finale, nous maîtrisons chaque étape pour vous garantir un résultat parfait.
           </p>
         </div>
-        <SavoirFaireStepsGrid />
+        <SavoirFaireStepsList />
       </div>
     </section>
   );

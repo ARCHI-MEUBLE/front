@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HOME_MONO } from "@/components/home/homeLayout";
 import type { SampleColor } from "@/lib/apiClient";
+import { displayColorName, displayMaterialName } from "@/lib/displayNames";
 
 const KIT_SIZE = 5;
 
@@ -46,28 +47,28 @@ export function SamplesKitSidebar({
       ) : (
         <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[14px] text-black/70">
           {kitItems.map((item) => (
-            <li key={item.id}>{item.name}</li>
+            <li key={item.id}>{displayColorName(item.name)}</li>
           ))}
         </ul>
       )}
 
       <div className="flex justify-between gap-3 border-t border-black/10 pt-4 text-[15px]">
         <span className="text-black/70">Matériau</span>
-        <span className="font-medium">{selectedMaterial || "—"}</span>
+        <span className="font-medium">{selectedMaterial ? displayMaterialName(selectedMaterial) : "—"}</span>
       </div>
 
       {isEmpty ? (
         <button
           type="button"
           disabled
-          className="min-h-[52px] cursor-not-allowed rounded-full border border-black bg-am-mist px-6 py-4 text-[15px] font-medium text-black opacity-50"
+          className="min-h-[52px] cursor-not-allowed rounded-full border border-black bg-am-navy px-6 py-4 text-[15px] font-medium text-white opacity-50"
         >
           Commander mes échantillons
         </button>
       ) : (
         <Link
           href="/cart"
-          className="flex min-h-[52px] items-center justify-center rounded-full border border-black bg-am-mist px-6 py-4 text-[15px] font-medium text-black"
+          className="flex min-h-[52px] items-center justify-center rounded-full border border-black bg-am-navy px-6 py-4 text-[15px] font-medium text-white"
         >
           Commander mes échantillons
         </Link>

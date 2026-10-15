@@ -19,7 +19,7 @@ export function SamplesHero() {
         <div className="flex flex-col items-start gap-7">
           <h1
             id="ech-title"
-            className="m-0 font-[Geist] font-medium leading-[0.96] tracking-[-0.055em] text-black"
+            className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
             style={{ fontSize: "clamp(44px,6.2vw,96px)" }}
           >
             Touchez la qualité <span className="am-highlight">avant de commander</span>

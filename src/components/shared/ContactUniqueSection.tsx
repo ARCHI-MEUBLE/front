@@ -15,18 +15,11 @@ export function ContactUniqueSection() {
         className="grid grid-cols-1 gap-[clamp(24px,4vw,56px)] overflow-hidden rounded-[20px] bg-am-mist/25 lg:grid-cols-2"
         style={{ padding: "clamp(28px,5vw,64px) clamp(24px,5vw,64px) 0" }}
       >
-        <div className="flex flex-col items-start gap-6" style={{ paddingBottom: "clamp(28px,5vw,64px)" }}>
-          <Image
-            src="/images/devis-illustration.svg"
-            alt=""
-            width={289}
-            height={286}
-            style={{ width: "clamp(140px,16vw,200px)", height: "auto", alignSelf: "flex-end", marginBottom: "auto" }}
-          />
+        <div className="flex flex-col items-start justify-center gap-6" style={{ paddingBottom: "clamp(28px,5vw,64px)" }}>
           <h2
             id="contact-unique-title"
-            className="m-0 font-[Geist] font-medium leading-[1.05] tracking-[-0.045em] text-black"
-            style={{ fontSize: "clamp(28px,3vw,44px)", marginTop: 24 }}
+            className="m-0 font-sans font-medium leading-[1.05] tracking-[-0.045em] text-black"
+            style={{ fontSize: "clamp(28px,3vw,44px)" }}
           >
             Un seul interlocuteur, basé à Lille
           </h2>
@@ -51,7 +44,7 @@ export function ContactUniqueSection() {
                 </div>
                 <span className="text-[15px] font-semibold">Gauthier Hue</span>
               </span>
-              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border-[1.5px] border-black font-[Geist_Mono] text-[14px] font-semibold">
+              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border-[1.5px] border-black font-mono text-[14px] font-semibold">
                 i
               </span>
             </div>
@@ -68,7 +61,7 @@ export function ContactUniqueSection() {
                       <span className="text-[16px]">{row.label}</span>
                       <span className="text-[14px] text-black/70">{row.sub}</span>
                     </span>
-                    <span className="whitespace-nowrap font-[Geist_Mono] text-[14px]">{row.price}</span>
+                    <span className="whitespace-nowrap font-mono text-[14px]">{row.price}</span>
                   </div>
                 ))}
               </div>

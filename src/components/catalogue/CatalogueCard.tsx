@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatPrice } from "@/lib/format";
 
 export type CatalogueItemData = {
   id: number;
@@ -48,17 +49,17 @@ export function CatalogueCard({
       </Link>
       <div className="grid items-start gap-x-3 gap-y-1" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-black/70">
+          <span className="font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
             {item.category}
           </span>
-          <h3 className="m-0 font-[Geist] text-[19px] font-medium tracking-[-0.03em] text-black">
+          <h3 className="m-0 font-sans text-[19px] font-medium tracking-[-0.03em] text-black">
             <Link href={`/catalogue/${item.id}`} className="underline decoration-transparent underline-offset-4 hover:decoration-current">
               {item.name}
             </Link>
           </h3>
           <p className="m-0 text-[14px] text-black/70">{item.description}</p>
           <span className="mt-1.5 text-[17px] font-medium text-black">
-            {Number(item.unit_price).toFixed(0)} €
+            {formatPrice(item.unit_price)}
           </span>
           {variations.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">

@@ -42,7 +42,7 @@ export function ModelsCollectionSection({
       <div className="sticky top-[68px] z-10 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 bg-am-paper/95 py-4 backdrop-blur-md">
         <h2
           id="collection-title"
-          className="m-0 font-[Geist] font-medium tracking-[-0.04em] text-black"
+          className="m-0 font-sans font-medium tracking-[-0.04em] text-black"
           style={{ fontSize: "clamp(24px,2.4vw,32px)" }}
         >
           Explorez notre collection
@@ -64,7 +64,7 @@ export function ModelsCollectionSection({
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className="font-[Geist_Mono] text-[11px] opacity-70">{tab.count}</span>
+                <span className="font-mono text-[11px] opacity-70">{tab.count}</span>
               </button>
             );
           })}

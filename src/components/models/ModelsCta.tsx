@@ -7,12 +7,12 @@ export function ModelsCta() {
     <section aria-labelledby="bonheur-title" className={HOME_SECTION}>
       <div className="grid grid-cols-1 items-end gap-8 rounded-[20px] bg-am-wine p-[clamp(28px,5vw,64px)] text-white lg:grid-cols-2">
         <div>
-          <div className="mb-4 font-[Geist_Mono] text-[12px] uppercase tracking-[0.04em] text-am-mist">
+          <div className="mb-4 font-mono text-[12px] uppercase tracking-[0.04em] text-am-mist">
             Projet sur mesure
           </div>
           <h2
             id="bonheur-title"
-            className="m-0 mb-4 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-white"
+            className="m-0 mb-4 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             Vous ne trouvez pas votre bonheur ?

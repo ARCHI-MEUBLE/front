@@ -6,6 +6,8 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCustomer } from '@/context/CustomerContext';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
+import { formatPrice } from '@/lib/format';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import type { Zone } from '@/components/configurator/ZoneEditor';
@@ -40,8 +42,8 @@ import {
 const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#F5F5F4]">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+    <div className="flex h-full w-full items-center justify-center bg-am-mist/15">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-am-navy border-t-transparent" />
     </div>
   ),
 });
@@ -527,11 +529,11 @@ export default function Account() {
       'validee': { label: 'Validée', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
       'payee': { label: 'Payée', color: 'bg-blue-50 text-blue-700 border-blue-200' },
       'en_production': { label: 'En production', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-      'livree': { label: 'Livrée', color: 'bg-gray-50 text-gray-700 border-gray-200' },
+      'livree': { label: 'Livrée', color: 'bg-am-mist/15 text-black/75 border-black/10' },
       'annulee': { label: 'Annulée', color: 'bg-red-50 text-red-700 border-red-200' },
       'en_commande': { label: 'En commande', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
     };
-    return statusMap[status] || { label: status, color: 'bg-gray-50 text-gray-700 border-gray-200' };
+    return statusMap[status] || { label: status, color: 'bg-am-mist/15 text-black/75 border-black/10' };
   };
 
   const ordersCompleted = orders.filter(order =>
@@ -571,7 +573,7 @@ export default function Account() {
     if (paymentStatus === 'paid') {
       if (status === 'in_production') return 'bg-purple-50 text-purple-700';
       if (status === 'shipped') return 'bg-cyan-50 text-cyan-700';
-      if (status === 'delivered') return 'bg-gray-100 text-gray-700';
+      if (status === 'delivered') return 'bg-am-mist/25 text-black/75';
       return 'bg-emerald-50 text-emerald-700';
     }
 
@@ -581,11 +583,11 @@ export default function Account() {
       'paid': 'bg-emerald-50 text-emerald-700',
       'in_production': 'bg-purple-50 text-purple-700',
       'shipped': 'bg-cyan-50 text-cyan-700',
-      'delivered': 'bg-gray-100 text-gray-700',
+      'delivered': 'bg-am-mist/25 text-black/75',
       'cancelled': 'bg-red-50 text-red-700',
-      'refunded': 'bg-gray-50 text-gray-600'
+      'refunded': 'bg-am-mist/15 text-black/70'
     };
-    return statusColors[status] || 'bg-gray-50 text-gray-700';
+    return statusColors[status] || 'bg-am-mist/15 text-black/75';
   };
 
   const getInitials = () => {
@@ -596,13 +598,13 @@ export default function Account() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
+      <div className="flex min-h-screen flex-col bg-am-paper">
         <Head>
           <title>Mon compte — ArchiMeuble</title>
         </Head>
         <Header />
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-am-navy border-t-transparent" />
         </div>
         <Footer />
       </div>
@@ -617,7 +619,7 @@ export default function Account() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
+    <div className="flex min-h-screen flex-col bg-am-paper">
       <Head>
         <title>Mon compte — ArchiMeuble</title>
         <meta name="description" content="Gérez votre compte ArchiMeuble : commandes, configurations, profil et paramètres." />
@@ -646,10 +648,10 @@ export default function Account() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden bg-[#1A1917] py-12 lg:py-16">
+        <section className="relative overflow-hidden bg-am-navy py-12 lg:py-16">
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-[#8B7355]/20 blur-[100px] rounded-full" />
-            <div className="absolute bottom-[10%] right-[5%] w-[200px] h-[200px] bg-[#5B4D3A]/15 blur-[80px] rounded-full" />
+            <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-am-navy/20 blur-[100px] rounded-full" />
+            <div className="absolute bottom-[10%] right-[5%] w-[200px] h-[200px] bg-am-navy/15 blur-[80px] rounded-full" />
             <div
               className="absolute inset-0 opacity-[0.03]"
               style={{
@@ -662,7 +664,7 @@ export default function Account() {
           <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center bg-[#8B7355] font-serif text-lg text-white lg:h-16 lg:w-16 lg:text-xl">
+                <div className="flex h-14 w-14 items-center justify-center bg-am-navy font-serif text-lg text-white lg:h-16 lg:w-16 lg:text-xl">
                   {getInitials()}
                 </div>
                 <div>
@@ -698,8 +700,8 @@ export default function Account() {
                       onClick={() => setActiveSection(item.id)}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium transition-all ${
                         activeSection === item.id
-                          ? 'bg-[#1A1917] text-white'
-                          : 'text-[#706F6C] hover:bg-[#F5F5F4] hover:text-[#1A1917]'
+                          ? 'bg-am-navy text-white'
+                          : 'text-black/65 hover:bg-am-mist/30 hover:text-black'
                       }`}
                     >
                       <item.icon size={18} stroke={1.5} />
@@ -716,11 +718,11 @@ export default function Account() {
                 {activeSection === 'orders' && (
                   <div className="space-y-8">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7355]">
+                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
                         Historique
                       </span>
-                      <h2 className="mt-2 text-2xl font-bold text-[#1A1917] lg:text-3xl">Mes commandes</h2>
-                      <p className="mt-1 text-[#706F6C]">Suivez vos commandes et consultez votre historique</p>
+                      <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Mes commandes</h2>
+                      <p className="mt-1 text-black/65">Suivez vos commandes et consultez votre historique</p>
                     </div>
 
                     {/* Stats */}
@@ -730,13 +732,13 @@ export default function Account() {
                         { label: 'Terminées', value: ordersCompleted.length, icon: IconCircleCheck },
                         { label: 'Total', value: orders.length, icon: IconPackage },
                       ].map((stat) => (
-                        <div key={stat.label} className="flex items-center gap-4 border border-[#E8E6E3] bg-white p-4">
-                          <div className="flex h-10 w-10 items-center justify-center bg-[#F5F5F4]">
-                            <stat.icon size={18} className="text-[#1A1917]" stroke={1.5} />
+                        <div key={stat.label} className="flex items-center gap-4 border border-black/10 bg-white p-4">
+                          <div className="flex h-10 w-10 items-center justify-center bg-am-mist/15">
+                            <stat.icon size={18} className="text-black" stroke={1.5} />
                           </div>
                           <div>
-                            <p className="text-xl font-bold text-[#1A1917]">{stat.value}</p>
-                            <p className="text-xs text-[#706F6C]">{stat.label}</p>
+                            <p className="text-xl font-bold text-black">{stat.value}</p>
+                            <p className="text-xs text-black/65">{stat.label}</p>
                           </div>
                         </div>
                       ))}
@@ -744,28 +746,28 @@ export default function Account() {
 
                     {/* Détails d'une commande */}
                     {isLoadingOrderDetails ? (
-                      <div className="flex h-48 items-center justify-center border border-[#E8E6E3] bg-white">
-                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+                      <div className="flex h-48 items-center justify-center border border-black/10 bg-white">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-am-navy border-t-transparent" />
                       </div>
                     ) : selectedOrder ? (
                       <div className="space-y-6">
                         {/* Bouton retour */}
                         <button
                           onClick={() => setSelectedOrder(null)}
-                          className="flex items-center gap-2 text-sm text-[#706F6C] hover:text-[#1A1917] transition-colors"
+                          className="flex items-center gap-2 text-sm text-black/65 hover:text-black transition-colors"
                         >
                           <IconArrowRight size={16} className="rotate-180" />
                           Retour aux commandes
                         </button>
 
                         {/* En-tête commande */}
-                        <div className="border border-[#E8E6E3] bg-white p-6">
+                        <div className="border border-black/10 bg-white p-6">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
-                              <h3 className="text-xl font-bold text-[#1A1917]">
+                              <h3 className="text-xl font-bold text-black">
                                 Commande #{selectedOrder.order_number}
                               </h3>
-                              <p className="mt-1 text-sm text-[#706F6C]">
+                              <p className="mt-1 text-sm text-black/65">
                                 Passée le {formatDate(selectedOrder.created_at)}
                               </p>
                             </div>
@@ -773,19 +775,19 @@ export default function Account() {
                               <span className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${getStatusColor(selectedOrder.status, selectedOrder.payment_status)}`}>
                                 {getStatusLabel(selectedOrder.status, selectedOrder.payment_status)}
                               </span>
-                              <span className="text-2xl font-bold text-[#1A1917]">
-                                {selectedOrder.total.toLocaleString('fr-FR')}€
+                              <span className="text-2xl font-bold text-black">
+                                {formatPrice(selectedOrder.total)}
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* Articles */}
-                        <div className="border border-[#E8E6E3] bg-white">
-                          <div className="border-b border-[#E8E6E3] p-4">
-                            <h4 className="font-bold text-[#1A1917]">Articles commandés</h4>
+                        <div className="border border-black/10 bg-white">
+                          <div className="border-b border-black/10 p-4">
+                            <h4 className="font-bold text-black">Articles commandés</h4>
                           </div>
-                          <div className="divide-y divide-[#E8E6E3]">
+                          <div className="divide-y divide-black/10">
                             {/* Configurations */}
                             {selectedOrder.items && selectedOrder.items.length > 0 && (
                               selectedOrder.items.map((item, idx) => {
@@ -798,7 +800,7 @@ export default function Account() {
                                   <div key={`config-${item.id || idx}`} className="p-4">
                                     {/* Aperçu 3D */}
                                     {configData ? (
-                                      <div className="h-40 bg-[#FAFAF9] border border-[#E8E6E3] mb-3 overflow-hidden">
+                                      <div className="h-40 bg-am-mist/15 border border-black/10 mb-3 overflow-hidden">
                                         <ThreeViewer
                                           width={configData.dimensions?.width || 1500}
                                           height={configData.dimensions?.height || 730}
@@ -817,23 +819,23 @@ export default function Account() {
                                         />
                                       </div>
                                     ) : (
-                                      <div className="flex h-40 items-center justify-center bg-[#F5F5F4] border border-[#E8E6E3] mb-3">
-                                        <IconBox size={32} className="text-[#A8A7A3]" stroke={1.5} />
+                                      <div className="flex h-40 items-center justify-center bg-am-mist/15 border border-black/10 mb-3">
+                                        <IconBox size={32} className="text-black/45" stroke={1.5} />
                                       </div>
                                     )}
                                     {/* Infos */}
                                     <div className="flex items-center justify-between">
                                       <div className="min-w-0">
-                                        <p className="font-medium text-[#1A1917] truncate">
+                                        <p className="font-medium text-black truncate">
                                           {item.configuration_name || `Configuration #${item.configuration_id || idx + 1}`}
                                         </p>
-                                        <p className="text-sm text-[#706F6C]">
+                                        <p className="text-sm text-black/65">
                                           {configData?.dimensions ? `${configData.dimensions.width}×${configData.dimensions.height}×${configData.dimensions.depth} mm · ` : ''}
                                           Quantité : {item.quantity}
                                         </p>
                                       </div>
-                                      <p className="font-bold text-[#1A1917]">
-                                        {item.total_price?.toLocaleString('fr-FR') || item.unit_price?.toLocaleString('fr-FR')}€
+                                      <p className="font-bold text-black">
+                                        {formatPrice(item.total_price ?? item.unit_price)}
                                       </p>
                                     </div>
                                   </div>
@@ -845,11 +847,11 @@ export default function Account() {
                             {selectedOrder.samples && selectedOrder.samples.length > 0 && (
                               selectedOrder.samples.map((sample, idx) => (
                                 <div key={`sample-${sample.id || idx}`} className="flex items-center gap-4 p-4">
-                                  <div className="h-16 w-16 bg-[#F5F5F4] overflow-hidden flex items-center justify-center">
+                                  <div className="h-16 w-16 bg-am-mist/15 overflow-hidden flex items-center justify-center">
                                     {sample.image_url ? (
                                       <img
                                         src={sample.image_url}
-                                        alt={sample.sample_name || sample.color_name || 'Échantillon'}
+                                        alt={displayColorName(sample.sample_name || sample.color_name) || 'Échantillon'}
                                         className="h-full w-full object-cover"
                                       />
                                     ) : sample.hex ? (
@@ -858,20 +860,20 @@ export default function Account() {
                                         style={{ backgroundColor: sample.hex }}
                                       />
                                     ) : (
-                                      <IconPackage size={24} className="text-[#8B7355]" stroke={1.5} />
+                                      <IconPackage size={24} className="text-am-navy" stroke={1.5} />
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-[#1A1917] truncate">
-                                      {sample.sample_name || sample.color_name || `Échantillon #${sample.sample_color_id || idx + 1}`}
+                                    <p className="font-medium text-black truncate">
+                                      {displayColorName(sample.sample_name || sample.color_name) || `Échantillon #${sample.sample_color_id || idx + 1}`}
                                     </p>
-                                    <p className="text-sm text-[#706F6C]">
-                                      {sample.sample_type_name || sample.material || sample.material_name ? `${sample.sample_type_name || sample.material || sample.material_name} · ` : ''}Échantillon · Quantité : {sample.quantity}
+                                    <p className="text-sm text-black/65">
+                                      {sample.sample_type_name || sample.material || sample.material_name ? `${displayMaterialName(sample.sample_type_name || sample.material || sample.material_name)} · ` : ''}Échantillon · Quantité : {sample.quantity}
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-bold text-[#1A1917]">
-                                      {(sample.price ?? sample.unit_price ?? 0).toLocaleString('fr-FR')}€
+                                    <p className="font-bold text-black">
+                                      {formatPrice(sample.price ?? sample.unit_price ?? 0)}
                                     </p>
                                   </div>
                                 </div>
@@ -882,7 +884,7 @@ export default function Account() {
                             {selectedOrder.catalogue_items && selectedOrder.catalogue_items.length > 0 && (
                               selectedOrder.catalogue_items.map((item, idx) => (
                                 <div key={`catalogue-${item.id || idx}`} className="flex items-center gap-4 p-4">
-                                  <div className="h-16 w-16 bg-[#F5F5F4] overflow-hidden flex items-center justify-center">
+                                  <div className="h-16 w-16 bg-am-mist/15 overflow-hidden flex items-center justify-center">
                                     {item.image_url ? (
                                       <img
                                         src={item.image_url}
@@ -890,24 +892,24 @@ export default function Account() {
                                         className="h-full w-full object-cover"
                                       />
                                     ) : (
-                                      <IconShoppingBag size={24} className="text-[#706F6C]" stroke={1.5} />
+                                      <IconShoppingBag size={24} className="text-black/65" stroke={1.5} />
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-[#1A1917] truncate">
+                                    <p className="font-medium text-black truncate">
                                       {item.name || item.item_name || `Article #${item.catalogue_item_id || idx + 1}`}
                                     </p>
-                                    <p className="text-sm text-[#706F6C]">
+                                    <p className="text-sm text-black/65">
                                       {item.variation_name ? `${item.variation_name} · ` : ''}Quantité : {item.quantity}
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-bold text-[#1A1917]">
-                                      {(item.total_price || item.unit_price * item.quantity)?.toLocaleString('fr-FR')}€
+                                    <p className="font-bold text-black">
+                                      {formatPrice(item.total_price || item.unit_price * item.quantity)}
                                     </p>
                                     {item.quantity > 1 && (
-                                      <p className="text-xs text-[#706F6C]">
-                                        {item.unit_price?.toLocaleString('fr-FR')}€ / unité
+                                      <p className="text-xs text-black/65">
+                                        {formatPrice(item.unit_price)} / unité
                                       </p>
                                     )}
                                   </div>
@@ -918,14 +920,14 @@ export default function Account() {
                             {/* Façades sur mesure */}
                             {selectedOrder.facade_items && selectedOrder.facade_items.length > 0 && (
                               <>
-                                <div className="border-t border-[#E8E6E3] bg-[#FAFAF9] px-4 py-2">
-                                  <p className="text-xs font-bold uppercase tracking-wider text-[#706F6C]">
+                                <div className="border-t border-black/10 bg-am-mist/15 px-4 py-2">
+                                  <p className="text-xs font-bold uppercase tracking-wider text-black/65">
                                     Façades sur mesure ({selectedOrder.facade_items.length})
                                   </p>
                                 </div>
                                 {selectedOrder.facade_items.map((facade, idx) => {
                                   const config = facade.config || (typeof facade.config_data === 'string' ? JSON.parse(facade.config_data) : facade.config_data);
-                                  const materialName = config?.material?.name || 'Matériau';
+                                  const materialName = displayColorName(config?.material?.name) || 'Matériau';
                                   const hingeType = config?.hinges?.type || 'no-hole-no-hinge';
                                   const hingeCount = config?.hinges?.count || 0;
                                   const hingeDirection = config?.hinges?.direction || '';
@@ -935,10 +937,10 @@ export default function Account() {
                                       key={`facade-${facade.id || idx}`}
                                       type="button"
                                       onClick={() => setSelectedFacadeDetail({ ...facade, config })}
-                                      className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-[#FAFAF9] cursor-pointer"
+                                      className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-am-mist/30 cursor-pointer"
                                     >
                                       <div
-                                        className="h-16 w-16 bg-[#F5F5F4] overflow-hidden flex items-center justify-center border border-[#E8E6E3]"
+                                        className="h-16 w-16 bg-am-mist/15 overflow-hidden flex items-center justify-center border border-black/10"
                                         style={{
                                           backgroundColor: config?.material?.color_hex || '#E5E7EB',
                                           backgroundImage: config?.material?.texture_url ? `url(${config.material.texture_url})` : undefined,
@@ -947,28 +949,28 @@ export default function Account() {
                                         }}
                                       >
                                         {!config?.material?.texture_url && !config?.material?.color_hex && (
-                                          <IconBox size={24} className="text-[#706F6C]" stroke={1.5} />
+                                          <IconBox size={24} className="text-black/65" stroke={1.5} />
                                         )}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-[#1A1917]">
+                                        <p className="font-medium text-black">
                                           Façade {config?.width ? `${config.width / 10} × ${config.height / 10} cm` : ''} · {config?.depth || 19} mm
                                         </p>
-                                        <p className="text-sm text-[#706F6C]">
+                                        <p className="text-sm text-black/65">
                                           {materialName}
                                           {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
                                             <> · {hingeCount} charnières · Ouverture {hingeDirection === 'left' ? 'gauche' : 'droite'}</>
                                           )}
                                         </p>
-                                        <p className="text-xs text-[#8B7355] mt-1 underline">Voir les détails</p>
+                                        <p className="text-xs text-am-navy mt-1 underline">Voir les détails</p>
                                       </div>
                                       <div className="text-right">
-                                        <p className="font-bold text-[#1A1917]">
-                                          {(facade.total_price || facade.unit_price * facade.quantity)?.toLocaleString('fr-FR')}€
+                                        <p className="font-bold text-black">
+                                          {formatPrice(facade.total_price || facade.unit_price * facade.quantity)}
                                         </p>
                                         {facade.quantity > 1 && (
-                                          <p className="text-xs text-[#706F6C]">
-                                            {facade.unit_price?.toLocaleString('fr-FR')}€ / unité
+                                          <p className="text-xs text-black/65">
+                                            {formatPrice(facade.unit_price)} / unité
                                           </p>
                                         )}
                                       </div>
@@ -983,7 +985,7 @@ export default function Account() {
                              (!selectedOrder.samples || selectedOrder.samples.length === 0) &&
                              (!selectedOrder.catalogue_items || selectedOrder.catalogue_items.length === 0) &&
                              (!selectedOrder.facade_items || selectedOrder.facade_items.length === 0) && (
-                              <div className="p-6 text-center text-[#706F6C]">
+                              <div className="p-6 text-center text-black/65">
                                 Aucun détail disponible pour cette commande
                               </div>
                             )}
@@ -992,9 +994,9 @@ export default function Account() {
 
                         {/* Adresse de livraison */}
                         {(selectedOrder.shipping_address || selectedOrder.shipping_city) && (
-                          <div className="border border-[#E8E6E3] bg-white p-6">
-                            <h4 className="font-bold text-[#1A1917] mb-3">Adresse de livraison</h4>
-                            <p className="text-[#706F6C]">
+                          <div className="border border-black/10 bg-white p-6">
+                            <h4 className="font-bold text-black mb-3">Adresse de livraison</h4>
+                            <p className="text-black/65">
                               {selectedOrder.shipping_address}<br />
                               {selectedOrder.shipping_postal_code} {selectedOrder.shipping_city}<br />
                               {selectedOrder.shipping_country}
@@ -1076,12 +1078,12 @@ export default function Account() {
                         )}
 
                         {selectedOrder.status === 'delivered' && (
-                          <div className="border border-gray-200 bg-gray-50 p-4">
+                          <div className="border border-black/10 bg-am-mist/15 p-4">
                             <div className="flex items-start gap-3">
-                              <IconCircleCheck size={20} className="text-gray-600 mt-0.5" />
+                              <IconCircleCheck size={20} className="text-black/70 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-gray-800">Livrée</h4>
-                                <p className="mt-1 text-sm text-gray-700">
+                                <h4 className="font-bold text-black">Livrée</h4>
+                                <p className="mt-1 text-sm text-black/75">
                                   Votre commande a été livrée. Nous espérons que vous êtes satisfait de votre achat !
                                 </p>
                               </div>
@@ -1109,7 +1111,7 @@ export default function Account() {
                           {selectedOrder.status === 'confirmed' && selectedOrder.payment_status !== 'paid' && (
                             <button
                               onClick={() => router.push(`/checkout?order_id=${selectedOrder.id}`)}
-                              className="flex items-center gap-2 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                              className="flex items-center gap-2 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                             >
                               <IconCreditCard size={16} />
                               Payer la commande
@@ -1117,7 +1119,7 @@ export default function Account() {
                           )}
                           <a
                             href="mailto:pro.archimeuble@gmail.com"
-                            className="flex items-center gap-2 border border-[#E8E6E3] px-5 py-2.5 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#F5F5F4]"
+                            className="flex items-center gap-2 border border-black/10 px-5 py-2.5 text-sm font-medium text-black transition-colors hover:bg-am-mist/30"
                           >
                             <IconMail size={16} />
                             Contacter le support
@@ -1125,19 +1127,19 @@ export default function Account() {
                         </div>
                       </div>
                     ) : isLoadingOrders ? (
-                      <div className="flex h-48 items-center justify-center border border-[#E8E6E3] bg-white">
-                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+                      <div className="flex h-48 items-center justify-center border border-black/10 bg-white">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-am-navy border-t-transparent" />
                       </div>
                     ) : orders.length === 0 ? (
-                      <div className="border border-[#E8E6E3] bg-white p-12 text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center bg-[#F5F5F4]">
-                          <IconPackage size={32} className="text-[#A8A7A3]" stroke={1.5} />
+                      <div className="border border-black/10 bg-white p-12 text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center bg-am-mist/15">
+                          <IconPackage size={32} className="text-black/45" stroke={1.5} />
                         </div>
-                        <h3 className="mt-6 text-lg font-bold text-[#1A1917]">Aucune commande</h3>
-                        <p className="mt-2 text-[#706F6C]">Vous n&apos;avez pas encore passé de commande</p>
+                        <h3 className="mt-6 text-lg font-bold text-black">Aucune commande</h3>
+                        <p className="mt-2 text-black/65">Vous n&apos;avez pas encore passé de commande</p>
                         <Link
                           href="/"
-                          className="mt-6 inline-flex items-center gap-2 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                          className="mt-6 inline-flex items-center gap-2 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                         >
                           Découvrir nos meubles
                           <IconArrowRight size={16} />
@@ -1149,18 +1151,18 @@ export default function Account() {
                           <button
                             key={order.id}
                             onClick={() => loadOrderDetails(order.id)}
-                            className="group w-full text-left border border-[#E8E6E3] bg-white p-5 transition-all hover:border-[#1A1917]/20 hover:shadow-md"
+                            className="group w-full text-left border border-black/10 bg-white p-5 transition-all hover:border-am-navy/20 hover:shadow-md"
                           >
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                               <div className="flex items-center gap-4">
-                                <div className="flex h-10 w-10 items-center justify-center bg-[#F5F5F4]">
-                                  <IconPackage size={18} className="text-[#1A1917]" stroke={1.5} />
+                                <div className="flex h-10 w-10 items-center justify-center bg-am-mist/15">
+                                  <IconPackage size={18} className="text-black" stroke={1.5} />
                                 </div>
                                 <div>
-                                  <p className="font-medium text-[#1A1917] group-hover:text-[#8B7355]">
+                                  <p className="font-medium text-black group-hover:text-am-navy">
                                     Commande #{order.order_number}
                                   </p>
-                                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-[#706F6C]">
+                                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-black/65">
                                     <IconCalendar size={14} />
                                     {formatDate(order.created_at)}
                                   </p>
@@ -1169,12 +1171,12 @@ export default function Account() {
 
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                  <p className="text-lg font-bold text-[#1A1917]">{order.total.toLocaleString('fr-FR')}€</p>
+                                  <p className="text-lg font-bold text-black">{formatPrice(order.total)}</p>
                                   <span className={`inline-block px-2 py-0.5 text-xs font-medium ${getStatusColor(order.status, order.payment_status)}`}>
                                     {getStatusLabel(order.status, order.payment_status)}
                                   </span>
                                 </div>
-                                <IconArrowRight size={18} className="text-[#A8A7A3] transition-transform group-hover:translate-x-1 group-hover:text-[#8B7355]" />
+                                <IconArrowRight size={18} className="text-black/45 transition-transform group-hover:translate-x-1 group-hover:text-am-navy" />
                               </div>
                             </div>
                           </button>
@@ -1189,15 +1191,15 @@ export default function Account() {
                   <div className="space-y-8">
                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                       <div>
-                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7355]">
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
                           Vos projets
                         </span>
-                        <h2 className="mt-2 text-2xl font-bold text-[#1A1917] lg:text-3xl">Mes configurations</h2>
-                        <p className="mt-1 text-[#706F6C]">Retrouvez et gérez vos meubles configurés</p>
+                        <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Mes configurations</h2>
+                        <p className="mt-1 text-black/65">Retrouvez et gérez vos meubles configurés</p>
                       </div>
                       <Link
                         href="/models"
-                        className="inline-flex items-center gap-2 bg-[#1A1917] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                        className="inline-flex items-center gap-2 bg-am-navy px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       >
                         <IconPlus size={16} />
                         Nouvelle configuration
@@ -1205,19 +1207,19 @@ export default function Account() {
                     </div>
 
                     {isLoadingConfigs ? (
-                      <div className="flex h-48 items-center justify-center border border-[#E8E6E3] bg-white">
-                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1A1917] border-t-transparent" />
+                      <div className="flex h-48 items-center justify-center border border-black/10 bg-white">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-am-navy border-t-transparent" />
                       </div>
                     ) : configurations.length === 0 ? (
-                      <div className="border border-[#E8E6E3] bg-white p-12 text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center bg-[#F5F5F4]">
-                          <IconBox size={32} className="text-[#A8A7A3]" stroke={1.5} />
+                      <div className="border border-black/10 bg-white p-12 text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center bg-am-mist/15">
+                          <IconBox size={32} className="text-black/45" stroke={1.5} />
                         </div>
-                        <h3 className="mt-6 text-lg font-bold text-[#1A1917]">Aucune configuration</h3>
-                        <p className="mt-2 text-[#706F6C]">Créez votre première configuration pour la retrouver ici</p>
+                        <h3 className="mt-6 text-lg font-bold text-black">Aucune configuration</h3>
+                        <p className="mt-2 text-black/65">Créez votre première configuration pour la retrouver ici</p>
                         <Link
                           href="/models"
-                          className="mt-6 inline-flex items-center gap-2 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                          className="mt-6 inline-flex items-center gap-2 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                         >
                           <IconPlus size={16} />
                           Commencer une configuration
@@ -1226,9 +1228,9 @@ export default function Account() {
                     ) : (
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                         {configurations.map((config) => (
-                          <div key={config.id} className="group border border-[#E8E6E3] bg-white overflow-hidden transition-all hover:border-[#1A1917]/30 hover:shadow-md">
+                          <div key={config.id} className="group border border-black/10 bg-white overflow-hidden transition-all hover:border-am-navy/30 hover:shadow-md">
                             {/* Preview 3D */}
-                            <div className="h-48 bg-[#F5F5F4] relative overflow-hidden">
+                            <div className="h-48 bg-am-mist/15 relative overflow-hidden">
                               {config.config_data ? (
                                 <ThreeViewer
                                   width={config.config_data.dimensions?.width || 1500}
@@ -1251,7 +1253,7 @@ export default function Account() {
                                 />
                               ) : (
                                 <div className="flex items-center justify-center h-full">
-                                  <IconBox size={48} className="text-[#D4D4D4]" stroke={1} />
+                                  <IconBox size={48} className="text-black/30" stroke={1} />
                                 </div>
                               )}
 
@@ -1266,11 +1268,11 @@ export default function Account() {
                             {/* Info */}
                             <div className="p-4">
                               <div className="flex items-start justify-between gap-2">
-                                <h3 className="font-bold text-[#1A1917] truncate">{config.name}</h3>
-                                <p className="text-lg font-bold text-[#8B7355] shrink-0">{config.price}€</p>
+                                <h3 className="font-bold text-black truncate">{config.name}</h3>
+                                <p className="text-lg font-bold text-am-navy shrink-0">{formatPrice(config.price)}</p>
                               </div>
 
-                              <div className="mt-3 flex items-center gap-4 text-xs text-[#706F6C]">
+                              <div className="mt-3 flex items-center gap-4 text-xs text-black/65">
                                 <span className="flex items-center gap-1">
                                   <IconCalendar size={12} />
                                   {formatDate(config.created_at)}
@@ -1287,7 +1289,7 @@ export default function Account() {
                                 {config.status === 'validee' ? (
                                   <button
                                     onClick={() => handleAddToCart(config.id)}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-[#1A1917] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                                    className="flex-1 flex items-center justify-center gap-1.5 bg-am-navy px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-am-navy/90"
                                   >
                                     <IconShoppingCart size={14} />
                                     Commander
@@ -1310,7 +1312,7 @@ export default function Account() {
                                     Annulée
                                   </div>
                                 ) : (
-                                  <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#F5F5F4] px-3 py-2 text-xs font-medium text-[#706F6C]">
+                                  <div className="flex-1 flex items-center justify-center gap-1.5 bg-am-mist/15 px-3 py-2 text-xs font-medium text-black/65">
                                     <IconClock size={14} />
                                     En attente
                                   </div>
@@ -1318,7 +1320,7 @@ export default function Account() {
 
                                 <button
                                   onClick={() => handleViewConfiguration(config)}
-                                  className="flex items-center justify-center gap-1.5 border border-[#E8E6E3] px-3 py-2 text-xs font-medium text-[#1A1917] transition-colors hover:bg-[#F5F5F4]"
+                                  className="flex items-center justify-center gap-1.5 border border-black/10 px-3 py-2 text-xs font-medium text-black transition-colors hover:bg-am-mist/30"
                                 >
                                   <IconEye size={14} />
                                   Voir
@@ -1343,11 +1345,11 @@ export default function Account() {
                 {activeSection === 'profile' && (
                   <div className="space-y-8">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7355]">
+                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
                         Paramètres
                       </span>
-                      <h2 className="mt-2 text-2xl font-bold text-[#1A1917] lg:text-3xl">Mon profil</h2>
-                      <p className="mt-1 text-[#706F6C]">Gérez vos informations personnelles</p>
+                      <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Mon profil</h2>
+                      <p className="mt-1 text-black/65">Gérez vos informations personnelles</p>
                     </div>
 
                     {/* Messages */}
@@ -1366,13 +1368,13 @@ export default function Account() {
 
                     <div className="grid gap-6 lg:grid-cols-2">
                       {/* Informations personnelles */}
-                      <div className="border border-[#E8E6E3] bg-white p-6">
+                      <div className="border border-black/10 bg-white p-6">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-[#1A1917]">Informations personnelles</h3>
+                          <h3 className="font-bold text-black">Informations personnelles</h3>
                           {editingField !== 'personal' && (
                             <button
                               onClick={handleEditPersonal}
-                              className="flex items-center gap-1.5 text-sm text-[#8B7355] hover:underline"
+                              className="flex items-center gap-1.5 text-sm text-am-navy hover:underline"
                             >
                               <IconEdit size={14} />
                               Modifier
@@ -1384,48 +1386,48 @@ export default function Account() {
                           <div className="mt-6 space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2">
                               <div>
-                                <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Prénom</label>
+                                <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Prénom</label>
                                 <input
                                   type="text"
                                   value={formData.first_name}
                                   onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                                  className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 text-[#1A1917] outline-none transition-colors focus:border-[#1A1917]"
+                                  className="w-full border border-black/10 bg-white px-4 py-2.5 text-black outline-none transition-colors focus:border-am-navy"
                                 />
                               </div>
                               <div>
-                                <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Nom</label>
+                                <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Nom</label>
                                 <input
                                   type="text"
                                   value={formData.last_name}
                                   onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                                  className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 text-[#1A1917] outline-none transition-colors focus:border-[#1A1917]"
+                                  className="w-full border border-black/10 bg-white px-4 py-2.5 text-black outline-none transition-colors focus:border-am-navy"
                                 />
                               </div>
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Email</label>
+                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Email</label>
                               <input
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 text-[#1A1917] outline-none transition-colors focus:border-[#1A1917]"
+                                className="w-full border border-black/10 bg-white px-4 py-2.5 text-black outline-none transition-colors focus:border-am-navy"
                               />
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Téléphone</label>
+                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Téléphone</label>
                               <input
                                 type="tel"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 placeholder="Optionnel"
-                                className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 text-[#1A1917] placeholder:text-[#A8A7A3] outline-none transition-colors focus:border-[#1A1917]"
+                                className="w-full border border-black/10 bg-white px-4 py-2.5 text-black placeholder:text-black/45 outline-none transition-colors focus:border-am-navy"
                               />
                             </div>
                             <div className="flex gap-3 pt-2">
                               <button
                                 onClick={handleSavePersonal}
                                 disabled={saveLoading}
-                                className="flex items-center gap-2 bg-[#1A1917] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28] disabled:opacity-50"
+                                className="flex items-center gap-2 bg-am-navy px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-am-navy/90 disabled:opacity-50"
                               >
                                 {saveLoading ? (
                                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1436,7 +1438,7 @@ export default function Account() {
                               </button>
                               <button
                                 onClick={handleCancelEdit}
-                                className="border border-[#E8E6E3] px-5 py-2.5 text-sm font-medium text-[#706F6C] transition-colors hover:bg-[#F5F5F4]"
+                                className="border border-black/10 px-5 py-2.5 text-sm font-medium text-black/65 transition-colors hover:bg-am-mist/30"
                               >
                                 Annuler
                               </button>
@@ -1445,17 +1447,17 @@ export default function Account() {
                         ) : (
                           <div className="mt-6 space-y-3">
                             <div className="flex items-center gap-3">
-                              <IconUser size={16} className="text-[#A8A7A3]" />
-                              <span className="text-[#1A1917]">{customer?.first_name} {customer?.last_name}</span>
+                              <IconUser size={16} className="text-black/45" />
+                              <span className="text-black">{customer?.first_name} {customer?.last_name}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                              <IconMail size={16} className="text-[#A8A7A3]" />
-                              <span className="text-[#1A1917]">{customer?.email}</span>
+                              <IconMail size={16} className="text-black/45" />
+                              <span className="text-black">{customer?.email}</span>
                             </div>
                             {customer?.phone && (
                               <div className="flex items-center gap-3">
-                                <IconPhone size={16} className="text-[#A8A7A3]" />
-                                <span className="text-[#1A1917]">{customer.phone}</span>
+                                <IconPhone size={16} className="text-black/45" />
+                                <span className="text-black">{customer.phone}</span>
                               </div>
                             )}
                           </div>
@@ -1463,13 +1465,13 @@ export default function Account() {
                       </div>
 
                       {/* Mot de passe */}
-                      <div className="border border-[#E8E6E3] bg-white p-6">
+                      <div className="border border-black/10 bg-white p-6">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-[#1A1917]">Sécurité</h3>
+                          <h3 className="font-bold text-black">Sécurité</h3>
                           {editingField !== 'password' && (
                             <button
                               onClick={handleEditPassword}
-                              className="flex items-center gap-1.5 text-sm text-[#8B7355] hover:underline"
+                              className="flex items-center gap-1.5 text-sm text-am-navy hover:underline"
                             >
                               <IconEdit size={14} />
                               Modifier
@@ -1480,55 +1482,55 @@ export default function Account() {
                         {editingField === 'password' ? (
                           <div className="mt-6 space-y-4">
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Mot de passe actuel</label>
+                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Mot de passe actuel</label>
                               <div className="relative">
                                 <input
                                   type={showPasswords.current ? 'text' : 'password'}
                                   value={passwordData.current_password}
                                   onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
-                                  className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 pr-12 text-[#1A1917] outline-none transition-colors focus:border-[#1A1917]"
+                                  className="w-full border border-black/10 bg-white px-4 py-2.5 pr-12 text-black outline-none transition-colors focus:border-am-navy"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8A7A3]"
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black/45"
                                 >
                                   {showPasswords.current ? <IconEyeOff size={18} /> : <IconEye size={18} />}
                                 </button>
                               </div>
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Nouveau mot de passe</label>
+                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Nouveau mot de passe</label>
                               <div className="relative">
                                 <input
                                   type={showPasswords.new ? 'text' : 'password'}
                                   value={passwordData.new_password}
                                   onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
                                   placeholder="Minimum 6 caractères"
-                                  className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 pr-12 text-[#1A1917] placeholder:text-[#A8A7A3] outline-none transition-colors focus:border-[#1A1917]"
+                                  className="w-full border border-black/10 bg-white px-4 py-2.5 pr-12 text-black placeholder:text-black/45 outline-none transition-colors focus:border-am-navy"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8A7A3]"
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black/45"
                                 >
                                   {showPasswords.new ? <IconEyeOff size={18} /> : <IconEye size={18} />}
                                 </button>
                               </div>
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#706F6C] uppercase tracking-wider">Confirmer</label>
+                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Confirmer</label>
                               <div className="relative">
                                 <input
                                   type={showPasswords.confirm ? 'text' : 'password'}
                                   value={passwordData.confirm_password}
                                   onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-                                  className="w-full border border-[#E8E6E3] bg-white px-4 py-2.5 pr-12 text-[#1A1917] outline-none transition-colors focus:border-[#1A1917]"
+                                  className="w-full border border-black/10 bg-white px-4 py-2.5 pr-12 text-black outline-none transition-colors focus:border-am-navy"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8A7A3]"
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black/45"
                                 >
                                   {showPasswords.confirm ? <IconEyeOff size={18} /> : <IconEye size={18} />}
                                 </button>
@@ -1538,7 +1540,7 @@ export default function Account() {
                               <button
                                 onClick={handleSavePassword}
                                 disabled={saveLoading}
-                                className="flex items-center gap-2 bg-[#1A1917] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28] disabled:opacity-50"
+                                className="flex items-center gap-2 bg-am-navy px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-am-navy/90 disabled:opacity-50"
                               >
                                 {saveLoading ? (
                                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1549,7 +1551,7 @@ export default function Account() {
                               </button>
                               <button
                                 onClick={handleCancelEdit}
-                                className="border border-[#E8E6E3] px-5 py-2.5 text-sm font-medium text-[#706F6C] transition-colors hover:bg-[#F5F5F4]"
+                                className="border border-black/10 px-5 py-2.5 text-sm font-medium text-black/65 transition-colors hover:bg-am-mist/30"
                               >
                                 Annuler
                               </button>
@@ -1557,9 +1559,9 @@ export default function Account() {
                           </div>
                         ) : (
                           <div className="mt-6">
-                            <div className="flex items-center gap-3 bg-[#F5F5F4] p-3">
-                              <IconLock size={16} className="text-[#A8A7A3]" />
-                              <span className="text-[#1A1917]">••••••••</span>
+                            <div className="flex items-center gap-3 bg-am-mist/15 p-3">
+                              <IconLock size={16} className="text-black/45" />
+                              <span className="text-black">••••••••</span>
                             </div>
                           </div>
                         )}
@@ -1587,52 +1589,52 @@ export default function Account() {
                 {activeSection === 'help' && (
                   <div className="space-y-8">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7355]">
+                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
                         Support
                       </span>
-                      <h2 className="mt-2 text-2xl font-bold text-[#1A1917] lg:text-3xl">Aide & Contact</h2>
-                      <p className="mt-1 text-[#706F6C]">Nous sommes là pour vous aider</p>
+                      <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Aide & Contact</h2>
+                      <p className="mt-1 text-black/65">Nous sommes là pour vous aider</p>
                     </div>
 
                     {/* Contact Cards */}
                     <div className="grid gap-4 sm:grid-cols-2">
                       <a
                         href="mailto:pro.archimeuble@gmail.com"
-                        className="group border border-[#E8E6E3] bg-white p-6 transition-all hover:border-[#1A1917]/20 hover:shadow-md"
+                        className="group border border-black/10 bg-white p-6 transition-all hover:border-am-navy/20 hover:shadow-md"
                       >
-                        <div className="flex h-12 w-12 items-center justify-center bg-[#F5F5F4] transition-colors group-hover:bg-[#1A1917]">
-                          <IconMail size={20} className="text-[#1A1917] transition-colors group-hover:text-white" stroke={1.5} />
+                        <div className="flex h-12 w-12 items-center justify-center bg-am-mist/15 transition-colors group-hover:bg-am-navy">
+                          <IconMail size={20} className="text-black transition-colors group-hover:text-white" stroke={1.5} />
                         </div>
-                        <h3 className="mt-4 font-bold text-[#1A1917]">Email</h3>
-                        <p className="mt-1 text-[#8B7355]">pro.archimeuble@gmail.com</p>
-                        <p className="mt-2 text-sm text-[#706F6C]">Réponse sous 24h</p>
+                        <h3 className="mt-4 font-bold text-black">Email</h3>
+                        <p className="mt-1 text-am-navy">pro.archimeuble@gmail.com</p>
+                        <p className="mt-2 text-sm text-black/65">Réponse sous 24h</p>
                       </a>
 
                       <a
                         href="tel:0601062867"
-                        className="group border border-[#E8E6E3] bg-white p-6 transition-all hover:border-[#1A1917]/20 hover:shadow-md"
+                        className="group border border-black/10 bg-white p-6 transition-all hover:border-am-navy/20 hover:shadow-md"
                       >
-                        <div className="flex h-12 w-12 items-center justify-center bg-[#F5F5F4] transition-colors group-hover:bg-[#1A1917]">
-                          <IconPhoneCall size={20} className="text-[#1A1917] transition-colors group-hover:text-white" stroke={1.5} />
+                        <div className="flex h-12 w-12 items-center justify-center bg-am-mist/15 transition-colors group-hover:bg-am-navy">
+                          <IconPhoneCall size={20} className="text-black transition-colors group-hover:text-white" stroke={1.5} />
                         </div>
-                        <h3 className="mt-4 font-bold text-[#1A1917]">Téléphone</h3>
-                        <p className="mt-1 text-[#8B7355]">06 01 06 28 67</p>
-                        <p className="mt-2 text-sm text-[#706F6C]">Lun - Ven, 9h - 18h</p>
+                        <h3 className="mt-4 font-bold text-black">Téléphone</h3>
+                        <p className="mt-1 text-am-navy">06 01 06 28 67</p>
+                        <p className="mt-2 text-sm text-black/65">Lun - Ven, 9h - 18h</p>
                       </a>
                     </div>
 
                     {/* FAQ */}
-                    <div className="border border-[#E8E6E3] bg-white">
-                      <div className="border-b border-[#E8E6E3] p-5">
+                    <div className="border border-black/10 bg-white">
+                      <div className="border-b border-black/10 p-5">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center bg-[#F5F5F4]">
-                            <IconMessage size={18} className="text-[#1A1917]" stroke={1.5} />
+                          <div className="flex h-10 w-10 items-center justify-center bg-am-mist/15">
+                            <IconMessage size={18} className="text-black" stroke={1.5} />
                           </div>
-                          <h3 className="font-bold text-[#1A1917]">Questions fréquentes</h3>
+                          <h3 className="font-bold text-black">Questions fréquentes</h3>
                         </div>
                       </div>
 
-                      <div className="divide-y divide-[#E8E6E3]">
+                      <div className="divide-y divide-black/10">
                         {[
                           {
                             q: 'Comment passer une commande ?',
@@ -1651,21 +1653,21 @@ export default function Account() {
                             a: 'Tous nos meubles sont garantis contre les défauts de fabrication. Cette garantie couvre les pièces et la main d\'œuvre.'
                           }
                         ].map((item, i) => (
-                          <div key={i} className="p-5 transition-colors hover:bg-[#FAFAF9]">
-                            <h4 className="font-medium text-[#1A1917]">{item.q}</h4>
-                            <p className="mt-2 text-sm leading-relaxed text-[#706F6C]">{item.a}</p>
+                          <div key={i} className="p-5 transition-colors hover:bg-am-mist/30">
+                            <h4 className="font-medium text-black">{item.q}</h4>
+                            <p className="mt-2 text-sm leading-relaxed text-black/65">{item.a}</p>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* CTA */}
-                    <div className="bg-[#1A1917] p-8 text-center">
+                    <div className="bg-am-navy p-8 text-center">
                       <h3 className="text-xl font-bold text-white">Besoin d&apos;aide pour votre projet ?</h3>
                       <p className="mt-2 text-white/70">Notre équipe est à votre disposition pour vous accompagner</p>
                       <Link
                         href="/contact-request"
-                        className="mt-6 inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:bg-[#F5F5F4]"
+                        className="mt-6 inline-flex items-center gap-2 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-am-mist/30"
                       >
                         Nous contacter
                         <IconArrowRight size={16} />
@@ -1692,12 +1694,12 @@ export default function Account() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between border-b border-[#E8E6E3] bg-white p-6">
-              <h3 className="font-serif text-xl text-[#1A1917]">Détails de la façade</h3>
+            <div className="sticky top-0 flex items-center justify-between border-b border-black/10 bg-white p-6">
+              <h3 className="font-serif text-xl text-black">Détails de la façade</h3>
               <button
                 type="button"
                 onClick={() => setSelectedFacadeDetail(null)}
-                className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
+                className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
               >
                 <IconX size={20} />
               </button>
@@ -1707,7 +1709,7 @@ export default function Account() {
             <div className="p-6">
               {(() => {
                 const config = selectedFacadeDetail.config;
-                const materialName = config?.material?.name || 'Matériau';
+                const materialName = displayColorName(config?.material?.name) || 'Matériau';
                 const hingeType = config?.hinges?.type || 'no-hole-no-hinge';
                 const hingeCount = config?.hinges?.count || 0;
                 const hingeSide = config?.hinges?.direction || '';
@@ -1717,7 +1719,7 @@ export default function Account() {
                   <div className="space-y-6">
                     {/* Aperçu visuel */}
                     <div
-                      className="aspect-square w-full max-w-[200px] mx-auto border border-[#E8E6E3]"
+                      className="aspect-square w-full max-w-[200px] mx-auto border border-black/10"
                       style={{
                         backgroundColor: config?.material?.color_hex || '#E5E7EB',
                         backgroundImage: config?.material?.texture_url ? `url(${config.material.texture_url})` : undefined,
@@ -1729,32 +1731,32 @@ export default function Account() {
                     {/* Info Grid */}
                     <div className="grid gap-4">
                       {/* Dimensions */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Dimensions</span>
-                        <span className="text-sm font-medium text-[#1A1917]">
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Dimensions</span>
+                        <span className="text-sm font-medium text-black">
                           {config?.width ? `${config.width / 10} × ${config.height / 10} cm` : 'N/A'} · {config?.depth || 19} mm
                         </span>
                       </div>
 
                       {/* Matériau */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Matériau</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Matériau</span>
                         <div className="flex items-center gap-2">
                           {config?.material?.texture_url ? (
-                            <div className="h-5 w-5 border border-[#E8E6E3] overflow-hidden">
+                            <div className="h-5 w-5 border border-black/10 overflow-hidden">
                               <img src={config.material.texture_url} alt="" className="h-full w-full object-cover" />
                             </div>
                           ) : config?.material?.color_hex ? (
-                            <div className="h-5 w-5 border border-[#E8E6E3]" style={{ backgroundColor: config.material.color_hex }} />
+                            <div className="h-5 w-5 border border-black/10" style={{ backgroundColor: config.material.color_hex }} />
                           ) : null}
-                          <span className="text-sm font-medium text-[#1A1917]">{materialName}</span>
+                          <span className="text-sm font-medium text-black">{materialName}</span>
                         </div>
                       </div>
 
                       {/* Type de charnière */}
-                      <div className="py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C] block mb-3">Charnières</span>
-                        <div className="flex items-center gap-3 p-3 bg-[#FAFAF9] rounded-lg">
+                      <div className="py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65 block mb-3">Charnières</span>
+                        <div className="flex items-center gap-3 p-3 bg-am-mist/15 rounded-lg">
                           <div className="flex-shrink-0">
                             {hingeType === 'no-hole-no-hinge' && (
                               <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
@@ -1807,7 +1809,7 @@ export default function Account() {
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-[#1A1917]">
+                            <p className="text-sm font-medium text-black">
                               {hingeType === 'no-hole-no-hinge' && 'Sans trou, sans charnière'}
                               {hingeType === 'hole-with-applied-hinge' && 'Trou + charnière fournie porte en applique'}
                               {hingeType === 'hole-with-twin-hinge' && 'Trou + charnière fournie porte jumelée'}
@@ -1815,11 +1817,11 @@ export default function Account() {
                               {!hingeType && 'Sans trou, sans charnière'}
                             </p>
                             {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
-                              <p className="text-xs text-[#706F6C] mt-1">
+                              <p className="text-xs text-black/65 mt-1">
                                 {hingeCount} charnières · Ouverture {hingeSide === 'left' ? 'gauche' : hingeSide === 'right' ? 'droite' : hingeSide}
                               </p>
                             )}
-                            <p className="text-xs text-[#8B7355] mt-1">
+                            <p className="text-xs text-am-navy mt-1">
                               Prix unit. {hingeType === 'no-hole-no-hinge' || !hingeType ? '0.00' : '34.20'} € TTC
                             </p>
                           </div>
@@ -1828,19 +1830,19 @@ export default function Account() {
 
                       {/* Perçages */}
                       {drillings.length > 0 && (
-                        <div className="py-3 border-b border-[#E8E6E3]">
+                        <div className="py-3 border-b border-black/10">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-[#706F6C]">Perçages</span>
-                            <span className="text-sm font-medium text-[#1A1917]">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
+                            <span className="text-sm text-black/65">Perçages</span>
+                            <span className="text-sm font-medium text-black">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
                           </div>
                           <div className="space-y-1 pl-4">
                             {drillings.map((drill: any, idx: number) => (
                               <div key={drill.id || idx} className="flex justify-between text-xs">
-                                <span className="text-[#706F6C]">
+                                <span className="text-black/65">
                                   {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
                                 </span>
                                 {drill.price > 0 && (
-                                  <span className="text-[#1A1917]">+{Number(drill.price).toFixed(2)} €</span>
+                                  <span className="text-black">+{formatPrice(drill.price)}</span>
                                 )}
                               </div>
                             ))}
@@ -1849,22 +1851,22 @@ export default function Account() {
                       )}
 
                       {/* Quantité */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Quantité</span>
-                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacadeDetail.quantity}</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Quantité</span>
+                        <span className="text-sm font-medium text-black">{selectedFacadeDetail.quantity}</span>
                       </div>
 
                       {/* Prix unitaire */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Prix unitaire</span>
-                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacadeDetail.unit_price?.toLocaleString('fr-FR')} €</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Prix unitaire</span>
+                        <span className="text-sm font-medium text-black">{formatPrice(selectedFacadeDetail.unit_price)}</span>
                       </div>
 
                       {/* Total */}
-                      <div className="flex justify-between items-center py-3 bg-[#F5F5F4] px-4 -mx-4">
-                        <span className="text-sm font-medium text-[#1A1917]">Total</span>
-                        <span className="text-lg font-medium text-[#1A1917]">
-                          {(selectedFacadeDetail.total_price || selectedFacadeDetail.unit_price * selectedFacadeDetail.quantity)?.toLocaleString('fr-FR')} €
+                      <div className="flex justify-between items-center py-3 bg-am-mist/15 px-4 -mx-4">
+                        <span className="text-sm font-medium text-black">Total</span>
+                        <span className="text-lg font-medium text-black">
+                          {formatPrice(selectedFacadeDetail.total_price || selectedFacadeDetail.unit_price * selectedFacadeDetail.quantity)}
                         </span>
                       </div>
                     </div>
@@ -1874,11 +1876,11 @@ export default function Account() {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 border-t border-[#E8E6E3] bg-white p-6">
+            <div className="sticky bottom-0 border-t border-black/10 bg-white p-6">
               <button
                 type="button"
                 onClick={() => setSelectedFacadeDetail(null)}
-                className="w-full h-12 bg-[#1A1917] text-white text-sm font-medium transition-colors hover:bg-[#2D2B28]"
+                className="w-full h-12 bg-am-navy text-white text-sm font-medium transition-colors hover:bg-am-navy/90"
               >
                 Fermer
               </button>

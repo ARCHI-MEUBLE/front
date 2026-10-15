@@ -11,7 +11,7 @@ export function RealisationsHero() {
       <div className="grid grid-cols-1 items-center gap-[clamp(48px,6vw,96px)] lg:grid-cols-2">
         <h1
           id="real-title"
-          className="m-0 font-[Geist] font-medium leading-[0.94] tracking-[-0.055em] text-black"
+          className="m-0 font-sans font-medium leading-[0.94] tracking-[-0.055em] text-black"
           style={{ fontSize: "clamp(48px,6.6vw,104px)" }}
         >
           Nos réalisations <span className="am-highlight">sur mesure</span>
@@ -62,7 +62,7 @@ export function RealisationsHero() {
               <span className="font-semibold tracking-[-0.02em]" style={{ fontSize: "clamp(12px,3cqi,17px)" }}>
                 Dressing ouvert
               </span>
-              <span className="font-[Geist_Mono] uppercase tracking-[0.05em] text-black/70" style={{ fontSize: "clamp(9px,1.9cqi,11px)" }}>
+              <span className="font-mono uppercase tracking-[0.05em] text-black/70" style={{ fontSize: "clamp(9px,1.9cqi,11px)" }}>
                 Lille · 2025
               </span>
             </div>
@@ -115,7 +115,8 @@ export function RealisationsHero() {
             </div>
           </div>
 
-          <div className="absolute bottom-0 left-[30%] w-[46%]">
+          {/* À gauche de la carte « Suivi du projet » : plus bas ou plus à droite, l'étiquette recouvre sa dernière ligne */}
+          <div className="absolute bottom-0 left-[6%] w-[46%]">
             <span
               className="relative z-10 inline-flex items-center gap-[1.4cqi] whitespace-nowrap rounded-md bg-am-mist font-semibold shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_16px_40px_-12px_rgba(0,0,0,0.22)]"
               style={{ margin: "0 0 -1.6cqi 18%", padding: "1.4cqi 2.4cqi", fontSize: "clamp(11px,2.5cqi,14px)" }}

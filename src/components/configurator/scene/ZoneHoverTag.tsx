@@ -29,13 +29,13 @@ export function ZoneHoverTag({ rootZone, zoneId, layout, widthMm, heightMm, clic
     >
       <div
         role="tooltip"
-        className="whitespace-nowrap rounded-sm bg-[#1A1917]/90 px-2.5 py-1.5 text-[11px] leading-snug text-white shadow-lg"
+        className="whitespace-nowrap rounded-sm bg-am-navy/90 px-2.5 py-1.5 text-[11px] leading-snug text-white shadow-lg"
         style={{ transform: 'translate(-50%, calc(-100% - 10px))' }}
       >
         <div className="font-semibold">{description.title}</div>
         <div className="text-white/70">{description.detail}</div>
         {description.openable && (
-          <div className="mt-0.5 text-[10px] text-[#FFB74D]">{clickToOpen ? 'Clic' : 'Double-clic'} : ouvrir / fermer</div>
+          <div className="mt-0.5 text-[10px] text-am-mist">{clickToOpen ? 'Clic' : 'Double-clic'} : ouvrir / fermer</div>
         )}
       </div>
     </Html>

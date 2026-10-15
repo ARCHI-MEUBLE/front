@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+// Pas de prix sur la carte : celui de la base ne correspond pas au prix calculé par le configurateur
 export type ModelCardData = {
   id: number;
   name: string;
@@ -30,17 +31,22 @@ export function ModelCard({ model, index }: { model: ModelCardData; index: numbe
         )}
       </div>
       <div className="grid items-start gap-x-3 gap-y-1" style={{ gridTemplateColumns: "32px minmax(0,1fr) auto" }}>
-        <span className="pt-[5px] font-[Geist_Mono] text-[12px] text-black/70">
+        <span className="pt-[5px] font-mono text-[12px] text-black/70">
           {String(index + 1).padStart(2, "0")}
         </span>
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
-            <h3 className="m-0 font-[Geist] text-[22px] font-medium tracking-[-0.035em] text-black">{model.name}</h3>
-            <span className="whitespace-nowrap font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-black/70">
+            <h3 className="m-0 font-sans text-[22px] font-medium tracking-[-0.035em] text-black">{model.name}</h3>
+            <span className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
               {model.categoryLabel}
             </span>
           </div>
           <p className="m-0 text-[15px] text-black/70">{model.description}</p>
+          <p className="m-0 mt-1 text-[15px]">
+            <span className="text-black underline decoration-black/30 underline-offset-4 transition-colors group-hover:decoration-black">
+              Configurer ce modèle
+            </span>
+          </p>
         </div>
         <span
           aria-hidden="true"

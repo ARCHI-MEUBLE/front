@@ -10,7 +10,7 @@ export function QuoteRequestCTA() {
         <div>
           <h2
             id="inspi-title"
-            className="m-0 mb-5 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-white"
+            className="m-0 mb-5 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             Un meuble vous plaît ?
@@ -38,7 +38,7 @@ export function QuoteRequestCTA() {
               <span className="text-[17px] font-medium tracking-[-0.01em]">Déposez la photo ou la vidéo du meuble</span>
               <span className="flex flex-wrap gap-1.5">
                 {FILE_TYPES.map((type) => (
-                  <span key={type} className="rounded-full border border-white/40 px-2.5 py-1 font-[Geist_Mono] text-[11px] text-white/80">
+                  <span key={type} className="rounded-full border border-white/40 px-2.5 py-1 font-mono text-[11px] text-white/80">
                     {type}
                   </span>
                 ))}

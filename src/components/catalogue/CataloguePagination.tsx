@@ -31,7 +31,7 @@ export function CataloguePagination({
           key={page}
           type="button"
           onClick={() => onPageChange(page)}
-          className={`flex h-11 w-11 items-center justify-center rounded-full font-[Geist_Mono] text-[14px] ${
+          className={`flex h-11 w-11 items-center justify-center rounded-full font-mono text-[14px] ${
             page === currentPage
               ? "border border-black bg-am-mist text-black"
               : "border border-black/15 bg-white text-black"

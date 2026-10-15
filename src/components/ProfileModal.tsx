@@ -149,13 +149,13 @@ export function ProfileModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div
         ref={modalRef}
-        className="relative w-full max-w-lg rounded-[36px] border border-[#e0d7cc] bg-white/95 p-10 shadow-2xl backdrop-blur"
+        className="relative w-full max-w-lg rounded-[36px] border border-black/10 bg-white/95 p-10 shadow-2xl backdrop-blur"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="absolute right-4 top-4 rounded-full p-2 text-muted transition hover:bg-[#ede3d7]"
+          className="absolute right-4 top-4 rounded-full p-2 text-muted transition hover:bg-am-mist/30"
         >
           <X className="h-5 w-5" />
         </button>
@@ -177,7 +177,7 @@ export function ProfileModal({
             <button
               type="button"
               onClick={() => setShowPasswordForm((value) => !value)}
-              className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[#14100f]"
+              className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-am-navy/90"
             >
               {showPasswordForm ? "Annuler" : "Changer de mot de passe"}
             </button>
@@ -195,7 +195,7 @@ export function ProfileModal({
                     required
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
-                    className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+                    className="mt-2 w-full rounded-sm border border-black/10 bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
                   />
                 </div>
                 <div>
@@ -210,13 +210,13 @@ export function ProfileModal({
                     minLength={6}
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
-                    className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+                    className="mt-2 w-full rounded-sm border border-black/10 bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[#14100f] disabled:cursor-not-allowed disabled:bg-ink/60"
+                  className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:bg-ink/60"
                 >
                   {loading ? "Enregistrement..." : "Valider"}
                 </button>
@@ -253,7 +253,7 @@ export function ProfileModal({
                     required
                     value={deletePassword}
                     onChange={(event) => setDeletePassword(event.target.value)}
-                    className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/10"
+                    className="mt-2 w-full rounded-sm border border-black/10 bg-white px-4 py-3 text-sm text-ink focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/10"
                   />
                 </div>
                 <button
@@ -281,7 +281,7 @@ export function ProfileModal({
                     key={`${meuble.userId}-${meuble.name}`}
                     className="flex items-center space-x-3 rounded-sm border border-border bg-white/80 p-3 shadow-sm"
                   >
-                    <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-gray-100">
+                    <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-am-mist/25">
                       <Image
                         src={meuble.image}
                         alt={meuble.name}
@@ -301,7 +301,7 @@ export function ProfileModal({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-8 w-full rounded-full border border-[#e0d7cc] bg-white px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-stone transition hover:border-ink hover:text-ink"
+          className="mt-8 w-full rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-stone transition hover:border-ink hover:text-ink"
         >
           Se déconnecter
         </button>

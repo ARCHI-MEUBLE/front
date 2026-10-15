@@ -1718,7 +1718,7 @@ function Furniture({
                     {selectedPanelIds.has('panel-back') && (
                         <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
                             <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
-                            <meshBasicMaterial color="#2196F3" wireframe transparent opacity={0.5} toneMapped={false} />
+                            <meshBasicMaterial color="#3B3E58" wireframe transparent opacity={0.5} toneMapped={false} />
                         </mesh>
                     )}
                 </group>
@@ -1738,7 +1738,7 @@ function NavigationHint() {
     return (
         <div
             role="note"
-            className="pointer-events-none absolute bottom-14 left-3 z-10 max-w-[calc(100%-1.5rem)] rounded-sm bg-[#1A1917]/80 px-3 py-1.5 text-[11px] leading-snug text-white lg:bottom-16 lg:left-4 lg:max-w-[calc(100%-14rem)]"
+            className="pointer-events-none absolute bottom-14 left-3 z-10 max-w-[calc(100%-1.5rem)] rounded-sm bg-am-navy/80 px-3 py-1.5 text-[11px] leading-snug text-white lg:bottom-16 lg:left-4 lg:max-w-[calc(100%-14rem)]"
         >
             {touch
                 ? 'Glisser : tourner · Pincer : zoomer · Double-tap : ouvrir / fermer'
@@ -1785,7 +1785,7 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
 
     return (
         <div
-            style={{ width: '100%', height: '100%', background: '#FAFAF9', position: 'relative' }}
+            style={{ width: '100%', height: '100%', background: 'var(--am-paper)', position: 'relative' }}
             onPointerDownCapture={() => {
                 navigationHintSeen = true;
                 setHintVisible(false);

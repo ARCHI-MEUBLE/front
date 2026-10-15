@@ -159,7 +159,7 @@ export default function ProductDetail() {
           <section aria-labelledby="related-title" className={HOME_SECTION}>
             <h2
               id="related-title"
-              className="m-0 mb-8 font-[Geist] font-medium tracking-[-0.045em] text-black"
+              className="m-0 mb-8 font-sans font-medium tracking-[-0.045em] text-black"
               style={{ fontSize: "clamp(28px,3vw,44px)" }}
             >
               Vous aimerez aussi

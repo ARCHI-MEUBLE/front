@@ -15,7 +15,7 @@ export function AvisReviewCard({ review }: { review: AvisReviewData }) {
           <span
             key={i}
             className="flex h-[22px] w-[22px] items-center justify-center text-[14px] leading-none"
-            style={{ background: i < review.rating ? "var(--am-red)" : "rgba(0,0,0,0.15)", color: "#FFFFFF" }}
+            style={{ background: i < review.rating ? "var(--am-wine)" : "rgba(0,0,0,0.15)", color: "#FFFFFF" }}
           >
             ★
           </span>
@@ -35,7 +35,7 @@ export function AvisReviewCard({ review }: { review: AvisReviewData }) {
         <span>
           <span className="block text-[15px] font-medium text-black">{review.authorName}</span>
           {review.city && (
-            <span className="block font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-black/70">
+            <span className="block font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
               {review.city}
             </span>
           )}

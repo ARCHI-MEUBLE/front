@@ -9,10 +9,10 @@ import type { ThreeCanvasHandle } from './types';
 const ThreeCanvas = dynamic(() => import('./ThreeCanvas'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '100%' }}>
+    <div className="flex h-full w-full items-center justify-center bg-am-paper" style={{ minHeight: '100%' }}>
       <div className="flex flex-col items-center gap-3">
-        <div className="h-10 w-10 animate-spin border-4 border-[#1A1917] border-t-transparent rounded-full" />
-        <p className="text-sm font-medium text-[#706F6C]">Initialisation du studio 3D...</p>
+        <div className="h-10 w-10 animate-spin border-4 border-am-navy border-t-transparent rounded-full" />
+        <p className="text-sm font-medium text-black/65">Initialisation du studio 3D...</p>
       </div>
     </div>
   )

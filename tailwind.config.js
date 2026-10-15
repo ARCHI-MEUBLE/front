@@ -59,7 +59,6 @@ const config = {
         // Palette du site, définie dans styles/globals.css
         'am-navy': 'var(--am-navy)',
         'am-mist': 'var(--am-mist)',
-        'am-red': 'var(--am-red)',
         'am-wine': 'var(--am-wine)',
         'am-paper': 'var(--am-paper)',
 
@@ -84,8 +83,8 @@ const config = {
       },
       fontFamily: {
         serif: ["'Playfair Display'", "'Libre Baskerville'", "Georgia", "serif"],
-        sans: ["'DM Sans'", "'IBM Plex Sans'", "-apple-system", "sans-serif"],
-        mono: ["'JetBrains Mono'", "'SF Mono'", "monospace"],
+        sans: ["'Geist Sans'", "-apple-system", "'Segoe UI'", "sans-serif"],
+        mono: ["'Geist Mono'", "'SF Mono'", "monospace"],
       },
       fontSize: {
         'hero': ['clamp(2.5rem, 5vw, 5rem)', { lineHeight: '1.1', letterSpacing: '-0.02em' }],

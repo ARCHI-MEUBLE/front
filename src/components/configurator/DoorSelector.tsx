@@ -31,8 +31,8 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        <div className="border-b border-[#E8E6E3] pb-2">
-          <h3 className="font-serif text-base text-[#1A1917]">Configuration des Portes</h3>
+        <div className="border-b border-black/10 pb-2">
+          <h3 className="font-serif text-base text-black">Configuration des Portes</h3>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {DOOR_TYPE_OPTIONS.map((option) => {
@@ -45,12 +45,12 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
                 onClick={() => onTypeChange(option.id as any)}
                 className={`flex flex-col items-center border-2 p-3 transition-all duration-200 ${
                   isActive
-                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                    : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                    ? 'border-am-navy bg-am-navy text-white'
+                    : 'border-black/10 bg-white text-black hover:border-am-navy'
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                <div className={`mb-2 h-6 w-6 ${isActive ? 'text-white' : 'text-[#706F6C]'}`}>
+                <div className={`mb-2 h-6 w-6 ${isActive ? 'text-white' : 'text-black/65'}`}>
                   <Icon className="h-full w-full" />
                 </div>
                 <span className="text-[11px] font-medium text-center uppercase tracking-tight">{option.label}</span>
@@ -62,8 +62,8 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
 
       {type === 'single' && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-3">
-          <div className="border-b border-[#E8E6E3] pb-1">
-            <h4 className="text-[11px] font-semibold text-[#706F6C] uppercase tracking-wider">Sens d&apos;ouverture</h4>
+          <div className="border-b border-black/10 pb-1">
+            <h4 className="text-[11px] font-semibold text-black/65 uppercase tracking-wider">Sens d&apos;ouverture</h4>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {DOOR_SIDE_OPTIONS.map((option) => {
@@ -76,12 +76,12 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
                   onClick={() => onSideChange(option.id as any)}
                   className={`flex items-center justify-center gap-2 border-2 p-2 transition-all duration-200 ${
                     isActive
-                      ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                      : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                      ? 'border-am-navy bg-am-navy text-white'
+                      : 'border-black/10 bg-white text-black hover:border-am-navy'
                   }`}
                   style={{ borderRadius: '2px' }}
                 >
-                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-[#706F6C]'}`} />
+                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-black/65'}`} />
                   <span className="text-[11px] font-medium uppercase tracking-tight">{option.label}</span>
                 </button>
               );
@@ -97,12 +97,12 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
             onClick={onToggleDoors}
             className={`w-full flex items-center justify-center gap-2 border-2 p-2.5 transition-all duration-200 ${
               doorsOpen
-                ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                ? 'border-am-navy bg-am-navy text-white'
+                : 'border-black/10 bg-white text-black hover:border-am-navy'
             }`}
             style={{ borderRadius: '2px' }}
           >
-            <DoorOpen className={`h-4 w-4 ${doorsOpen ? 'text-white' : 'text-[#706F6C]'}`} />
+            <DoorOpen className={`h-4 w-4 ${doorsOpen ? 'text-white' : 'text-black/65'}`} />
             <span className="text-[11px] font-semibold uppercase tracking-wider">
               {doorsOpen ? 'Fermer les façades' : 'Ouvrir les façades'}
             </span>

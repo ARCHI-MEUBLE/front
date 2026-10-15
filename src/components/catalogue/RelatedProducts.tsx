@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatPrice } from "@/lib/format";
 
 export type RelatedProduct = {
   id: number;
@@ -28,12 +29,12 @@ export function RelatedProducts({ items }: { items: RelatedProduct[] }) {
               />
             )}
           </div>
-          <span className="font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-black/70">
+          <span className="font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
             {item.category}
           </span>
           <span className="flex items-baseline justify-between gap-3 text-[17px] font-medium tracking-[-0.02em] text-black">
             <span>{item.name}</span>
-            <span>{Number(item.unit_price).toFixed(0)} €</span>
+            <span>{formatPrice(item.unit_price)}</span>
           </span>
         </Link>
       ))}

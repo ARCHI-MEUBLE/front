@@ -4,7 +4,7 @@ export default function ColorCheckBadge() {
   return (
     <span
       aria-hidden="true"
-      className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#2196F3] text-white ring-2 ring-white"
+      className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-am-navy text-white ring-2 ring-white"
     >
       <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
         <path

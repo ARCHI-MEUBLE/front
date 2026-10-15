@@ -6,8 +6,9 @@ import Head from 'next/head';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
+import { AuthShowcase } from "@/components/auth/AuthShowcase";
 
 export default function Register() {
   const router = useRouter();
@@ -125,49 +126,19 @@ export default function Register() {
           </Link>
           <Link 
             href="/auth/login" 
-            className="text-sm font-medium text-[#8B7355] hover:underline"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-am-navy underline-offset-4 hover:underline"
           >
             Se connecter
           </Link>
         </div>
 
-        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
-          <div 
-            className="absolute inset-0 bg-zinc-900" 
-            style={{
-              backgroundImage: 'url("https://images.unsplash.com/photo-1590069261209-f8e9b8642343?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1376&q=80")',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="relative z-20 flex items-center text-lg font-medium">
-            <Link href="/" className="flex items-center gap-2">
-              <img
-                src="/images/logo site .png"
-                alt="ArchiMeuble"
-                className="h-10 w-auto brightness-0 invert"
-              />
-            </Link>
-          </div>
-          <div className="relative z-20 mt-auto">
-            <blockquote className="space-y-2">
-              <p className="text-lg">
-                &ldquo;ArchiMeuble m&apos;a permis de concevoir le meuble de mes rêves en quelques clics. 
-                La qualité de fabrication lilloise est exceptionnelle.&rdquo;
-              </p>
-              <footer className="text-sm">Sofia Davis</footer>
-            </blockquote>
-          </div>
-        </div>
+        <AuthShowcase />
 
-        <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-black lg:p-8 h-full w-full overflow-y-auto">
+        <div className="flex flex-1 items-center justify-center bg-am-paper p-4 lg:p-8 h-full w-full overflow-y-auto">
           <Card className="w-full max-w-2xl border-none shadow-none bg-transparent lg:shadow-none dark:bg-transparent py-10 lg:py-0">
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-3xl font-bold tracking-tight text-[#1A1917] dark:text-white">
-                Créer un compte
-              </CardTitle>
-              <CardDescription className="text-zinc-500 dark:text-zinc-400">
+              <h1 className="text-3xl font-bold tracking-tight text-black">Créer un compte</h1>
+              <CardDescription className="text-black/70">
                 Rejoignez ArchiMeuble pour sauvegarder vos configurations
               </CardDescription>
             </CardHeader>
@@ -190,7 +161,7 @@ export default function Register() {
                       required
                       value={formData.first_name}
                       onChange={handleChange}
-                      className="bg-white dark:bg-zinc-800"
+                      className="h-11 border-black/30 bg-white"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -202,7 +173,7 @@ export default function Register() {
                       required
                       value={formData.last_name}
                       onChange={handleChange}
-                      className="bg-white dark:bg-zinc-800"
+                      className="h-11 border-black/30 bg-white"
                     />
                   </div>
                 </div>
@@ -217,7 +188,7 @@ export default function Register() {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="bg-white dark:bg-zinc-800"
+                    className="h-11 border-black/30 bg-white"
                   />
                 </div>
 
@@ -232,7 +203,7 @@ export default function Register() {
                       required
                       value={formData.password}
                       onChange={handleChange}
-                      className="bg-white dark:bg-zinc-800"
+                      className="h-11 border-black/30 bg-white"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -245,13 +216,13 @@ export default function Register() {
                       required
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      className="bg-white dark:bg-zinc-800"
+                      className="h-11 border-black/30 bg-white"
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+                <div className="border-t border-black/15 pt-6">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-black/70 mb-4">
                     Coordonnées
                   </h3>
                   <div className="grid gap-4">
@@ -265,7 +236,7 @@ export default function Register() {
                         required
                         value={formData.phone}
                         onChange={handleChange}
-                        className="bg-white dark:bg-zinc-800"
+                        className="h-11 border-black/30 bg-white"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -277,7 +248,7 @@ export default function Register() {
                         required
                         value={formData.address}
                         onChange={handleChange}
-                        className="bg-white dark:bg-zinc-800"
+                        className="h-11 border-black/30 bg-white"
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -290,7 +261,7 @@ export default function Register() {
                           required
                           value={formData.postal_code}
                           onChange={handleChange}
-                          className="bg-white dark:bg-zinc-800"
+                          className="h-11 border-black/30 bg-white"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -302,7 +273,7 @@ export default function Register() {
                           required
                           value={formData.city}
                           onChange={handleChange}
-                          className="bg-white dark:bg-zinc-800"
+                          className="h-11 border-black/30 bg-white"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -314,7 +285,7 @@ export default function Register() {
                           required
                           value={formData.country}
                           onChange={handleChange}
-                          className="bg-white dark:bg-zinc-800"
+                          className="h-11 border-black/30 bg-white"
                         />
                       </div>
                     </div>
@@ -323,7 +294,7 @@ export default function Register() {
 
                 <Button 
                   type="submit" 
-                  className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm mt-2"
+                  className="mt-2 h-11 w-full rounded-md bg-am-navy text-white shadow-sm transition-all hover:bg-am-navy/90"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -338,16 +309,16 @@ export default function Register() {
               </form>
             </CardContent>
 
-            <CardFooter className="flex flex-col gap-6 text-center mt-2">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <CardFooter className="flex flex-col gap-2 text-center mt-2">
+              <p className="text-sm text-black/70">
                 Déjà un compte ?{' '}
-                <Link href="/auth/login" className="font-semibold text-[#1A1917] hover:underline dark:text-white">
+                <Link href="/auth/login" className="inline-flex min-h-11 items-center font-semibold text-black underline-offset-4 hover:underline">
                   Se connecter
                 </Link>
               </p>
               <Link 
                 href="/" 
-                className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] dark:text-zinc-400 dark:hover:text-white transition-colors group"
+                className="group inline-flex min-h-11 items-center gap-2 text-sm text-black/70 transition-colors hover:text-black"
               >
                 <IconArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Retour à l&apos;accueil

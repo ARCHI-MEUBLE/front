@@ -597,18 +597,18 @@ export default function PanelPlanCanvas({
     const borderPanels = panelSegments2D.filter(s => s.type !== 'back' && s.type !== 'separator');
 
     return (
-        <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
+        <div className="border border-black/10 bg-white p-5" style={{ borderRadius: '4px' }}>
             {/* Header */}
             <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#1A1917]">Sélection des panneaux</h3>
-                <span className="font-mono text-base font-medium text-[#1A1917]">
+                <h3 className="text-lg font-semibold text-black">Sélection des panneaux</h3>
+                <span className="font-mono text-base font-medium text-black">
                     {width} × {height} mm
                 </span>
             </div>
 
             {/* Canvas */}
             <div
-                className="mx-auto inline-flex items-center justify-center overflow-visible bg-[#FAFAF9] cursor-default"
+                className="mx-auto inline-flex items-center justify-center overflow-visible bg-am-mist/15 cursor-default"
                 onClick={() => onSelectPanel(null)}
                 style={{
                     borderRadius: '4px',
@@ -662,13 +662,13 @@ export default function PanelPlanCanvas({
                                     width: segment.width,
                                     height: segment.height,
                                     backgroundColor: isDeleted 
-                                        ? 'rgba(255, 87, 34, 0.3)' 
-                                        : (isSelected ? '#2196F3' : '#E8E4DC'),
+                                        ? 'color-mix(in srgb, var(--am-wine) 25%, transparent)'
+                                        : (isSelected ? 'var(--am-navy)' : '#E8E4DC'),
                                     border: isDeleted
-                                        ? '2px solid #FF5722'
-                                        : (isSelected ? '2px solid #1976D2' : '1px dashed #B89B71'),
+                                        ? '2px solid var(--am-wine)'
+                                        : (isSelected ? '2px solid var(--am-navy)' : '1px dashed #B89B71'),
                                     boxShadow: isSelected 
-                                        ? (isDeleted ? '0 0 8px rgba(255, 87, 34, 0.5)' : '0 0 8px rgba(33, 150, 243, 0.5)')
+                                        ? (isDeleted ? '0 0 8px color-mix(in srgb, var(--am-wine) 50%, transparent)' : '0 0 8px color-mix(in srgb, var(--am-navy) 45%, transparent)')
                                         : 'none',
                                     zIndex: isSelected ? 5 : 0,
                                 }}
@@ -680,7 +680,7 @@ export default function PanelPlanCanvas({
                             >
                                 <div 
                                     className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity"
-                                    style={{ backgroundColor: isDeleted ? '#FF5722' : '#2196F3' }}
+                                    style={{ backgroundColor: isDeleted ? 'var(--am-wine)' : 'var(--am-navy)' }}
                                 />
                             </div>
                         );
@@ -725,13 +725,13 @@ export default function PanelPlanCanvas({
                                     width: segment.width,
                                     height: segment.height,
                                     backgroundColor: isDeleted 
-                                        ? 'rgba(255, 87, 34, 0.3)'
-                                        : (isSelected ? '#2196F3' : '#D4B896'),
+                                        ? 'color-mix(in srgb, var(--am-wine) 25%, transparent)'
+                                        : (isSelected ? 'var(--am-navy)' : '#D4B896'),
                                     border: isDeleted
-                                        ? '2px solid #FF5722'
-                                        : (isSelected ? '2px solid #1976D2' : '1px solid #B89B71'),
+                                        ? '2px solid var(--am-wine)'
+                                        : (isSelected ? '2px solid var(--am-navy)' : '1px solid #B89B71'),
                                     boxShadow: isSelected 
-                                        ? (isDeleted ? '0 0 8px rgba(255, 87, 34, 0.5)' : '0 0 8px rgba(33, 150, 243, 0.5)')
+                                        ? (isDeleted ? '0 0 8px color-mix(in srgb, var(--am-wine) 50%, transparent)' : '0 0 8px color-mix(in srgb, var(--am-navy) 45%, transparent)')
                                         : 'none',
                                     zIndex: isSelected ? 10 : 1,
                                 }}
@@ -743,7 +743,7 @@ export default function PanelPlanCanvas({
                             >
                                 <div 
                                     className="absolute inset-0 opacity-0 hover:opacity-30 transition-opacity"
-                                    style={{ backgroundColor: isDeleted ? '#FF5722' : '#2196F3' }}
+                                    style={{ backgroundColor: isDeleted ? 'var(--am-wine)' : 'var(--am-navy)' }}
                                 />
                             </div>
                         );
@@ -788,13 +788,13 @@ export default function PanelPlanCanvas({
                                     width: segment.width,
                                     height: segment.height,
                                     backgroundColor: isDeleted 
-                                        ? 'rgba(255, 87, 34, 0.3)'
-                                        : (isSelected ? '#2196F3' : '#A67B5B'),
+                                        ? 'color-mix(in srgb, var(--am-wine) 25%, transparent)'
+                                        : (isSelected ? 'var(--am-navy)' : '#A67B5B'),
                                     border: isDeleted
-                                        ? '2px solid #FF5722'
-                                        : (isSelected ? '2px solid #1976D2' : '1px solid #8B6B4F'),
+                                        ? '2px solid var(--am-wine)'
+                                        : (isSelected ? '2px solid var(--am-navy)' : '1px solid #8B6B4F'),
                                     boxShadow: isSelected 
-                                        ? (isDeleted ? '0 0 8px rgba(255, 87, 34, 0.5)' : '0 0 8px rgba(33, 150, 243, 0.5)')
+                                        ? (isDeleted ? '0 0 8px color-mix(in srgb, var(--am-wine) 50%, transparent)' : '0 0 8px color-mix(in srgb, var(--am-navy) 45%, transparent)')
                                         : 'none',
                                     zIndex: isSelected ? 15 : 3,
                                 }}
@@ -806,7 +806,7 @@ export default function PanelPlanCanvas({
                             >
                                 <div 
                                     className="absolute inset-0 opacity-0 hover:opacity-30 transition-opacity"
-                                    style={{ backgroundColor: isDeleted ? '#FF5722' : '#2196F3' }}
+                                    style={{ backgroundColor: isDeleted ? 'var(--am-wine)' : 'var(--am-navy)' }}
                                 />
                             </div>
                         );
@@ -835,14 +835,14 @@ export default function PanelPlanCanvas({
             </div>
 
             {/* Instruction */}
-            <p className="mt-4 text-center text-base text-[#706F6C]">
+            <p className="mt-4 text-center text-base text-black/65">
                 {selectedPanelIds.size > 0
                     ? `${selectedPanelIds.size} panneau${selectedPanelIds.size > 1 ? 'x' : ''} sélectionné${selectedPanelIds.size > 1 ? 's' : ''} - Cliquez ailleurs pour tout désélectionner`
                     : "Cliquez sur les panneaux pour les sélectionner (multi-sélection)"}
             </p>
 
             {/* Légende */}
-            <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-[#706F6C]">
+            <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-black/65">
                 <div className="flex items-center gap-1">
                     <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: '#D4B896', border: '1px solid #B89B71' }} />
                     <span>Panneaux latéraux</span>
@@ -856,7 +856,7 @@ export default function PanelPlanCanvas({
                     <span>Séparateurs</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: '#2196F3', border: '1px solid #1976D2' }} />
+                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'var(--am-navy)', border: '1px solid var(--am-navy)' }} />
                     <span>Sélectionné</span>
                 </div>
             </div>

@@ -720,7 +720,7 @@ export default function ZoneEditor({
 
       {/* Contrôles dans une card - masqués en mode hideControls ou si aucune zone sélectionnée */}
       {!hideControls && selectedZoneIds.length > 0 && (
-        <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
+        <div className="border border-black/10 bg-am-mist/15 p-3" style={{ borderRadius: '2px' }}>
           <ZoneControls
             selectedZone={selectedZone}
             selectedZoneIds={selectedZoneIds}

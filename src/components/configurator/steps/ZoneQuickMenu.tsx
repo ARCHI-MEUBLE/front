@@ -14,7 +14,7 @@ interface ZoneQuickMenuProps {
 }
 
 const iconButton =
-  'flex h-8 w-8 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]';
+  'flex h-8 w-8 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black';
 
 // Menu « sur clic » : indique la zone sélectionnée sur le viewer, permet de passer à la voisine
 // ou de remonter au groupe parent, ou de supprimer la section
@@ -34,7 +34,7 @@ export default function ZoneQuickMenu({
       <div
         role="toolbar"
         aria-label="Zone sélectionnée"
-        className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-0.5 border border-[#E8E6E3] bg-white p-1 shadow-md"
+        className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-0.5 border border-black/10 bg-white p-1 shadow-md"
         style={{ borderRadius: '2px' }}
       >
         {onPrev && (
@@ -44,9 +44,9 @@ export default function ZoneQuickMenu({
         )}
 
         <div className="min-w-[96px] px-2 text-center leading-tight">
-          <span className="block text-xs font-semibold text-[#1A1917]">{title}</span>
+          <span className="block text-xs font-semibold text-black">{title}</span>
           {size && (
-            <span className="block font-mono text-[10px] text-[#706F6C]">
+            <span className="block font-mono text-[10px] text-black/65">
               {Math.round(size.width)} × {Math.round(size.height)} mm
             </span>
           )}
@@ -60,11 +60,11 @@ export default function ZoneQuickMenu({
 
         {onParent && (
           <>
-            <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
+            <span className="mx-1 h-6 w-px bg-black/10" />
             <button
               type="button"
               onClick={onParent}
-              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
+              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
               style={{ borderRadius: '2px' }}
               aria-label="Sélectionner le groupe parent"
               title="Sélectionner le groupe qui contient cette zone"
@@ -78,11 +78,11 @@ export default function ZoneQuickMenu({
 
         {onDelete && (
           <>
-            <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
+            <span className="mx-1 h-6 w-px bg-black/10" />
             <button
               type="button"
               onClick={onDelete}
-              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-[#706F6C] transition-colors hover:bg-red-50 hover:text-red-600"
+              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-black/65 transition-colors hover:bg-red-50 hover:text-red-600"
               style={{ borderRadius: '2px' }}
               aria-label="Supprimer la section"
               title="Supprimer cette section : la section voisine prend sa place"
@@ -93,7 +93,7 @@ export default function ZoneQuickMenu({
           </>
         )}
 
-        <span className="mx-1 h-6 w-px bg-[#E8E6E3]" />
+        <span className="mx-1 h-6 w-px bg-black/10" />
 
         <button type="button" onClick={onClose} className={iconButton} aria-label="Désélectionner" title="Désélectionner">
           <X className="h-4 w-4" />
