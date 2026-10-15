@@ -4,10 +4,10 @@ import { HOME_SECTION } from "@/components/home/homeLayout";
 export function FinalCtaSection() {
   return (
     <section aria-labelledby="cta-title" className={HOME_SECTION}>
-      <div className="flex flex-col gap-10 rounded-[20px] border border-black bg-am-red p-[clamp(32px,6vw,80px)]">
+      <div className="flex flex-col gap-10 rounded-[20px] border border-black bg-am-wine p-[clamp(32px,6vw,80px)]">
         <h2
           id="cta-title"
-          className="m-0 max-w-[13ch] font-[Geist] font-medium leading-[0.95] tracking-[-0.055em] text-white"
+          className="m-0 max-w-[13ch] font-sans font-medium leading-[0.95] tracking-[-0.055em] text-white"
           style={{ fontSize: "clamp(44px,8vw,120px)" }}
         >
           Prêt à créer votre meuble unique ?
@@ -19,7 +19,7 @@ export function FinalCtaSection() {
           >
             Commencer maintenant →
           </Link>
-          <a href="tel:+33601062867" className="border-b border-white py-1 font-[Geist_Mono] text-[15px] text-white">
+          <a href="tel:+33601062867" className="border-b border-white py-1 font-mono text-[15px] text-white">
             06 01 06 28 67
           </a>
         </div>

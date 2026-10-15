@@ -28,7 +28,7 @@ export function Footer() {
         <div className="flex flex-col gap-1">
           <span className={`mb-2 text-xs ${HOME_MONO}`}>Produits</span>
           {PRODUITS.map((link) => (
-            <Link key={link.label} href={link.href} className="py-1 text-black">
+            <Link key={link.label} href={link.href} className="py-1.5 text-black">
               {link.label}
             </Link>
           ))}
@@ -36,7 +36,7 @@ export function Footer() {
         <div className="flex flex-col gap-1">
           <span className={`mb-2 text-xs ${HOME_MONO}`}>Services</span>
           {SERVICES.map((link) => (
-            <Link key={link.label} href={link.href} className="py-1 text-black">
+            <Link key={link.label} href={link.href} className="py-1.5 text-black">
               {link.label}
             </Link>
           ))}
@@ -48,26 +48,26 @@ export function Footer() {
             <br />
             59000 Lille, France
           </span>
-          <a href="tel:+33601062867" className="py-1 text-black">06 01 06 28 67</a>
-          <a href="mailto:pro.archimeuble@gmail.com" className="py-1 text-black">pro.archimeuble@gmail.com</a>
+          <a href="tel:+33601062867" className="py-1.5 text-black">06 01 06 28 67</a>
+          <a href="mailto:pro.archimeuble@gmail.com" className="py-1.5 text-black">pro.archimeuble@gmail.com</a>
         </div>
       </div>
 
       <div
         aria-hidden="true"
         className="my-6 whitespace-nowrap font-semibold leading-[0.85] tracking-[-0.05em] text-black"
-        style={{ fontSize: "clamp(44px,12.5vw,200px)" }}
+        style={{ fontSize: "clamp(44px,15.2vw,216px)" }}
       >
         ArchiMeuble
         <span className="text-am-mist" style={{ WebkitTextStroke: "2px #000000" }}>.</span>
       </div>
 
-      <div className={`flex flex-wrap justify-between gap-3 text-xs ${HOME_MONO}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs ${HOME_MONO}`}>
         <span>© 2026 ArchiMeuble. Tous droits réservés.</span>
-        <span className="flex gap-4">
-          <a href="https://www.instagram.com/archimeuble" className="text-black/70">Instagram</a>
-          <Link href="/mentions-legales" className="text-black/70">Mentions légales</Link>
-          <Link href="/confidentialite" className="text-black/70">Confidentialité</Link>
+        <span className="flex flex-wrap gap-x-5">
+          <a href="https://www.instagram.com/archimeuble" className="inline-flex min-h-11 items-center hover:text-black">Instagram</a>
+          <Link href="/mentions-legales" className="inline-flex min-h-11 items-center hover:text-black">Mentions légales</Link>
+          <Link href="/confidentialite" className="inline-flex min-h-11 items-center hover:text-black">Confidentialité</Link>
         </span>
       </div>
     </footer>

@@ -6,6 +6,8 @@ import { useCustomer } from '@/context/CustomerContext';
 import { UserNavigation } from '@/components/UserNavigation';
 import { Trash2, Edit, ShoppingBag, Package, Truck, Shield, ArrowRight, Minus, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
+import { formatPrice } from '@/lib/format';
 import dynamic from 'next/dynamic';
 
 const Toaster = dynamic(
@@ -17,7 +19,7 @@ const FacadeCartPreview = dynamic(
   () => import('@/components/facades/FacadeCartPreview'),
   {
     ssr: false,
-    loading: () => <div className="h-full w-full bg-[#F5F5F4] animate-pulse" />
+    loading: () => <div className="h-full w-full bg-am-mist/15 animate-pulse" />
   }
 );
 
@@ -305,11 +307,11 @@ export default function Cart() {
           <title>Mon Panier - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-[#FAFAF9]">
+        <div className="min-h-screen bg-am-paper">
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto h-10 w-10 animate-spin border-2 border-[#E8E6E3] border-t-[#1A1917]" />
-              <p className="mt-6 text-sm text-[#706F6C]">Chargement du panier...</p>
+              <div className="mx-auto h-10 w-10 animate-spin border-2 border-black/10 border-t-am-navy" />
+              <p className="mt-6 text-sm text-black/65">Chargement du panier...</p>
             </div>
           </div>
         </div>
@@ -333,20 +335,20 @@ export default function Cart() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-[#FAFAF9]">
+      <div className="min-h-screen bg-am-paper">
         {/* Hero Header */}
-        <div className="border-b border-[#E8E6E3] bg-white">
+        <div className="border-b border-black/10 bg-am-paper">
           <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+                <h1 className="font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl lg:text-5xl">
                   Mon Panier
                 </h1>
                 {!isEmpty && (
-                  <p className="mt-3 text-[#706F6C]">
+                  <p className="mt-3 text-black/65">
                     {totalItems} article{totalItems > 1 ? 's' : ''} dans votre panier
                     {samplesCart && samplesCart.count > 0 && (
-                      <span className="ml-2 text-[#8B7355]">
+                      <span className="ml-2 text-am-navy">
                         · {samplesCart.count} échantillon{samplesCart.count > 1 ? 's' : ''}
                       </span>
                     )}
@@ -356,7 +358,7 @@ export default function Cart() {
               {!isEmpty && cart && cart.items.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="text-sm text-[#706F6C] underline underline-offset-4 transition-colors hover:text-[#1A1917]"
+                  className="text-sm text-black/65 underline underline-offset-4 transition-colors hover:text-black"
                 >
                   Vider le panier
                 </button>
@@ -377,18 +379,18 @@ export default function Cart() {
           {isEmpty ? (
             /* Empty State */
             <div className="mx-auto max-w-md py-12 text-center sm:py-16 lg:py-24">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center border border-[#E8E6E3] bg-white">
-                <ShoppingBag className="h-8 w-8 text-[#706F6C]" />
+              <div className="mx-auto flex h-20 w-20 items-center justify-center border border-black/10 bg-white">
+                <ShoppingBag className="h-8 w-8 text-black/65" />
               </div>
-              <h2 className="mt-8 font-serif text-2xl text-[#1A1917]">
+              <h2 className="mt-8 font-serif text-2xl text-black">
                 Votre panier est vide
               </h2>
-              <p className="mt-3 text-[#706F6C]">
+              <p className="mt-3 text-black/65">
                 Créez votre première configuration de meuble sur mesure
               </p>
               <Link
                 href="/models"
-                className="mt-8 inline-flex h-12 items-center justify-center bg-[#1A1917] px-8 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                className="mt-8 inline-flex h-12 items-center justify-center bg-am-navy px-8 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
               >
                 Découvrir nos modèles
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -402,12 +404,12 @@ export default function Cart() {
                 {/* Catalogue Items Section */}
                 {catalogueCart && catalogueCart.items.length > 0 && (
                   <div className="mb-10">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
-                      <ShoppingBag className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                    <div className="flex items-center gap-3 border-b border-black/10 pb-4">
+                      <ShoppingBag className="h-5 w-5 text-am-navy" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
                         Articles du catalogue
                       </h2>
-                      <span className="ml-auto text-sm text-[#706F6C]">
+                      <span className="ml-auto text-sm text-black/65">
                         {catalogueCart.items.length} produit{catalogueCart.items.length > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -416,10 +418,10 @@ export default function Cart() {
                       {catalogueCart.items.map((item) => (
                         <div
                           key={item.id}
-                          className="group relative flex items-center gap-6 border border-[#E8E6E3] bg-white p-5 transition-colors hover:border-[#1A1917]/20"
+                          className="group relative flex items-center gap-6 border border-black/10 bg-white p-5 transition-colors hover:border-am-navy/20"
                         >
                           {/* Image */}
-                          <div className="h-20 w-20 flex-shrink-0 border border-[#E8E6E3] overflow-hidden bg-[#F5F5F4]">
+                          <div className="h-20 w-20 flex-shrink-0 border border-black/10 overflow-hidden bg-am-mist/15">
                             {item.variation_image || item.item_image ? (
                               <img
                                 src={item.variation_image || (item.item_image as string)}
@@ -428,32 +430,32 @@ export default function Cart() {
                               />
                             ) : (
                               <div className="flex h-full items-center justify-center">
-                                <Package className="h-8 w-8 text-[#C4C2BF]" />
+                                <Package className="h-8 w-8 text-black/30" />
                               </div>
                             )}
                           </div>
 
                           {/* Info */}
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-medium text-[#1A1917]">
+                            <h3 className="font-medium text-black">
                               {item.name}
                             </h3>
                             {item.variation_name && (
-                              <p className="mt-1 text-xs text-[#706F6C]">
+                              <p className="mt-1 text-xs text-black/65">
                                 Finition: {item.variation_name}
                               </p>
                             )}
-                            <p className="mt-2 text-sm font-bold text-[#8B7355]">
-                              {item.unit_price} €
+                            <p className="mt-2 text-sm font-bold text-am-navy">
+                              {formatPrice(item.unit_price)}
                             </p>
                           </div>
 
                           {/* Actions */}
                           <div className="flex items-center gap-4">
-                            <div className="flex items-center border border-[#E8E6E3] rounded h-9 bg-white">
+                            <div className="flex items-center border border-black/10 rounded h-9 bg-white">
                               <button
                                 onClick={() => updateCatalogueQuantity(item.id, item.quantity - 1)}
-                                className="px-2 text-[#706F6C] hover:text-[#1A1917]"
+                                className="px-2 text-black/65 hover:text-black"
                               >
                                 <Minus className="h-3 w-3" />
                               </button>
@@ -462,14 +464,14 @@ export default function Cart() {
                               </span>
                               <button
                                 onClick={() => updateCatalogueQuantity(item.id, item.quantity + 1)}
-                                className="px-2 text-[#706F6C] hover:text-[#1A1917]"
+                                className="px-2 text-black/65 hover:text-black"
                               >
                                 <Plus className="h-3 w-3" />
                               </button>
                             </div>
                             <button
                               onClick={() => removeCatalogueItem(item.id)}
-                              className="text-[#706F6C] hover:text-[#1A1917]"
+                              className="text-black/65 hover:text-black"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -483,12 +485,12 @@ export default function Cart() {
                 {/* Samples Section */}
                 {samplesCart && samplesCart.items.length > 0 && (
                   <div className="mb-10">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
-                      <Package className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                    <div className="flex items-center gap-3 border-b border-black/10 pb-4">
+                      <Package className="h-5 w-5 text-am-navy" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
                         Échantillons
                       </h2>
-                      <span className="ml-auto text-sm text-[#706F6C]">
+                      <span className="ml-auto text-sm text-black/65">
                         {samplesCart.count} article{samplesCart.count > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -497,33 +499,33 @@ export default function Cart() {
                       {samplesCart.items.map((sample) => (
                         <div
                           key={sample.id}
-                          className="group relative flex items-center gap-4 border border-[#E8E6E3] bg-white p-4 transition-colors hover:border-[#1A1917]/20"
+                          className="group relative flex items-center gap-4 border border-black/10 bg-white p-4 transition-colors hover:border-am-navy/20"
                         >
                           <div
-                            className="h-16 w-16 flex-shrink-0 border border-[#E8E6E3]"
+                            className="h-16 w-16 flex-shrink-0 border border-black/10"
                             style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
                           >
                             {sample.image_url && (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={sample.image_url}
-                                alt={sample.color_name}
+                                alt={displayColorName(sample.color_name)}
                                 className="h-full w-full object-cover"
                               />
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h3 className="truncate text-sm font-medium text-[#1A1917]">
-                              {sample.color_name}
+                            <h3 className="truncate text-sm font-medium text-black">
+                              {displayColorName(sample.color_name)}
                             </h3>
-                            <p className="mt-1 text-xs text-[#706F6C]">
-                              {sample.material}
+                            <p className="mt-1 text-xs text-black/65">
+                              {displayMaterialName(sample.material)}
                             </p>
-                            <p className="mt-2 text-xs font-medium text-[#8B7355]">
-                              {sample.unit_price > 0 ? `${sample.unit_price} €` : 'Gratuit'}
+                            <p className="mt-2 text-xs font-medium text-am-navy">
+                              {sample.unit_price > 0 ? formatPrice(sample.unit_price) : 'Gratuit'}
                             </p>
                             {sample.price_per_m2 > 0 && (
-                              <p className="mt-1 text-[10px] text-[#706F6C]">
+                              <p className="mt-1 text-[10px] text-black/65">
                                 {sample.price_per_m2} € / m²
                               </p>
                             )}
@@ -544,7 +546,7 @@ export default function Cart() {
                                 }
                               }
                             }}
-                            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center text-[#706F6C] opacity-0 transition-opacity hover:text-[#1A1917] group-hover:opacity-100"
+                            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center text-black/65 opacity-0 transition-opacity hover:text-black group-hover:opacity-100"
                             title="Retirer"
                           >
                             <X className="h-4 w-4" />
@@ -558,12 +560,12 @@ export default function Cart() {
                 {/* Facades Section */}
                 {facadeCart && facadeCart.items.length > 0 && (
                   <div className="mb-10">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
-                      <Package className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                    <div className="flex items-center gap-3 border-b border-black/10 pb-4">
+                      <Package className="h-5 w-5 text-am-navy" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
                         Façades sur mesure
                       </h2>
-                      <span className="ml-auto text-sm text-[#706F6C]">
+                      <span className="ml-auto text-sm text-black/65">
                         {facadeCart.count} façade{facadeCart.count > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -572,7 +574,7 @@ export default function Cart() {
                       {facadeCart.items.map((facade) => (
                         <div
                           key={facade.id}
-                          className="group relative flex items-center gap-6 border border-[#E8E6E3] bg-white p-5 transition-colors hover:border-[#1A1917]/20"
+                          className="group relative flex items-center gap-6 border border-black/10 bg-white p-5 transition-colors hover:border-am-navy/20"
                         >
                           {/* Clickable area for details */}
                           <button
@@ -581,7 +583,7 @@ export default function Cart() {
                             className="flex flex-1 items-center gap-6 text-left"
                           >
                             {/* 3D Preview */}
-                            <div className="h-20 w-20 flex-shrink-0 border border-[#E8E6E3] overflow-hidden">
+                            <div className="h-20 w-20 flex-shrink-0 border border-black/10 overflow-hidden">
                               <FacadeCartPreview
                                 width={facade.config.width}
                                 height={facade.config.height}
@@ -594,27 +596,27 @@ export default function Cart() {
 
                             {/* Info */}
                             <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-[#1A1917]">
-                                Façade {facade.config.material?.name || 'Sur mesure'}
+                              <h3 className="font-medium text-black">
+                                Façade {displayColorName(facade.config.material?.name) || 'Sur mesure'}
                               </h3>
-                              <p className="mt-1 text-xs text-[#706F6C]">
+                              <p className="mt-1 text-xs text-black/65">
                                 {facade.config.width / 10} × {facade.config.height / 10} cm · {facade.config.depth} mm
                               </p>
                               {facade.config.hinges?.type !== 'no-hole-no-hinge' && (
-                                <p className="mt-1 text-xs text-[#706F6C]">
+                                <p className="mt-1 text-xs text-black/65">
                                   {facade.config.hinges?.count} charnières · Ouverture {facade.config.hinges?.direction === 'left' ? 'gauche' : 'droite'}
                                 </p>
                               )}
-                              <p className="mt-2 text-xs text-[#8B7355] underline">Voir les détails</p>
+                              <p className="mt-2 text-xs text-am-navy underline">Voir les détails</p>
                             </div>
 
                             {/* Quantity & Price */}
                             <div className="text-right">
-                              <p className="font-mono text-lg text-[#1A1917]">
-                                {(facade.unit_price * facade.quantity).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                              <p className="font-mono text-lg text-black">
+                                {formatPrice(facade.unit_price * facade.quantity)}
                               </p>
-                              <p className="mt-1 text-xs text-[#706F6C]">
-                                {facade.quantity > 1 ? `${facade.quantity} × ${Number(facade.unit_price).toFixed(2)} €` : `${Number(facade.unit_price).toFixed(2)} € / unité`}
+                              <p className="mt-1 text-xs text-black/65">
+                                {facade.quantity > 1 ? `${facade.quantity} × ${formatPrice(facade.unit_price)}` : `${formatPrice(facade.unit_price)} / unité`}
                               </p>
                             </div>
                           </button>
@@ -635,7 +637,7 @@ export default function Cart() {
                                 }
                               }
                             }}
-                            className="text-[#706F6C] hover:text-[#1A1917]"
+                            className="text-black/65 hover:text-black"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -648,17 +650,17 @@ export default function Cart() {
                 {/* Configurations Section */}
                 {cart && cart.items.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] pb-4">
-                      <ShoppingBag className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                    <div className="flex items-center gap-3 border-b border-black/10 pb-4">
+                      <ShoppingBag className="h-5 w-5 text-am-navy" />
+                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
                         Vos configurations
                       </h2>
-                      <span className="ml-auto text-sm text-[#706F6C]">
+                      <span className="ml-auto text-sm text-black/65">
                         {cart.item_count} article{cart.item_count > 1 ? 's' : ''}
                       </span>
                     </div>
 
-                    <div className="divide-y divide-[#E8E6E3]">
+                    <div className="divide-y divide-black/10">
                       {cart.items.map((item) => {
                         const isUpdating = updatingItems.has(item.configuration_id);
 
@@ -668,7 +670,7 @@ export default function Cart() {
                             <div className="lg:hidden">
                               <div className="flex gap-4">
                                 {/* Preview */}
-                                <div className="h-24 w-24 flex-shrink-0 border border-[#E8E6E3] bg-[#F5F5F4]">
+                                <div className="h-24 w-24 flex-shrink-0 border border-black/10 bg-am-mist/15">
                                   {item.configuration.glb_url ? (
                                     <model-viewer
                                       src={item.configuration.glb_url}
@@ -679,23 +681,23 @@ export default function Cart() {
                                     />
                                   ) : (
                                     <div className="flex h-full items-center justify-center">
-                                      <ShoppingBag className="h-8 w-8 text-[#C4C2BF]" />
+                                      <ShoppingBag className="h-8 w-8 text-black/30" />
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Info */}
                                 <div className="min-w-0 flex-1">
-                                  <h3 className="font-medium text-[#1A1917]">
+                                  <h3 className="font-medium text-black">
                                     {item.configuration.name}
                                   </h3>
                                   {item.configuration.config_data?.dimensions && (
-                                    <p className="mt-1 text-xs text-[#706F6C]">
+                                    <p className="mt-1 text-xs text-black/65">
                                       {item.configuration.config_data.dimensions.width} × {item.configuration.config_data.dimensions.depth} × {item.configuration.config_data.dimensions.height} mm
                                     </p>
                                   )}
-                                  <p className="mt-2 font-mono text-lg text-[#1A1917]">
-                                    {item.configuration.price.toLocaleString('fr-FR')} €
+                                  <p className="mt-2 font-mono text-lg text-black">
+                                    {formatPrice(item.configuration.price)}
                                   </p>
                                 </div>
                               </div>
@@ -703,21 +705,21 @@ export default function Cart() {
                               {/* Controls */}
                               <div className="mt-4 flex items-center justify-between">
                                 {/* Quantity */}
-                                <div className="flex items-center border border-[#E8E6E3]">
+                                <div className="flex items-center border border-black/10">
                                   <button
                                     onClick={() => updateQuantity(item.configuration_id, item.quantity - 1)}
                                     disabled={isUpdating || item.quantity <= 1}
-                                    className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Minus className="h-4 w-4" />
                                   </button>
-                                  <span className="w-12 text-center font-medium text-[#1A1917]">
+                                  <span className="w-12 text-center font-medium text-black">
                                     {item.quantity}
                                   </span>
                                   <button
                                     onClick={() => updateQuantity(item.configuration_id, item.quantity + 1)}
                                     disabled={isUpdating}
-                                    className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Plus className="h-4 w-4" />
                                   </button>
@@ -727,13 +729,13 @@ export default function Cart() {
                                 <div className="flex items-center gap-4">
                                   <Link
                                     href={`/configurator/${item.configuration.model_id || 1}?mode=edit&configId=${item.configuration_id}`}
-                                    className="text-sm text-[#706F6C] underline underline-offset-4 hover:text-[#1A1917]"
+                                    className="text-sm text-black/65 underline underline-offset-4 hover:text-black"
                                   >
                                     Modifier
                                   </Link>
                                   <button
                                     onClick={() => removeItem(item.configuration_id)}
-                                    className="text-sm text-[#706F6C] underline underline-offset-4 hover:text-red-600"
+                                    className="text-sm text-black/65 underline underline-offset-4 hover:text-red-600"
                                   >
                                     Retirer
                                   </button>
@@ -741,10 +743,10 @@ export default function Cart() {
                               </div>
 
                               {/* Subtotal */}
-                              <div className="mt-4 flex items-center justify-between border-t border-dashed border-[#E8E6E3] pt-4">
-                                <span className="text-sm text-[#706F6C]">Sous-total</span>
-                                <span className="font-mono text-[#1A1917]">
-                                  {(item.configuration.price * item.quantity).toLocaleString('fr-FR')} €
+                              <div className="mt-4 flex items-center justify-between border-t border-dashed border-black/10 pt-4">
+                                <span className="text-sm text-black/65">Sous-total</span>
+                                <span className="font-mono text-black">
+                                  {formatPrice(item.configuration.price * item.quantity)}
                                 </span>
                               </div>
                             </div>
@@ -753,7 +755,7 @@ export default function Cart() {
                             <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
                               {/* Preview */}
                               <div className="col-span-2">
-                                <div className="aspect-square border border-[#E8E6E3] bg-[#F5F5F4]">
+                                <div className="aspect-square border border-black/10 bg-am-mist/15">
                                   {item.configuration.glb_url ? (
                                     <model-viewer
                                       src={item.configuration.glb_url}
@@ -764,7 +766,7 @@ export default function Cart() {
                                     />
                                   ) : (
                                     <div className="flex h-full items-center justify-center">
-                                      <ShoppingBag className="h-10 w-10 text-[#C4C2BF]" />
+                                      <ShoppingBag className="h-10 w-10 text-black/30" />
                                     </div>
                                   )}
                                 </div>
@@ -772,25 +774,25 @@ export default function Cart() {
 
                               {/* Info */}
                               <div className="col-span-5">
-                                <h3 className="font-medium text-[#1A1917]">
+                                <h3 className="font-medium text-black">
                                   {item.configuration.name}
                                 </h3>
                                 {item.configuration.config_data?.dimensions && (
-                                  <p className="mt-2 text-sm text-[#706F6C]">
+                                  <p className="mt-2 text-sm text-black/65">
                                     Dimensions : {item.configuration.config_data.dimensions.width} × {item.configuration.config_data.dimensions.depth} × {item.configuration.config_data.dimensions.height} mm
                                   </p>
                                 )}
                                 <div className="mt-4 flex items-center gap-4">
                                   <Link
                                     href={`/configurator/${item.configuration.model_id || 1}?mode=edit&configId=${item.configuration_id}`}
-                                    className="inline-flex items-center gap-2 text-sm text-[#706F6C] transition-colors hover:text-[#1A1917]"
+                                    className="inline-flex items-center gap-2 text-sm text-black/65 transition-colors hover:text-black"
                                   >
                                     <Edit className="h-4 w-4" />
                                     Modifier
                                   </Link>
                                   <button
                                     onClick={() => removeItem(item.configuration_id)}
-                                    className="inline-flex items-center gap-2 text-sm text-[#706F6C] transition-colors hover:text-red-600"
+                                    className="inline-flex items-center gap-2 text-sm text-black/65 transition-colors hover:text-red-600"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                     Retirer
@@ -800,21 +802,21 @@ export default function Cart() {
 
                               {/* Quantity */}
                               <div className="col-span-2">
-                                <div className="inline-flex items-center border border-[#E8E6E3]">
+                                <div className="inline-flex items-center border border-black/10">
                                   <button
                                     onClick={() => updateQuantity(item.configuration_id, item.quantity - 1)}
                                     disabled={isUpdating || item.quantity <= 1}
-                                    className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Minus className="h-4 w-4" />
                                   </button>
-                                  <span className="w-12 text-center font-medium text-[#1A1917]">
+                                  <span className="w-12 text-center font-medium text-black">
                                     {item.quantity}
                                   </span>
                                   <button
                                     onClick={() => updateQuantity(item.configuration_id, item.quantity + 1)}
                                     disabled={isUpdating}
-                                    className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     <Plus className="h-4 w-4" />
                                   </button>
@@ -823,12 +825,12 @@ export default function Cart() {
 
                               {/* Price */}
                               <div className="col-span-3 text-right">
-                                <p className="font-mono text-lg text-[#1A1917]">
-                                  {item.configuration.price.toLocaleString('fr-FR')} €
+                                <p className="font-mono text-lg text-black">
+                                  {formatPrice(item.configuration.price)}
                                 </p>
                                 {item.quantity > 1 && (
-                                  <p className="mt-1 text-sm text-[#706F6C]">
-                                    Total : {(item.configuration.price * item.quantity).toLocaleString('fr-FR')} €
+                                  <p className="mt-1 text-sm text-black/65">
+                                    Total : {formatPrice(item.configuration.price * item.quantity)}
                                   </p>
                                 )}
                               </div>
@@ -843,10 +845,10 @@ export default function Cart() {
 
               {/* Order Summary */}
               <div className="mt-10 lg:col-span-5 lg:mt-0 xl:col-span-4">
-                <div className="sticky top-6 border border-[#E8E6E3] bg-white">
+                <div className="sticky top-6 border border-black/10 bg-white">
                   {/* Header */}
-                  <div className="border-b border-[#E8E6E3] p-6">
-                    <h2 className="font-serif text-xl text-[#1A1917]">
+                  <div className="border-b border-black/10 p-6">
+                    <h2 className="font-serif text-xl text-black">
                       Récapitulatif
                     </h2>
                   </div>
@@ -855,37 +857,37 @@ export default function Cart() {
                   <div className="p-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-[#706F6C]">Sous-total</span>
-                        <span className="font-mono text-[#1A1917]">{cart?.total?.toLocaleString('fr-FR') || 0} €</span>
+                        <span className="text-black/65">Sous-total</span>
+                        <span className="font-mono text-black">{formatPrice(cart?.total)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-[#706F6C]">Livraison</span>
-                        <span className="font-medium text-[#8B7355]">Offerte</span>
+                        <span className="text-black/65">Livraison</span>
+                        <span className="font-medium text-am-navy">Offerte</span>
                       </div>
                       {samplesCart && samplesCart.count > 0 && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-[#706F6C]">Échantillons</span>
-                          <span className={`font-medium ${samplesTotal > 0 ? 'font-mono text-[#1A1917]' : 'text-[#8B7355]'}`}>
-                            {samplesTotal > 0 ? `${samplesTotal.toLocaleString('fr-FR')} €` : 'Offerts'}
+                          <span className="text-black/65">Échantillons</span>
+                          <span className={`font-medium ${samplesTotal > 0 ? 'font-mono text-black' : 'text-am-navy'}`}>
+                            {samplesTotal > 0 ? formatPrice(samplesTotal) : 'Offerts'}
                           </span>
                         </div>
                       )}
                       {facadeCart && facadeCart.count > 0 && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-[#706F6C]">Façades ({facadeCart.count})</span>
-                          <span className="font-mono text-[#1A1917]">
-                            {facadeTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                          <span className="text-black/65">Façades ({facadeCart.count})</span>
+                          <span className="font-mono text-black">
+                            {formatPrice(facadeTotal)}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    <div className="mt-6 border-t border-[#E8E6E3] pt-6">
+                    <div className="mt-6 border-t border-black/10 pt-6">
                       <div className="flex items-center justify-between">
-                        <span className="text-[#1A1917]">Total</span>
-                        <span className="font-mono text-2xl text-[#1A1917]">{grandTotal.toLocaleString('fr-FR')} €</span>
+                        <span className="text-black">Total</span>
+                        <span className="font-mono text-2xl text-black">{formatPrice(grandTotal)}</span>
                       </div>
-                      <p className="mt-1 text-right text-xs text-[#706F6C]">
+                      <p className="mt-1 text-right text-xs text-black/65">
                         TVA incluse
                       </p>
                     </div>
@@ -893,7 +895,7 @@ export default function Cart() {
                     {/* CTA */}
                     <button
                       onClick={() => router.push('/checkout')}
-                      className="mt-6 flex h-14 w-full items-center justify-center bg-[#1A1917] text-sm font-medium tracking-wide text-white transition-colors hover:bg-[#2D2B28]"
+                      className="mt-6 flex h-14 w-full items-center justify-center bg-am-navy text-sm font-medium tracking-wide text-white transition-colors hover:bg-am-navy/90"
                     >
                       Passer commande
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -901,34 +903,34 @@ export default function Cart() {
 
                     <Link
                       href="/models"
-                      className="mt-4 block text-center text-sm text-[#706F6C] underline underline-offset-4 transition-colors hover:text-[#1A1917]"
+                      className="mt-4 block text-center text-sm text-black/65 underline underline-offset-4 transition-colors hover:text-black"
                     >
                       Continuer mes achats
                     </Link>
                   </div>
 
                   {/* Trust Indicators */}
-                  <div className="border-t border-[#E8E6E3] p-6">
+                  <div className="border-t border-black/10 p-6">
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                        <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                         <div>
-                          <p className="text-sm font-medium text-[#1A1917]">Livraison gratuite</p>
-                          <p className="text-xs text-[#706F6C]">Partout en France métropolitaine</p>
+                          <p className="text-sm font-medium text-black">Livraison gratuite</p>
+                          <p className="text-xs text-black/65">Partout en France métropolitaine</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <Package className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                        <Package className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                         <div>
-                          <p className="text-sm font-medium text-[#1A1917]">Fabrication sur mesure</p>
-                          <p className="text-xs text-[#706F6C]">Dans notre atelier lillois</p>
+                          <p className="text-sm font-medium text-black">Fabrication sur mesure</p>
+                          <p className="text-xs text-black/65">Dans notre atelier lillois</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                        <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                         <div>
-                          <p className="text-sm font-medium text-[#1A1917]">Qualité artisanale</p>
-                          <p className="text-xs text-[#706F6C]">Conçu pour durer</p>
+                          <p className="text-sm font-medium text-black">Qualité artisanale</p>
+                          <p className="text-xs text-black/65">Conçu pour durer</p>
                         </div>
                       </div>
                     </div>
@@ -943,7 +945,7 @@ export default function Cart() {
         position="bottom-center"
         toastOptions={{
           style: {
-            background: '#1A1917',
+            background: 'var(--am-navy)',
             color: '#fff',
             borderRadius: '0',
           },
@@ -961,12 +963,12 @@ export default function Cart() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between border-b border-[#E8E6E3] bg-white p-6">
-              <h3 className="font-serif text-xl text-[#1A1917]">Détails de la façade</h3>
+            <div className="sticky top-0 flex items-center justify-between border-b border-black/10 bg-white p-6">
+              <h3 className="font-serif text-xl text-black">Détails de la façade</h3>
               <button
                 type="button"
                 onClick={() => setSelectedFacade(null)}
-                className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
+                className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -976,7 +978,7 @@ export default function Cart() {
             <div className="p-6">
               {(() => {
                 const materialObj = selectedFacade.config.material;
-                const materialName = materialObj?.name || 'Matériau';
+                const materialName = displayColorName(materialObj?.name) || 'Matériau';
                 const hinges = selectedFacade.config.hinges;
                 const hingeCount = hinges?.count || 0;
                 const hingeType = hinges?.type || '';
@@ -986,7 +988,7 @@ export default function Cart() {
                 return (
                   <div className="space-y-6">
                     {/* 3D Preview */}
-                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-[#E8E6E3] overflow-hidden bg-[#F5F5F4]">
+                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-black/10 overflow-hidden bg-am-mist/15">
                       <FacadeCartPreview
                         width={selectedFacade.config.width}
                         height={selectedFacade.config.height}
@@ -1000,32 +1002,32 @@ export default function Cart() {
                     {/* Info Grid */}
                     <div className="grid gap-4">
                       {/* Dimensions */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Dimensions</span>
-                        <span className="text-sm font-medium text-[#1A1917]">
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Dimensions</span>
+                        <span className="text-sm font-medium text-black">
                           {selectedFacade.config.width / 10} × {selectedFacade.config.height / 10} cm · {selectedFacade.config.depth || 19} mm
                         </span>
                       </div>
 
                       {/* Matériau */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Matériau</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Matériau</span>
                         <div className="flex items-center gap-2">
                           {materialObj?.texture_url ? (
-                            <div className="h-5 w-5 border border-[#E8E6E3] overflow-hidden">
+                            <div className="h-5 w-5 border border-black/10 overflow-hidden">
                               <img src={materialObj.texture_url} alt="" className="h-full w-full object-cover" />
                             </div>
                           ) : materialObj?.color_hex ? (
-                            <div className="h-5 w-5 border border-[#E8E6E3]" style={{ backgroundColor: materialObj.color_hex }} />
+                            <div className="h-5 w-5 border border-black/10" style={{ backgroundColor: materialObj.color_hex }} />
                           ) : null}
-                          <span className="text-sm font-medium text-[#1A1917]">{materialName}</span>
+                          <span className="text-sm font-medium text-black">{materialName}</span>
                         </div>
                       </div>
 
                       {/* Type de charnière */}
-                      <div className="py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C] block mb-3">Charnières</span>
-                        <div className="flex items-center gap-3 p-3 bg-[#FAFAF9] rounded-lg">
+                      <div className="py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65 block mb-3">Charnières</span>
+                        <div className="flex items-center gap-3 p-3 bg-am-mist/15 rounded-lg">
                           {/* Icône du type de charnière */}
                           <div className="flex-shrink-0">
                             {hingeType === 'no-hole-no-hinge' && (
@@ -1079,18 +1081,18 @@ export default function Cart() {
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-[#1A1917]">
+                            <p className="text-sm font-medium text-black">
                               {hingeType === 'no-hole-no-hinge' && 'Sans trou, sans charnière'}
                               {hingeType === 'hole-with-applied-hinge' && 'Trou + charnière fournie porte en applique'}
                               {hingeType === 'hole-with-twin-hinge' && 'Trou + charnière fournie porte jumelée'}
                               {hingeType === 'hole-with-integrated-hinge' && 'Trou + charnière fournie porte encastrée'}
                             </p>
                             {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
-                              <p className="text-xs text-[#706F6C] mt-1">
+                              <p className="text-xs text-black/65 mt-1">
                                 {hingeCount} charnières · Ouverture {hingeSide === 'left' ? 'gauche' : hingeSide === 'right' ? 'droite' : hingeSide}
                               </p>
                             )}
-                            <p className="text-xs text-[#8B7355] mt-1">
+                            <p className="text-xs text-am-navy mt-1">
                               Prix unit. {hingeType === 'no-hole-no-hinge' ? '0.00' : '34.20'} € TTC
                             </p>
                           </div>
@@ -1099,19 +1101,19 @@ export default function Cart() {
 
                       {/* Perçages */}
                       {drillings.length > 0 && (
-                        <div className="py-3 border-b border-[#E8E6E3]">
+                        <div className="py-3 border-b border-black/10">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-[#706F6C]">Perçages</span>
-                            <span className="text-sm font-medium text-[#1A1917]">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
+                            <span className="text-sm text-black/65">Perçages</span>
+                            <span className="text-sm font-medium text-black">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
                           </div>
                           <div className="space-y-1 pl-4">
                             {drillings.map((drill, idx) => (
                               <div key={drill.id} className="flex justify-between text-xs">
-                                <span className="text-[#706F6C]">
+                                <span className="text-black/65">
                                   {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
                                 </span>
                                 {drill.price > 0 && (
-                                  <span className="text-[#1A1917]">+{Number(drill.price).toFixed(2)} €</span>
+                                  <span className="text-black">+{formatPrice(drill.price)}</span>
                                 )}
                               </div>
                             ))}
@@ -1120,22 +1122,22 @@ export default function Cart() {
                       )}
 
                       {/* Quantité */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Quantité</span>
-                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacade.quantity}</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Quantité</span>
+                        <span className="text-sm font-medium text-black">{selectedFacade.quantity}</span>
                       </div>
 
                       {/* Prix unitaire */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Prix unitaire</span>
-                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacade.unit_price.toLocaleString('fr-FR')} €</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Prix unitaire</span>
+                        <span className="text-sm font-medium text-black">{formatPrice(selectedFacade.unit_price)}</span>
                       </div>
 
                       {/* Total */}
-                      <div className="flex justify-between items-center py-3 bg-[#F5F5F4] px-4 -mx-4">
-                        <span className="text-sm font-medium text-[#1A1917]">Total</span>
-                        <span className="text-lg font-medium text-[#1A1917]">
-                          {(selectedFacade.unit_price * selectedFacade.quantity).toLocaleString('fr-FR')} €
+                      <div className="flex justify-between items-center py-3 bg-am-mist/15 px-4 -mx-4">
+                        <span className="text-sm font-medium text-black">Total</span>
+                        <span className="text-lg font-medium text-black">
+                          {formatPrice(selectedFacade.unit_price * selectedFacade.quantity)}
                         </span>
                       </div>
                     </div>
@@ -1145,11 +1147,11 @@ export default function Cart() {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 border-t border-[#E8E6E3] bg-white p-6">
+            <div className="sticky bottom-0 border-t border-black/10 bg-white p-6">
               <button
                 type="button"
                 onClick={() => setSelectedFacade(null)}
-                className="w-full h-12 bg-[#1A1917] text-white text-sm font-medium transition-colors hover:bg-[#2D2B28]"
+                className="w-full h-12 bg-am-navy text-white text-sm font-medium transition-colors hover:bg-am-navy/90"
               >
                 Fermer
               </button>

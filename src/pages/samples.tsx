@@ -14,6 +14,7 @@ import { SamplesHero } from "@/components/samples/SamplesHero";
 import { SamplesMaterialList } from "@/components/samples/SamplesMaterialList";
 import { SampleSwatch } from "@/components/samples/SampleSwatch";
 import { SamplesKitSidebar } from "@/components/samples/SamplesKitSidebar";
+import { displayColorName } from "@/lib/displayNames";
 
 const Toaster = dynamic(() => import("react-hot-toast").then((mod) => mod.Toaster), { ssr: false });
 
@@ -98,7 +99,7 @@ export default function SamplesPage() {
       if (!response.ok) throw new Error(data.error || "Erreur lors de l'ajout au panier");
       await loadSamplesCart();
       const color = colorsForMaterial.find((c) => c.id === colorId);
-      toast.success(`${color?.name || "Échantillon"} ajouté à votre kit`);
+      toast.success(`${displayColorName(color?.name) || "Échantillon"} ajouté à votre kit`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'ajout");
     } finally {
@@ -140,8 +141,8 @@ export default function SamplesPage() {
               <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <div className="flex items-baseline gap-4">
-                    <span className="font-[Geist_Mono] text-xs uppercase tracking-[0.05em] text-black/70">02</span>
-                    <h2 className="m-0 font-[Geist] font-medium tracking-[-0.045em] text-black" style={{ fontSize: "clamp(28px,3vw,44px)" }}>
+                    <span className="font-mono text-xs uppercase tracking-[0.05em] text-black/70">02</span>
+                    <h2 className="m-0 font-sans font-medium tracking-[-0.045em] text-black" style={{ fontSize: "clamp(28px,3vw,44px)" }}>
                       Choisissez vos teintes
                     </h2>
                   </div>

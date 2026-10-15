@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { HOME_PILL_LIME, HOME_SECTION } from "@/components/home/homeLayout";
+import { HOME_PILL_DARK, HOME_SECTION } from "@/components/home/homeLayout";
 import { FAQ } from "@/components/home/homeData";
 
 export function FaqSection() {
@@ -13,7 +13,7 @@ export function FaqSection() {
       <div className="mb-[clamp(40px,6vw,72px)] flex flex-col items-center gap-[18px] text-center">
         <h2
           id="faq-title"
-          className="m-0 font-[Geist] font-medium leading-[0.96] tracking-[-0.055em] text-black"
+          className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
           style={{ fontSize: "clamp(40px,6vw,88px)" }}
         >
           On vous répond.
@@ -24,12 +24,12 @@ export function FaqSection() {
       </div>
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-2.5 rounded-2xl border border-black/15 bg-white p-6">
-          <h3 className="m-0 font-[Geist] font-medium leading-[1.15] tracking-[-0.03em] text-black" style={{ fontSize: "clamp(20px,1.8vw,24px)" }}>
+          <h3 className="m-0 font-sans font-medium leading-[1.15] tracking-[-0.03em] text-black" style={{ fontSize: "clamp(20px,1.8vw,24px)" }}>
             Une question qui n&apos;est pas là ?
           </h3>
           <p className="m-0 text-[15px] text-black/70">Alexis, notre métreur commercial, vous répond directement.</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
-            <Link href="/contact-request" className={HOME_PILL_LIME}>Nous contacter →</Link>
+            <Link href="/contact-request" className={HOME_PILL_DARK}>Nous contacter →</Link>
             <a
               href="https://wa.me/33601062867"
               target="_blank"
@@ -56,7 +56,7 @@ export function FaqSection() {
                   <button
                     onClick={() => setOpenIndex(isOpen ? -1 : index)}
                     aria-expanded={isOpen}
-                    className="flex min-h-[44px] w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-[Geist] font-medium tracking-[-0.02em] text-black"
+                    className="flex min-h-[44px] w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-sans font-medium tracking-[-0.02em] text-black"
                     style={{ fontSize: "clamp(17px,1.4vw,19px)" }}
                   >
                     <span>{item.q}</span>

@@ -6,8 +6,9 @@ import Head from 'next/head';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { IconArrowLeft, IconLoader2 } from "@tabler/icons-react";
+import { AuthShowcase } from "@/components/auth/AuthShowcase";
 
 export default function Login() {
   const router = useRouter();
@@ -67,10 +68,10 @@ export default function Login() {
       <Head>
         <title>Connexion | ArchiMeuble</title>
       </Head>
-      <div className="relative flex min-h-screen flex-col items-center justify-center font-sans lg:max-w-none lg:grid lg:grid-cols-2 lg:px-0">
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-am-paper font-sans lg:max-w-none lg:grid lg:grid-cols-2 lg:px-0">
         {/* Header mobile (visible uniquement sur mobile) */}
         <div className="flex w-full items-center justify-between p-6 lg:hidden">
-          <Link href="/">
+          <Link href="/" aria-label="ArchiMeuble, accueil">
             <img
               src="/images/logo site .png"
               alt="ArchiMeuble"
@@ -79,80 +80,54 @@ export default function Login() {
           </Link>
           <Link
             href="/auth/register"
-            className="text-sm font-medium text-[#8B7355] hover:underline"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-am-navy underline-offset-4 hover:underline"
           >
             S&apos;inscrire
           </Link>
         </div>
 
-        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
-          <div
-            className="absolute inset-0 bg-zinc-900"
-            style={{
-              backgroundImage: 'url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?ixlib=rb-4.0.3&auto=format&fit=crop&w=1632&q=80")',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-          <div className="absolute inset-0 bg-black/30" />
-          <div className="relative z-20 flex items-center text-lg font-medium">
-            <Link href="/">
-              <img
-                src="/images/logo site .png"
-                alt="ArchiMeuble"
-                className="h-10 w-auto brightness-0 invert"
-              />
-            </Link>
-          </div>
-          <div className="relative z-20 mt-auto">
-            <blockquote className="space-y-2">
-              <p className="text-lg">
-                &ldquo;ArchiMeuble m&apos;a permis de concevoir le meuble de mes rêves en quelques clics. 
-                La qualité de fabrication lilloise est exceptionnelle.&rdquo;
-              </p>
-              <footer className="text-sm">Sofia Davis</footer>
-            </blockquote>
-          </div>
-        </div>
-        <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-black lg:p-8 h-full w-full">
-          <Card className="w-full max-w-md border-none shadow-none bg-transparent lg:shadow-none dark:bg-transparent">
+        <AuthShowcase />
+
+        <div className="flex h-full w-full flex-1 items-center justify-center bg-am-paper p-4 lg:p-8">
+          <Card className="w-full max-w-md border-none bg-transparent shadow-none lg:shadow-none">
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-3xl font-bold tracking-tight text-[#1A1917] dark:text-white">
+              <h1 className="text-3xl font-bold tracking-tight text-black">
                 Connexion
-              </CardTitle>
-              <CardDescription className="text-zinc-500 dark:text-zinc-400">
+              </h1>
+              <CardDescription className="text-black/70">
                 Accédez à vos configurations sauvegardées
               </CardDescription>
             </CardHeader>
 
             <CardContent className="grid gap-4 mt-4">
               {error && (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                <div role="alert" className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="grid gap-5">
                 <div className="grid gap-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-[#1A1917] dark:text-zinc-200">Email</Label>
+                  <Label htmlFor="email" className="text-sm font-medium text-black">Email</Label>
                   <Input
                     id="email"
                     name="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="nom@exemple.com"
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917] dark:bg-zinc-800 dark:border-zinc-700"
+                    className="h-11 rounded-md border-black/30 bg-white"
                   />
                 </div>
 
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password" title="Mot de passe" className="text-sm font-medium text-[#1A1917] dark:text-zinc-200">Mot de passe</Label>
-                    <Link 
-                      href="/auth/forgot-password" 
-                      className="text-xs text-[#8B7355] hover:underline"
+                    <Label htmlFor="password" className="text-sm font-medium text-black">Mot de passe</Label>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="inline-flex min-h-11 items-center text-sm text-am-navy underline-offset-4 hover:underline"
                     >
                       Mot de passe oublié ?
                     </Link>
@@ -161,17 +136,18 @@ export default function Login() {
                     id="password"
                     name="password"
                     type="password"
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="h-11 bg-white border-[#E8E6E3] rounded-md focus:ring-[#1A1917] dark:bg-zinc-800 dark:border-zinc-700"
+                    className="h-11 rounded-md border-black/30 bg-white"
                   />
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm"
+                <Button
+                  type="submit"
+                  className="h-11 w-full rounded-md bg-am-navy text-white shadow-sm transition-all hover:bg-am-navy/90"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -186,16 +162,19 @@ export default function Login() {
               </form>
             </CardContent>
 
-            <CardFooter className="flex flex-col gap-6 text-center mt-4">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <CardFooter className="mt-4 flex flex-col gap-2 text-center">
+              <p className="text-sm text-black/70">
                 Pas encore de compte ?{' '}
-                <Link href="/auth/register" className="font-semibold text-[#1A1917] hover:underline dark:text-white">
+                <Link
+                  href="/auth/register"
+                  className="inline-flex min-h-11 items-center font-semibold text-black underline-offset-4 hover:underline"
+                >
                   Créer un compte
                 </Link>
               </p>
-              <Link 
-                href="/" 
-                className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] dark:text-zinc-400 dark:hover:text-white transition-colors group"
+              <Link
+                href="/"
+                className="group inline-flex min-h-11 items-center gap-2 text-sm text-black/70 transition-colors hover:text-black"
               >
                 <IconArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Retour à l&apos;accueil

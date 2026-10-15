@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
-import { Archive, BoxSelect, DoorClosed, Hand, Shirt, Sparkles, Square, type LucideIcon } from 'lucide-react';
+import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
 import { layoutLeafText } from './leafLayout';
@@ -10,14 +10,14 @@ const MAX_CANVAS_WIDTH = 1100;
 interface LeafVisual {
     // Même icône que dans le panneau de réglage : on reconnaît le contenu d'un coup d'œil
     Icon?: LucideIcon;
-    // Couleurs de la case au repos (sélectionnée, elle passe à l'orange)
+    // Couleurs de la case au repos (sélectionnée, elle passe au bleu foncé)
     classes: string;
 }
 
-const EMPTY_VISUAL: LeafVisual = { classes: 'border-[#D0CEC9] bg-white text-[#706F6C] hover:bg-[#F5F5F4]' };
-const DRAWER_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-[#D8C29B] bg-[#F6EEDF] text-[#6B5A3A]' });
-const DOOR_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-[#B9C6D8] bg-[#EAEFF6] text-[#44546A]' });
-const GLASS_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-[#A9CFD6] bg-[#E6F3F6] text-[#3B6571]' });
+const EMPTY_VISUAL: LeafVisual = { classes: 'border-black/20 bg-white text-black/65 hover:bg-am-mist/30' };
+const DRAWER_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-am-wine/35 bg-am-wine/10 text-am-wine' });
+const DOOR_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-am-mist bg-am-mist/35 text-am-navy' });
+const GLASS_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-am-mist bg-am-mist/20 text-am-navy' });
 
 function getLeafVisual(content: ZoneContent | undefined): LeafVisual {
     switch (content) {
@@ -235,26 +235,25 @@ function ZoneNode({
                 title={description}
                 aria-label={description}
                 className={`relative flex h-full w-full flex-col items-center justify-center gap-px overflow-hidden border-2 transition-all duration-200 ${
-                    isOpenSpace
-                        ? isSelected
-                            ? 'border-[#4CAF50] bg-[#4CAF50]/20 text-[#2E7D32] z-10 shadow-[0_0_8px_rgba(76,175,80,0.3)]'
-                            : 'border-[#4CAF50] border-dashed bg-[#E8F5E9] text-[#4CAF50] hover:bg-[#C8E6C9]'
-                        : isSelected
-                            ? 'border-[#FF9800] bg-[#FF9800]/20 text-[#E65100] z-10 shadow-[0_0_8px_rgba(255,152,0,0.3)]'
-                            : `${visual.classes} hover:border-[#FF9800]/50`
+                    isSelected
+                        ? 'border-am-navy bg-am-navy text-white z-10 shadow-[0_0_0_3px_rgba(59,62,88,0.25)]'
+                        : isOpenSpace
+                            ? 'border-am-navy border-dashed bg-am-mist/20 text-am-navy hover:bg-am-mist/40'
+                            : `${visual.classes} hover:border-am-navy/50`
                 }`}
                 style={{ borderRadius: '4px' }}
             >
                 {showNumbers && zoneNumber && (
-                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm ${isOpenSpace ? 'bg-[#4CAF50]' : 'bg-[#1A1917]'}`}>
+                    // Pastille inversée sur une case choisie (fond navy), sinon elle s'y fond
+                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-sm ${isSelected ? 'bg-white text-am-navy' : 'bg-am-navy text-white'}`}>
                         {zoneNumber}
                     </div>
                 )}
                 {isOpenSpace ? (
                     <>
-                        <span className="text-2xl mb-1">🖼️</span>
+                        <Frame className="mb-1 h-6 w-6" aria-hidden="true" />
                         <span className="text-sm font-semibold">Espace ouvert</span>
-                        <span className="text-xs text-[#4CAF50]">Pas de fond</span>
+                        <span className="text-xs opacity-80">Pas de fond</span>
                     </>
                 ) : (
                     <>
@@ -304,8 +303,8 @@ function ZoneNode({
             onKeyDown={handleKeyDown}
             className={`relative flex h-full w-full border-2 transition-all duration-200 ${
                 isSelected
-                    ? 'border-[#3B82F6] bg-[#3B82F6]/5 ring-2 ring-[#3B82F6]/20'
-                    : 'border-[#D0CEC9] bg-[#FAFAF9] hover:border-[#3B82F6]/50'
+                    ? 'border-am-navy bg-am-navy/5 ring-2 ring-am-navy/20'
+                    : 'border-black/20 bg-am-mist/15 hover:border-am-navy/50'
             }`}
             style={{
                 flexDirection: isHorizontal ? 'column' : 'row',
@@ -317,11 +316,11 @@ function ZoneNode({
                 <>
                     {/* Contour en pointillés : la porte recouvre tout le groupe */}
                     <div
-                        className="pointer-events-none absolute inset-[3px] z-10 border-2 border-dashed border-[#1A1917]/40"
+                        className="pointer-events-none absolute inset-[3px] z-10 border-2 border-dashed border-am-navy/40"
                         style={{ borderRadius: '3px' }}
                     />
                     <div
-                        className="pointer-events-none absolute left-1/2 top-[5px] z-10 flex max-w-[95%] -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-white/20 bg-[#1A1917]/85 px-2 py-0.5 text-[10px] font-semibold text-white shadow"
+                        className="pointer-events-none absolute left-1/2 top-[5px] z-10 flex max-w-[95%] -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-white/20 bg-am-navy/85 px-2 py-0.5 text-[10px] font-semibold text-white shadow"
                         title={meta.label}
                     >
                         <DoorClosed className="h-3 w-3 flex-shrink-0" />
@@ -383,11 +382,11 @@ function ZoneNode({
                                 title="Planche retirée"
                             >
                                 <div
-                                    className={`absolute border-dashed border-[#E64A19] ${
+                                    className={`absolute border-dashed border-am-wine ${
                                         isHorizontal ? 'left-0 right-0 border-t-2' : 'top-0 bottom-0 border-l-2'
                                     }`}
                                 />
-                                <span className="relative whitespace-nowrap rounded-sm bg-[#E64A19] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                                <span className="relative whitespace-nowrap rounded-sm bg-am-wine px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
                                     Planche retirée
                                 </span>
                             </div>
@@ -408,7 +407,7 @@ function ZoneNode({
                                 }
                             >
                                 <div
-                                    className={`absolute bg-[#FF9800] transition-opacity ${
+                                    className={`absolute bg-am-navy transition-opacity ${
                                         isDragging && dragIndex === index ? 'opacity-100' : 'opacity-30 hover:opacity-80'
                                     } ${
                                         isHorizontal
@@ -498,11 +497,11 @@ export default function ZoneCanvas({
     computeNumbers(zone);
 
     return (
-        <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
+        <div className="border border-black/10 bg-white p-5" style={{ borderRadius: '4px' }}>
             {/* Header - Titre et dimensions */}
             <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#1A1917]">Plan du meuble</h3>
-                <span className="font-mono text-base font-medium text-[#1A1917]">
+                <h3 className="text-lg font-semibold text-black">Plan du meuble</h3>
+                <span className="font-mono text-base font-medium text-black">
                     {width} × {height} mm
                 </span>
             </div>
@@ -510,7 +509,7 @@ export default function ZoneCanvas({
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
                 ref={canvasContainerRef}
-                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-[#FAFAF9] p-2 cursor-default sm:p-4"
+                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-am-mist/15 p-2 cursor-default sm:p-4"
                 onClick={() => onSelect(null)}
                 style={{
                     borderRadius: '4px',
@@ -539,7 +538,7 @@ export default function ZoneCanvas({
             </div>
 
             {/* Instruction claire */}
-            <p className="mt-4 text-center text-base text-[#706F6C]">
+            <p className="mt-4 text-center text-base text-black/65">
                 {showNumbers ? "Les numéros correspondent à l'inventaire détaillé" : "Cliquez sur une zone pour la modifier"}
             </p>
         </div>

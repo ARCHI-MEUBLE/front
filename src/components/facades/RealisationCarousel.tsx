@@ -22,7 +22,7 @@ export function RealisationCarousel({ images, className = '', onGalleryOpen }: P
 
   if (!images || images.length === 0) {
     return (
-      <div className={`relative aspect-[4/3] bg-[#E8E4DE] flex items-center justify-center ${className}`}>
+      <div className={`relative aspect-[4/3] bg-black/10 flex items-center justify-center ${className}`}>
         <Camera className="h-12 w-12 text-black/70" strokeWidth={1} />
       </div>
     );
@@ -45,7 +45,7 @@ export function RealisationCarousel({ images, className = '', onGalleryOpen }: P
   };
 
   return (
-    <div className={`relative aspect-[4/3] overflow-hidden bg-[#E8E4DE] group ${className}`}>
+    <div className={`relative aspect-[4/3] overflow-hidden bg-black/10 group ${className}`}>
       {/* Image principale */}
       <AnimatePresence mode="wait">
         <motion.img

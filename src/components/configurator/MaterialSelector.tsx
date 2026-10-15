@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Archive, Box, DoorClosed, Frame, PanelBottom, Rows3, type LucideIcon } from 'lucide-react';
 import type { SampleType, SampleColor } from '@/lib/apiClient';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import ColorCheckBadge from './ColorCheckBadge';
 
 // Composant pour afficher une couleur avec fallback si l'image ne charge pas
@@ -20,7 +22,7 @@ function ColorSwatch({ color, size = 'md' }: { color: SampleColor; size?: 'sm' |
 
   return (
     <div
-      className={`${sizeClasses[size]} flex-shrink-0 border border-[#E8E6E3] overflow-hidden`}
+      className={`${sizeClasses[size]} flex-shrink-0 border border-black/10 overflow-hidden`}
       style={{
         borderRadius: '2px',
         backgroundColor: bgColor,
@@ -46,7 +48,7 @@ function MiniSwatch({ hex, imageUrl }: { hex?: string | null; imageUrl?: string 
 
   return (
     <div
-      className="h-8 w-8 flex-shrink-0 border border-[#E8E6E3] overflow-hidden"
+      className="h-8 w-8 flex-shrink-0 border border-black/10 overflow-hidden"
       style={{
         borderRadius: '2px',
         backgroundColor: bgColor,
@@ -89,13 +91,13 @@ interface MaterialSelectorProps {
   hiddenComponents?: ColorComponent[];
 }
 
-const COMPONENT_DEFINITIONS: { key: ColorComponent; label: string; icon: string; desc: string }[] = [
-  { key: 'structure', label: 'Structure', icon: '🏗️', desc: 'Corps du meuble' },
-  { key: 'doors', label: 'Portes', icon: '🚪', desc: 'Toutes les portes' },
-  { key: 'drawers', label: 'Tiroirs', icon: '📦', desc: 'Toutes les façades de tiroirs' },
-  { key: 'shelves', label: 'Étagères', icon: '📏', desc: 'Tablettes et séparations' },
-  { key: 'back', label: 'Fond', icon: '📋', desc: 'Panneau arrière' },
-  { key: 'base', label: 'Socle', icon: '⬛', desc: 'Base du meuble' },
+const COMPONENT_DEFINITIONS: { key: ColorComponent; label: string; Icon: LucideIcon; desc: string }[] = [
+  { key: 'structure', label: 'Structure', Icon: Box, desc: 'Corps du meuble' },
+  { key: 'doors', label: 'Portes', Icon: DoorClosed, desc: 'Toutes les portes' },
+  { key: 'drawers', label: 'Tiroirs', Icon: Archive, desc: 'Toutes les façades de tiroirs' },
+  { key: 'shelves', label: 'Étagères', Icon: Rows3, desc: 'Tablettes et séparations' },
+  { key: 'back', label: 'Fond', Icon: Frame, desc: 'Panneau arrière' },
+  { key: 'base', label: 'Socle', Icon: PanelBottom, desc: 'Base du meuble' },
 ];
 
 const isSameColor = (entry: ComponentColor | undefined, color: SampleColor) =>
@@ -149,7 +151,7 @@ export default function MaterialSelector({
   }, [allColors]);
 
   const colorName = (entry: ComponentColor) =>
-    (allColors.find((c) => c.id === entry.colorId) ?? palette.find((c) => isSameColor(entry, c)))?.name || 'Couleur par défaut';
+    displayColorName((allColors.find((c) => c.id === entry.colorId) ?? palette.find((c) => isSameColor(entry, c)))?.name) || 'Couleur par défaut';
 
   const components = COMPONENT_DEFINITIONS.filter(({ key }) => !hiddenComponents.includes(key));
   const active = components.some((c) => c.key === activeComponent) ? activeComponent : 'structure';
@@ -166,13 +168,13 @@ export default function MaterialSelector({
         type="button"
         onClick={() => onComponentColorChange(component, color)}
         aria-pressed={isSelected}
-        aria-label={color.name || 'Couleur'}
-        title={color.name || 'Sans nom'}
+        aria-label={displayColorName(color.name) || 'Couleur'}
+        title={displayColorName(color.name) || 'Sans nom'}
         className="group flex min-w-0 flex-col gap-1.5 text-left"
       >
         <div
           className={`relative aspect-square border-2 p-0.5 transition-all ${
-            isSelected ? 'border-[#2196F3] ring-4 ring-[#2196F3]/15' : 'border-[#E8E6E3] group-hover:border-[#1A1917]'
+            isSelected ? 'border-am-navy ring-4 ring-am-navy/15' : 'border-black/10 group-hover:border-am-navy'
           }`}
           style={{ borderRadius: '2px' }}
         >
@@ -180,8 +182,8 @@ export default function MaterialSelector({
           {isSelected && <ColorCheckBadge />}
         </div>
         {showName && (
-          <span className={`line-clamp-2 text-[11px] leading-tight ${isSelected ? 'font-medium text-[#1A1917]' : 'text-[#706F6C]'}`}>
-            {color.name || 'Sans nom'}
+          <span className={`line-clamp-2 text-[11px] leading-tight ${isSelected ? 'font-medium text-black' : 'text-black/65'}`}>
+            {displayColorName(color.name) || 'Sans nom'}
           </span>
         )}
       </button>
@@ -191,7 +193,7 @@ export default function MaterialSelector({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="h-6 w-6 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+        <div className="h-6 w-6 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
       </div>
     );
   }
@@ -200,7 +202,7 @@ export default function MaterialSelector({
     <div className="space-y-6">
       {/* Sélection du matériau */}
       <div className="space-y-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">Matière</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-black/65">Matière</span>
         <div className="flex flex-wrap gap-2">
           {orderedMaterialLabels.map((label) => {
             const isActive = selectedMaterialLabel === label;
@@ -211,12 +213,12 @@ export default function MaterialSelector({
                 onClick={() => onMaterialChange(label)}
                 className={`border px-3 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
                   isActive
-                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                    : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                    ? 'border-am-navy bg-am-navy text-white'
+                    : 'border-black/10 bg-white text-black hover:border-am-navy'
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                {label}
+                {displayMaterialName(label)}
               </button>
             );
           })}
@@ -228,12 +230,12 @@ export default function MaterialSelector({
           {/* ── Ordinateur : grille des parties du meuble + palette de la partie choisie ── */}
           <div className="hidden space-y-4 lg:block">
             <div>
-              <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">Couleurs</span>
-              <p className="mt-1 text-xs text-[#706F6C]">Choisissez une partie du meuble, puis sa couleur.</p>
+              <span className="text-xs font-medium uppercase tracking-wide text-black/65">Couleurs</span>
+              <p className="mt-1 text-xs text-black/65">Choisissez une partie du meuble, puis sa couleur.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {components.map(({ key, label, icon }) => {
+              {components.map(({ key, label, Icon }) => {
                 const isActive = active === key;
                 const entry = componentColors[key];
                 return (
@@ -243,34 +245,34 @@ export default function MaterialSelector({
                     type="button"
                     onClick={() => setActiveComponent(key)}
                     aria-pressed={isActive}
-                    className={`flex items-center gap-2 border p-2 text-left text-[#1A1917] transition-all ${
+                    className={`flex items-center gap-2 border p-2 text-left text-black transition-all ${
                       isActive
-                        ? 'border-[#2196F3] bg-[#EAF4FE] ring-1 ring-[#2196F3]'
-                        : 'border-[#E8E6E3] bg-white hover:border-[#1A1917]'
+                        ? 'border-am-navy bg-am-mist/30 ring-1 ring-am-navy'
+                        : 'border-black/10 bg-white hover:border-am-navy'
                     }`}
                     style={{ borderRadius: '2px' }}
                   >
                     <MiniSwatch hex={entry?.hex} imageUrl={entry?.imageUrl} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1">
-                        <span className="text-sm">{icon}</span>
+                        <Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
                         <span className="truncate text-xs font-medium">{label}</span>
                       </div>
-                      <p className="truncate text-[10px] text-[#706F6C]">{colorName(entry)}</p>
+                      <p className="truncate text-[10px] text-black/65">{colorName(entry)}</p>
                     </div>
                   </button>
                 );
               })}
             </div>
 
-            <div className="border border-[#2196F3] bg-white p-4" style={{ borderRadius: '2px' }}>
+            <div className="border border-am-navy bg-white p-4" style={{ borderRadius: '2px' }}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{activeDefinition.icon}</span>
+                  <activeDefinition.Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                   <div>
-                    <h4 className="text-sm font-medium text-[#1A1917]">{activeDefinition.label}</h4>
-                    <p className="text-xs text-[#706F6C]">
-                      {activeDefinition.desc} · <span className="font-medium text-[#1A1917]">{colorName(componentColors[active])}</span>
+                    <h4 className="text-sm font-medium text-black">{activeDefinition.label}</h4>
+                    <p className="text-xs text-black/65">
+                      {activeDefinition.desc} · <span className="font-medium text-black">{colorName(componentColors[active])}</span>
                     </p>
                   </div>
                 </div>
@@ -278,9 +280,9 @@ export default function MaterialSelector({
                   <button
                     type="button"
                     onClick={() => onApplyToAll(activeColor)}
-                    className="text-right text-xs text-[#8B7355] underline hover:no-underline"
+                    className="text-right text-xs text-am-navy underline hover:no-underline"
                   >
-                    Appliquer « {activeColor.name} » à tout le meuble
+                    Appliquer « {displayColorName(activeColor.name)} » à tout le meuble
                   </button>
                 )}
               </div>
@@ -292,14 +294,14 @@ export default function MaterialSelector({
 
           {/* ── Téléphone : toutes les couleurs à la suite, une palette par partie du meuble ── */}
           <div className="space-y-5 lg:hidden">
-            <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">Couleurs</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-black/65">Couleurs</span>
             {components.map(({ key, label, desc }) => (
               <div key={key} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MiniSwatch hex={componentColors[key]?.hex} imageUrl={componentColors[key]?.imageUrl} />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#1A1917]">{label}</p>
-                    <p className="truncate text-[11px] text-[#706F6C]">
+                    <p className="text-sm font-medium text-black">{label}</p>
+                    <p className="truncate text-[11px] text-black/65">
                       {colorName(componentColors[key])} · {desc}
                     </p>
                   </div>
@@ -313,7 +315,7 @@ export default function MaterialSelector({
 
           <button
             type="button"
-            className="text-xs text-[#8B7355] underline hover:no-underline"
+            className="text-xs text-am-navy underline hover:no-underline"
             onClick={() => window.open('/samples', '_blank')}
           >
             Commander des échantillons

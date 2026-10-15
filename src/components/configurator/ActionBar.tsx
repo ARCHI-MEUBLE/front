@@ -10,9 +10,9 @@ export default function ActionBar({
   }
 
   return (
-    <div className="action-bar w-full border-t border-[#E8E6E3] bg-[#FAFAF9] px-4 py-3">
-      <p className="text-center text-xs text-[#706F6C]">
-        Zone : <span className="font-mono text-[#1A1917]">{selectedZoneId}</span>
+    <div className="action-bar w-full border-t border-black/10 bg-am-mist/15 px-4 py-3">
+      <p className="text-center text-xs text-black/65">
+        Zone : <span className="font-mono text-black">{selectedZoneId}</span>
       </p>
     </div>
   );

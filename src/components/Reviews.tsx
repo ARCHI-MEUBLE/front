@@ -8,6 +8,7 @@ import { AvisHero } from "@/components/avis/AvisHero";
 import { AvisMarquee } from "@/components/avis/AvisMarquee";
 import { AvisForm } from "@/components/avis/AvisForm";
 import { AvisCta } from "@/components/avis/AvisCta";
+import { averageRating } from "@/lib/rating";
 
 type ApiReview = {
   id: string;
@@ -84,7 +85,7 @@ export function Reviews() {
     }
   };
 
-  const avgRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 5;
+  const avgRating = reviews.length > 0 ? averageRating(reviews.map((r) => r.rating)) : 5;
 
   const distribution = [5, 4, 3, 2, 1].map((star) => ({
     star,

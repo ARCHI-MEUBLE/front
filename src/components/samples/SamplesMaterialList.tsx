@@ -1,4 +1,5 @@
 import { HOME_MONO } from "@/components/home/homeLayout";
+import { displayMaterialName } from "@/lib/displayNames";
 
 export function SamplesMaterialList({
   materials,
@@ -17,7 +18,7 @@ export function SamplesMaterialList({
         <span className={`text-xs ${HOME_MONO}`}>01</span>
         <h2
           id="ech-step1"
-          className="m-0 font-[Geist] font-medium tracking-[-0.045em] text-black"
+          className="m-0 font-sans font-medium tracking-[-0.045em] text-black"
           style={{ fontSize: "clamp(28px,3vw,44px)" }}
         >
           Choisissez votre matériau
@@ -44,10 +45,10 @@ export function SamplesMaterialList({
               </span>
               <span className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
                 <span className="font-medium tracking-[-0.035em]" style={{ fontSize: "clamp(20px,1.8vw,24px)" }}>
-                  {material}
+                  {displayMaterialName(material)}
                 </span>
                 <span className="text-[15px] text-black/70">
-                  {descriptions[material] || "Découvrez nos finitions disponibles"}
+                  {descriptions[displayMaterialName(material)] || "Découvrez nos finitions disponibles"}
                 </span>
               </span>
             </button>

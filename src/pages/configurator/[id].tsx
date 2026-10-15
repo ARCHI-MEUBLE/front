@@ -8,10 +8,10 @@ import { adminUrl } from '@/lib/adminPath';
 const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '500px' }}>
+    <div className="flex h-full w-full items-center justify-center bg-am-paper" style={{ minHeight: '500px' }}>
       <div className="flex flex-col items-center gap-3">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
-        <p className="text-sm font-medium text-[#706F6C]">Chargement du studio 3D...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-am-navy border-t-transparent" />
+        <p className="text-sm font-medium text-black/65">Chargement du studio 3D...</p>
       </div>
     </div>
   ),
@@ -38,7 +38,7 @@ import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ArrowLeft, ArrowRight, ChevronLeft, Box, RotateCcw, Sparkles, Undo2, Redo2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, RotateCcw, Sparkles, Undo2, Redo2, Trash2 } from 'lucide-react';
 import {
   IconInfoCircle,
   IconEdit,
@@ -2487,10 +2487,10 @@ export default function ConfiguratorPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
+      <div className="flex min-h-screen items-center justify-center bg-am-paper">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-          <p className="mt-4 text-sm text-[#706F6C]">Chargement de la configuration...</p>
+          <div className="mx-auto h-8 w-8 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
+          <p className="mt-4 text-sm text-black/65">Chargement de la configuration...</p>
         </div>
       </div>
     );
@@ -2510,15 +2510,15 @@ export default function ConfiguratorPage() {
 
   if (!model) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6 text-center">
-        <IconInfoCircle className="h-12 w-12 text-[#8B7355] mb-4" />
-        <h1 className="font-serif text-2xl text-[#1A1917] mb-2">Configuration introuvable</h1>
-        <p className="text-[#706F6C] max-w-md mb-8">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-am-paper p-6 text-center">
+        <IconInfoCircle className="h-12 w-12 text-am-navy mb-4" />
+        <h1 className="font-serif text-2xl text-black mb-2">Configuration introuvable</h1>
+        <p className="text-black/65 max-w-md mb-8">
           Désolé, nous ne parvenons pas à charger cette configuration. Elle n&apos;existe peut-être plus ou le lien est incorrect.
         </p>
         <button 
           onClick={() => router.push('/')}
-          className="bg-[#1A1917] text-white px-8 py-3 text-sm font-medium hover:bg-[#2A2927] transition-colors"
+          className="bg-am-navy text-white px-8 py-3 text-sm font-medium hover:bg-am-navy/90 transition-colors"
           style={{ borderRadius: '2px' }}
         >
           Retour à l&apos;accueil
@@ -2529,12 +2529,12 @@ export default function ConfiguratorPage() {
 
   if (!model) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
+      <div className="flex min-h-screen items-center justify-center bg-am-paper">
         <div className="text-center">
-          <h1 className="font-serif text-2xl text-[#1A1917]">Modèle non trouvé</h1>
+          <h1 className="font-serif text-2xl text-black">Modèle non trouvé</h1>
           <button
             onClick={() => router.push('/')}
-            className="mt-6 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white"
+            className="mt-6 bg-am-navy px-6 py-3 text-sm font-medium text-white"
             style={{ borderRadius: '2px' }}
           >
             Retour à l&apos;accueil
@@ -2624,7 +2624,7 @@ export default function ConfiguratorPage() {
                   type="number"
                   value={modelForm.price}
                   readOnly
-                  className="bg-gray-50 font-semibold"
+                  className="bg-am-mist/15 font-semibold"
                 />
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   Auto-calculé
@@ -2661,7 +2661,7 @@ export default function ConfiguratorPage() {
                     disabled={isUploading}
                     className="cursor-pointer"
                   />
-                  {isUploading && <IconRefresh className="h-4 w-4 animate-spin text-[#8B7355]" />}
+                  {isUploading && <IconRefresh className="h-4 w-4 animate-spin text-am-navy" />}
                 </div>
                 <p className="text-[10px] text-muted-foreground italic">
                   Format JPG, PNG ou WEBP. Max 20Mo.
@@ -2688,7 +2688,7 @@ export default function ConfiguratorPage() {
                 saveAsModel();
               }}
               disabled={!modelForm.name}
-              className="bg-[#1A1917] text-white"
+              className="bg-am-navy text-white"
             >
               {isAdminEditModel ? 'Mettre à jour' : 'Enregistrer le modèle'}
             </Button>
@@ -2696,20 +2696,20 @@ export default function ConfiguratorPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex min-h-screen flex-col bg-[#FAFAF9] lg:h-screen lg:overflow-hidden">
-        <header className="flex-shrink-0 border-b border-[#E8E6E3] bg-white">
+      <div className="flex min-h-screen flex-col bg-am-paper lg:h-screen lg:overflow-hidden">
+        <header className="flex-shrink-0 border-b border-black/10 bg-am-paper">
           <div className="mx-auto flex h-14 items-center justify-between px-4 lg:h-16 lg:max-w-screen-2xl lg:px-6">
             <div className="flex items-center gap-3 lg:gap-4">
               <Link
                 href="/models"
-                className="flex h-9 w-9 items-center justify-center border border-[#E8E6E3] text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] lg:h-10 lg:w-10"
+                className="flex h-9 w-9 items-center justify-center border border-black/10 text-black/65 transition-colors hover:border-am-navy hover:text-black lg:h-10 lg:w-10"
                 style={{ borderRadius: '2px' }}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
+                  <h1 className="font-serif text-base text-black lg:text-lg">{model.name}</h1>
                   {isViewMode && isAdmin && (
                     <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
                   )}
@@ -2723,10 +2723,10 @@ export default function ConfiguratorPage() {
                     <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Modification</span>
                   )}
                   {editingConfigName && (isEditMode || isViewMode) && (
-                    <span className="text-[11px] text-[#706F6C] font-medium">&quot;{editingConfigName}&quot;</span>
+                    <span className="text-[11px] text-black/65 font-medium">&quot;{editingConfigName}&quot;</span>
                   )}
                 </div>
-                <p className="hidden text-xs text-[#706F6C] sm:block">
+                <p className="hidden text-xs text-black/65 sm:block">
                   {isViewMode
                     ? (isAdmin ? 'Consultation de la configuration client' : 'Aperçu de votre configuration')
                     : (isEditMode && editingConfigId
@@ -2738,13 +2738,13 @@ export default function ConfiguratorPage() {
 
             <div className="flex items-center gap-3">
               {!isAdminCreateModel && !isAdminEditModel && isAuthenticated && customer && (
-                <span className="hidden text-xs text-[#706F6C] md:block">
+                <span className="hidden text-xs text-black/65 md:block">
                   {customer.first_name} {customer.last_name}
                 </span>
               )}
               <Link
                 href="/"
-                className="font-serif text-base text-[#1A1917] lg:text-lg"
+                className="font-serif text-base text-black lg:text-lg"
               >
                 ArchiMeuble
               </Link>
@@ -2753,11 +2753,11 @@ export default function ConfiguratorPage() {
         </header>
 
         <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden">
-          <div className="sticky top-0 z-30 flex flex-col bg-[#FAFAF9] lg:static lg:z-auto lg:flex-1">
+          <div className="sticky top-0 z-30 flex flex-col bg-am-paper lg:static lg:z-auto lg:flex-1">
             <div className="relative h-[40vh] min-h-[260px] lg:h-auto lg:flex-1">
               <div className="absolute inset-0">
                 {!show3DView ? (
-                  <div ref={planViewportRef} className="h-full w-full overflow-auto bg-white px-3 pb-3 pt-14 sm:p-8">
+                  <div ref={planViewportRef} className="h-full w-full overflow-auto bg-am-paper px-3 pb-3 pt-14 sm:px-8 sm:pb-8 sm:pt-20">
                     <ZoneEditor
                       rootZone={rootZone}
                       selectedZoneIds={selectedZoneIds}
@@ -2798,15 +2798,15 @@ export default function ConfiguratorPage() {
                     deletedPanelIds={deletedPanelIds}
                   />
                 )}
-                <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-[#E8E6E3] bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
+                <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
                   <button
                     type="button"
                     onClick={() => chooseView(false)}
                     aria-pressed={!show3DView}
                     className={`px-3 py-2 text-xs font-medium transition-colors ${
                       !show3DView
-                        ? 'bg-[#1A1917] text-white'
-                        : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                        ? 'bg-am-navy text-white'
+                        : 'text-black/65 hover:bg-am-mist/30 hover:text-black'
                     }`}
                   >
                     Plan 2D
@@ -2815,14 +2815,65 @@ export default function ConfiguratorPage() {
                     type="button"
                     onClick={() => chooseView(true)}
                     aria-pressed={show3DView}
-                    className={`flex items-center gap-1.5 border-l border-[#E8E6E3] px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 border-l border-black/10 px-3 py-2 text-xs font-medium transition-colors ${
                       show3DView
-                        ? 'bg-[#1A1917] text-white'
-                        : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                        ? 'bg-am-navy text-white'
+                        : 'text-black/65 hover:bg-am-mist/30 hover:text-black'
                     }`}
                   >
                     <Box className="h-3.5 w-3.5" />
                     Vue 3D
+                  </button>
+                </div>
+                {/* Mobile : ces commandes du viewer vivaient dans la barre du bas, avec des emoji sans libellé */}
+                {!isViewMode && (
+                  <div className="absolute left-3 top-3 z-20 flex gap-1 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={undoZone}
+                      disabled={!canUndoZone}
+                      aria-label="Annuler"
+                      className="flex h-10 w-10 items-center justify-center border border-black/10 bg-white text-black shadow-sm disabled:text-black/30"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoZone}
+                      disabled={!canRedoZone}
+                      aria-label="Rétablir"
+                      className="flex h-10 w-10 items-center justify-center border border-black/10 bg-white text-black shadow-sm disabled:text-black/30"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="absolute right-3 top-14 z-20 flex flex-col gap-2 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowDecorations(!showDecorations)}
+                    aria-pressed={showDecorations}
+                    aria-label={showDecorations ? 'Cacher les décorations' : 'Afficher les décorations'}
+                    className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
+                      showDecorations ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleToggleDoors}
+                    aria-pressed={doorsOpen}
+                    aria-label={doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}
+                    className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
+                      doorsOpen ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {doorsOpen ? <DoorClosed className="h-4 w-4" /> : <DoorOpen className="h-4 w-4" />}
                   </button>
                 </div>
                 {!isViewMode && showQuickMenu && quickMenu && (
@@ -2844,8 +2895,8 @@ export default function ConfiguratorPage() {
                       aria-pressed={showPanelTool}
                       className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
                         showPanelTool
-                          ? 'border-[#E64A19] bg-[#E64A19] text-white'
-                          : 'border-[#FF8A65] bg-[#FFF3E0] text-[#E64A19] hover:border-[#E64A19] hover:bg-[#E64A19] hover:text-white'
+                          ? 'border-am-wine bg-am-wine text-white'
+                          : 'border-am-wine/50 bg-am-wine/10 text-am-wine hover:border-am-wine hover:bg-am-wine hover:text-white'
                       }`}
                       style={{ borderRadius: '2px' }}
                       title={showPanelTool ? 'Terminer le retrait de planches' : 'Retirer des planches du meuble (en vue 3D)'}
@@ -2857,7 +2908,7 @@ export default function ConfiguratorPage() {
                       </svg>
                       <span>{showPanelTool ? 'Terminer le retrait' : 'Retirer planches'}</span>
                       {deletedPanelIds.size > 0 && (
-                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-[#E64A19]">
+                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-am-wine">
                           {deletedPanelIds.size}
                         </span>
                       )}
@@ -2869,8 +2920,8 @@ export default function ConfiguratorPage() {
                     onClick={() => setShowDecorations(!showDecorations)}
                     className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
                       showDecorations
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                        ? 'border-am-navy bg-am-navy text-white'
+                        : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
                     }`}
                     style={{ borderRadius: '2px' }}
                     title={showDecorations ? "Cacher les décorations" : "Afficher les décorations"}
@@ -2884,8 +2935,8 @@ export default function ConfiguratorPage() {
                     onClick={handleToggleDoors}
                     className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
                       doorsOpen
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                        ? 'border-am-navy bg-am-navy text-white'
+                        : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
                     }`}
                     style={{ borderRadius: '2px' }}
                   >
@@ -2902,8 +2953,8 @@ export default function ConfiguratorPage() {
                       disabled={!canUndoZone}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
                         canUndoZone
-                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
-                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                          ? 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
+                          : 'border-black/10 bg-am-mist/15 text-black/30 cursor-not-allowed'
                       }`}
                       style={{ borderRadius: '2px' }}
                       title="Annuler (Ctrl+Z)"
@@ -2916,8 +2967,8 @@ export default function ConfiguratorPage() {
                       disabled={!canRedoZone}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
                         canRedoZone
-                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
-                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                          ? 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
+                          : 'border-black/10 bg-am-mist/15 text-black/30 cursor-not-allowed'
                       }`}
                       style={{ borderRadius: '2px' }}
                       title="Rétablir (Ctrl+Y)"
@@ -2934,18 +2985,18 @@ export default function ConfiguratorPage() {
                     <div
                       role="toolbar"
                       aria-label="Retrait de planches"
-                      className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm"
+                      className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 border border-am-navy bg-white px-3 py-2 shadow-sm"
                       style={{ borderRadius: '2px' }}
                     >
-                      <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
+                      <div className="h-3 w-3 rounded-full bg-am-navy" />
                       {selectedPanelIds.size === 0 ? (
-                        <span className="text-sm text-[#1A1917]">
+                        <span className="text-sm text-black">
                           <span className="font-medium">Retrait de planches</span>
-                          <span className="text-[#706F6C]"> · cliquez sur une planche du meuble</span>
+                          <span className="text-black/65"> · cliquez sur une planche du meuble</span>
                         </span>
                       ) : (
                         <>
-                          <span className="text-sm font-medium text-[#1A1917]">
+                          <span className="text-sm font-medium text-black">
                             {selectedPanelIds.size === 1 ? (
                               (() => {
                                 const panelId = Array.from(selectedPanelIds)[0];
@@ -2972,12 +3023,12 @@ export default function ConfiguratorPage() {
                             )}
                           </span>
                           {Array.from(selectedPanelIds).some(id => id.startsWith('separator-')) && (
-                            <span className="text-xs text-[#706F6C]">· les sections de part et d&apos;autre seront réunies</span>
+                            <span className="text-xs text-black/65">· les sections de part et d&apos;autre seront réunies</span>
                           )}
                           <button
                             type="button"
                             onClick={() => toggleSelectedPanelsDeleted('delete')}
-                            className="ml-1 text-[#FF5722] hover:text-[#E64A19]"
+                            className="ml-1 text-am-wine hover:text-am-wine"
                             title={`Retirer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -2985,7 +3036,7 @@ export default function ConfiguratorPage() {
                           <button
                             type="button"
                             onClick={() => toggleSelectedPanelsDeleted('restore')}
-                            className="ml-1 text-[#4CAF50] hover:text-[#388E3C]"
+                            className="ml-1 text-am-navy hover:text-am-navy"
                             title={`Restaurer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
                           >
                             <RotateCcw className="h-4 w-4" />
@@ -2993,18 +3044,18 @@ export default function ConfiguratorPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedPanelIds(new Set())}
-                            className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
+                            className="ml-1 text-black/65 hover:text-black"
                             title="Désélectionner tout"
                           >
                             <IconTablerX className="h-4 w-4" />
                           </button>
                         </>
                       )}
-                      <span className="mx-1 h-5 w-px bg-[#E8E6E3]" />
+                      <span className="mx-1 h-5 w-px bg-black/10" />
                       <button
                         type="button"
                         onClick={togglePanelTool}
-                        className="text-xs font-medium text-[#1976D2] hover:underline"
+                        className="text-xs font-medium text-am-navy hover:underline"
                         title="Quitter l'outil et retrouver le menu de zone"
                       >
                         Terminer
@@ -3016,10 +3067,10 @@ export default function ConfiguratorPage() {
                 {generating && (
                   <div
                     role="status"
-                    className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-[#E8E6E3] bg-white/95 px-3 py-1.5 text-[11px] font-medium text-[#706F6C] shadow-sm lg:bottom-4"
+                    className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-black/10 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-black/65 shadow-sm lg:bottom-4"
                     style={{ borderRadius: '2px' }}
                   >
-                    <span className="h-3 w-3 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+                    <span className="h-3 w-3 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
                     Mise à jour…
                   </div>
                 )}
@@ -3027,7 +3078,7 @@ export default function ConfiguratorPage() {
             </div>
           </div>
 
-          <div className="flex flex-col border-t border-[#E8E6E3] bg-white lg:min-h-0 lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
+          <div className="flex flex-col border-t border-black/10 bg-am-paper lg:min-h-0 lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
             {isViewMode ? (
               <ConfigurationSummary
                 width={width}
@@ -3049,7 +3100,7 @@ export default function ConfiguratorPage() {
               />
             ) : (
               <>
-                <div className="flex-shrink-0 border-b border-[#E8E6E3] px-4 pb-3 pt-4 sm:px-6">
+                <div className="flex-shrink-0 border-b border-black/10 px-4 pb-3 pt-4 sm:px-6">
                   <StepNav
                     steps={CONFIG_STEPS}
                     activeStep={activeStep}
@@ -3061,9 +3112,9 @@ export default function ConfiguratorPage() {
                 <div ref={stepContentRef} className="px-4 pb-24 pt-5 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pb-0">
                   <div className="space-y-6 pb-6">
                     {hasZoneIssues && (
-                      <div className="flex items-start gap-3 border border-[#F2C4B8] bg-[#FDF3F0] px-4 py-3" style={{ borderRadius: '2px' }} role="alert">
-                        <IconInfoCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#C2410C]" />
-                        <div className="min-w-0 flex-1 text-xs leading-relaxed text-[#7C2D12]">
+                      <div className="flex items-start gap-3 border border-am-wine/30 bg-am-wine/5 px-4 py-3" style={{ borderRadius: '2px' }} role="alert">
+                        <IconInfoCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-am-wine" />
+                        <div className="min-w-0 flex-1 text-xs leading-relaxed text-am-wine">
                           <p className="font-semibold">Ce meuble ne peut pas être fabriqué tel quel</p>
                           <ul className="mt-1 space-y-0.5">
                             {constraintIssues.slice(0, 3).map((issue, index) => (
@@ -3075,7 +3126,7 @@ export default function ConfiguratorPage() {
                         <button
                           type="button"
                           onClick={focusZoneIssue}
-                          className="flex-shrink-0 border border-[#7C2D12] px-3 py-1.5 text-[11px] font-medium text-[#7C2D12] transition-colors hover:bg-[#7C2D12] hover:text-white"
+                          className="flex-shrink-0 border border-am-wine px-3 py-1.5 text-[11px] font-medium text-am-wine transition-colors hover:bg-am-wine hover:text-white"
                           style={{ borderRadius: '2px' }}
                         >
                           Corriger
@@ -3092,7 +3143,7 @@ export default function ConfiguratorPage() {
                             <button
                               type="button"
                               onClick={resetConfiguration}
-                              className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                              className="flex items-center gap-2 border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/65 transition-colors hover:border-am-navy hover:text-black"
                               style={{ borderRadius: '2px' }}
                             >
                               <RotateCcw className="h-4 w-4" />
@@ -3121,7 +3172,7 @@ export default function ConfiguratorPage() {
                         ) : (
                           <ZoneEditor {...zoneEditorProps} controlSections={['division']} />
                         )}
-                        <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                        <p className="text-[11px] leading-relaxed text-black/65">
                           Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
                         </p>
                       </div>
@@ -3145,7 +3196,7 @@ export default function ConfiguratorPage() {
                               controlSections={['facades', 'storage', 'handles']}
                             />
                           )}
-                          <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                          <p className="text-[11px] leading-relaxed text-black/65">
                             Astuce : maintenez Maj et cliquez sur un compartiment voisin pour poser une seule porte sur l&apos;ensemble.
                           </p>
                         </StepSection>
@@ -3184,7 +3235,7 @@ export default function ConfiguratorPage() {
                           </StepSection>
                         ) : (
                           zoneStats.doors + zoneStats.drawers > 0 && (
-                            <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                            <p className="text-[11px] leading-relaxed text-black/65">
                               Astuce : cliquez sur une porte ou un tiroir du meuble pour lui donner une couleur différente.
                             </p>
                           )
@@ -3231,41 +3282,33 @@ export default function ConfiguratorPage() {
                     )}
                   </div>
 
-                  <div className="-mx-4 flex items-center justify-between gap-3 border-t border-[#E8E6E3] bg-white px-4 py-3 sm:-mx-6 sm:px-6 sticky bottom-[69px] z-10 lg:bottom-0">
+                  <div className="-mx-4 flex items-center justify-between gap-3 border-t border-black/10 bg-am-paper px-4 py-3 sm:-mx-6 sm:px-6 sticky bottom-[69px] z-10 lg:bottom-0">
                     <button
                       type="button"
                       onClick={() => goToStep((activeStep - 1) as ConfigStep)}
                       disabled={activeStep === STEP.DIMENSIONS}
-                      className="flex items-center gap-1.5 border border-[#E8E6E3] px-4 py-2.5 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1.5 border border-black/10 px-4 py-2.5 text-xs font-medium text-black/65 transition-colors hover:border-am-navy hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ borderRadius: '2px' }}
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
                       Retour
                     </button>
-                    {activeStep < LAST_STEP ? (
+                    {/* Dernière étape : le bouton du pied de page (prix + enregistrer) est l'action finale, pas besoin d'un second bouton identique */}
+                    {activeStep < LAST_STEP && (
                       <button
                         type="button"
                         onClick={() => goToStep((activeStep + 1) as ConfigStep)}
-                        className="flex items-center gap-1.5 bg-[#1A1917] px-5 py-2.5 text-xs font-medium text-white transition-colors hover:bg-[#2A2927]"
+                        className="flex items-center gap-1.5 bg-am-navy px-5 py-2.5 text-xs font-medium text-white transition-colors hover:bg-am-navy/90"
                         style={{ borderRadius: '2px' }}
                       >
                         Suivant : {CONFIG_STEPS[activeStep].label}
                         <ArrowRight className="h-3.5 w-3.5" />
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
-                        className="bg-am-mist px-5 py-2.5 text-xs font-medium text-black transition-colors hover:bg-am-red hover:text-white"
-                        style={{ borderRadius: '2px' }}
-                      >
-                        Valider la configuration
-                      </button>
                     )}
                   </div>
                 </div>
 
-                <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
+                <div className="hidden flex-shrink-0 border-t border-black/10 bg-am-paper px-6 py-4 lg:block">
                   <PriceDisplay
                     price={price}
                     onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
@@ -3283,11 +3326,11 @@ export default function ConfiguratorPage() {
         </div>
 
         {!isViewMode && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E8E6E3] bg-white px-4 py-3 lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-am-paper px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0">
-                <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
-                <div className="font-serif text-xl text-[#1A1917]">
+                <span className="text-[10px] uppercase tracking-wide text-black/65">Prix</span>
+                <div className="font-serif text-xl text-black">
                   {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
                     `${new Intl.NumberFormat('fr-FR', {
                       style: 'currency',
@@ -3310,57 +3353,11 @@ export default function ConfiguratorPage() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={undoZone}
-                  disabled={!canUndoZone}
-                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
-                    canUndoZone
-                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
-                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
-                  }`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <Undo2 className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={redoZone}
-                  disabled={!canRedoZone}
-                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
-                    canRedoZone
-                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
-                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
-                  }`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <Redo2 className="h-4 w-4" />
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={handleToggleDoors}
-                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
-                style={{ borderRadius: '2px' }}
-              >
-                <span>{doorsOpen ? '🚪' : '📦'}</span>
-                <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDecorations(!showDecorations)}
-                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${showDecorations ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
-                style={{ borderRadius: '2px' }}
-              >
-                <span>{showDecorations ? '🏺' : '✨'}</span>
-                <span className="hidden sm:inline">Déco</span>
-              </button>
               {(!isAdminCreateModel && !isAdminEditModel) ? (
                 <button
                   type="button"
                   onClick={saveConfiguration}
-                  className="flex h-11 flex-1 max-w-[180px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  className="flex h-11 flex-1 max-w-[240px] items-center justify-center gap-2 bg-am-wine text-sm font-medium text-white transition-colors hover:bg-am-wine/90"
                   style={{ borderRadius: '2px' }}
                 >
                   <Box className="h-4 w-4" />
@@ -3372,7 +3369,7 @@ export default function ConfiguratorPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateModelDialogOpen(true)}
-                  className="flex h-11 flex-1 max-w-[200px] items-center justify-center gap-2 bg-[#8B7355] text-sm font-medium text-white transition-colors hover:bg-[#705D45]"
+                  className="flex h-11 flex-1 max-w-[200px] items-center justify-center gap-2 bg-am-navy text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
                   <IconPlus className="h-4 w-4" />
@@ -3397,13 +3394,13 @@ export default function ConfiguratorPage() {
             <Button 
               variant="outline" 
               onClick={discardPendingRestore}
-              className="border-[#E8E6E3] text-[#706F6C] hover:bg-[#F5F5F5] hover:text-[#1A1917]"
+              className="border-black/10 text-black/65 hover:bg-am-mist/30 hover:text-black"
             >
               Ignorer
             </Button>
             <Button 
               onClick={applyPendingRestore}
-              className="bg-[#1A1917] text-white hover:bg-[#333]"
+              className="bg-am-navy text-white hover:bg-am-navy/90"
             >
               Restaurer ma session
             </Button>
@@ -3428,13 +3425,13 @@ export default function ConfiguratorPage() {
                 {isAdminEditModel ? <IconEdit className="h-8 w-8 text-amber-600" /> : <IconPlus className="h-8 w-8 text-amber-600" />}
               </div>
 
-              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+              <h2 className="mb-4 text-center font-serif text-2xl text-black">
                 {isAdminEditModel ? 'Modèle mis à jour !' : 'Modèle créé avec succès !'}
               </h2>
-              <p className="mb-6 text-center text-base text-[#706F6C]">
+              <p className="mb-6 text-center text-base text-black/65">
                 {isAdminEditModel 
-                  ? <>Le modèle <span className="font-semibold text-[#1A1917]">&quot;{modelForm.name}&quot;</span> a été mis à jour avec succès dans le catalogue.</>
-                  : <>Votre nouveau modèle <span className="font-semibold text-[#1A1917]">&quot;{modelForm.name}&quot;</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
+                  ? <>Le modèle <span className="font-semibold text-black">&quot;{modelForm.name}&quot;</span> a été mis à jour avec succès dans le catalogue.</>
+                  : <>Votre nouveau modèle <span className="font-semibold text-black">&quot;{modelForm.name}&quot;</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
                 }
               </p>
 
@@ -3442,7 +3439,7 @@ export default function ConfiguratorPage() {
                 <button
                   type="button"
                   onClick={() => router.push(adminUrl('/dashboard?section=models'))}
-                  className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
                   Retour au catalogue
@@ -3463,7 +3460,7 @@ export default function ConfiguratorPage() {
                         resetConfiguration();
                       }
                     }}
-                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    className="border-2 border-black/10 bg-white px-4 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                     style={{ borderRadius: '2px' }}
                   >
                     {isAdminEditModel ? 'Continuer à modifier' : 'Créer un autre'}
@@ -3471,7 +3468,7 @@ export default function ConfiguratorPage() {
                   <button
                     type="button"
                     onClick={() => router.push(adminUrl('/dashboard'))}
-                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    className="border-2 border-black/10 bg-white px-4 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                     style={{ borderRadius: '2px' }}
                   >
                     Dashboard
@@ -3495,21 +3492,21 @@ export default function ConfiguratorPage() {
 
               {(isEditMode && editingConfigId) ? (
                 <>
-                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                  <h2 className="mb-4 text-center font-serif text-2xl text-black">
                     Configuration mise à jour !
                   </h2>
-                  <p className="mb-6 text-center text-base text-[#706F6C]">
-                    La configuration <span className="font-semibold text-[#1A1917]">&quot;{editingConfigName}&quot;</span> a été modifiée avec succès.
+                  <p className="mb-6 text-center text-base text-black/65">
+                    La configuration <span className="font-semibold text-black">&quot;{editingConfigName}&quot;</span> a été modifiée avec succès.
                   </p>
                 </>
               ) : (
                 <>
-                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                  <h2 className="mb-4 text-center font-serif text-2xl text-black">
                     Configuration enregistrée !
                   </h2>
-                  <p className="mb-6 text-center text-base text-[#706F6C]">
+                  <p className="mb-6 text-center text-base text-black/65">
                     {customer?.civility === 'M' ? 'Monsieur' : customer?.civility === 'Mme' ? 'Madame' : ''}{' '}
-                    <span className="font-semibold text-[#1A1917]">
+                    <span className="font-semibold text-black">
                       {customer?.last_name}
                     </span>
                     , un menuisier va vous rappeler au plus vite pour valider votre projet et finaliser votre commande.
@@ -3518,11 +3515,11 @@ export default function ConfiguratorPage() {
               )}
 
               {!(isEditMode && editingConfigId) && !isAdmin && (
-                <div className="mb-6 border-t border-[#E8E6E3] pt-4">
-                  <p className="text-sm text-[#706F6C]">
-                    <strong className="text-[#1A1917]">Prochaines étapes :</strong>
+                <div className="mb-6 border-t border-black/10 pt-4">
+                  <p className="text-sm text-black/65">
+                    <strong className="text-black">Prochaines étapes :</strong>
                   </p>
-                  <ul className="mt-2 space-y-2 text-sm text-[#706F6C]">
+                  <ul className="mt-2 space-y-2 text-sm text-black/65">
                     <li className="flex items-start gap-2">
                       <span className="mt-0.5">📞</span>
                       <span>Notre menuisier vous contactera pour valider les détails du projet</span>
@@ -3547,7 +3544,7 @@ export default function ConfiguratorPage() {
                       onClick={() => {
                         router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/account?section=configurations');
                       }}
-                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
                     >
                       Retour aux configurations
@@ -3555,7 +3552,7 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmationModal(false)}
-                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}
                     >
                       Continuer à modifier
@@ -3568,7 +3565,7 @@ export default function ConfiguratorPage() {
                       onClick={() => {
                         router.push(isAdmin ? adminUrl('/dashboard') : '/account?section=configurations');
                       }}
-                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}
                     >
                       {isAdmin ? 'Retour au Dashboard' : 'Mes configurations'}
@@ -3576,7 +3573,7 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => router.push('/')}
-                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
                     >
                       Retour à l&apos;accueil
@@ -3599,10 +3596,10 @@ export default function ConfiguratorPage() {
                 </svg>
               </div>
 
-              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+              <h2 className="mb-4 text-center font-serif text-2xl text-black">
                 Erreur
               </h2>
-              <div className="mb-6 text-center text-base text-[#706F6C] whitespace-pre-line">
+              <div className="mb-6 text-center text-base text-black/65 whitespace-pre-line">
                 {errorMessage}
               </div>
 
@@ -3610,7 +3607,7 @@ export default function ConfiguratorPage() {
                 <button
                   type="button"
                   onClick={() => setShowErrorModal(false)}
-                  className="bg-[#1A1917] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  className="bg-am-navy px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
                   Fermer

@@ -1,9 +1,6 @@
 import { HOME_MONO } from "@/components/home/homeLayout";
 import { CatalogueItemDetail } from "@/lib/catalogueItem";
-
-function formatPrice(value: number): string {
-  return (Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2)) + " €";
-}
+import { formatPrice } from "@/lib/format";
 
 export function ProductInfo({
   item,
@@ -35,7 +32,7 @@ export function ProductInfo({
       <div className="flex flex-col gap-3">
         <span className={`text-xs ${HOME_MONO}`}>{item.category}</span>
         <h1
-          className="m-0 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
+          className="m-0 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
           style={{ fontSize: "clamp(36px,4.4vw,64px)" }}
         >
           {item.name}
@@ -85,7 +82,7 @@ export function ProductInfo({
           >
             −
           </button>
-          <span aria-live="polite" className="min-w-7 text-center font-[Geist_Mono] text-[15px]">
+          <span aria-live="polite" className="min-w-7 text-center font-mono text-[15px]">
             {quantity}
           </span>
           <button
@@ -101,7 +98,7 @@ export function ProductInfo({
           type="button"
           onClick={onAddToCart}
           disabled={adding}
-          className="min-h-[52px] min-w-[220px] flex-1 rounded-full border border-black bg-am-mist px-6 py-3.5 text-[15px] font-medium text-black transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60"
+          className="min-h-[52px] min-w-[220px] flex-1 rounded-full border border-black bg-am-wine px-6 py-3.5 text-[15px] font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60"
         >
           {adding ? "Ajout en cours..." : `Ajouter au panier · ${formatPrice(total)}`}
         </button>
@@ -123,7 +120,7 @@ export function ProductInfo({
         </button>
       )}
 
-      <dl className="m-0 grid grid-cols-[auto,minmax(0,1fr)] border-t border-black/15">
+      <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] border-t border-black/15">
         <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Matière</dt>
         <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">
           {item.material || "Non spécifié"}

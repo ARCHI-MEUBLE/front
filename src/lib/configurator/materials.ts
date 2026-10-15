@@ -31,6 +31,7 @@ export function normalizeMaterialKey(value: string | null | undefined): string {
   return value;
 }
 
+// Libellé à afficher : la base écrit « Agglomere » ou « MDF + revetement (melamine) », sans accents
 export function materialLabelFromKey(key: string): string {
-  return key;
+  return MATERIAL_LABEL_BY_KEY[normalizeMaterialKey(key)] ?? key;
 }

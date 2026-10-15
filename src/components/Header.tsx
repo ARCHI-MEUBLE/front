@@ -11,6 +11,16 @@ const navLinks = [
   { href: "/models", label: "Nos modèles" },
   { href: "/catalogue", label: "Boutique" },
   { href: "/facades", label: "Façades" },
+  { href: "/realisations", label: "Réalisations" },
+  { href: "/contact-request", label: "Contact" },
+];
+
+// Plus de place dans le tiroir mobile que dans la barre du haut
+const drawerLinks = [
+  ...navLinks.slice(0, 4),
+  { href: "/samples", label: "Échantillons" },
+  { href: "/avis", label: "Avis clients" },
+  navLinks[4],
 ];
 
 export function Header() {
@@ -56,14 +66,14 @@ export function Header() {
       <header className="sticky top-0 z-50 border-b border-black/15 bg-am-paper/[0.88] backdrop-blur-md">
         <nav
           aria-label="Navigation principale"
-          className="mx-auto flex h-[68px] max-w-[1360px] items-center justify-between gap-6 px-[clamp(20px,4vw,48px)]"
+          className="mx-auto flex h-[68px] max-w-[1360px] items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] sm:gap-6"
         >
           <Link href="/" className="flex items-center gap-2.5 py-2" aria-label="ArchiMeuble, accueil">
             <Image src="/images/logo site .png" alt="ArchiMeuble" width={320} height={113} className="h-8 w-auto" priority />
-            <span className="font-[Geist_Mono] text-[11px] text-black/70">Lille</span>
+            <span className="font-mono text-[11px] text-black/70 max-[359px]:hidden">Lille</span>
           </Link>
 
-          <div className="hidden items-center gap-1 lg:flex">
+          <div className="hidden items-center gap-1 xl:flex">
             {navLinks.map((link) => {
               const isActive = router.pathname === link.href || router.pathname.startsWith(link.href + "/");
               return (
@@ -96,23 +106,29 @@ export function Header() {
             >
               <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.6} />
               {cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-am-red font-[Geist_Mono] text-[11px] text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-am-wine font-mono text-[11px] text-white">
                   {cartCount}
                 </span>
               )}
             </Link>
             <Link
               href="/models"
-              className="hidden min-h-11 items-center justify-center rounded-full border border-black bg-am-red px-[18px] py-2.5 text-[14px] font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 sm:inline-flex"
+              className="hidden min-h-11 items-center justify-center rounded-full border border-black bg-am-wine px-[18px] py-2.5 text-[14px] font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 sm:inline-flex"
             >
               Configurer mon meuble
+            </Link>
+            <Link
+              href="/models"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-black bg-am-wine px-4 text-[13px] font-medium text-white sm:hidden"
+            >
+              Configurer
             </Link>
             <button
               type="button"
               onClick={() => setIsMenuOpen(true)}
               aria-label="Menu"
               aria-expanded={isMenuOpen}
-              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-black/30 bg-white text-black lg:hidden"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-black/30 bg-white text-black xl:hidden"
             >
               <Menu className="h-[18px] w-[18px]" />
             </button>
@@ -122,14 +138,14 @@ export function Header() {
 
       {isMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm xl:hidden"
           onClick={() => setIsMenuOpen(false)}
         />
       )}
 
       <div
         className={
-          "fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-am-paper shadow-xl transition-transform duration-300 ease-in-out lg:hidden " +
+          "fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-am-paper shadow-xl transition-transform duration-300 ease-in-out xl:hidden " +
           (isMenuOpen ? "translate-x-0" : "translate-x-full")
         }
       >
@@ -137,7 +153,7 @@ export function Header() {
           <div className="flex items-center justify-between border-b border-black/15 px-4 py-4">
             <span className="flex items-center gap-2.5">
               <Image src="/images/logo site .png" alt="ArchiMeuble" width={320} height={113} className="h-7 w-auto" />
-              <span className="font-[Geist_Mono] text-[11px] text-black/70">Lille</span>
+              <span className="font-mono text-[11px] text-black/70">Lille</span>
             </span>
             <button
               type="button"
@@ -151,7 +167,7 @@ export function Header() {
 
           <nav className="flex-1 overflow-y-auto px-4 py-6">
             <div className="space-y-1">
-              {navLinks.map((link) => (
+              {drawerLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -196,7 +212,7 @@ export function Header() {
                 <ShoppingBag className="h-5 w-5" />
                 Panier
                 {cartCount > 0 && (
-                  <span className="ml-auto rounded-full bg-am-red px-2 py-0.5 font-[Geist_Mono] text-xs text-white">
+                  <span className="ml-auto rounded-full bg-am-wine px-2 py-0.5 font-mono text-xs text-white">
                     {cartCount}
                   </span>
                 )}
@@ -208,7 +224,7 @@ export function Header() {
             <Link
               href="/models"
               onClick={() => setIsMenuOpen(false)}
-              className="flex w-full items-center justify-center rounded-full border border-black bg-am-red px-6 py-3 text-base font-medium text-white"
+              className="flex w-full items-center justify-center rounded-full border border-black bg-am-wine px-6 py-3 text-base font-medium text-white"
             >
               Configurer mon meuble
             </Link>

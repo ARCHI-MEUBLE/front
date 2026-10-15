@@ -8,7 +8,7 @@ export function AvisCta() {
         <div>
           <h2
             id="avis-cta"
-            className="m-0 mb-4 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-white"
+            className="m-0 mb-4 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white"
             style={{ fontSize: "clamp(32px,4.4vw,64px)" }}
           >
             Votre projet sur mesure

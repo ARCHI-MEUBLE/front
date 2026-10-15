@@ -34,7 +34,7 @@ export function UserNavigation() {
   const isActive = (path: string) => router.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border-light bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-black/10 bg-am-paper/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         {/* Logo */}
         <Link

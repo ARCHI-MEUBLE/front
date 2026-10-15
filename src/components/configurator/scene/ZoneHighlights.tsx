@@ -4,8 +4,9 @@ import type { Zone } from '@/components/configurator/ZoneEditor/types';
 import { findZoneById } from '@/lib/configurator/zoneStats';
 import { getZoneBox, type Box, type FurnitureLayout, type Vec3 } from '@/lib/configurator/zoneBounds';
 
-const SELECTED_COLOR = '#FF9800';
-const OPEN_SPACE_COLOR = '#4CAF50';
+// Hex et non jeton am-* : Three.js ne lit pas les variables CSS (navy de la palette). Les espaces ouverts
+// gardent la même couleur : le bordeaux est réservé aux planches retirées (StructuralElements.tsx)
+const SELECTED_COLOR = '#3B3E58';
 
 // Les 12 arêtes d'un pavé centré sur l'origine, en segments de deux points
 function boxEdges([sx, sy, sz]: Vec3): Vec3[] {
@@ -100,7 +101,7 @@ export function ZoneHighlights({ rootZone, layout, selectedZoneIds, hoveredZoneI
       <ZoneOutline
         key={`${emphasis}-${zoneId}`}
         box={box}
-        color={zone.isOpenSpace ? OPEN_SPACE_COLOR : SELECTED_COLOR}
+        color={SELECTED_COLOR}
         tint={isGroup ? baseTint * 0.4 : baseTint}
         emphasis={emphasis}
       />

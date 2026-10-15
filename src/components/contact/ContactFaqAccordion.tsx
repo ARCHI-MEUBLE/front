@@ -17,7 +17,7 @@ export function ContactFaqAccordion() {
     <section aria-labelledby="contact-faq-title" className={HOME_SECTION}>
       <h2
         id="contact-faq-title"
-        className="m-0 mb-10 text-center font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
+        className="m-0 mb-10 text-center font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
         style={{ fontSize: "clamp(32px,4.4vw,56px)" }}
       >
         Questions fréquentes
@@ -36,7 +36,7 @@ export function ContactFaqAccordion() {
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? -1 : index)}
                   aria-expanded={isOpen}
-                  className="flex min-h-11 w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-[Geist] font-medium tracking-[-0.02em] text-black"
+                  className="flex min-h-11 w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-sans font-medium tracking-[-0.02em] text-black"
                   style={{ fontSize: "clamp(17px,1.4vw,19px)" }}
                 >
                   <span>{item.q}</span>

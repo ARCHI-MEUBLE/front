@@ -36,7 +36,7 @@ export function RealisationCard({
       </div>
       <figcaption className="flex items-baseline justify-between gap-3">
         <span className="text-[20px] font-medium tracking-[-0.035em] text-black">{realisation.titre}</span>
-        <span className="whitespace-nowrap font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-black/70">
+        <span className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
           {realisation.lieu} · {projectYear(realisation.date_projet)}
         </span>
       </figcaption>

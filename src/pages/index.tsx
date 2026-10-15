@@ -14,7 +14,7 @@ import { ContactUniqueSection } from "@/components/shared/ContactUniqueSection";
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-am-paper font-[Geist]">
+    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-am-paper font-sans">
       <Head>
         <title>Archimeuble | Menuisier sur mesure a Lille</title>
         <meta

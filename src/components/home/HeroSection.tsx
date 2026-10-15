@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { HOME_MONO, HOME_PILL_DARK, HOME_PILL_OUTLINE, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
+import { HOME_MONO, HOME_PILL_OUTLINE, HOME_PILL_WINE, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 
 export function HeroSection() {
   return (
@@ -11,7 +11,7 @@ export function HeroSection() {
       </div>
       <h1
         id="hero-title"
-        className="m-0 max-w-[12ch] font-[Geist] font-medium leading-[0.96] tracking-[-0.055em] text-black"
+        className="m-0 max-w-[12ch] font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
         style={{ fontSize: "clamp(46px,8.6vw,132px)" }}
       >
         <span className="block">Meubles sur mesure,</span>
@@ -23,9 +23,17 @@ export function HeroSection() {
         <p className="m-0 max-w-[40ch] text-black/85" style={{ fontSize: "clamp(17px,1.5vw,21px)", lineHeight: 1.45 }}>
           Chaque pièce est dessinée pour votre espace, fabriquée dans notre atelier lillois, livrée chez vous.
         </p>
-        <div className="flex flex-wrap gap-2.5">
-          <Link href="/realisations" className={HOME_PILL_DARK}>Voir les réalisations →</Link>
-          <a href="tel:+33601062867" className={HOME_PILL_OUTLINE}>Appeler l&apos;atelier</a>
+        <div className="flex flex-col items-start gap-3">
+          <div className="flex flex-wrap gap-2.5">
+            <Link href="/models" className={HOME_PILL_WINE}>Configurer mon meuble →</Link>
+            <Link href="/realisations" className={HOME_PILL_OUTLINE}>Voir les réalisations</Link>
+          </div>
+          <a
+            href="tel:+33601062867"
+            className="inline-flex min-h-11 items-center text-[15px] text-black underline decoration-black/30 underline-offset-4 hover:decoration-black"
+          >
+            Ou appelez l&apos;atelier : 06 01 06 28 67
+          </a>
         </div>
       </div>
       <figure className="relative mt-11 overflow-hidden rounded-2xl border border-black/15 bg-am-mist/25" style={{ aspectRatio: "16/9" }}>

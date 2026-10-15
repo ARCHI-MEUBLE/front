@@ -8,7 +8,7 @@ export function ServiceAreaSection() {
         <div>
           <h2
             id="zone-title"
-            className="m-0 mb-5 max-w-[12ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
+            className="m-0 mb-5 max-w-[12ch] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             Lille et la métropole lilloise.

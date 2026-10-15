@@ -1,4 +1,5 @@
 import type { SampleColor } from "@/lib/apiClient";
+import { displayColorName } from "@/lib/displayNames";
 
 export function SampleSwatch({
   color,
@@ -32,7 +33,7 @@ export function SampleSwatch({
         }}
       />
       <span className="flex flex-col gap-0.5">
-        <span className="text-[14px] font-medium tracking-[-0.01em]">{color.name}</span>
+        <span className="text-[14px] font-medium tracking-[-0.01em]">{displayColorName(color.name)}</span>
       </span>
       <span
         aria-hidden="true"

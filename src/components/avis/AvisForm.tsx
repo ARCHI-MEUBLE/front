@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { HOME_MONO, HOME_PILL_LIME, HOME_SECTION } from "@/components/home/homeLayout";
+import { HOME_MONO, HOME_PILL_DARK, HOME_SECTION } from "@/components/home/homeLayout";
 
 const FURNITURE_TYPES = ["Dressing", "Bibliothèque", "Buffet", "Bureau", "Meuble TV", "Autre"];
 const INPUT_CLASS =
@@ -58,7 +58,7 @@ export function AvisForm({
           <span className={`text-xs ${HOME_MONO}`}>Votre avis compte</span>
           <h2
             id="leave-title"
-            className="m-0 font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
+            className="m-0 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(36px,4.6vw,68px)" }}
           >
             Racontez-nous <span className="am-highlight">votre meuble.</span>
@@ -92,7 +92,7 @@ export function AvisForm({
               <p className="m-0 text-[17px] text-black">
                 Connectez-vous pour partager votre avis et aider d&apos;autres clients à découvrir ArchiMeuble.
               </p>
-              <Link href="/auth/login?redirect=/avis" className={HOME_PILL_LIME}>
+              <Link href="/auth/login?redirect=/avis" className={HOME_PILL_DARK}>
                 Se connecter →
               </Link>
             </div>
@@ -117,7 +117,7 @@ export function AvisForm({
                         onMouseEnter={() => setHoverRating(n)}
                         onMouseLeave={() => setHoverRating(0)}
                         className="flex h-12 w-12 items-center justify-center rounded-md text-[28px] leading-none text-white"
-                        style={{ background: n <= (hoverRating || rating) ? "var(--am-red)" : "rgba(0,0,0,0.15)" }}
+                        style={{ background: n <= (hoverRating || rating) ? "var(--am-wine)" : "rgba(0,0,0,0.15)" }}
                       >
                         ★
                       </button>

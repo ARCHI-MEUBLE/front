@@ -93,8 +93,8 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-white p-6 rounded-lg border border-black/10">
+        <h3 className="text-lg font-semibold text-black mb-4">
           Informations de paiement
         </h3>
 
@@ -111,9 +111,9 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
         </div>
       )}
 
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+      <div className="bg-am-mist/15 p-6 rounded-lg border border-black/10">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-lg font-semibold text-gray-900">Total à payer</span>
+          <span className="text-lg font-semibold text-black">Total à payer</span>
           <span className="text-2xl font-bold text-amber-600">
             {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)}
           </span>
@@ -127,7 +127,7 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
           {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
         </button>
 
-        <p className="mt-4 text-xs text-gray-500 text-center">
+        <p className="mt-4 text-xs text-black/60 text-center">
           Paiement sécurisé par Stripe. Vos informations bancaires sont protégées.
         </p>
       </div>

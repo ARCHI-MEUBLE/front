@@ -1,17 +1,30 @@
 import Link from "next/link";
 import { HOME_MONO, HOME_PILL_DARK, HOME_SECTION } from "@/components/home/homeLayout";
 import { TESTIMONIALS, avatarUrl } from "@/components/home/homeData";
+import { RatingStars } from "@/components/shared/RatingStars";
+import { useSiteRating } from "@/hooks/useSiteRating";
+import { formatRating } from "@/lib/rating";
 
 const TINTS = [
   { bg: "var(--am-mist)", ink: "#000000" },
   { bg: "var(--am-navy)", ink: "#FFFFFF" },
-  { bg: "var(--am-red)", ink: "#FFFFFF" },
   { bg: "var(--am-wine)", ink: "#FFFFFF" },
 ];
+
+// Ordre des teintes dans une colonne de 4 avis : jamais deux fois la même à la suite, y compris au
+// raccord de la boucle (4ᵉ carte puis 1ʳᵉ de la copie)
+const TINT_ORDER = [0, 1, 0, 2];
+
+// Chaque colonne est affichée deux fois de suite pour boucler sans saut : la teinte dépend de la position
+// dans la colonne d'origine, sinon la seconde copie n'a pas les mêmes couleurs que la première.
+// offset décale le motif d'une colonne à l'autre.
+const tintFor = (index: number, columnLength: number, offset = 0) =>
+  TINTS[TINT_ORDER[((index % columnLength) + offset) % TINT_ORDER.length]];
 
 export function TestimonialsSection() {
   const columnA = TESTIMONIALS.slice(0, 4);
   const columnB = TESTIMONIALS.slice(4, 8);
+  const average = useSiteRating();
 
   return (
     <section aria-labelledby="avis-title" className={HOME_SECTION}>
@@ -19,24 +32,14 @@ export function TestimonialsSection() {
         <div className="flex flex-col items-start gap-5">
           <h2
             id="avis-title"
-            className="m-0 max-w-[11ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-black"
+            className="m-0 max-w-[11ch] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(36px,5vw,72px)" }}
           >
             Ils nous font confiance.
           </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-[32px] font-semibold leading-none tracking-[-0.04em] text-black">4,3</span>
-            <span role="img" aria-label="Note de 4,3 sur 5" className="flex gap-[3px]">
-              {[0, 1, 2, 3].map((i) => (
-                <span key={i} className="flex h-8 w-8 items-center justify-center bg-am-red text-[22px] leading-none text-white">★</span>
-              ))}
-              <span
-                className="flex h-8 w-8 items-center justify-center text-[22px] leading-none text-white"
-                style={{ background: "linear-gradient(90deg,var(--am-red) 30%,rgba(0,0,0,0.15) 30%)" }}
-              >
-                ★
-              </span>
-            </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[32px] font-semibold leading-none tracking-[-0.04em] text-black">{formatRating(average)}</span>
+            <RatingStars rating={average} size={32} />
             <span className={`text-[13px] ${HOME_MONO}`}>Avis clients de la métropole lilloise</span>
           </div>
           <Link href="/avis" className={`mt-2 ${HOME_PILL_DARK}`}>Voir tous les avis →</Link>
@@ -53,14 +56,14 @@ export function TestimonialsSection() {
           <div className="min-w-0 overflow-hidden">
             <div className="home-marquee-up flex flex-col gap-4 pb-4">
               {[...columnA, ...columnA].map((testimonial, index) => (
-                <TestimonialCard key={index} testimonial={testimonial} tint={TINTS[index % 4]} />
+                <TestimonialCard key={index} testimonial={testimonial} tint={tintFor(index, columnA.length)} />
               ))}
             </div>
           </div>
           <div className="min-w-0 overflow-hidden">
             <div className="home-marquee-down flex flex-col gap-4 pb-4">
               {[...columnB, ...columnB].map((testimonial, index) => (
-                <TestimonialCard key={index} testimonial={testimonial} tint={TINTS[index % 4]} />
+                <TestimonialCard key={index} testimonial={testimonial} tint={tintFor(index, columnB.length, 1)} />
               ))}
             </div>
           </div>
@@ -103,7 +106,7 @@ function TestimonialCard({
         />
         <span>
           <span className="block text-[16px] font-medium text-black">{testimonial.name}</span>
-          <span className="block font-[Geist_Mono] text-[12px] text-black/70">{testimonial.city}</span>
+          <span className="block font-mono text-[12px] text-black/70">{testimonial.city}</span>
         </span>
       </figcaption>
     </figure>

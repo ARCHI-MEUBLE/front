@@ -11,7 +11,7 @@ export function CatalogueHero() {
       <div className="grid grid-cols-1 items-end gap-8 lg:grid-cols-2">
         <h1
           id="boutique-title"
-          className="m-0 font-[Geist] font-medium leading-[0.96] tracking-[-0.055em] text-black"
+          className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
           style={{ fontSize: "clamp(44px,6.2vw,96px)" }}
         >
           Les finitions <span className="am-highlight">qui changent tout.</span>

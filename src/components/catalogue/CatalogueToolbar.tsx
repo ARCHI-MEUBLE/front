@@ -39,7 +39,7 @@ export function CatalogueToolbar({
           }`}
         >
           <span>Tout</span>
-          <span className="font-[Geist_Mono] text-[11px] opacity-70">{totalCount}</span>
+          <span className="font-mono text-[11px] opacity-70">{totalCount}</span>
         </button>
         {categories.map((category) => {
           const isActive = category === selectedCategory;
@@ -55,7 +55,7 @@ export function CatalogueToolbar({
               }`}
             >
               <span>{category}</span>
-              <span className="font-[Geist_Mono] text-[11px] opacity-70">{categoryCounts[category] ?? 0}</span>
+              <span className="font-mono text-[11px] opacity-70">{categoryCounts[category] ?? 0}</span>
             </button>
           );
         })}
@@ -73,7 +73,7 @@ export function CatalogueToolbar({
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value)}
-            className="min-h-10 cursor-pointer rounded-full border border-black/30 bg-white px-3.5 py-2 font-[Geist] text-[14px] normal-case tracking-normal text-black"
+            className="min-h-10 cursor-pointer rounded-full border border-black/30 bg-white px-3.5 py-2 font-sans text-[14px] normal-case tracking-normal text-black"
           >
             <option value="newest">Nouveautés</option>
             <option value="price_asc">Prix croissant</option>
@@ -85,7 +85,7 @@ export function CatalogueToolbar({
           className="flex min-h-10 items-center gap-2 rounded-full bg-am-navy px-4 py-2 text-[14px] text-white"
         >
           Panier
-          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-am-mist px-1.5 font-[Geist_Mono] text-[12px] text-black">
+          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-am-mist px-1.5 font-mono text-[12px] text-black">
             {cartCount}
           </span>
         </Link>

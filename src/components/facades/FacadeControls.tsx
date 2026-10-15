@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
 import AuthModal from '@/components/auth/AuthModal';
+import { formatDecimal, formatPrice } from '@/lib/format';
+import { displayColorName } from '@/lib/displayNames';
 
 interface FacadeControlsProps {
   config: FacadeConfig;
@@ -146,15 +148,12 @@ export default function FacadeControls({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-black/15">
+    <div className="flex flex-col h-full bg-am-paper border-t border-black/15 lg:border-l lg:border-t-0">
       {/* Header with step indicator */}
       <div className="border-b border-black/15 p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-black/70">
             ÉTAPE {currentStepData.number}/{steps.length}
-          </span>
-          <span className="text-xs text-black/70">
-            {currentStepIndex + 1} sur {steps.length}
           </span>
         </div>
         <h2 className="text-lg font-semibold text-black">
@@ -214,14 +213,14 @@ export default function FacadeControls({
           {currentStep === 'summary' ? (
             <button
               onClick={handleAddToCart}
-              className="flex-1 px-4 py-3 bg-[#16a34a] text-white rounded-lg hover:bg-[#15803d] transition-colors font-medium"
+              className="flex-1 px-4 py-3 bg-am-wine text-white rounded-lg hover:bg-am-wine/90 transition-colors font-medium"
             >
               Ajouter au panier
             </button>
           ) : (
             <button
               onClick={handleNext}
-              className="flex-1 px-4 py-3 bg-am-navy text-white rounded-lg hover:bg-am-red transition-colors font-medium"
+              className="flex-1 px-4 py-3 bg-am-navy text-white rounded-lg hover:bg-am-wine transition-colors font-medium"
             >
               Suivant →
             </button>
@@ -230,11 +229,11 @@ export default function FacadeControls({
       </div>
 
       {/* Price Summary */}
-      <div className="border-t border-black/15 p-6 bg-am-mist/25">
+      <div className="border-t border-black/15 p-4 bg-am-mist/25">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-black/70">Surface ({((config.width / 1000) * (config.height / 1000)).toFixed(2)} m²)</span>
+          <span className="text-sm text-black/70">Surface ({formatDecimal((config.width / 1000) * (config.height / 1000))} m²)</span>
           <span className="text-sm font-medium">
-            {((config.width / 1000) * (config.height / 1000) * Number(config.material.price_per_m2 || pricingSettings.material_price_per_m2)).toFixed(2)} €
+            {formatPrice((config.width / 1000) * (config.height / 1000) * Number(config.material.price_per_m2 || pricingSettings.material_price_per_m2))}
           </span>
         </div>
         {config.hinges.type !== 'no-hole-no-hinge' && (
@@ -242,17 +241,17 @@ export default function FacadeControls({
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-black/70">Charnières ({config.hinges.count}×)</span>
               <span className="text-sm font-medium">
-                {(pricingSettings.hinge_base_price * config.hinges.count).toFixed(2)} €
+                {formatPrice(pricingSettings.hinge_base_price * config.hinges.count)}
               </span>
             </div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-black/70">Supplément charnières</span>
               <span className="text-sm font-medium">
-                {(
+                {formatPrice(
                   (((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2)) +
                   (pricingSettings.hinge_base_price * config.hinges.count)) *
                   (pricingSettings.hinge_coefficient * config.hinges.count)
-                ).toFixed(2)} €
+                )}
               </span>
             </div>
           </>
@@ -261,14 +260,14 @@ export default function FacadeControls({
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-black/70">Perçages</span>
             <span className="text-sm font-medium">
-              {config.drillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0).toFixed(2)} €
+              {formatPrice(config.drillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0))}
             </span>
           </div>
         )}
         <div className="flex justify-between items-center pt-4 border-t border-black/15">
           <span className="text-lg font-semibold text-black">Total</span>
           <span className="text-2xl font-bold text-black">
-            {(calculateTotalPrice() * quantity).toFixed(2)} € TTC
+            {formatPrice(calculateTotalPrice() * quantity)} TTC
           </span>
         </div>
       </div>
@@ -297,7 +296,7 @@ export default function FacadeControls({
               Ajouté au panier
             </h3>
             <p className="text-sm text-black/70 text-center mb-4">
-              {quantity} façade{quantity > 1 ? 's' : ''} · {(calculateTotalPrice() * quantity).toFixed(2)} €
+              {quantity} façade{quantity > 1 ? 's' : ''} · {formatPrice(calculateTotalPrice() * quantity)}
             </p>
             <div className="flex gap-3">
               <button
@@ -312,7 +311,7 @@ export default function FacadeControls({
               </button>
               <button
                 onClick={() => window.location.href = '/cart'}
-                className="flex-1 px-4 py-2.5 bg-am-navy text-white rounded-lg hover:bg-am-red transition-colors text-sm font-medium"
+                className="flex-1 px-4 py-2.5 bg-am-navy text-white rounded-lg hover:bg-am-wine transition-colors text-sm font-medium"
               >
                 Voir le panier
               </button>
@@ -335,14 +334,17 @@ function DimensionsPanel({
   // Conversion mm -> cm pour l'affichage
   const widthInCm = Math.round(config.width / 10);
   const heightInCm = Math.round(config.height / 10);
+  const widthId = useId();
+  const heightId = useId();
 
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-black mb-2">
+        <label htmlFor={widthId} className="block text-sm font-medium text-black mb-2">
           Largeur (cm)
         </label>
         <input
+          id={widthId}
           type="number"
           min="10"
           max="60"
@@ -355,10 +357,11 @@ function DimensionsPanel({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-black mb-2">
+        <label htmlFor={heightId} className="block text-sm font-medium text-black mb-2">
           Hauteur (cm)
         </label>
         <input
+          id={heightId}
           type="number"
           min="50"
           max="230"
@@ -463,7 +466,7 @@ function MaterialPanel({
               )}
             </div>
             <span className="text-xs font-medium text-center">
-              {material.name}
+              {displayColorName(material.name)}
             </span>
           </button>
         ))}
@@ -658,7 +661,7 @@ function HingesPanel({
                     {type.label}
                   </p>
                   <p className="text-xs text-black/70 mt-1">
-                    Prix unit. {Number(type.price).toFixed(2)} € TTC
+                    Prix unit. {formatPrice(Number(type.price))} TTC
                   </p>
                 </div>
               </div>
@@ -829,10 +832,10 @@ function DrillingPanel({
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold text-black">
-                  +{Number(type.price).toFixed(2)} €
+                  +{formatPrice(Number(type.price))}
                 </p>
                 <button
-                  className="mt-1 px-3 py-1 bg-am-navy text-white text-xs rounded hover:bg-am-red transition-colors"
+                  className="mt-1 px-3 py-1 bg-am-navy text-white text-xs rounded hover:bg-am-wine transition-colors"
                 >
                   Ajouter
                 </button>
@@ -864,7 +867,7 @@ function DrillingPanel({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-black">
-                    {Number(drilling.price || 0).toFixed(2)} €
+                    {formatPrice(Number(drilling.price || 0))}
                   </span>
                   <button
                     onClick={() => handleRemoveDrilling(drilling.id)}
@@ -884,7 +887,7 @@ function DrillingPanel({
                 Total perçages ({customDrillings.length})
               </span>
               <span className="text-lg font-semibold text-black">
-                {customDrillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0).toFixed(2)} € TTC
+                {formatPrice(customDrillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0))} TTC
               </span>
             </div>
           </div>
@@ -1019,7 +1022,7 @@ function SummaryPanel({
             <p className="text-xs text-black/70">Ép. (mm)</p>
           </div>
         </div>
-        <p className="text-xs text-black/70 mt-2">Surface : {surfaceM2.toFixed(2)} m²</p>
+        <p className="text-xs text-black/70 mt-2">Surface : {formatDecimal(surfaceM2)} m²</p>
       </div>
 
       {/* Matériau */}
@@ -1036,8 +1039,8 @@ function SummaryPanel({
             }}
           />
           <div>
-            <p className="text-sm font-medium text-black">{config.material.name}</p>
-            <p className="text-xs text-black/70">{pricePerM2.toFixed(2)} €/m²</p>
+            <p className="text-sm font-medium text-black">{displayColorName(config.material.name)}</p>
+            <p className="text-xs text-black/70">{formatPrice(pricePerM2)}/m²</p>
           </div>
         </div>
       </div>

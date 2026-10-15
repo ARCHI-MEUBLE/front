@@ -96,16 +96,16 @@ function ShelfPositionEditor({
   };
 
   return (
-    <div className="mt-4 border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '4px' }}>
+    <div className="mt-4 border border-black/10 bg-am-mist/15 p-3" style={{ borderRadius: '4px' }}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <span className="text-sm font-medium text-[#1A1917]">Position des étagères</span>
-          <span className="ml-2 text-[10px] text-[#706F6C]">(hauteur zone: {zoneHeightMm} mm)</span>
+          <span className="text-sm font-medium text-black">Position des étagères</span>
+          <span className="ml-2 text-[10px] text-black/65">(hauteur zone: {zoneHeightMm} mm)</span>
         </div>
         <button
           type="button"
           onClick={onReset}
-          className="flex items-center gap-1 text-xs text-[#706F6C] hover:text-[#1A1917] transition-colors"
+          className="flex items-center gap-1 text-xs text-black/65 hover:text-black transition-colors"
           title="Répartition uniforme"
         >
           <RotateCcw className="h-3 w-3" />
@@ -117,41 +117,39 @@ function ShelfPositionEditor({
         {/* Aperçu visuel */}
         <div
           ref={containerRef}
-          className="relative w-16 h-32 border-2 border-[#1A1917] bg-white cursor-crosshair"
+          className="relative w-16 h-32 border-2 border-am-navy bg-white cursor-crosshair"
           style={{ borderRadius: '2px' }}
         >
           {/* Étagères */}
           {positions.map((pos, index) => (
             <div
               key={index}
-              className={`absolute left-0 right-0 h-1 cursor-ns-resize transition-colors ${
-                draggingIndex === index ? 'bg-blue-500' : 'bg-[#1A1917]'
-              }`}
+              className="absolute left-0 right-0 h-1 cursor-ns-resize bg-am-navy"
               style={{ bottom: `${pos}%`, transform: 'translateY(50%)' }}
               onMouseDown={handleMouseDown(index)}
               title={`Étagère ${index + 1}: ${percentToMm(pos)} mm`}
             >
               {/* Poignée de glissement */}
               <div className={`absolute -left-1 -right-1 -top-1 -bottom-1 ${
-                draggingIndex === index ? 'bg-blue-500/20' : ''
+                draggingIndex === index ? 'bg-am-mist/60' : ''
               }`} />
             </div>
           ))}
 
           {/* Labels haut/bas avec hauteur */}
-          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-[#706F6C]">{zoneHeightMm} mm</span>
-          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-[#706F6C]">0 mm</span>
+          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-black/65">{zoneHeightMm} mm</span>
+          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-black/65">0 mm</span>
         </div>
 
         {/* Contrôles par étagère */}
         <div className="flex-1 space-y-2">
           {positions.map((pos, index) => (
             <div key={index} className="flex items-center gap-2">
-              <span className="text-xs text-[#706F6C] w-6">É{index + 1}</span>
+              <span className="text-xs text-black/65 w-6">É{index + 1}</span>
               <button
                 type="button"
                 onClick={() => onChange(index, Math.min(95, pos + stepPercent))}
-                className="p-1 border border-[#E8E6E3] bg-white hover:border-[#1A1917] transition-colors"
+                className="p-1 border border-black/10 bg-white hover:border-am-navy transition-colors"
                 style={{ borderRadius: '2px' }}
                 title={`+${stepMm} mm`}
               >
@@ -161,7 +159,7 @@ function ShelfPositionEditor({
               <button
                 type="button"
                 onClick={() => onChange(index, Math.max(5, pos - stepPercent))}
-                className="p-1 border border-[#E8E6E3] bg-white hover:border-[#1A1917] transition-colors"
+                className="p-1 border border-black/10 bg-white hover:border-am-navy transition-colors"
                 style={{ borderRadius: '2px' }}
                 title={`-${stepMm} mm`}
               >
@@ -172,7 +170,7 @@ function ShelfPositionEditor({
         </div>
       </div>
 
-      <p className="mt-2 text-[10px] text-[#706F6C]">
+      <p className="mt-2 text-[10px] text-black/65">
         Glissez les lignes ou utilisez ↑↓ (±{stepMm} mm)
       </p>
     </div>
@@ -258,24 +256,24 @@ export function SelectedZoneDimensions({
   };
 
   return (
-    <div className="flex items-center gap-4 border border-[#E8E6E3] bg-white px-4 py-3" style={{ borderRadius: '4px' }}>
+    <div className="flex items-center gap-4 border border-black/10 bg-white px-4 py-3" style={{ borderRadius: '4px' }}>
       {/* Label optionnel pour groupe */}
       {label && (
         <>
-          <span className="text-sm font-medium text-[#8B7355]">{label}</span>
-          <div className="h-6 w-px bg-[#E8E6E3]" />
+          <span className="text-sm font-medium text-am-navy">{label}</span>
+          <div className="h-6 w-px bg-black/10" />
         </>
       )}
       {/* Largeur */}
       <div className="flex items-center gap-2">
-        <Columns3 className="h-4 w-4 text-[#706F6C]" />
-        <span className="text-sm text-[#706F6C]">Largeur:</span>
+        <Columns3 className="h-4 w-4 text-black/65" />
+        <span className="text-sm text-black/65">Largeur:</span>
         {canAdjustWidth && onSetWidth ? (
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={decrementWidth}
-              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white text-black transition-all hover:border-am-navy"
               style={{ borderRadius: '2px' }}
             >
               <Minus className="h-3 w-3" />
@@ -287,38 +285,38 @@ export function SelectedZoneDimensions({
                 onChange={(e) => setWidthInput(e.target.value)}
                 onBlur={(e) => applyWidth(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && applyWidth(widthInput)}
-                className="w-20 text-center font-mono text-sm font-semibold border border-[#E8E6E3] focus:border-[#1A1917] outline-none py-1.5 pr-7"
+                className="w-20 text-center font-mono text-sm font-semibold border border-black/10 focus:border-am-navy outline-none py-1.5 pr-7"
                 style={{ borderRadius: '2px' }}
                 min={50}
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#706F6C]">mm</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-black/65">mm</span>
             </div>
             <button
               type="button"
               onClick={incrementWidth}
-              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white text-black transition-all hover:border-am-navy"
               style={{ borderRadius: '2px' }}
             >
               <span className="text-sm font-bold">+</span>
             </button>
           </div>
         ) : (
-          <span className="font-mono text-sm font-semibold text-[#1A1917]">{widthMm} mm</span>
+          <span className="font-mono text-sm font-semibold text-black">{widthMm} mm</span>
         )}
       </div>
 
-      <div className="h-6 w-px bg-[#E8E6E3]" />
+      <div className="h-6 w-px bg-black/10" />
 
       {/* Hauteur */}
       <div className="flex items-center gap-2">
-        <Rows3 className="h-4 w-4 text-[#706F6C]" />
-        <span className="text-sm text-[#706F6C]">Hauteur:</span>
+        <Rows3 className="h-4 w-4 text-black/65" />
+        <span className="text-sm text-black/65">Hauteur:</span>
         {canAdjustHeight && onSetHeight ? (
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={decrementHeight}
-              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white text-black transition-all hover:border-am-navy"
               style={{ borderRadius: '2px' }}
             >
               <Minus className="h-3 w-3" />
@@ -330,23 +328,23 @@ export function SelectedZoneDimensions({
                 onChange={(e) => setHeightInput(e.target.value)}
                 onBlur={(e) => applyHeight(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && applyHeight(heightInput)}
-                className="w-20 text-center font-mono text-sm font-semibold border border-[#E8E6E3] focus:border-[#1A1917] outline-none py-1.5 pr-7"
+                className="w-20 text-center font-mono text-sm font-semibold border border-black/10 focus:border-am-navy outline-none py-1.5 pr-7"
                 style={{ borderRadius: '2px' }}
                 min={50}
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#706F6C]">mm</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-black/65">mm</span>
             </div>
             <button
               type="button"
               onClick={incrementHeight}
-              className="flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]"
+              className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white text-black transition-all hover:border-am-navy"
               style={{ borderRadius: '2px' }}
             >
               <span className="text-sm font-bold">+</span>
             </button>
           </div>
         ) : (
-          <span className="font-mono text-sm font-semibold text-[#1A1917]">{heightMm} mm</span>
+          <span className="font-mono text-sm font-semibold text-black">{heightMm} mm</span>
         )}
       </div>
     </div>
@@ -360,8 +358,8 @@ export function SelectedZoneDimensions({
 function SectionLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div className="mb-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#706F6C]">{children}</p>
-      {hint && <p className="mt-1 text-xs text-[#706F6C]">{hint}</p>}
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-black/65">{children}</p>
+      {hint && <p className="mt-1 text-xs text-black/65">{hint}</p>}
     </div>
   );
 }
@@ -369,7 +367,7 @@ function SectionLabel({ children, hint }: { children: React.ReactNode; hint?: st
 function InfoNote({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="border border-dashed border-[#C9C6BF] bg-white px-3 py-3 text-xs leading-relaxed text-[#706F6C]"
+      className="border border-dashed border-black/20 bg-white px-3 py-3 text-xs leading-relaxed text-black/65"
       style={{ borderRadius: '2px' }}
     >
       {children}
@@ -403,10 +401,10 @@ function OptionTile({
       title={disabledReason}
       className={`flex flex-col items-center justify-center gap-1.5 border-2 p-3 transition-all ${
         active
-          ? 'border-[#1A1917] bg-[#1A1917] text-white'
+          ? 'border-am-navy bg-am-navy text-white'
           : disabled
-            ? 'cursor-not-allowed border-[#F0EFED] bg-[#FAFAF9] text-[#C9C6BF]'
-            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+            ? 'cursor-not-allowed border-black/10 bg-am-mist/15 text-black/30'
+            : 'border-black/10 bg-white text-black hover:border-am-navy'
       }`}
       style={{ borderRadius: '4px' }}
     >
@@ -415,7 +413,7 @@ function OptionTile({
         <span className="block text-[13px] font-semibold leading-tight">{label}</span>
         <span
           className={`mt-0.5 block text-[11px] leading-tight ${
-            disabledReason ? (active ? 'text-[#FDBA8C]' : 'text-[#B45309]') : active ? 'text-white/70' : 'text-[#706F6C]'
+            disabledReason ? (active ? 'text-am-mist' : 'text-am-wine') : active ? 'text-white/70' : 'text-black/65'
           }`}
         >
           {disabledReason ?? desc}
@@ -452,10 +450,10 @@ function ToggleRow({
       title={disabledReason}
       className={`flex items-center justify-between gap-3 border-2 p-3 transition-all ${
         active
-          ? 'border-[#1A1917] bg-[#1A1917]/5 text-[#1A1917]'
+          ? 'border-am-navy bg-am-navy/5 text-black'
           : disabled
-            ? 'cursor-not-allowed border-[#F0EFED] bg-[#FAFAF9] text-[#C9C6BF]'
-            : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+            ? 'cursor-not-allowed border-black/10 bg-am-mist/15 text-black/30'
+            : 'border-black/10 bg-white text-black hover:border-am-navy'
       }`}
       style={{ borderRadius: '4px' }}
     >
@@ -463,11 +461,11 @@ function ToggleRow({
         <Icon className={`h-5 w-5 flex-shrink-0 ${active ? iconActiveClass : ''}`} />
         <div className="text-left">
           <span className="block text-sm font-semibold">{label}</span>
-          <span className={`block text-xs ${disabledReason ? 'text-[#B45309]' : 'text-[#706F6C]'}`}>{disabledReason ?? desc}</span>
+          <span className={`block text-xs ${disabledReason ? 'text-am-wine' : 'text-black/65'}`}>{disabledReason ?? desc}</span>
         </div>
       </div>
-      <div className={`relative h-6 w-10 flex-shrink-0 rounded-full border-2 transition-all ${active ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-[#F5F5F4]'}`}>
-        <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${active ? 'right-1 bg-white' : 'left-1 bg-[#A8A7A5]'}`} />
+      <div className={`relative h-6 w-10 flex-shrink-0 rounded-full border-2 transition-all ${active ? 'border-am-navy bg-am-navy' : 'border-black/10 bg-am-mist/15'}`}>
+        <div className={`absolute top-1 h-3 w-3 rounded-full transition-all ${active ? 'right-1 bg-white' : 'left-1 bg-black/35'}`} />
       </div>
     </button>
   );
@@ -501,15 +499,15 @@ function DivisionStepper({
   const blocked = !!blockedReason;
   const atMax = current >= max;
   const stepButton =
-    'flex h-9 w-9 flex-shrink-0 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold text-[#1A1917] transition-all hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#E8E6E3]';
+    'flex h-9 w-9 flex-shrink-0 items-center justify-center border-2 border-black/10 bg-white text-lg font-bold text-black transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-black/10';
 
   return (
-    <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '4px' }}>
+    <div className="border border-black/10 bg-white p-4" style={{ borderRadius: '4px' }}>
       <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5 flex-shrink-0 text-[#1A1917]" />
+        <Icon className="h-5 w-5 flex-shrink-0 text-black" />
         <div className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-[#1A1917]">{label}</span>
-          {sizeLabel && current > 1 && <span className="block text-xs text-[#706F6C]">{sizeLabel}</span>}
+          <span className="block text-sm font-semibold text-black">{label}</span>
+          {sizeLabel && current > 1 && <span className="block text-xs text-black/65">{sizeLabel}</span>}
         </div>
         <button
           type="button"
@@ -521,7 +519,7 @@ function DivisionStepper({
         >
           −
         </button>
-        <span className="w-10 text-center font-mono text-base font-bold text-[#1A1917]" aria-live="polite">
+        <span className="w-10 text-center font-mono text-base font-bold text-black" aria-live="polite">
           {value ?? '–'}
         </span>
         <button
@@ -544,14 +542,14 @@ function DivisionStepper({
           step={1}
           value={Math.min(current, max)}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="mt-3 w-full accent-[#1A1917]"
+          className="mt-3 w-full accent-am-navy"
           aria-label={label}
         />
       )}
       {blocked ? (
-        <p className="mt-2 text-[11px] text-[#706F6C]">{blockedReason}</p>
+        <p className="mt-2 text-[11px] text-black/65">{blockedReason}</p>
       ) : (
-        atMax && reason && <p className="mt-2 text-[11px] text-[#B45309]">{reason}</p>
+        atMax && reason && <p className="mt-2 text-[11px] text-am-wine">{reason}</p>
       )}
     </div>
   );
@@ -666,8 +664,8 @@ export default function ZoneControls({
   const renderBreadcrumbs = () => {
     if (!onSelectParent || !parentZone) {
       return (
-        <div className="flex items-center gap-2 text-xs font-medium text-[#1A1917]">
-          <span className="bg-[#1A1917] px-2 py-0.5 text-white" style={{ borderRadius: '2px' }}>
+        <div className="flex items-center gap-2 text-xs font-medium text-black">
+          <span className="bg-am-navy px-2 py-0.5 text-white" style={{ borderRadius: '2px' }}>
             Meuble entier
           </span>
         </div>
@@ -675,17 +673,17 @@ export default function ZoneControls({
     }
 
     return (
-      <div className="flex items-center gap-2 text-xs font-medium text-[#706F6C]">
+      <div className="flex items-center gap-2 text-xs font-medium text-black/65">
         <button
           type="button"
           onClick={() => onSelectParent()}
-          className="flex items-center gap-1 transition-colors hover:text-[#1A1917]"
+          className="flex items-center gap-1 transition-colors hover:text-black"
         >
           <BoxSelect className="h-3 w-3" />
           <span className="underline decoration-dotted underline-offset-2">Groupe parent</span>
         </button>
-        <span className="text-[#E8E6E3]">/</span>
-        <span className="font-bold text-[#1A1917]">Zone actuelle</span>
+        <span className="text-white/85">/</span>
+        <span className="font-bold text-black">Zone actuelle</span>
       </div>
     );
   };
@@ -703,14 +701,14 @@ export default function ZoneControls({
     return (
       <div className="space-y-4">
         {renderBreadcrumbs()}
-        <div className="border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '2px' }}>
+        <div className="border border-black/10 bg-white p-4" style={{ borderRadius: '2px' }}>
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center border border-[#E8E6E3] bg-[#FAFAF9]" style={{ borderRadius: '2px' }}>
-              <DoorClosed className="h-5 w-5 text-[#1A1917]" />
+            <div className="flex h-10 w-10 items-center justify-center border border-black/10 bg-am-mist/15" style={{ borderRadius: '2px' }}>
+              <DoorClosed className="h-5 w-5 text-black" />
             </div>
             <div>
-              <span className="block text-base font-semibold text-[#1A1917]">{selectedZoneIds.length} compartiments sélectionnés</span>
-              <p className="text-xs text-[#706F6C]">Poser une porte sur cet ensemble</p>
+              <span className="block text-base font-semibold text-black">{selectedZoneIds.length} compartiments sélectionnés</span>
+              <p className="text-xs text-black/65">Poser une porte sur cet ensemble</p>
             </div>
           </div>
 
@@ -733,7 +731,7 @@ export default function ZoneControls({
             />
           </div>
 
-          <p className="mt-3 text-center text-[11px] text-[#706F6C]">
+          <p className="mt-3 text-center text-[11px] text-black/65">
             La porte recouvrira l&apos;intégralité de la zone sélectionnée.
           </p>
         </div>
@@ -792,14 +790,14 @@ export default function ZoneControls({
           </div>
 
           {doorSideDialog.isOpen && (
-            <div className="mt-3 border border-[#E8E6E3] bg-white p-4" style={{ borderRadius: '2px' }}>
-              <p className="mb-1 text-sm font-medium text-[#1A1917]">Côté d&apos;ouverture</p>
-              <p className="mb-3 text-xs text-[#706F6C]">Choisissez le côté d&apos;ouverture de la porte Push</p>
+            <div className="mt-3 border border-black/10 bg-white p-4" style={{ borderRadius: '2px' }}>
+              <p className="mb-1 text-sm font-medium text-black">Côté d&apos;ouverture</p>
+              <p className="mb-3 text-xs text-black/65">Choisissez le côté d&apos;ouverture de la porte Push</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleDoorSideChoice('left')}
-                  className="flex flex-col items-center justify-center gap-1 border border-[#E8E6E3] bg-white px-2 py-3 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
+                  className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
                   style={{ borderRadius: '2px' }}
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -808,7 +806,7 @@ export default function ZoneControls({
                 <button
                   type="button"
                   onClick={() => handleDoorSideChoice('right')}
-                  className="flex flex-col items-center justify-center gap-1 border border-[#E8E6E3] bg-white px-2 py-3 text-[#1A1917] transition-all hover:border-[#1A1917] hover:bg-[#FAFAF9]"
+                  className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
                   style={{ borderRadius: '2px' }}
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -818,7 +816,7 @@ export default function ZoneControls({
               <button
                 type="button"
                 onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
-                className="mt-3 w-full text-center text-xs text-[#706F6C] hover:text-[#1A1917]"
+                className="mt-3 w-full text-center text-xs text-black/65 hover:text-black"
               >
                 Annuler
               </button>
@@ -852,28 +850,28 @@ export default function ZoneControls({
             </div>
 
             {selectedZone.content === 'glass_shelf' && onSetGlassShelfCount && (
-              <div className="mt-3 flex items-center justify-between border border-[#E8E6E3] bg-white p-3" style={{ borderRadius: '4px' }}>
+              <div className="mt-3 flex items-center justify-between border border-black/10 bg-white p-3" style={{ borderRadius: '4px' }}>
                 <div className="flex items-center gap-2">
-                  <Square className="h-4 w-4 text-[#706F6C]" />
-                  <span className="text-sm font-medium text-[#1A1917]">Nombre d&apos;étagères</span>
+                  <Square className="h-4 w-4 text-black/65" />
+                  <span className="text-sm font-medium text-black">Nombre d&apos;étagères</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => onSetGlassShelfCount(selectedZone.id, Math.max(1, glassShelfCount - 1))}
                     disabled={glassShelfCount <= 1}
-                    className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-bold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
                     style={{ borderRadius: '4px' }}
                     aria-label="Retirer une étagère"
                   >
                     −
                   </button>
-                  <span className="w-8 text-center font-mono text-base font-bold text-[#1A1917]">{glassShelfCount}</span>
+                  <span className="w-8 text-center font-mono text-base font-bold text-black">{glassShelfCount}</span>
                   <button
                     type="button"
                     onClick={() => onSetGlassShelfCount(selectedZone.id, Math.min(5, glassShelfCount + 1))}
                     disabled={glassShelfCount >= 5}
-                    className="flex h-8 w-8 items-center justify-center border-2 border-[#E8E6E3] bg-white text-lg font-bold transition-all hover:border-[#1A1917] disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-bold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
                     style={{ borderRadius: '4px' }}
                     aria-label="Ajouter une étagère"
                   >
@@ -928,8 +926,8 @@ export default function ZoneControls({
                     aria-pressed={isActive}
                     className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
                       isActive
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                        : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                        ? 'border-am-navy bg-am-navy text-white'
+                        : 'border-black/10 bg-white text-black hover:border-am-navy'
                     }`}
                     style={{ borderRadius: '4px' }}
                   >
@@ -1011,7 +1009,7 @@ export default function ZoneControls({
               <button
                 type="button"
                 onClick={() => onResetZone(selectedZone.id)}
-                className="flex w-full items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white py-3 text-sm font-medium text-[#706F6C] transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+                className="flex w-full items-center justify-center gap-2 border-2 border-black/10 bg-white py-3 text-sm font-medium text-black/65 transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
                 style={{ borderRadius: '4px' }}
               >
                 <Trash2 className="h-4 w-4" />
@@ -1023,7 +1021,7 @@ export default function ZoneControls({
                 type="button"
                 onClick={() => onDeleteSection(selectedZone.id)}
                 title="La section voisine prend sa place"
-                className="flex w-full items-center justify-center gap-2 border-2 border-[#E8E6E3] bg-white py-3 text-sm font-medium text-[#706F6C] transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+                className="flex w-full items-center justify-center gap-2 border-2 border-black/10 bg-white py-3 text-sm font-medium text-black/65 transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600"
                 style={{ borderRadius: '4px' }}
               >
                 <Trash2 className="h-4 w-4" />
