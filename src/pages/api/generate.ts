@@ -29,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({
         success: false,
         error: 'Réponse backend invalide',
-        details: responseText.substring(0, 200)
       });
     }
 
@@ -42,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('[GENERATE PROXY] Error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Erreur interne du serveur'
+      error: 'Erreur interne du serveur'
     });
   }
 }

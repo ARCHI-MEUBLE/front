@@ -5,7 +5,8 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000');
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
-  if (!id) {
+  // Un identifiant numérique seulement : il finit dans l'URL du backend et dans le nom du fichier téléchargé
+  if (typeof id !== 'string' || !/^\d+$/.test(id)) {
     return res.status(400).json({ error: 'ID requis' });
   }
 

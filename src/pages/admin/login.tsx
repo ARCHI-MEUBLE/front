@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,8 @@ const INITIAL_FORM: LoginForm = {
   password: '',
 };
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
-  if (hasAdminSession(req.headers.cookie)) {
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+  if (await verifyAdminSession(req, res)) {
     return {
       redirect: {
         destination: adminUrl('/dashboard'),

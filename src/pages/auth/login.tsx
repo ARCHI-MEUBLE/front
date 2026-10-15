@@ -23,11 +23,15 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Récupérer l'URL de redirection depuis les query params
+  // Uniquement un chemin du site : « //site.com » ou « https://… » enverraient l'utilisateur ailleurs après connexion
   const { redirect } = router.query;
+  const redirectUrl =
+    typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/\\')
+      ? redirect
+      : '/';
 
   // Rediriger si déjà connecté
   if (isAuthenticated) {
-    const redirectUrl = typeof redirect === 'string' ? redirect : '/';
     router.push(redirectUrl);
     return null;
   }
@@ -47,7 +51,6 @@ export default function Login() {
       await login(formData.email, formData.password);
 
       // Rediriger vers l'URL demandée ou vers l'accueil
-      const redirectUrl = typeof redirect === 'string' ? redirect : '/';
       router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || 'Email ou mot de passe incorrect');

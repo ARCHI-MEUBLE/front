@@ -3,23 +3,18 @@
  * Proxie vers le backend PHP avec vérification admin
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   // Vérifier l'authentification admin
-  if (!hasAdminSession(req.headers.cookie)) {
+  if (!(await verifyAdminSession(req, res))) {
     console.log('Authentication failed - no admin session');
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  console.log('---');
-  console.log('Method:', req.method);
-  console.log('Cookies being sent to backend:', req.headers.cookie);
-  console.log('Has PHPSESSID:', req.headers.cookie?.includes('PHPSESSID') ? 'YES' : 'NO');
-  console.log('Has user_session:', req.headers.cookie?.includes('user_session') ? 'YES' : 'NO');
 
   try {
     // Construire l'URL avec les query params si nécessaire

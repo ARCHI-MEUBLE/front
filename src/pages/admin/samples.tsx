@@ -3,11 +3,11 @@ import { useRouter } from 'next/router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient, type SampleType, uploadImage } from '@/lib/apiClient';
 import type { GetServerSideProps } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
-  if (!hasAdminSession(req.headers.cookie)) {
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+  if (!(await verifyAdminSession(req, res))) {
     return {
       redirect: {
         destination: adminUrl('/login'),

@@ -85,3 +85,4 @@ public/models/*.dxf
 .claude/worktrees/
 .env
 .env.example
+.env.server_test

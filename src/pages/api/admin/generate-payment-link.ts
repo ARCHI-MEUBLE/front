@@ -44,7 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Payment link proxy error:', error);
     res.status(500).json({
       error: 'Failed to generate payment link',
-      details: error instanceof Error ? error.message : String(error)
     });
   }
 }

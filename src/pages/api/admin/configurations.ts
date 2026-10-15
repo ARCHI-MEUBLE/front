@@ -39,6 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(response.status).json(data);
   } catch (error) {
     console.error('❌ Configurations proxy error:', error);
-    res.status(500).json({ error: 'Failed to fetch configurations', details: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ error: 'Failed to fetch configurations' });
   }
 }

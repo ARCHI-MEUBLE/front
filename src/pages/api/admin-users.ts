@@ -3,13 +3,13 @@
  * Proxie vers le backend PHP pour gérer les utilisateurs admin
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Vérifier l'authentification admin
-  if (!hasAdminSession(req.headers.cookie)) {
+  if (!(await verifyAdminSession(req, res))) {
     return res.status(403).json({ error: 'Accès interdit. Vous devez être administrateur.' });
   }
 

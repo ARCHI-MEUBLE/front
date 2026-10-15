@@ -44,7 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Create order proxy error:', error);
     res.status(500).json({
       error: 'Failed to create order',
-      details: error instanceof Error ? error.message : String(error)
     });
   }
 }
