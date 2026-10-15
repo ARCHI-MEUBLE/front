@@ -1,5 +1,5 @@
 import type { ZoneStats } from '@/lib/configurator/zoneStats';
-import { displayColorName } from '@/lib/displayNames';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import type { MountingStyle } from './MountingStyleSelector';
 
 interface ConfigRecapProps {
@@ -66,7 +66,7 @@ export default function ConfigRecap({
             {width} × {depth} × {height} mm
           </span>
         </Row>
-        <Row label="Matière">{finish}</Row>
+        <Row label="Matière">{displayMaterialName(finish)}</Row>
         <Row label="Couleur">
           <span className="inline-flex items-center gap-1.5">
             <span

@@ -233,7 +233,7 @@ export default function FacadeControls({
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-black/70">Surface ({formatDecimal((config.width / 1000) * (config.height / 1000))} m²)</span>
           <span className="text-sm font-medium">
-            {formatPrice((config.width / 1000) * (config.height / 1000) * Number(config.material.price_per_m2 || pricingSettings.material_price_per_m2))}
+            {formatPrice((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2))}
           </span>
         </div>
         {config.hinges.type !== 'no-hole-no-hinge' && (

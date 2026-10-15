@@ -7,9 +7,12 @@ import { HOME_MONO, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { DevisFurnitureTypePicker } from "@/components/devis/DevisFurnitureTypePicker";
 import { DevisInterlocutorCard } from "@/components/devis/DevisInterlocutorCard";
 import { DevisChecklist } from "@/components/devis/DevisChecklist";
-import { FileDropzone, fileKey, isMediaFile } from "@/components/shared/FileDropzone";
+import { FileDropzone, fileKey, isMediaFile, withMediaType } from "@/components/shared/FileDropzone";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+// Tous les fichiers partent dans une seule requête : au-delà, le serveur la refuse en bloc
+const MAX_FILES = 10;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 
 const INPUT_CLASS =
   "min-h-11 w-full rounded-xl border border-black bg-white px-4 py-2 text-[16px] text-black outline-none";
@@ -43,10 +46,24 @@ export default function DemandeDevisPage() {
       }
       return true;
     });
-    setFiles((previous) => {
-      const known = new Set(previous.map(fileKey));
-      return [...previous, ...accepted.filter((file) => !known.has(fileKey(file)))];
-    });
+    const known = new Set(files.map(fileKey));
+    const next = [...files];
+    let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    for (const file of accepted) {
+      if (known.has(fileKey(file))) continue;
+      if (next.length >= MAX_FILES) {
+        rejection = `${MAX_FILES} fichiers maximum par demande.`;
+        break;
+      }
+      if (totalBytes + file.size > MAX_TOTAL_BYTES) {
+        rejection = `${file.name} : la demande dépasserait 50 Mo au total.`;
+        continue;
+      }
+      known.add(fileKey(file));
+      next.push(file);
+      totalBytes += file.size;
+    }
+    setFiles(next);
     setError(rejection);
   };
 
@@ -78,10 +95,17 @@ export default function DemandeDevisPage() {
       body.append("email", formData.email);
       body.append("phone", formData.phone);
       body.append("description", descriptionLines.join("\n"));
-      files.forEach((file) => body.append("files[]", file));
+      files.forEach((file) => body.append("files[]", withMediaType(file)));
 
       const response = await fetch("/backend/api/quote-request/index.php", { method: "POST", body });
-      const data = await response.json();
+      // Une requête trop lourde revient en page d'erreur HTML, pas en JSON
+      const data = await response.json().catch(() => {
+        throw new Error(
+          response.status === 413
+            ? "Vos fichiers sont trop lourds pour être envoyés ensemble. Retirez-en quelques-uns et réessayez."
+            : "Erreur lors de l'envoi de la demande"
+        );
+      });
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Erreur lors de l'envoi de la demande");
       }

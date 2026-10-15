@@ -7,8 +7,32 @@ const FILE_TYPES = ["JPG", "PNG", "HEIC", "MP4", "MOV"];
 // HEIC et certaines vidéos arrivent sans type MIME (surtout sous Windows) : on se rabat sur l'extension
 const MEDIA_EXTENSION = /\.(jpe?g|png|gif|webp|avif|heic|heif|mp4|m4v|mov|avi|webm)$/i;
 
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  heic: "image/heic",
+  heif: "image/heif",
+  mp4: "video/mp4",
+  m4v: "video/x-m4v",
+  mov: "video/quicktime",
+  avi: "video/x-msvideo",
+  webm: "video/webm",
+};
+
 export function isMediaFile(file: File): boolean {
   return file.type.startsWith("image/") || file.type.startsWith("video/") || MEDIA_EXTENSION.test(file.name);
+}
+
+// Le backend trie les fichiers sur le type MIME envoyé : sans lui, un HEIC serait ignoré sans erreur
+export function withMediaType(file: File): File {
+  if (file.type) return file;
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const type = MIME_BY_EXTENSION[extension];
+  return type ? new File([file], file.name, { type, lastModified: file.lastModified }) : file;
 }
 
 export function fileKey(file: File): string {

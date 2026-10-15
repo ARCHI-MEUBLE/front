@@ -8,6 +8,8 @@ export function RealisationsCollectionSection({
   realisations,
   categories,
   isLoading,
+  loadFailed,
+  onRetry,
   selectedCategory,
   onCategoryChange,
   onGalleryOpen,
@@ -15,6 +17,8 @@ export function RealisationsCollectionSection({
   realisations: RealisationData[];
   categories: RealisationCategory[];
   isLoading: boolean;
+  loadFailed: boolean;
+  onRetry: () => void;
   selectedCategory: string;
   onCategoryChange: (slug: string) => void;
   onGalleryOpen: (images: RealisationImage[], startIndex: number) => void;
@@ -65,6 +69,13 @@ export function RealisationsCollectionSection({
             </div>
           ))}
         </div>
+      ) : loadFailed ? (
+        <EmptyState
+          title="La galerie est momentanément indisponible"
+          text="Les réalisations n'ont pas pu être chargées. Réessayez dans un instant. Si le problème continue, l'atelier reste joignable par téléphone ou via le formulaire de contact."
+          primary={{ label: "Réessayer", onClick: onRetry }}
+          secondary={{ label: "Nous contacter", href: "/contact-request" }}
+        />
       ) : realisations.length === 0 ? (
         selectedCategory === "all" ? (
           <EmptyState

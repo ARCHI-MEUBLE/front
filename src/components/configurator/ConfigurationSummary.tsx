@@ -1,7 +1,7 @@
 import ZoneEditor, { Zone } from '@/components/configurator/ZoneEditor';
 import { Button } from '@/components/ui/button';
 import { IconEdit } from '@tabler/icons-react';
-import { displayColorName } from '@/lib/displayNames';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 
 function analyzeConfiguration(zone: Zone) {
   const handleTypes = new Set<string>();
@@ -138,7 +138,7 @@ export function ConfigurationSummary({
           </div>
           <div className="flex justify-between py-1.5 border-b border-black/10">
             <span className="text-black/65">Matériau</span>
-            <span className="font-medium">{finish}</span>
+            <span className="font-medium">{displayMaterialName(finish)}</span>
           </div>
           <div className="flex justify-between py-1.5 border-b border-black/10">
             <span className="text-black/65">Couleur</span>
