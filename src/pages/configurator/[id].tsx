@@ -20,6 +20,7 @@ import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import StepNav from '@/components/configurator/steps/StepNav';
 import StepIntro from '@/components/configurator/steps/StepIntro';
 import StepSection from '@/components/configurator/steps/StepSection';
+import DivisionSteps from '@/components/configurator/steps/DivisionSteps';
 import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
@@ -3113,18 +3114,14 @@ export default function ConfiguratorPage() {
                     )}
 
                     {activeStep === STEP.DIVISION && (
-                      <div className="space-y-4">
-                        {selectedZoneIds.length === 0 ? (
-                          <ZoneEmptyState>
-                            Cliquez sur un compartiment du plan pour le diviser en étagères ou en colonnes.
-                          </ZoneEmptyState>
-                        ) : (
-                          <ZoneEditor {...zoneEditorProps} controlSections={['division']} />
-                        )}
-                        <p className="text-[11px] leading-relaxed text-[#706F6C]">
-                          Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
-                        </p>
-                      </div>
+                      <DivisionSteps
+                        rootZone={rootZone}
+                        selectedZoneIds={selectedZoneIds}
+                        width={width}
+                        height={height}
+                        onRootZoneChange={setRootZone}
+                        onSelectedZoneIdsChange={setSelectedZoneIds}
+                      />
                     )}
 
                     {activeStep === STEP.DOORS && (

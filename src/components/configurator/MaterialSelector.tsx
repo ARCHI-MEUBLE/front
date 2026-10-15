@@ -1,3 +1,11 @@
+/* ****************************************
+ * 
+ * A panel for selecting materials and colors.
+ *
+ * 
+ * ******************************************/
+
+
 import { useMemo, useState } from 'react';
 import type { SampleType, SampleColor } from '@/lib/apiClient';
 import ColorCheckBadge from './ColorCheckBadge';

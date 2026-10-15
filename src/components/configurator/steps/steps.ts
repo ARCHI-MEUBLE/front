@@ -31,7 +31,7 @@ export const CONFIG_STEPS: StepDefinition[] = [
     label: 'Division',
     title: "Divisez l'intérieur",
     hint: 'Réglez le nombre de colonnes et d\'étagères, ou cliquez sur une zone pour la diviser à part.',
-    view: 'plan',
+    view: '3d',
   },
   {
     id: STEP.DOORS,

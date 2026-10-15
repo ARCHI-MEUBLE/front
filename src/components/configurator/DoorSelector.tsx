@@ -1,3 +1,10 @@
+/* ****************************************
+ * 
+ * A panel for the door selection.
+ *
+ * 
+ * ******************************************/
+
 import { XCircle, DoorOpen, LayoutGrid, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface DoorSelectorProps {
