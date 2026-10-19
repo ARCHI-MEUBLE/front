@@ -39,7 +39,8 @@ import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, EyeOff, RotateCcw, Sparkles, Undo2, Redo2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, EyeOff, RotateCcw, Sparkles, Undo2, Redo2, Sofa, BedDouble, Square, Lightbulb, LightbulbOff } from 'lucide-react';
+import { ROOM_SCENES, type RoomScene } from '@/components/configurator/scene/Room';
 import {
   IconInfoCircle,
   IconEdit,
@@ -75,6 +76,9 @@ import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constra
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
+
+// Pièce choisie pour la vue 3D, retenue d'une visite à l'autre
+const ROOM_SCENE_KEY = 'archimeuble:room-scene';
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
@@ -255,6 +259,22 @@ export default function ConfiguratorPage() {
   const [showDecorations, setShowDecorations] = useState(true);
   // Affichage seulement (non enregistré) : sans les tiroirs, on voit mieux les séparations
   const [hideDrawers, setHideDrawers] = useState(false);
+  // Pièce de la vue 3D : préférence d'affichage du visiteur, gardée dans son navigateur (pas dans la config)
+  const [roomScene, setRoomScene] = useState<RoomScene>('neutral');
+  // Salon, Chambre : lampes allumées (ambiance du soir) ou éteintes (lumière du jour)
+  const [roomLightsOn, setRoomLightsOn] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ROOM_SCENE_KEY);
+      if (ROOM_SCENES.some((s) => s.id === saved)) setRoomScene(saved as RoomScene);
+    } catch {}
+  }, []);
+  const chooseRoomScene = useCallback((scene: RoomScene) => {
+    setRoomScene(scene);
+    try {
+      localStorage.setItem(ROOM_SCENE_KEY, scene);
+    } catch {}
+  }, []);
   const doorsOpenRef = useRef(doorsOpen);
   const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
   const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
@@ -2811,6 +2831,8 @@ export default function ConfiguratorPage() {
                     doorsOpen={doorsOpen}
                     showDecorations={showDecorations}
                     hideDrawers={hideDrawers}
+                    roomScene={roomScene}
+                    roomLightsOn={roomLightsOn}
                     onToggleDoors={isViewMode ? undefined : handleToggleDoors}
                     componentColors={componentColors}
                     useMultiColor={useMultiColor}
@@ -2877,6 +2899,34 @@ export default function ConfiguratorPage() {
                   </div>
                 )}
                 <div className="absolute right-3 top-14 z-20 flex flex-col gap-2 lg:hidden">
+                  {show3DView && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const index = ROOM_SCENES.findIndex((s) => s.id === roomScene);
+                        chooseRoomScene(ROOM_SCENES[(index + 1) % ROOM_SCENES.length].id);
+                      }}
+                      aria-label={`Pièce : ${ROOM_SCENES.find((s) => s.id === roomScene)?.label} (changer)`}
+                      className="flex h-10 w-10 items-center justify-center border border-black/10 bg-white text-black shadow-sm"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {roomScene === 'living' ? <Sofa className="h-4 w-4" /> : roomScene === 'bedroom' ? <BedDouble className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                    </button>
+                  )}
+                  {show3DView && roomScene !== 'neutral' && (
+                    <button
+                      type="button"
+                      onClick={() => setRoomLightsOn(!roomLightsOn)}
+                      aria-pressed={roomLightsOn}
+                      aria-label={roomLightsOn ? 'Éteindre les lumières' : 'Allumer les lumières'}
+                      className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
+                        roomLightsOn ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {roomLightsOn ? <Lightbulb className="h-4 w-4" /> : <LightbulbOff className="h-4 w-4" />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setShowDecorations(!showDecorations)}
@@ -2939,6 +2989,47 @@ export default function ConfiguratorPage() {
                   />
                 )}
                 <div className="absolute bottom-4 right-4 z-20 hidden flex-col gap-2 lg:flex">
+                  {show3DView && (
+                    <div
+                      role="group"
+                      aria-label="Pièce"
+                      className="flex overflow-hidden border border-black/10 bg-white shadow-sm"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {ROOM_SCENES.map((scene, index) => (
+                        <button
+                          key={scene.id}
+                          type="button"
+                          onClick={() => chooseRoomScene(scene.id)}
+                          aria-pressed={roomScene === scene.id}
+                          className={`h-10 flex-1 px-3 text-sm font-medium transition-colors ${index > 0 ? 'border-l border-black/10' : ''} ${
+                            roomScene === scene.id ? 'bg-am-navy text-white' : 'text-black/65 hover:bg-am-mist/30 hover:text-black'
+                          }`}
+                        >
+                          {scene.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {show3DView && roomScene !== 'neutral' && (
+                    <button
+                      type="button"
+                      onClick={() => setRoomLightsOn(!roomLightsOn)}
+                      aria-pressed={roomLightsOn}
+                      className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                        roomLightsOn
+                          ? 'border-am-navy bg-am-navy text-white'
+                          : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title={roomLightsOn ? 'Revenir à la lumière du jour' : 'Allumer les lampes de la pièce (ambiance du soir)'}
+                    >
+                      <Lightbulb className={`h-4 w-4 ${roomLightsOn ? 'text-yellow-400' : ''}`} />
+                      <span>{roomLightsOn ? 'Éteindre les lumières' : 'Allumer les lumières'}</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setShowDecorations(!showDecorations)}

@@ -13,7 +13,8 @@ import { AnimatedDoor, AnimatedMirrorDoor, AnimatedPushDoor } from './scene/Anim
 import { AnimatedPushDrawer, AnimatedDrawer } from './scene/AnimatedDrawers';
 import { BackPanelWithOpenings } from './scene/BackPanel';
 import { JapaneseMinimalist, ScandinavianLandscape, BauhausGeometric, WallClock } from './scene/wall-art';
-import { Room, HumanSilhouette } from './scene/Room';
+import { Room, type RoomScene } from './scene/Room';
+import { RoomLightsContext } from './scene/roomLights';
 import { Books, Plant, Vase, Lamp, CompartmentLight, CableHole, ShelfDecoration } from './scene/Decor';
 import { ScreenshotCapture } from './scene/ScreenshotCapture';
 import { ZoneHighlights } from './scene/ZoneHighlights';
@@ -49,6 +50,10 @@ interface ThreeViewerProps {
     showDecorations?: boolean;
     // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
     hideDrawers?: boolean;
+    // Pièce autour du meuble (neutre par défaut)
+    roomScene?: RoomScene;
+    // Salon, Chambre : lampes allumées, ambiance du soir
+    roomLightsOn?: boolean;
     onToggleDoors?: () => void;
     componentColors?: ComponentColors;
     doorType?: 'none' | 'single' | 'double';
@@ -1999,7 +2004,11 @@ function NavigationHint() {
 }
 
 const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
-    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle, onResizeDivider } = props;
+    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle, onResizeDivider, roomScene = 'neutral', roomLightsOn = false } = props;
+    // Interrupteur de la pièce : sans objet dans le studio neutre. Le soir, la lumière du jour baisse pour
+    // que les lampes se voient.
+    const roomLights = roomScene === 'neutral' ? null : roomLightsOn;
+    const evening = roomLights === true;
     const captureRef = useRef<(() => string | null) | null>(null);
 
     // Glissement d'une cloison ou d'une étagère : la scène suit en direct, la configuration n'est modifiée
@@ -2086,12 +2095,12 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                     maxPolarAngle={Math.PI / 2 - 0.05}
                 />
                 <CameraRig furnitureBox={furnitureBox} selectionBox={selectionBox} sizeKey={sizeKey} apiRef={cameraApi} />
-                <ambientLight intensity={0.4} />
-                <hemisphereLight intensity={0.5} groundColor="#ffffff" color="#ffffff" />
-                <pointLight position={[10, 10, 10]} intensity={1.0} />
+                <ambientLight intensity={evening ? 0.12 : 0.4} />
+                <hemisphereLight intensity={evening ? 0.15 : 0.5} groundColor="#ffffff" color={evening ? "#AFC0DD" : "#ffffff"} />
+                <pointLight position={[10, 10, 10]} intensity={evening ? 0.2 : 1.0} />
                 <directionalLight
                     position={[-5, 8, 5]}
-                    intensity={1.0}
+                    intensity={evening ? 0.25 : 1.0}
                     castShadow
                     shadow-mapSize={[2048, 2048]}
                     shadow-camera-left={-10}
@@ -2102,16 +2111,22 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                 />
 
                 <Suspense fallback={null}>
-                    <Room />
-                    <Furniture
-                        {...props}
-                        rootZone={displayedRootZone}
-                        imageUrl={props.imageUrl}
-                        dividerEvents={dividerEvents}
-                    />
-                    <HumanSilhouette />
-                    <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={15} blur={2.5} far={1.5} />
-                    <Environment preset="city" background={false} />
+                    <RoomLightsContext.Provider value={roomLights}>
+                        <Room
+                            scene={roomScene}
+                            furnitureWidth={layout.width}
+                            furnitureDepth={layout.depth}
+                            furnitureHeight={layout.sideHeight + layout.yOffset}
+                        />
+                        <Furniture
+                            {...props}
+                            rootZone={displayedRootZone}
+                            imageUrl={props.imageUrl}
+                            dividerEvents={dividerEvents}
+                        />
+                        <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={15} blur={2.5} far={1.5} />
+                        <Environment preset="city" background={false} environmentIntensity={evening ? 0.3 : 1} />
+                    </RoomLightsContext.Provider>
                 </Suspense>
             </Canvas>
             <CameraToolbar apiRef={cameraApi} hasSelection={!!selectionBox} />
