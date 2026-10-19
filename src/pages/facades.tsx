@@ -117,11 +117,7 @@ export default function FacadesPage() {
         {/* Sur grand écran, l'outil occupe exactement la hauteur sous l'en-tête : le prix et les boutons restent visibles, seul le panneau de réglages défile */}
         <div className="flex flex-col lg:h-[calc(100dvh-68px)]">
           <section aria-labelledby="facades-title" className={`${HOME_SECTION_NO_TOP} flex-none py-5 sm:py-6`}>
-            <h1
-              id="facades-title"
-              className="m-0 font-medium leading-tight tracking-[-0.03em] text-black"
-              style={{ fontSize: "clamp(28px,3vw,40px)" }}
-            >
+            <h1 id="facades-title" className="m-0 text-heading text-black">
               Configurateur de façades
             </h1>
             <p className="m-0 mt-1 text-[15px] text-black/70">

@@ -27,11 +27,7 @@ export function AvisHero({
           <span className="rounded-lg bg-am-navy px-3 py-[7px] text-[14px] font-medium text-white">
             Avis clients
           </span>
-          <h1
-            id="avis-page-title"
-            className="m-0 font-sans font-medium leading-[0.94] tracking-[-0.055em] text-black"
-            style={{ fontSize: "clamp(48px,6.6vw,104px)" }}
-          >
+          <h1 id="avis-page-title" className="m-0 text-display text-black">
             Ils nous font <span className="am-highlight">confiance.</span>
           </h1>
           <div className="flex flex-wrap items-center gap-3.5">
@@ -40,7 +36,7 @@ export function AvisHero({
             </span>
             <RatingStars rating={avgRating} size={32} />
           </div>
-          <p className="m-0 max-w-[42ch] text-black/85" style={{ fontSize: "clamp(17px,1.4vw,20px)" }}>
+          <p className="m-0 max-w-[42ch] text-lead text-black/85">
             Avis clients de la métropole lilloise
           </p>
           <div className="flex flex-wrap gap-2.5">

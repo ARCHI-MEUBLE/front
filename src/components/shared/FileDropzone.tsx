@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
-import { HOME_MONO } from "@/components/home/homeLayout";
+import { HOME_MONO, HOME_MONO_SM } from "@/components/home/homeLayout";
 
 const FILE_TYPES = ["JPG", "PNG", "HEIC", "MP4", "MOV"];
 
@@ -108,11 +108,11 @@ export function FileDropzone({
             Déposez vos photos ou vidéos, ou <span className="underline underline-offset-4">parcourez</span>
           </span>
           {compact ? (
-            <span className={`text-[11px] ${HOME_MONO}`}>{FILE_TYPES.join(" · ")}</span>
+            <span className={HOME_MONO_SM}>{FILE_TYPES.join(" · ")}</span>
           ) : (
             <span className="flex flex-wrap gap-1.5">
               {FILE_TYPES.map((type) => (
-                <span key={type} className={`rounded-full border border-black/30 px-2.5 py-0.5 text-xs ${HOME_MONO}`}>
+                <span key={type} className={`rounded-full border border-black/30 px-2.5 py-0.5 ${HOME_MONO}`}>
                   {type}
                 </span>
               ))}

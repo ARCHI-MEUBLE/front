@@ -5,11 +5,7 @@ export function FinalCtaSection() {
   return (
     <section aria-labelledby="cta-title" className={HOME_SECTION}>
       <div className="flex flex-col gap-10 rounded-[20px] border border-black bg-am-wine p-[clamp(32px,6vw,80px)]">
-        <h2
-          id="cta-title"
-          className="m-0 max-w-[13ch] font-sans font-medium leading-[0.95] tracking-[-0.055em] text-white"
-          style={{ fontSize: "clamp(44px,8vw,120px)" }}
-        >
+        <h2 id="cta-title" className="m-0 max-w-[13ch] text-display-xl text-white">
           Prêt à créer votre meuble unique ?
         </h2>
         <div className="flex flex-wrap items-center justify-between gap-3">

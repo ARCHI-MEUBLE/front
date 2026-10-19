@@ -153,7 +153,7 @@ export default function DimensionsPanel({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between border-b border-black/10 pb-2">
-        <h3 className="font-serif text-xs text-black">Dimensions extérieures</h3>
+        <h3 className="text-xs text-black">Dimensions extérieures</h3>
         <span className="font-mono text-[10px] text-black/65">{width} × {depth} × {height} mm</span>
       </div>
 

@@ -10,10 +10,10 @@ export default function StepIntro({ step, total }: StepIntroProps) {
 
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-black/65">
+      <p className="eyebrow text-black/65">
         Étape {pad(step.id)} / {pad(total)}
       </p>
-      <h3 className="mt-1 font-serif text-lg text-black">{step.title}</h3>
+      <h3 className="mt-1 text-lg text-black">{step.title}</h3>
       <p className="mt-1 text-xs leading-relaxed text-black/65">{step.hint}</p>
     </div>
   );

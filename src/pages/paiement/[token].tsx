@@ -253,7 +253,7 @@ export default function PaymentLinkPage() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold mb-2">ArchiMeuble</h1>
+            <h1 className="text-3xl sm:text-4xl font-semibold mb-2">ArchiMeuble</h1>
             <p className="text-muted-foreground">Finaliser votre commande</p>
           </div>
 
@@ -338,7 +338,7 @@ export default function PaymentLinkPage() {
                             ? 'Solde restant' 
                             : 'Total à régler'}
                       </span>
-                      <span className="text-2xl font-bold text-primary">
+                      <span className="text-2xl font-semibold text-primary">
                         {formatCurrency(orderData.order.amount || orderData.order.total_amount)}
                       </span>
                     </div>

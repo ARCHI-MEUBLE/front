@@ -8,11 +8,7 @@ export function QuoteRequestCTA() {
     <section aria-labelledby="inspi-title" className={HOME_SECTION}>
       <div className="grid grid-cols-1 items-end gap-10 rounded-[20px] bg-am-wine p-[clamp(28px,5vw,64px)] text-white lg:grid-cols-2">
         <div>
-          <h2
-            id="inspi-title"
-            className="m-0 mb-5 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white"
-            style={{ fontSize: "clamp(36px,5vw,72px)" }}
-          >
+          <h2 id="inspi-title" className="m-0 mb-5 text-title text-white">
             Un meuble vous plaît ?
           </h2>
           <p className="m-0 max-w-[46ch] text-[18px] text-white/80">

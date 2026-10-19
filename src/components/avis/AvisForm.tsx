@@ -55,15 +55,11 @@ export function AvisForm({
         style={{ paddingTop: "clamp(32px,4vw,56px)" }}
       >
         <div className="flex flex-col gap-5">
-          <span className={`text-xs ${HOME_MONO}`}>Votre avis compte</span>
-          <h2
-            id="leave-title"
-            className="m-0 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
-            style={{ fontSize: "clamp(36px,4.6vw,68px)" }}
-          >
+          <span className={HOME_MONO}>Votre avis compte</span>
+          <h2 id="leave-title" className="m-0 text-title text-black">
             Racontez-nous <span className="am-highlight">votre meuble.</span>
           </h2>
-          <p className="m-0 max-w-[40ch] text-black/85" style={{ fontSize: "clamp(17px,1.4vw,19px)" }}>
+          <p className="m-0 max-w-[40ch] text-lead text-black/85">
             Vous avez fait appel à ArchiMeuble ? Partagez votre expérience : elle aide d&apos;autres familles à se
             lancer, et Gauthier lit chaque avis.
           </p>
@@ -103,7 +99,7 @@ export function AvisForm({
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-[26px]">
               <fieldset className="m-0 flex flex-col gap-3.5 border-0 p-0">
-                <legend className={`mb-3.5 p-0 text-xs ${HOME_MONO}`}>Votre note</legend>
+                <legend className={`mb-3.5 p-0 ${HOME_MONO}`}>Votre note</legend>
                 <div className="flex flex-wrap items-center gap-4">
                   <div role="radiogroup" aria-label="Note sur 5" className="flex gap-1.5">
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -130,7 +126,7 @@ export function AvisForm({
               </fieldset>
 
               <fieldset className="m-0 border-0 p-0">
-                <legend className={`mb-3 p-0 text-xs ${HOME_MONO}`}>Votre meuble</legend>
+                <legend className={`mb-3 p-0 ${HOME_MONO}`}>Votre meuble</legend>
                 <div className="flex flex-wrap gap-2">
                   {FURNITURE_TYPES.map((type) => (
                     <button
@@ -149,7 +145,7 @@ export function AvisForm({
               </fieldset>
 
               <label className="flex flex-col gap-2">
-                <span className={`text-xs ${HOME_MONO}`}>Votre avis</span>
+                <span className={HOME_MONO}>Votre avis</span>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value.slice(0, 600))}
@@ -158,12 +154,12 @@ export function AvisForm({
                   placeholder="Ce qui vous a plu, la pose, le suivi…"
                   className={`${INPUT_CLASS} resize-y`}
                 />
-                <span className={`self-end text-xs ${HOME_MONO}`}>{text.length} / 600</span>
+                <span className={`self-end ${HOME_MONO}`}>{text.length} / 600</span>
               </label>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="flex flex-col gap-2">
-                  <span className={`text-xs ${HOME_MONO}`}>Prénom et initiale</span>
+                  <span className={HOME_MONO}>Prénom et initiale</span>
                   <input
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -173,7 +169,7 @@ export function AvisForm({
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className={`text-xs ${HOME_MONO}`}>Ville</span>
+                  <span className={HOME_MONO}>Ville</span>
                   <input
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
@@ -185,7 +181,7 @@ export function AvisForm({
               </div>
 
               <label className="flex flex-col gap-2">
-                <span className={`text-xs ${HOME_MONO}`}>Photo de votre meuble (facultatif)</span>
+                <span className={HOME_MONO}>Photo de votre meuble (facultatif)</span>
                 <input
                   type="file"
                   accept="image/*"

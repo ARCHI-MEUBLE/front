@@ -17,7 +17,7 @@ export default function MentionsLegales() {
         {/* Header */}
         <div className="border-b border-black/10 bg-white">
           <div className="mx-auto max-w-4xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl lg:text-5xl">
+            <h1 className="text-heading text-black">
               Mentions Légales
             </h1>
             <p className="mt-4 text-black/65">
@@ -31,7 +31,7 @@ export default function MentionsLegales() {
           <div className="space-y-12">
             {/* Éditeur du site */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Éditeur du site
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -62,7 +62,7 @@ export default function MentionsLegales() {
 
             {/* Directeur de la publication */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Directeur de la publication
               </h2>
               <p className="mt-6 text-black/65">
@@ -72,7 +72,7 @@ export default function MentionsLegales() {
 
             {/* Hébergement */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Hébergement
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -87,7 +87,7 @@ export default function MentionsLegales() {
 
             {/* Propriété intellectuelle */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Propriété intellectuelle
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -106,7 +106,7 @@ export default function MentionsLegales() {
 
             {/* Protection des données */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Protection des données personnelles
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -133,7 +133,7 @@ export default function MentionsLegales() {
 
             {/* Cookies */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Cookies
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -147,7 +147,7 @@ export default function MentionsLegales() {
 
             {/* Limitation de responsabilité */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Limitation de responsabilité
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -166,7 +166,7 @@ export default function MentionsLegales() {
 
             {/* Droit applicable */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Droit applicable
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -179,7 +179,7 @@ export default function MentionsLegales() {
 
             {/* Contact */}
             <section className="border-t border-black/10 pt-12">
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Nous contacter
               </h2>
               <p className="mt-6 text-black/65">

@@ -32,7 +32,7 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
     <div className="space-y-4">
       <div className="space-y-3">
         <div className="border-b border-black/10 pb-2">
-          <h3 className="font-serif text-base text-black">Configuration des Portes</h3>
+          <h3 className="text-base text-black">Configuration des Portes</h3>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {DOOR_TYPE_OPTIONS.map((option) => {
@@ -53,7 +53,7 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
                 <div className={`mb-2 h-6 w-6 ${isActive ? 'text-white' : 'text-black/65'}`}>
                   <Icon className="h-full w-full" />
                 </div>
-                <span className="text-[11px] font-medium text-center uppercase tracking-tight">{option.label}</span>
+                <span className="eyebrow text-center font-medium">{option.label}</span>
               </button>
             );
           })}
@@ -63,7 +63,7 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
       {type === 'single' && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-3">
           <div className="border-b border-black/10 pb-1">
-            <h4 className="text-[11px] font-semibold text-black/65 uppercase tracking-wider">Sens d&apos;ouverture</h4>
+            <h4 className="eyebrow text-black/65">Sens d&apos;ouverture</h4>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {DOOR_SIDE_OPTIONS.map((option) => {
@@ -82,7 +82,7 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
                   style={{ borderRadius: '2px' }}
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-black/65'}`} />
-                  <span className="text-[11px] font-medium uppercase tracking-tight">{option.label}</span>
+                  <span className="eyebrow font-medium">{option.label}</span>
                 </button>
               );
             })}
@@ -103,7 +103,7 @@ export default function DoorSelector({ type, side, doorsOpen, onTypeChange, onSi
             style={{ borderRadius: '2px' }}
           >
             <DoorOpen className={`h-4 w-4 ${doorsOpen ? 'text-white' : 'text-black/65'}`} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
+            <span className="eyebrow">
               {doorsOpen ? 'Fermer les façades' : 'Ouvrir les façades'}
             </span>
           </button>

@@ -63,7 +63,7 @@ export function DashboardSamples() {
     <div className="px-4 lg:px-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des échantillons</h3>
+          <h3 className="text-xl font-semibold tracking-tight">Gestion des échantillons</h3>
           <p className="text-sm text-muted-foreground">
             Gérez votre catalogue de matériaux et de finitions visibles dans le configurateur.
           </p>
@@ -144,7 +144,7 @@ function MaterialSection({ title, list, onChanged }: { title: string; list: Samp
     <div className="space-y-4">
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-3">
-          <h3 className="text-xl font-serif font-semibold tracking-tight uppercase text-muted-foreground">{title}</h3>
+          <h3 className="text-xl font-semibold tracking-tight uppercase text-muted-foreground">{title}</h3>
           <Button 
             variant="ghost" 
             size="icon" 

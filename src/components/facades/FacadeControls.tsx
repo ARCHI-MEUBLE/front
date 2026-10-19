@@ -266,7 +266,7 @@ export default function FacadeControls({
         )}
         <div className="flex justify-between items-center pt-4 border-t border-black/15">
           <span className="text-lg font-semibold text-black">Total</span>
-          <span className="text-2xl font-bold text-black">
+          <span className="text-2xl font-semibold text-black">
             {formatPrice(calculateTotalPrice() * quantity)} TTC
           </span>
         </div>

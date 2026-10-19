@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { HOME_MONO, HOME_PILL_DARK, HOME_PILL_OUTLINE, HOME_SECTION } from "@/components/home/homeLayout";
+import { HOME_MONO, HOME_MONO_SM, HOME_PILL_DARK, HOME_PILL_OUTLINE, HOME_SECTION } from "@/components/home/homeLayout";
 import { SWATCHES, swatchImage } from "@/components/home/homeData";
 
 export function ColorsAndFinishesSection() {
@@ -21,17 +21,13 @@ export function ColorsAndFinishesSection() {
             className="object-cover"
           />
           <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-black bg-am-paper px-3.5 py-1.5 text-[14px] text-black">
-            <span className={`text-[11px] ${HOME_MONO}`}>Teinte</span>
+            <span className={HOME_MONO_SM}>Teinte</span>
             {active.name}
           </div>
         </div>
 
         <div>
-          <h2
-            id="teintes-title"
-            className="m-0 mb-5 max-w-[12ch] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
-            style={{ fontSize: "clamp(36px,5vw,72px)" }}
-          >
+          <h2 id="teintes-title" className="m-0 mb-5 max-w-[12ch] text-title text-black">
             Toutes les teintes sont possibles.
           </h2>
           <p className="m-0 mb-7 max-w-[46ch] text-[18px] text-black/85">
@@ -59,7 +55,7 @@ export function ColorsAndFinishesSection() {
               );
             })}
           </div>
-          <p aria-live="polite" className={`m-0 mb-8 text-xs ${HOME_MONO}`}>
+          <p aria-live="polite" className={`m-0 mb-8 ${HOME_MONO}`}>
             Teinte sélectionnée : <span className="text-black">{active.name}</span>
           </p>
           <div className="flex flex-wrap gap-2.5">

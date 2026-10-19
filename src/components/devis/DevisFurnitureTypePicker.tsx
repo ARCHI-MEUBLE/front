@@ -11,7 +11,7 @@ export function DevisFurnitureTypePicker({
 }) {
   return (
     <fieldset className="m-0 border-0 p-0">
-      <legend className={`mb-1.5 p-0 text-xs ${HOME_MONO}`}>Type de meuble</legend>
+      <legend className={`mb-1.5 p-0 ${HOME_MONO}`}>Type de meuble</legend>
       <div className="flex flex-wrap gap-2">
         {FURNITURE_TYPES.map((type) => {
           const isActive = type === value;

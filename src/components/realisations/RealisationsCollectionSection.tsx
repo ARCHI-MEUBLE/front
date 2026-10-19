@@ -30,11 +30,7 @@ export function RealisationsCollectionSection({
       style={{ paddingTop: "clamp(80px,10vw,144px)" }}
     >
       <div className="sticky top-[68px] z-10 mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 bg-am-paper/95 py-4 backdrop-blur-md">
-        <h2
-          id="real-projets"
-          className="m-0 font-sans font-medium tracking-[-0.04em] text-black"
-          style={{ fontSize: "clamp(24px,2.4vw,32px)" }}
-        >
+        <h2 id="real-projets" className="m-0 text-subheading text-black">
           Explorez nos projets
         </h2>
         {categories.length > 1 && (

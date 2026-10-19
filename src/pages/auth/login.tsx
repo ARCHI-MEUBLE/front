@@ -94,7 +94,7 @@ export default function Login() {
         <div className="flex h-full w-full flex-1 items-center justify-center bg-am-paper p-4 lg:p-8">
           <Card className="w-full max-w-md border-none bg-transparent shadow-none lg:shadow-none">
             <CardHeader className="space-y-1 text-center">
-              <h1 className="text-3xl font-bold tracking-tight text-black">
+              <h1 className="text-3xl font-semibold tracking-tight text-black">
                 Connexion
               </h1>
               <CardDescription className="text-black/70">

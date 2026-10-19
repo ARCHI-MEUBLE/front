@@ -17,14 +17,10 @@ export function SamplesHero() {
     >
       <div className="grid grid-cols-1 items-center gap-[clamp(48px,6vw,96px)] lg:grid-cols-2">
         <div className="flex flex-col items-start gap-7">
-          <h1
-            id="ech-title"
-            className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
-            style={{ fontSize: "clamp(44px,6.2vw,96px)" }}
-          >
+          <h1 id="ech-title" className="m-0 text-display text-black">
             Touchez la qualité <span className="am-highlight">avant de commander</span>
           </h1>
-          <p className="m-0 max-w-[44ch] text-black/85" style={{ fontSize: "clamp(17px,1.5vw,21px)" }}>
+          <p className="m-0 max-w-[44ch] text-lead text-black/85">
             Commandez nos échantillons de matériaux. Découvrez les textures, les couleurs et la qualité de nos
             finitions avant de finaliser votre projet.
           </p>

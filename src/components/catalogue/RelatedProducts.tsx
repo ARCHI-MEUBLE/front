@@ -29,7 +29,7 @@ export function RelatedProducts({ items }: { items: RelatedProduct[] }) {
               />
             )}
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
+          <span className="eyebrow text-black/70">
             {item.category}
           </span>
           <span className="flex items-baseline justify-between gap-3 text-[17px] font-medium tracking-[-0.02em] text-black">

@@ -155,13 +155,13 @@ export function ProfileModal({
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="absolute right-4 top-4 rounded-full p-2 text-muted transition hover:bg-am-mist/30"
+          className="absolute right-4 top-4 rounded-full p-2 text-black/55 transition hover:bg-am-mist/30"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="mb-6">
-          <h2 className="font-serif text-3xl text-ink">Mon compte</h2>
+          <h2 className="text-3xl text-ink">Mon compte</h2>
           <p className="mt-2 text-sm leading-relaxed text-ink/60">
             Gérez vos informations et vos meubles enregistrés.
           </p>
@@ -169,7 +169,7 @@ export function ProfileModal({
 
         <div className="space-y-6">
           <div className="rounded-[28px] border border-border bg-surface/70 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted">Email</p>
+            <p className="eyebrow-lg text-black/65">Email</p>
             <p className="mt-2 text-base font-semibold text-ink">{session.email}</p>
           </div>
 
@@ -177,7 +177,7 @@ export function ProfileModal({
             <button
               type="button"
               onClick={() => setShowPasswordForm((value) => !value)}
-              className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-am-navy/90"
+              className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-am-navy/90"
             >
               {showPasswordForm ? "Annuler" : "Changer de mot de passe"}
             </button>
@@ -185,7 +185,7 @@ export function ProfileModal({
             {showPasswordForm && (
               <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted" htmlFor="currentPassword">
+                  <label className="block eyebrow-lg text-black/65" htmlFor="currentPassword">
                     Mot de passe actuel
                   </label>
                   <input
@@ -199,7 +199,7 @@ export function ProfileModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted" htmlFor="newPassword">
+                  <label className="block eyebrow-lg text-black/65" htmlFor="newPassword">
                     Nouveau mot de passe
                   </label>
                   <input
@@ -216,7 +216,7 @@ export function ProfileModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:bg-ink/60"
+                  className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:bg-ink/60"
                 >
                   {loading ? "Enregistrement..." : "Valider"}
                 </button>
@@ -230,7 +230,7 @@ export function ProfileModal({
             <button
               type="button"
               onClick={() => setShowDeleteForm((value) => !value)}
-              className="w-full rounded-full border-2 border-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-red-600 transition hover:bg-red-50"
+              className="w-full rounded-full border-2 border-red-600 px-6 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50"
             >
               {showDeleteForm ? "Annuler" : "Supprimer mon compte"}
             </button>
@@ -243,7 +243,7 @@ export function ProfileModal({
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted" htmlFor="deletePassword">
+                  <label className="block eyebrow-lg text-black/65" htmlFor="deletePassword">
                     Confirmer avec votre mot de passe
                   </label>
                   <input
@@ -259,7 +259,7 @@ export function ProfileModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-full bg-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-600/60"
+                  className="w-full rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-600/60"
                 >
                   {loading ? "Suppression..." : "Confirmer la suppression"}
                 </button>
@@ -269,7 +269,7 @@ export function ProfileModal({
           </div>
 
           <div>
-            <h3 className="font-serif text-xl text-ink">Mes meubles</h3>
+            <h3 className="text-xl text-ink">Mes meubles</h3>
             {!meubles || meubles.length === 0 ? (
               <p className="mt-2 text-sm text-ink/60">
                 Vous n&apos;avez pas encore enregistré de meuble.
@@ -301,7 +301,7 @@ export function ProfileModal({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-8 w-full rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-stone transition hover:border-ink hover:text-ink"
+          className="mt-8 w-full rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-medium text-stone transition hover:border-ink hover:text-ink"
         >
           Se déconnecter
         </button>

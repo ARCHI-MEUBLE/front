@@ -187,7 +187,7 @@ export default function PaymentConfirmation() {
               <CardContent>
                 <ol className="space-y-4">
                   <li className="flex items-start gap-3">
-                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
                       1
                     </div>
                     <div className="flex-1">
@@ -198,7 +198,7 @@ export default function PaymentConfirmation() {
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
                       2
                     </div>
                     <div className="flex-1">
@@ -209,7 +209,7 @@ export default function PaymentConfirmation() {
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
                       3
                     </div>
                     <div className="flex-1">

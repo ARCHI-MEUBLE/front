@@ -68,7 +68,7 @@ export function CatalogueToolbar({
           placeholder="Rechercher..."
           className="h-10 min-w-0 flex-1 rounded-full border border-black/30 bg-white px-4 text-[14px] text-black outline-none placeholder:text-black/70"
         />
-        <label className={`flex items-center gap-2 text-[12px] ${HOME_MONO}`}>
+        <label className={`flex items-center gap-2 ${HOME_MONO}`}>
           Trier
           <select
             value={sortBy}

@@ -16,14 +16,10 @@ export function ContactUniqueSection() {
         style={{ padding: "clamp(28px,5vw,64px) clamp(24px,5vw,64px) 0" }}
       >
         <div className="flex flex-col items-start justify-center gap-6" style={{ paddingBottom: "clamp(28px,5vw,64px)" }}>
-          <h2
-            id="contact-unique-title"
-            className="m-0 font-sans font-medium leading-[1.05] tracking-[-0.045em] text-black"
-            style={{ fontSize: "clamp(28px,3vw,44px)" }}
-          >
+          <h2 id="contact-unique-title" className="m-0 text-heading text-black">
             Un seul interlocuteur, basé à Lille
           </h2>
-          <p className="m-0 max-w-[42ch] text-black/85" style={{ fontSize: "clamp(17px,1.4vw,20px)" }}>
+          <p className="m-0 max-w-[42ch] text-lead text-black/85">
             Gauthier suit votre projet de la maquette 3D jusqu&apos;à la pose. Vous gardez le même contact du premier
             appel à la livraison.
           </p>
@@ -44,7 +40,7 @@ export function ContactUniqueSection() {
                 </div>
                 <span className="text-[15px] font-semibold">Gauthier Hue</span>
               </span>
-              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border-[1.5px] border-black font-mono text-[14px] font-semibold">
+              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border-[1.5px] border-black font-mono text-[14px] font-medium">
                 i
               </span>
             </div>

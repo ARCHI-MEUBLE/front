@@ -15,11 +15,7 @@ export function ContactFaqAccordion() {
 
   return (
     <section aria-labelledby="contact-faq-title" className={HOME_SECTION}>
-      <h2
-        id="contact-faq-title"
-        className="m-0 mb-10 text-center font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
-        style={{ fontSize: "clamp(32px,4.4vw,56px)" }}
-      >
+      <h2 id="contact-faq-title" className="m-0 mb-10 text-center text-heading text-black">
         Questions fréquentes
       </h2>
       <div className="mx-auto flex max-w-[680px] flex-col gap-3">
@@ -36,8 +32,7 @@ export function ContactFaqAccordion() {
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? -1 : index)}
                   aria-expanded={isOpen}
-                  className="flex min-h-11 w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-sans font-medium tracking-[-0.02em] text-black"
-                  style={{ fontSize: "clamp(17px,1.4vw,19px)" }}
+                  className="flex min-h-11 w-full items-center justify-between gap-5 px-[22px] py-5 text-left text-lg font-medium tracking-[-0.02em] text-black"
                 >
                   <span>{item.q}</span>
                   <span

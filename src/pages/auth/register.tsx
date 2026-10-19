@@ -137,7 +137,7 @@ export default function Register() {
         <div className="flex flex-1 items-center justify-center bg-am-paper p-4 lg:p-8 h-full w-full overflow-y-auto">
           <Card className="w-full max-w-2xl border-none shadow-none bg-transparent lg:shadow-none dark:bg-transparent py-10 lg:py-0">
             <CardHeader className="space-y-1 text-center">
-              <h1 className="text-3xl font-bold tracking-tight text-black">Créer un compte</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-black">Créer un compte</h1>
               <CardDescription className="text-black/70">
                 Rejoignez ArchiMeuble pour sauvegarder vos configurations
               </CardDescription>
@@ -222,7 +222,7 @@ export default function Register() {
                 </div>
 
                 <div className="border-t border-black/15 pt-6">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-black/70 mb-4">
+                  <h3 className="eyebrow-lg text-black/70 mb-4">
                     Coordonnées
                   </h3>
                   <div className="grid gap-4">

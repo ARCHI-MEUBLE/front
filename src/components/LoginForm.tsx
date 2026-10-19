@@ -42,7 +42,7 @@ export function LoginForm() {
 
   return (
     <div className="mx-auto w-full max-w-md rounded-sm border border-border bg-white/90 p-10 shadow-lg backdrop-blur">
-      <h1 className="font-serif text-3xl text-ink">
+      <h1 className="text-3xl text-ink">
         {mode === "login" ? "Connexion à ArchiMeuble" : "Créer un compte"}
       </h1>
       <p className="mt-4 text-sm leading-relaxed text-stone">
@@ -54,7 +54,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {mode === "register" && (
           <div>
-            <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted">
+            <label htmlFor="name" className="block eyebrow-lg text-black/65">
               Nom (optionnel)
             </label>
             <input
@@ -67,7 +67,7 @@ export function LoginForm() {
           </div>
         )}
         <div>
-          <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted">
+          <label htmlFor="email" className="block eyebrow-lg text-black/65">
             Email
           </label>
           <input
@@ -80,7 +80,7 @@ export function LoginForm() {
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-[0.3em] text-muted">
+          <label htmlFor="password" className="block eyebrow-lg text-black/65">
             Mot de passe
           </label>
           <input
@@ -99,7 +99,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:bg-ink/60"
+          className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:bg-ink/60"
         >
           {loading ? "Veuillez patienter..." : mode === "login" ? "Se connecter" : "Créer mon compte"}
         </button>

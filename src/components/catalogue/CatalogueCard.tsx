@@ -49,10 +49,10 @@ export function CatalogueCard({
       </Link>
       <div className="grid items-start gap-x-3 gap-y-1" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
+          <span className="eyebrow text-black/70">
             {item.category}
           </span>
-          <h3 className="m-0 font-sans text-[19px] font-medium tracking-[-0.03em] text-black">
+          <h3 className="m-0 text-card-title text-black">
             <Link href={`/catalogue/${item.id}`} className="underline decoration-transparent underline-offset-4 hover:decoration-current">
               {item.name}
             </Link>

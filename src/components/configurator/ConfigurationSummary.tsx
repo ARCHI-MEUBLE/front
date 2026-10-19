@@ -79,7 +79,7 @@ export function ConfigurationSummary({
       <div className="p-5 border-b border-black/10">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-serif text-xl text-black">Fiche technique</h2>
+            <h2 className="text-xl text-black">Fiche technique</h2>
             <p className="text-xs text-black/65 mt-0.5">{modelName || 'Configuration client'}</p>
           </div>
           {isAdmin && onEdit && (
@@ -164,7 +164,7 @@ export function ConfigurationSummary({
         </div>
 
         <div>
-          <h3 className="text-xs font-medium text-black/65 uppercase tracking-wide mb-2">Équipements ({analysis.leafZones.length} zones)</h3>
+          <h3 className="eyebrow-lg text-black/65 mb-2">Équipements ({analysis.leafZones.length} zones)</h3>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(equipmentCount).map(([key, count]) => (
               <span
@@ -179,11 +179,11 @@ export function ConfigurationSummary({
         </div>
 
         <div>
-          <h3 className="text-xs font-medium text-black/65 uppercase tracking-wide mb-2">Détail par zone</h3>
+          <h3 className="eyebrow-lg text-black/65 mb-2">Détail par zone</h3>
           <div className="border border-black/10 divide-y divide-black/10 text-sm">
             {analysis.leafZones.map((z: any) => (
               <div key={z.id} className="flex items-center gap-3 px-3 py-2 hover:bg-am-mist/30">
-                <span className="flex items-center justify-center h-5 w-5 bg-am-navy text-white text-[10px] font-bold">
+                <span className="flex items-center justify-center h-5 w-5 bg-am-navy text-white text-[10px] font-semibold">
                   {z.number}
                 </span>
                 <span className="flex-1 font-medium">
@@ -206,11 +206,11 @@ export function ConfigurationSummary({
           <span className="text-sm text-black/65">Estimation</span>
           <div className="text-right">
             {priceDisplaySettings?.mode === 1 && priceDisplaySettings?.range > 0 ? (
-              <span className="font-serif text-2xl font-medium">
+              <span className="text-2xl font-medium tracking-[-0.03em]">
                 {Math.max(0, price - priceDisplaySettings.range)} - {price + priceDisplaySettings.range} €
               </span>
             ) : (
-              <span className="font-serif text-2xl font-medium">{price} €</span>
+              <span className="text-2xl font-medium tracking-[-0.03em]">{price} €</span>
             )}
           </div>
         </div>

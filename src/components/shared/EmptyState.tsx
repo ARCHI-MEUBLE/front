@@ -32,7 +32,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl border border-dashed border-black/30 bg-am-mist/15 px-6 py-[clamp(48px,8vw,96px)] text-center">
-      <h3 className="m-0 font-medium tracking-[-0.03em] text-black" style={{ fontSize: "clamp(24px,2.6vw,34px)" }}>
+      <h3 className="m-0 text-subheading text-black">
         {title}
       </h3>
       <p className="m-0 max-w-[46ch] text-[17px] text-black/80">{text}</p>

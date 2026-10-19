@@ -50,7 +50,7 @@ export function UserNavigation() {
         </Link>
 
         {/* Navigation principale */}
-        <nav className="hidden items-center gap-10 text-sm font-medium uppercase tracking-[0.2em] text-stone md:flex">
+        <nav className="hidden items-center gap-10 text-sm font-medium text-stone md:flex">
           <Link
             href="/"
             className={`transition ${

@@ -134,11 +134,7 @@ export default function DemandeDevisPage() {
         <section aria-labelledby="devis-title" className={`${HOME_SECTION_NO_TOP} pb-10 pt-4 sm:pt-6`}>
           {success ? (
             <div className="rounded-3xl bg-am-mist p-[clamp(28px,6vw,72px)] text-center">
-              <h1
-                id="devis-title"
-                className="m-0 mb-3 font-medium leading-[1.02] tracking-[-0.04em] text-black"
-                style={{ fontSize: "clamp(36px,5vw,64px)" }}
-              >
+              <h1 id="devis-title" className="m-0 mb-3 text-title text-black">
                 Demande envoyée !
               </h1>
               <p className="m-0 text-[18px] text-black/85">
@@ -149,11 +145,7 @@ export default function DemandeDevisPage() {
             <div className="grid grid-cols-1 gap-6 rounded-3xl bg-am-mist p-[clamp(20px,3vw,36px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-[clamp(32px,4vw,56px)]">
               <div className="flex min-w-0 flex-col gap-5">
                 <div className="flex flex-col gap-3">
-                  <h1
-                    id="devis-title"
-                    className="m-0 font-medium leading-[1.02] tracking-[-0.04em] text-black"
-                    style={{ fontSize: "clamp(30px,3.2vw,46px)" }}
-                  >
+                  <h1 id="devis-title" className="m-0 text-heading text-black">
                     <span className="whitespace-nowrap">Parlez-nous</span> de votre projet.
                   </h1>
                   <p className="m-0 max-w-[42ch] text-[16px] leading-[1.4] text-black">
@@ -171,7 +163,7 @@ export default function DemandeDevisPage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Nom</span>
+                    <span className={HOME_MONO}>Nom</span>
                     <input
                       name="name"
                       type="text"
@@ -184,7 +176,7 @@ export default function DemandeDevisPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Email</span>
+                    <span className={HOME_MONO}>Email</span>
                     <input
                       name="email"
                       type="email"
@@ -197,7 +189,7 @@ export default function DemandeDevisPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Téléphone</span>
+                    <span className={HOME_MONO}>Téléphone</span>
                     <input
                       name="tel"
                       type="tel"
@@ -210,7 +202,7 @@ export default function DemandeDevisPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Ville</span>
+                    <span className={HOME_MONO}>Ville</span>
                     <input
                       name="city"
                       type="text"
@@ -224,7 +216,7 @@ export default function DemandeDevisPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <span id="devis-files-label" className={`text-xs ${HOME_MONO}`}>
+                  <span id="devis-files-label" className={HOME_MONO}>
                     Photo ou vidéo d&apos;inspiration
                   </span>
                   <FileDropzone
@@ -238,7 +230,7 @@ export default function DemandeDevisPage() {
                 </div>
 
                 <label className="flex flex-col gap-1.5">
-                  <span className={`text-xs ${HOME_MONO}`}>Votre projet</span>
+                  <span className={HOME_MONO}>Votre projet</span>
                   <textarea
                     name="message"
                     rows={2}

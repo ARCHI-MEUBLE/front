@@ -17,7 +17,7 @@ export default function Confidentialite() {
         {/* Header */}
         <div className="border-b border-black/10 bg-white">
           <div className="mx-auto max-w-4xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl lg:text-5xl">
+            <h1 className="text-heading text-black">
               Politique de Confidentialité
             </h1>
             <p className="mt-4 text-black/65">
@@ -31,7 +31,7 @@ export default function Confidentialite() {
           <div className="space-y-12">
             {/* Introduction */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Introduction
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -51,7 +51,7 @@ export default function Confidentialite() {
 
             {/* Données collectées */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Données collectées
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -68,7 +68,7 @@ export default function Confidentialite() {
 
             {/* Finalités */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Finalités du traitement
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -86,7 +86,7 @@ export default function Confidentialite() {
 
             {/* Base légale */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Base légale du traitement
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -102,7 +102,7 @@ export default function Confidentialite() {
 
             {/* Conservation */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Durée de conservation
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -118,7 +118,7 @@ export default function Confidentialite() {
 
             {/* Partage */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Partage des données
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -139,7 +139,7 @@ export default function Confidentialite() {
 
             {/* Droits */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Vos droits
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -165,7 +165,7 @@ export default function Confidentialite() {
 
             {/* Sécurité */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Sécurité des données
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -185,7 +185,7 @@ export default function Confidentialite() {
 
             {/* Cookies */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Cookies
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -205,7 +205,7 @@ export default function Confidentialite() {
 
             {/* Réclamation */}
             <section>
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Réclamation
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
@@ -227,7 +227,7 @@ export default function Confidentialite() {
 
             {/* Contact */}
             <section className="border-t border-black/10 pt-12">
-              <h2 className="font-serif text-2xl text-black">
+              <h2 className="text-2xl text-black">
                 Nous contacter
               </h2>
               <p className="mt-6 text-black/65">

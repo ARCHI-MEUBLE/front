@@ -30,11 +30,8 @@ export function ProductInfo({
   return (
     <div className="flex flex-col gap-7 lg:sticky lg:top-24">
       <div className="flex flex-col gap-3">
-        <span className={`text-xs ${HOME_MONO}`}>{item.category}</span>
-        <h1
-          className="m-0 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
-          style={{ fontSize: "clamp(36px,4.4vw,64px)" }}
-        >
+        <span className={HOME_MONO}>{item.category}</span>
+        <h1 className="m-0 text-title text-black">
           {item.name}
         </h1>
         <span className="text-[28px] font-medium tracking-[-0.03em] text-black">
@@ -48,7 +45,7 @@ export function ProductInfo({
 
       {variations.length > 0 && (
         <div className="flex flex-col gap-3">
-          <label className={`text-xs ${HOME_MONO}`}>{item.variation_label || "Couleur / Finition"}</label>
+          <label className={HOME_MONO}>{item.variation_label || "Couleur / Finition"}</label>
           <div className="flex flex-wrap gap-2">
             {variations.map((variation, index) => (
               <button
@@ -121,15 +118,15 @@ export function ProductInfo({
       )}
 
       <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] border-t border-black/15">
-        <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Matière</dt>
+        <dt className={`border-b border-black/15 py-3.5 pr-6 ${HOME_MONO}`}>Matière</dt>
         <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">
           {item.material || "Non spécifié"}
         </dd>
-        <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Dimensions</dt>
+        <dt className={`border-b border-black/15 py-3.5 pr-6 ${HOME_MONO}`}>Dimensions</dt>
         <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">
           {item.dimensions || "Standard"}
         </dd>
-        <dt className={`border-b border-black/15 py-3.5 pr-6 text-xs ${HOME_MONO}`}>Livraison</dt>
+        <dt className={`border-b border-black/15 py-3.5 pr-6 ${HOME_MONO}`}>Livraison</dt>
         <dd className="m-0 border-b border-black/15 py-3.5 text-[15px] text-black">3 à 5 jours ouvrés</dd>
       </dl>
     </div>

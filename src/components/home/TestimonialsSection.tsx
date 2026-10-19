@@ -30,17 +30,13 @@ export function TestimonialsSection() {
     <section aria-labelledby="avis-title" className={HOME_SECTION}>
       <div className="grid grid-cols-1 items-center gap-[clamp(40px,5vw,72px)] lg:grid-cols-2">
         <div className="flex flex-col items-start gap-5">
-          <h2
-            id="avis-title"
-            className="m-0 max-w-[11ch] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
-            style={{ fontSize: "clamp(36px,5vw,72px)" }}
-          >
+          <h2 id="avis-title" className="m-0 max-w-[11ch] text-title text-black">
             Ils nous font confiance.
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[32px] font-semibold leading-none tracking-[-0.04em] text-black">{formatRating(average)}</span>
             <RatingStars rating={average} size={32} />
-            <span className={`text-[13px] ${HOME_MONO}`}>Avis clients de la métropole lilloise</span>
+            <span className={HOME_MONO}>Avis clients de la métropole lilloise</span>
           </div>
           <Link href="/avis" className={`mt-2 ${HOME_PILL_DARK}`}>Voir tous les avis →</Link>
         </div>

@@ -341,7 +341,7 @@ export default function Cart() {
           <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 className="font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl lg:text-5xl">
+                <h1 className="text-heading text-black">
                   Mon Panier
                 </h1>
                 {!isEmpty && (
@@ -382,7 +382,7 @@ export default function Cart() {
               <div className="mx-auto flex h-20 w-20 items-center justify-center border border-black/10 bg-white">
                 <ShoppingBag className="h-8 w-8 text-black/65" />
               </div>
-              <h2 className="mt-8 font-serif text-2xl text-black">
+              <h2 className="mt-8 text-2xl text-black">
                 Votre panier est vide
               </h2>
               <p className="mt-3 text-black/65">
@@ -406,7 +406,7 @@ export default function Cart() {
                   <div className="mb-10">
                     <div className="flex items-center gap-3 border-b border-black/10 pb-4">
                       <ShoppingBag className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Articles du catalogue
                       </h2>
                       <span className="ml-auto text-sm text-black/65">
@@ -445,7 +445,7 @@ export default function Cart() {
                                 Finition: {item.variation_name}
                               </p>
                             )}
-                            <p className="mt-2 text-sm font-bold text-am-navy">
+                            <p className="mt-2 text-sm font-semibold text-am-navy">
                               {formatPrice(item.unit_price)}
                             </p>
                           </div>
@@ -487,7 +487,7 @@ export default function Cart() {
                   <div className="mb-10">
                     <div className="flex items-center gap-3 border-b border-black/10 pb-4">
                       <Package className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Échantillons
                       </h2>
                       <span className="ml-auto text-sm text-black/65">
@@ -562,7 +562,7 @@ export default function Cart() {
                   <div className="mb-10">
                     <div className="flex items-center gap-3 border-b border-black/10 pb-4">
                       <Package className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Façades sur mesure
                       </h2>
                       <span className="ml-auto text-sm text-black/65">
@@ -652,7 +652,7 @@ export default function Cart() {
                   <div>
                     <div className="flex items-center gap-3 border-b border-black/10 pb-4">
                       <ShoppingBag className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Vos configurations
                       </h2>
                       <span className="ml-auto text-sm text-black/65">
@@ -848,7 +848,7 @@ export default function Cart() {
                 <div className="sticky top-6 border border-black/10 bg-white">
                   {/* Header */}
                   <div className="border-b border-black/10 p-6">
-                    <h2 className="font-serif text-xl text-black">
+                    <h2 className="text-xl text-black">
                       Récapitulatif
                     </h2>
                   </div>
@@ -964,7 +964,7 @@ export default function Cart() {
           >
             {/* Header */}
             <div className="sticky top-0 flex items-center justify-between border-b border-black/10 bg-white p-6">
-              <h3 className="font-serif text-xl text-black">Détails de la façade</h3>
+              <h3 className="text-xl text-black">Détails de la façade</h3>
               <button
                 type="button"
                 onClick={() => setSelectedFacade(null)}

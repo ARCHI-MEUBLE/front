@@ -86,7 +86,7 @@ function SizeField({
               onChange={(e) => setInput(e.target.value)}
               onBlur={(e) => apply(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && apply(input)}
-              className="w-20 border border-[#E8E6E3] py-1.5 pr-7 text-center font-mono text-sm font-semibold outline-none focus:border-[#1A1917]"
+              className="w-20 border border-[#E8E6E3] py-1.5 pr-7 text-center font-mono text-sm font-medium outline-none focus:border-[#1A1917]"
               style={{ borderRadius: '2px' }}
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#706F6C]">mm</span>
@@ -96,7 +96,7 @@ function SizeField({
           </button>
         </div>
       ) : (
-        <span className="font-mono text-sm font-semibold text-[#1A1917]">{valueMm} mm</span>
+        <span className="font-mono text-sm font-medium text-[#1A1917]">{valueMm} mm</span>
       )}
     </div>
   );
@@ -133,7 +133,7 @@ function Accordion({
           {index}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-serif text-sm text-[#1A1917]">{title}</span>
+          <span className="block text-sm font-medium text-[#1A1917]">{title}</span>
           <span className="block truncate text-[11px] text-[#706F6C]">{summary}</span>
         </span>
         <ChevronDown className={`h-4 w-4 flex-shrink-0 text-[#706F6C] transition-transform ${open ? 'rotate-180' : ''}`} />

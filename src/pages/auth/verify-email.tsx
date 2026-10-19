@@ -154,9 +154,9 @@ export default function VerifyEmail() {
         <div className="flex w-full items-center justify-between p-6 lg:hidden">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-black p-1">
-              <span className="text-xl font-bold text-white">A</span>
+              <span className="text-xl font-semibold text-white">A</span>
             </div>
-            <span className="font-serif text-xl font-medium text-black">ArchiMeuble</span>
+            <span className="text-xl font-semibold tracking-[-0.05em] text-black">ArchiMeuble</span>
           </Link>
         </div>
 
@@ -174,7 +174,7 @@ export default function VerifyEmail() {
           <div className="relative z-20 flex items-center text-lg font-medium">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-white p-1">
-                <span className="text-xl font-bold text-black">A</span>
+                <span className="text-xl font-semibold text-black">A</span>
               </div>
               ArchiMeuble
             </Link>
@@ -196,7 +196,7 @@ export default function VerifyEmail() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-am-navy">
                 <IconMail className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-3xl font-bold tracking-tight text-black dark:text-white">
+              <CardTitle className="text-3xl font-semibold tracking-tight text-black dark:text-white">
                 Vérifiez votre email
               </CardTitle>
               <CardDescription className="text-black/60 dark:text-zinc-400">
@@ -236,7 +236,7 @@ export default function VerifyEmail() {
                       onKeyDown={(e) => handleKeyDown(index, e)}
                       onPaste={handlePaste}
                       disabled={isLoading}
-                      className="h-14 w-11 sm:h-16 sm:w-14 rounded-lg border-2 border-black/10 bg-white text-center text-2xl font-bold text-black transition-all focus:border-am-navy focus:outline-none focus:ring-2 focus:ring-am-navy/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="h-14 w-11 sm:h-16 sm:w-14 rounded-lg border-2 border-black/10 bg-white text-center text-2xl font-semibold text-black transition-all focus:border-am-navy focus:outline-none focus:ring-2 focus:ring-am-navy/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     />
                   ))}
                 </div>

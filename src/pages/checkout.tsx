@@ -422,7 +422,7 @@ export default function CheckoutStripe() {
         <UserNavigation />
         <div className="min-h-screen bg-am-paper flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-2xl font-serif text-ink mb-4">Chargement de votre panier...</h2>
+            <h2 className="text-2xl text-ink mb-4">Chargement de votre panier...</h2>
             <p className="text-stone">Si ce message persiste, votre panier est peut-être vide.</p>
             <Link href="/cart" className="mt-6 inline-block text-ink underline">Retour au panier</Link>
           </div>
@@ -458,7 +458,7 @@ export default function CheckoutStripe() {
         {/* Header */}
         <div className="border-b border-black/10 bg-am-paper">
           <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl lg:text-5xl">
+            <h1 className="text-heading text-black">
               Finaliser la commande
             </h1>
 
@@ -511,7 +511,7 @@ export default function CheckoutStripe() {
                   <div className="border border-black/10 bg-white">
                     <div className="flex items-center gap-3 border-b border-black/10 p-6">
                       <MapPin className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Adresse de livraison
                       </h2>
                     </div>
@@ -585,7 +585,7 @@ export default function CheckoutStripe() {
                   <div className="border border-black/10 bg-white">
                     <div className="flex items-center gap-3 border-b border-black/10 p-6">
                       <CreditCard className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Adresse de facturation
                       </h2>
                     </div>
@@ -660,7 +660,7 @@ export default function CheckoutStripe() {
                   <div className="border border-black/10 bg-white">
                     <div className="flex items-center gap-3 border-b border-black/10 p-6">
                       <Package className="h-5 w-5 text-am-navy" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-black">
+                      <h2 className="eyebrow-lg text-black">
                         Notes de livraison
                       </h2>
                       <span className="text-xs text-black/65">(optionnel)</span>
@@ -733,7 +733,7 @@ export default function CheckoutStripe() {
               <div className="sticky top-6 border border-black/10 bg-white">
                 {/* Header */}
                 <div className="border-b border-black/10 p-6">
-                  <h2 className="font-serif text-xl text-black">
+                  <h2 className="text-xl text-black">
                     Récapitulatif
                   </h2>
                 </div>
@@ -743,7 +743,7 @@ export default function CheckoutStripe() {
                   {/* Configurations */}
                   {cart && cart.items && cart.items.length > 0 && (
                     <div className="space-y-4">
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-black/65">
+                      <p className="eyebrow-lg text-black/65">
                         Meubles sur mesure
                       </p>
                       {cart && cart.items.map((item, index) => (
@@ -767,7 +767,7 @@ export default function CheckoutStripe() {
                   {/* Samples */}
                   {samplesCart && samplesCart.items && samplesCart.items.length > 0 && (
                     <div className={`space-y-4 ${cart && cart.items && cart.items.length > 0 ? 'mt-6 border-t border-black/10 pt-6' : ''}`}>
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-black/65">
+                      <p className="eyebrow-lg text-black/65">
                         Échantillons ({samplesCart.count})
                       </p>
                       {samplesCart.items.map((sample) => (
@@ -802,7 +802,7 @@ export default function CheckoutStripe() {
                   {/* Catalogue Items */}
                   {catalogueCart && catalogueCart.items && catalogueCart.items.length > 0 && (
                     <div className={`space-y-4 ${ (cart && cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) ? 'mt-6 border-t border-black/10 pt-6' : ''}`}>
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-black/65">
+                      <p className="eyebrow-lg text-black/65">
                         Catalogue ({catalogueCart.items.length})
                       </p>
                       {catalogueCart.items.map((item) => (
@@ -839,7 +839,7 @@ export default function CheckoutStripe() {
                   {/* Façades */}
                   {facadeCart && facadeCart.items && facadeCart.items.length > 0 && (
                     <div className={`space-y-4 ${ (cart && cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) || (catalogueCart && catalogueCart.items && catalogueCart.items.length > 0) ? 'mt-6 border-t border-black/10 pt-6' : ''}`}>
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-black/65">
+                      <p className="eyebrow-lg text-black/65">
                         Façades sur mesure ({facadeCart.count})
                       </p>
                       {facadeCart.items.map((item) => {
@@ -963,7 +963,7 @@ export default function CheckoutStripe() {
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-black/10 p-6">
-              <h3 className="font-serif text-xl text-black">Détails de la façade</h3>
+              <h3 className="text-xl text-black">Détails de la façade</h3>
               <button
                 type="button"
                 onClick={() => setSelectedFacade(null)}

@@ -14,7 +14,7 @@ export function DevisInterlocutorCard() {
         />
       </div>
       <div className="flex flex-col gap-1">
-        <span className="font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">Votre interlocuteur</span>
+        <span className="eyebrow text-black/70">Votre interlocuteur</span>
         <p className="m-0 text-[15px] font-semibold leading-[1.3] text-black">Gauthier Hue · fondateur et ingénieur bois</p>
         <p className="m-0 text-[15px] leading-[1.4] text-black">
           Je vous accompagne de A à Z : conseil, conception et suivi de fabrication.

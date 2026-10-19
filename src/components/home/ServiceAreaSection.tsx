@@ -6,11 +6,7 @@ export function ServiceAreaSection() {
     <section aria-labelledby="zone-title" className={HOME_SECTION}>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div>
-          <h2
-            id="zone-title"
-            className="m-0 mb-5 max-w-[12ch] font-sans font-medium leading-[0.98] tracking-[-0.05em] text-black"
-            style={{ fontSize: "clamp(36px,5vw,72px)" }}
-          >
+          <h2 id="zone-title" className="m-0 mb-5 max-w-[12ch] text-title text-black">
             Lille et la métropole lilloise.
           </h2>
           <p className="m-0 max-w-[44ch] text-[18px] text-black/85">

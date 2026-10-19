@@ -210,7 +210,7 @@ export default function MaterialSelector({
     <div className="space-y-6">
       {/* Sélection du matériau */}
       <div className="space-y-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-black/65">Matière</span>
+        <span className="eyebrow-lg text-black/65">Matière</span>
         <div className="flex flex-wrap gap-2">
           {orderedMaterialLabels.map((label) => {
             const isActive = selectedMaterialLabel === label;
@@ -238,7 +238,7 @@ export default function MaterialSelector({
           {/* ── Ordinateur : grille des parties du meuble + palette de la partie choisie ── */}
           <div className="hidden space-y-4 lg:block">
             <div>
-              <span className="text-xs font-medium uppercase tracking-wide text-black/65">Couleurs</span>
+              <span className="eyebrow-lg text-black/65">Couleurs</span>
               <p className="mt-1 text-xs text-black/65">Choisissez une partie du meuble, puis sa couleur.</p>
             </div>
 
@@ -302,7 +302,7 @@ export default function MaterialSelector({
 
           {/* ── Téléphone : toutes les couleurs à la suite, une palette par partie du meuble ── */}
           <div className="space-y-5 lg:hidden">
-            <span className="text-xs font-medium uppercase tracking-wide text-black/65">Couleurs</span>
+            <span className="eyebrow-lg text-black/65">Couleurs</span>
             {components.map(({ key, label, desc }) => (
               <div key={key} className="space-y-2">
                 <div className="flex items-center gap-2">

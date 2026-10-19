@@ -245,7 +245,7 @@ function ZoneNode({
             >
                 {showNumbers && zoneNumber && (
                     // Pastille inversée sur une case choisie (fond navy), sinon elle s'y fond
-                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-sm ${isSelected ? 'bg-white text-am-navy' : 'bg-am-navy text-white'}`}>
+                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold shadow-sm ${isSelected ? 'bg-white text-am-navy' : 'bg-am-navy text-white'}`}>
                         {zoneNumber}
                     </div>
                 )}

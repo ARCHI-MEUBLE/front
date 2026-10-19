@@ -65,15 +65,15 @@ export default function ResetPassword() {
         <div className="absolute top-8 left-8 hidden lg:block">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-black p-1">
-              <span className="text-xl font-bold text-white">A</span>
+              <span className="text-xl font-semibold text-white">A</span>
             </div>
-            <span className="font-serif text-xl font-medium text-black">ArchiMeuble</span>
+            <span className="text-xl font-semibold tracking-[-0.05em] text-black">ArchiMeuble</span>
           </Link>
         </div>
 
         <Card className="w-full max-w-md border-none shadow-xl bg-white dark:bg-zinc-900">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold tracking-tight text-black dark:text-white">
+            <CardTitle className="text-2xl font-semibold tracking-tight text-black dark:text-white">
               Nouveau mot de passe
             </CardTitle>
             <CardDescription className="text-black/60 dark:text-zinc-400">

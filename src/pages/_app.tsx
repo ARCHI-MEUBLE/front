@@ -4,15 +4,11 @@ import Head from "next/head";
 import { SampleCartProvider } from "@/contexts/SampleCartContext";
 import { CustomerProvider } from "@/context/CustomerContext";
 
-// Polices hébergées par le site (aucune requête vers Google Fonts) : Playfair pour les titres, Geist pour le texte, Geist Mono pour les étiquettes
-import "@fontsource/playfair-display/400.css";
-import "@fontsource/playfair-display/500.css";
-import "@fontsource/playfair-display/600.css";
-import "@fontsource/playfair-display/700.css";
+// Polices hébergées par le site (aucune requête vers Google Fonts) : Geist pour les titres, le texte et l'interface, Geist Mono pour les étiquettes.
+// Graisses chargées = graisses utilisées (400 texte, 500 titres, 600 emphase ; mono 400 et 500) : voir styles/globals.css
 import "@fontsource/geist-sans/400.css";
 import "@fontsource/geist-sans/500.css";
 import "@fontsource/geist-sans/600.css";
-import "@fontsource/geist-sans/700.css";
 import "@fontsource/geist-mono/400.css";
 import "@fontsource/geist-mono/500.css";
 

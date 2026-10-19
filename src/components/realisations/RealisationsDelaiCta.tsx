@@ -18,11 +18,7 @@ export function RealisationsDelaiCta() {
           style={{ background: "linear-gradient(90deg,rgba(0,0,0,0.82) 0%,rgba(0,0,0,0.62) 55%,rgba(0,0,0,0.72) 100%)" }}
         />
         <div className="relative mx-auto flex w-full max-w-[1360px] flex-wrap items-center justify-between gap-x-16 gap-y-10 px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)] text-white">
-          <h2
-            id="delai-title"
-            className="m-0 max-w-[11ch] font-sans font-medium leading-none tracking-[-0.05em] text-white"
-            style={{ fontSize: "clamp(36px,4.6vw,68px)" }}
-          >
+          <h2 id="delai-title" className="m-0 max-w-[11ch] text-title text-white">
             Fabriqué à Lille, posé chez vous :
           </h2>
           <div className="ml-auto flex flex-col items-end gap-2.5 text-right">

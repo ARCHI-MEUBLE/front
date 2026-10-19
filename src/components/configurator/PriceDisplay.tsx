@@ -46,10 +46,10 @@ export default function PriceDisplay({
     <div className="flex items-center justify-between gap-4">
       {/* Prix */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-black/65">
+        <span className="eyebrow-lg text-black/65">
           Prix estimé
         </span>
-        <div className="font-serif text-3xl text-black">
+        <div className="text-3xl font-medium tracking-[-0.03em] text-black">
           {priceContent}
         </div>
       </div>

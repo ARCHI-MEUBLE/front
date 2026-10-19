@@ -6,11 +6,7 @@ export function AvisCta() {
     <section aria-labelledby="avis-cta" className={HOME_SECTION}>
       <div className="flex flex-wrap items-end justify-between gap-8 rounded-[20px] bg-am-wine p-[clamp(28px,5vw,64px)] text-white">
         <div>
-          <h2
-            id="avis-cta"
-            className="m-0 mb-4 font-sans font-medium leading-[0.98] tracking-[-0.05em] text-white"
-            style={{ fontSize: "clamp(32px,4.4vw,64px)" }}
-          >
+          <h2 id="avis-cta" className="m-0 mb-4 text-title text-white">
             Votre projet sur mesure
           </h2>
           <p className="m-0 max-w-[46ch] text-[17px] text-white/80">

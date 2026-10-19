@@ -11,20 +11,16 @@ export function FaqSection() {
   return (
     <section aria-labelledby="faq-title" className={HOME_SECTION}>
       <div className="mb-[clamp(40px,6vw,72px)] flex flex-col items-center gap-[18px] text-center">
-        <h2
-          id="faq-title"
-          className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
-          style={{ fontSize: "clamp(40px,6vw,88px)" }}
-        >
+        <h2 id="faq-title" className="m-0 text-display text-black">
           On vous répond.
         </h2>
-        <p className="m-0 max-w-[44ch] text-black/70" style={{ fontSize: "clamp(17px,1.4vw,20px)" }}>
+        <p className="m-0 max-w-[44ch] text-lead text-black/70">
           Tout ce qu&apos;il faut savoir sur le devis, la fabrication, la pose et les teintes.
         </p>
       </div>
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-2.5 rounded-2xl border border-black/15 bg-white p-6">
-          <h3 className="m-0 font-sans font-medium leading-[1.15] tracking-[-0.03em] text-black" style={{ fontSize: "clamp(20px,1.8vw,24px)" }}>
+          <h3 className="m-0 text-2xl text-black">
             Une question qui n&apos;est pas là ?
           </h3>
           <p className="m-0 text-[15px] text-black/70">Alexis, notre métreur commercial, vous répond directement.</p>
@@ -56,8 +52,7 @@ export function FaqSection() {
                   <button
                     onClick={() => setOpenIndex(isOpen ? -1 : index)}
                     aria-expanded={isOpen}
-                    className="flex min-h-[44px] w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-sans font-medium tracking-[-0.02em] text-black"
-                    style={{ fontSize: "clamp(17px,1.4vw,19px)" }}
+                    className="flex min-h-[44px] w-full items-center justify-between gap-5 px-[22px] py-5 text-left text-lg font-medium tracking-[-0.02em] text-black"
                   >
                     <span>{item.q}</span>
                     <span
