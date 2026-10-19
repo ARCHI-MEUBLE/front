@@ -91,7 +91,8 @@ export function Plant({ position, scale = 1, seed = "1" }: any) {
         return Math.abs(h);
     }, [seed]);
 
-    const potColor = ['#C67B5C', '#A0877C', '#8B7355', '#9C8B7A'][hash % 4];
+    // Pas hash % 4 : ShelfDecoration choisit déjà « plante » avec ce reste, toutes les plantes avaient le même pot
+    const potColor = ['#C67B5C', '#A0877C', '#8B7355', '#9C8B7A'][Math.floor(hash / 5) % 4];
 
     return (
         <group position={position} scale={scale}>
@@ -112,7 +113,10 @@ export function Plant({ position, scale = 1, seed = "1" }: any) {
                 const lean = 0.35 + (i % 3) * 0.15;
                 const leafLen = 0.04 + (i % 2) * 0.015;
                 return (
-                    <group key={i} position={[0, 0.085, 0]} rotation={[lean, angle, 0]}>
+                    // Ordre YXZ : la feuille s'incline d'abord, puis tourne autour du pot. Dans l'ordre par défaut
+                    // (XYZ), elle tournait sur elle-même avant de pencher : les six feuilles partaient du même
+                    // côté et la plante ressemblait à un éventail plat
+                    <group key={i} position={[0, 0.085, 0]} rotation={[lean, angle, 0, 'YXZ']}>
                         <mesh position={[0, leafLen, 0]} scale={[0.3, 1, 0.08]} castShadow>
                             <sphereGeometry args={[leafLen, 8, 6]} />
                             <meshStandardMaterial color={i % 2 === 0 ? '#4A6B3C' : '#567D4A'} roughness={0.8} side={THREE.DoubleSide} />
@@ -182,32 +186,117 @@ export function MagazineStack({ position, scale = 1, seed = "1" }: any) {
     );
 }
 
-export function Vase({ position, color, scale = 1, seed = "1" }: any) {
-    const shapeIndex = useMemo(() => {
-        let hash = 0;
+// Silhouettes de vases (rayon, hauteur en m), du pied à la lèvre
+const VASE_SHAPES: { outline: [number, number][]; branches: boolean }[] = [
+    // Boule à col court
+    { outline: [[0.03, 0], [0.045, 0.02], [0.06, 0.06], [0.058, 0.09], [0.045, 0.115], [0.025, 0.13], [0.022, 0.14], [0.027, 0.15]], branches: true },
+    // Bouteille élancée
+    { outline: [[0.035, 0], [0.042, 0.01], [0.045, 0.1], [0.04, 0.13], [0.018, 0.16], [0.014, 0.19], [0.018, 0.2]], branches: false },
+    // Cylindre légèrement évasé
+    { outline: [[0.038, 0], [0.041, 0.01], [0.039, 0.07], [0.044, 0.12], [0.054, 0.16]], branches: true },
+    // Amphore à lèvre ouverte
+    { outline: [[0.025, 0], [0.031, 0.015], [0.055, 0.07], [0.05, 0.11], [0.03, 0.145], [0.026, 0.16], [0.037, 0.18]], branches: false },
+];
+
+const VASE_WALL = 0.004;
+const VASE_FLOOR = 0.006;
+// Haut des branches (m) : un vase garni est plus haut qu'un vase seul
+const BRANCHES_TOP = 0.27;
+const BRANCHES_HEIGHT = 0.285;
+
+// Rayon extérieur du vase à une hauteur donnée (interpolé sur la silhouette)
+function radiusAt(outline: [number, number][], y: number): number {
+    for (let i = 1; i < outline.length; i++) {
+        const [r0, y0] = outline[i - 1];
+        const [r1, y1] = outline[i];
+        if (y <= y1) return r0 + ((r1 - r0) * (y - y0)) / Math.max(1e-6, y1 - y0);
+    }
+    return outline[outline.length - 1][0];
+}
+
+// Profil fermé : paroi extérieure en montant, lèvre, paroi intérieure en descendant. Le vase a une épaisseur et
+// une ouverture visible ; une surface seule, ouverte en haut, se voyait au travers et ressemblait à une colonne.
+function vaseProfile(outline: [number, number][]): THREE.Vector2[] {
+    const outer = [[0, 0] as [number, number], ...outline];
+    const inner = outline
+        .slice(1)
+        .reverse()
+        .map(([r, y]) => [Math.max(0.002, r - VASE_WALL), Math.max(VASE_FLOOR, y)] as [number, number]);
+    return [...outer, ...inner, [0, VASE_FLOOR]].map(([r, y]) => new THREE.Vector2(r, y));
+}
+
+// Quelques branches d'eucalyptus qui sortent du col : le vase se lit tout de suite comme une décoration
+function VaseBranches({ outline, seed }: { outline: [number, number][]; seed: number }) {
+    const neckHeight = outline[outline.length - 1][1];
+    const base = neckHeight - 0.03;
+    const count = 3 + (seed % 2);
+    const shadowY = neckHeight - 0.012;
+    return (
+        <>
+            {Array.from({ length: count }).map((_, i) => {
+                const yaw = (i / count) * Math.PI * 2 + (seed % 7) * 0.4;
+                const tilt = 0.18 + (i % 3) * 0.12;
+                const stem = (BRANCHES_TOP - base) * (0.8 + ((seed + i) % 3) * 0.1);
+                return (
+                    // Ordre YXZ : la branche penche, puis tourne autour du col (même raison que pour les plantes)
+                    <group key={i} position={[0, base, 0]} rotation={[tilt, yaw, 0, 'YXZ']}>
+                        <mesh position={[0, stem / 2, 0]}>
+                            <cylinderGeometry args={[0.0012, 0.0016, stem, 5]} />
+                            <meshStandardMaterial color="#6E6250" roughness={0.9} />
+                        </mesh>
+                        {Array.from({ length: 5 }).map((__, j) => {
+                            const t = 0.35 + j * 0.15;
+                            const side = j % 2 === 0 ? 1 : -1;
+                            return (
+                                <mesh
+                                    key={j}
+                                    position={[side * 0.009, stem * Math.min(t, 0.97), 0]}
+                                    rotation={[0, 0, side * 0.9]}
+                                    scale={[1, 0.62, 0.18]}
+                                >
+                                    <sphereGeometry args={[0.011, 8, 6]} />
+                                    <meshStandardMaterial color={j % 2 === 0 ? '#7F9177' : '#8FA087'} roughness={0.85} side={THREE.DoubleSide} />
+                                </mesh>
+                            );
+                        })}
+                    </group>
+                );
+            })}
+            {/* Ombre du col : l'intérieur du vase paraît creux, vu de dessus */}
+            <mesh position={[0, shadowY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[Math.max(0.004, radiusAt(outline, shadowY) - VASE_WALL - 0.001), 20]} />
+                <meshStandardMaterial color="#3A3329" roughness={1} />
+            </mesh>
+        </>
+    );
+}
+
+// fitHeight (m) : hauteur libre au-dessus du vase ; il rétrécit pour y tenir, branches comprises
+export function Vase({ position, color, scale = 1, seed = "1", fitHeight }: any) {
+    const hash = useMemo(() => {
+        let h = 0;
         for (let i = 0; i < seed.length; i++) {
-            hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-            hash |= 0;
+            h = ((h << 5) - h) + seed.charCodeAt(i);
+            h |= 0;
         }
-        return Math.abs(hash) % 4;
+        return Math.abs(h);
     }, [seed]);
 
-    const points = useMemo(() => {
-        const shapes = [
-            [[0, 0], [0.04, 0.005], [0.042, 0.18], [0.038, 0.2], [0.038, 0.22]],
-            [[0, 0], [0.05, 0.005], [0.06, 0.08], [0.055, 0.14], [0.038, 0.19], [0.035, 0.21]],
-            [[0, 0], [0.032, 0.005], [0.028, 0.08], [0.032, 0.14], [0.048, 0.19], [0.052, 0.21]],
-            [[0, 0], [0.05, 0.005], [0.052, 0.1], [0.05, 0.12], [0.018, 0.17], [0.018, 0.23]]
-        ];
-        return shapes[shapeIndex].map(p => new THREE.Vector2(p[0], p[1]));
-    }, [shapeIndex]);
+    // ShelfDecoration a déjà choisi « vase » avec hash % n : réutiliser hash % 4 donnait toujours la même forme
+    const shape = VASE_SHAPES[Math.floor(hash / 7) % VASE_SHAPES.length];
+    const points = useMemo(() => vaseProfile(shape.outline), [shape]);
+    const totalHeight = shape.branches ? BRANCHES_HEIGHT : shape.outline[shape.outline.length - 1][1];
+    const finalScale = fitHeight ? Math.min(scale, fitHeight / totalHeight) : scale;
+    // Les couleurs claires sont émaillées, les autres mates (terre cuite, céramique brute)
+    const glazed = new THREE.Color(color).getHSL({ h: 0, s: 0, l: 0 }).l > 0.7;
 
     return (
-        <group position={position} scale={scale}>
+        <group position={position} scale={finalScale}>
             <mesh castShadow receiveShadow>
-                <latheGeometry args={[points, 32]} />
-                <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
+                <latheGeometry args={[points, 40]} />
+                <meshStandardMaterial color={color} roughness={glazed ? 0.3 : 0.75} metalness={0} />
             </mesh>
+            {shape.branches && <VaseBranches outline={shape.outline} seed={hash} />}
         </group>
     );
 }
@@ -294,12 +383,14 @@ export function ShelfDecoration({ width, height, depth, seed }: { width: number,
 
     if (!decoType) return null;
 
-    const vaseColors = ['#C4B5A3', '#A89F91', '#B8AFA4', '#9C9388', '#D4CBC0', '#8B8178'];
+    // Céramiques qui se détachent du bois : blanc émaillé, terre cuite, sauge, bleu nuit et bleu brume du site, anthracite
+    const vaseColors = ['#ECE7DD', '#C47A5A', '#8E9B80', '#3B3E58', '#B2B6CC', '#5B5651'];
     const hash = seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
 
     const margin = 0.03;
     const availableHeight = height - margin;
-    const vaseScale = Math.min(1.0, availableHeight / 0.24, width * 2.5);
+    // La hauteur est gérée par chaque vase (fitHeight) : un vase garni de branches est plus haut qu'un vase seul
+    const vaseScale = Math.min(1.0, width * 2.5);
     const plantScale = Math.min(1.0, availableHeight / 0.18);
     const booksScale = Math.min(1.0, availableHeight / 0.22);
 
@@ -311,7 +402,7 @@ export function ShelfDecoration({ width, height, depth, seed }: { width: number,
                 </group>
             )}
             {decoType === 'vase' && (
-                <Vase position={[0, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed} scale={vaseScale} />
+                <Vase position={[0, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed} scale={vaseScale} fitHeight={availableHeight} />
             )}
             {decoType === 'plant' && (
                 <Plant position={[0, 0, 0]} seed={seed} scale={plantScale} />
@@ -321,7 +412,7 @@ export function ShelfDecoration({ width, height, depth, seed }: { width: number,
                     <group scale={booksScale}>
                         <Books position={[-width / 3, 0, -depth / 8]} count={Math.max(2, Math.floor(width * 5))} seed={seed} />
                     </group>
-                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.8, vaseScale)} />
+                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.8, vaseScale)} fitHeight={availableHeight} />
                 </>
             )}
             {decoType === 'books_plant' && (
@@ -334,7 +425,7 @@ export function ShelfDecoration({ width, height, depth, seed }: { width: number,
             )}
             {decoType === 'vase_plant' && (
                 <>
-                    <Vase position={[-width / 6, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.85, vaseScale)} />
+                    <Vase position={[-width / 6, 0, 0]} color={vaseColors[hash % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.85, vaseScale)} fitHeight={availableHeight} />
                     <Plant position={[width / 5, 0, depth / 12]} seed={seed + "_p2"} scale={Math.min(0.7, plantScale)} />
                 </>
             )}
@@ -349,7 +440,7 @@ export function ShelfDecoration({ width, height, depth, seed }: { width: number,
             {decoType === 'plant_vase' && (
                 <>
                     <Plant position={[-width / 6, 0, 0]} seed={seed + "_p"} scale={Math.min(0.7, plantScale)} />
-                    <Vase position={[width / 5, 0, 0]} color={vaseColors[(hash + 2) % vaseColors.length]} seed={seed + "_v2"} scale={Math.min(0.7, vaseScale)} />
+                    <Vase position={[width / 5, 0, 0]} color={vaseColors[(hash + 2) % vaseColors.length]} seed={seed + "_v2"} scale={Math.min(0.7, vaseScale)} fitHeight={availableHeight} />
                 </>
             )}
             {decoType === 'magazines' && (
@@ -358,7 +449,7 @@ export function ShelfDecoration({ width, height, depth, seed }: { width: number,
             {decoType === 'magazines_vase' && (
                 <>
                     <MagazineStack position={[-width / 4, 0, 0]} seed={seed + "_m"} scale={Math.min(0.9, availableHeight / 0.04)} />
-                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[(hash + 1) % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.75, vaseScale)} />
+                    <Vase position={[width / 4, 0, depth / 12]} color={vaseColors[(hash + 1) % vaseColors.length]} seed={seed + "_v"} scale={Math.min(0.75, vaseScale)} fitHeight={availableHeight} />
                 </>
             )}
             {decoType === 'magazines_plant' && (

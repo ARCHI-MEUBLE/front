@@ -290,7 +290,7 @@ export default function DivisionSteps({
       </Accordion>
 
       <p className="text-[11px] leading-relaxed text-[#706F6C]">
-        Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
+        Astuce : glissez les séparateurs du plan, ou les poignées des planches dans la vue 3D, pour ajuster la taille des compartiments.
       </p>
     </div>
   );

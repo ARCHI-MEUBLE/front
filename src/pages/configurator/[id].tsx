@@ -74,6 +74,7 @@ import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
+import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
@@ -361,6 +362,11 @@ export default function ConfiguratorPage() {
     if (result.removed > 0) setRootZone(result.root);
     setDeletedPanelIds(prev => new Set(Array.from(prev).filter(id => !dropped.includes(id))));
   }, [deletedPanelIds, rootZone, setRootZone]);
+
+  // Cloison ou étagère glissée dans la vue 3D (relâchement de la poignée) : une seule étape d'historique
+  const handleDividerResize = useCallback((zoneId: string, ratios: number[]) => {
+    setRootZone(prev => applySplitRatios(prev, zoneId, ratios));
+  }, [setRootZone]);
 
   const handlePanelSelect = useCallback((panelId: string | null) => {
     if (!panelId) {
@@ -2797,6 +2803,8 @@ export default function ConfiguratorPage() {
                     selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
                     onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
                     deletedPanelIds={deletedPanelIds}
+                    // Poignées de glissement des planches : à l'étape Division seulement, hors outil « Retirer planches »
+                    onResizeDivider={!isViewMode && activeStep === STEP.DIVISION && !showPanelTool ? handleDividerResize : undefined}
                   />
                 )}
                 <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>

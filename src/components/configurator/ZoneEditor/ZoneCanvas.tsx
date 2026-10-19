@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
 import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
-import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
+import { moveDivider } from '@/lib/configurator/zoneResize';
 import { layoutLeafText } from './leafLayout';
 
 // Jamais plus large que ça, même sur un très grand écran
@@ -115,63 +115,17 @@ function ZoneNode({
 
         const rect = containerRef.current.getBoundingClientRect();
         const isHorizontal = zone.type === 'horizontal';
-        const currentRatios = getChildRatios();
 
-        // Calcul de la position normalisée (0 à 1)
-        // Pour horizontal : de haut en bas (e.clientY - rect.top)
-        // Pour vertical : de gauche à droite (e.clientX - rect.left)
-        const rawPos = isHorizontal
-            ? (e.clientY - rect.top) / rect.height
-            : (e.clientX - rect.left) / rect.width;
+        // Position du pointeur dans le groupe (%), de haut en bas (étagères) ou de gauche à droite (colonnes)
+        const targetPercent = isHorizontal
+            ? ((e.clientY - rect.top) / rect.height) * 100
+            : ((e.clientX - rect.left) / rect.width) * 100;
 
-        // Les ratios sont stockés de haut en bas (horizontal) ou gauche à droite (vertical)
-        const orderedRatios = currentRatios;
-
-        // Calculer la position cumulative avant et après le diviseur
-        let cumBefore = 0;
-        for (let i = 0; i <= dragIndex; i++) {
-            cumBefore += orderedRatios[i];
-        }
-
-        // Position cumulée souhaitée (basée sur la position de la souris)
-        let desiredCumBefore = rawPos * 100;
-
-        // Chaque zone garde au moins 5 % et la taille minimale d'une case (sans dépasser un partage égal)
-        const numZones = orderedRatios.length;
-        const sizeMm = isHorizontal ? realHeight : realWidth;
-        const minPartMm = isHorizontal ? MIN_COMPARTMENT_HEIGHT_MM : MIN_COMPARTMENT_WIDTH_MM;
-        const minRatio = Math.min(100 / numZones, Math.max(5, (minPartMm / sizeMm) * 100));
-
-        // Limite min : somme des ratios min des zones avant + ratio min de la zone courante
-        const minCumBefore = (dragIndex + 1) * minRatio;
-
-        // Limite max : 100 - somme des ratios min des zones après
-        const maxCumBefore = 100 - (numZones - dragIndex - 1) * minRatio;
-
-        // Appliquer les limites
-        desiredCumBefore = Math.max(minCumBefore, Math.min(maxCumBefore, desiredCumBefore));
-
-        const delta = desiredCumBefore - cumBefore;
-
-        // Ne rien faire si le delta est trop petit (évite les micro-mouvements)
-        if (Math.abs(delta) < 0.5) return;
-
-        const newRatios = [...orderedRatios];
-        newRatios[dragIndex] += delta;
-        newRatios[dragIndex + 1] -= delta;
-
-        // Normaliser pour garantir que la somme = 100
-        const sum = newRatios.reduce((a, b) => a + b, 0);
-        const normalizedRatios = newRatios.map(r => (r / sum) * 100);
-
-        // Vérifier que tous les ratios sont >= minRatio
-        const allValid = normalizedRatios.every(r => r >= minRatio - 0.1);
-
-        if (allValid) {
-            // Haute précision pour éviter les erreurs d'arrondi au mm
-            onRatioChange(zone.id, normalizedRatios.map(r => Math.round(r * 10000) / 10000));
-        }
-    }, [isDragging, dragIndex, zone, onRatioChange, getChildRatios, realWidth, realHeight]);
+        // Même règle que les poignées de la vue 3D : seuls les deux voisins changent, chacun garde sa taille
+        // minimale (sous-groupes compris). En dessous de 0,5 %, on ignore le mouvement (micro-déplacements).
+        const ratios = moveDivider(zone, dragIndex, targetPercent, isHorizontal ? realHeight : realWidth, 0.5);
+        if (ratios) onRatioChange(zone.id, ratios);
+    }, [isDragging, dragIndex, zone, onRatioChange, realWidth, realHeight]);
 
     const handleDragEnd = useCallback(() => {
         setIsDragging(false);

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { describeZone, getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type FurnitureLayout } from './zoneBounds';
+import {
+  describeZone,
+  dividerPercentAt,
+  getDividers,
+  getFurnitureBox,
+  getFurnitureLayout,
+  getZoneBox,
+  unionBoxes,
+  type FurnitureLayout,
+} from './zoneBounds';
 import type { Zone } from '@/components/configurator/ZoneEditor/types';
 
 function leaf(id: string, extra: Partial<Zone> = {}): Zone {
@@ -115,5 +124,45 @@ describe('getFurnitureLayout', () => {
 
   it('falls back to the default size when a dimension is missing', () => {
     expect(getFurnitureLayout(0, 0, 0, false)).toMatchObject({ width: 1.5, sideHeight: 0.73, depth: 0.5 });
+  });
+});
+
+describe('getDividers', () => {
+  const t = 0.019;
+  const interiorWidth = 1.5 - 2 * t;
+  const interiorHeight = 0.73 - 2 * t;
+
+  it('places partitions like the 3D scene, panel thickness deducted', () => {
+    const root: Zone = { id: 'root', type: 'vertical', children: [leaf('a'), leaf('b'), leaf('c')] };
+    const dividers = getDividers(root, layout);
+    expect(dividers).toHaveLength(2);
+
+    const column = (interiorWidth - 2 * t) / 3;
+    const [first, second] = dividers;
+    expect(first).toMatchObject({ zoneId: 'root', index: 0, axis: 'x', panelId: 'separator-v-v0-0', behindDoor: false });
+    expect(first.center[0]).toBeCloseTo(-interiorWidth / 2 + column + t / 2, 6);
+    expect(second.center[0]).toBeCloseTo(-interiorWidth / 2 + 2 * column + t + t / 2, 6);
+    expect(first.center[1]).toBeCloseTo(0.365, 6);
+    expect(first.center[2]).toBe(0.25);
+    expect(first.length).toBeCloseTo(interiorHeight, 6);
+  });
+
+  it('names nested shelves like the scene and flags those behind a group door', () => {
+    const shelves: Zone = { id: 'g', type: 'horizontal', doorContent: 'door', children: [leaf('g0'), leaf('g1')] };
+    const root: Zone = { id: 'root', type: 'vertical', splitRatios: [25, 75], children: [leaf('a'), shelves] };
+    const shelf = getDividers(root, layout).find((divider) => divider.zoneId === 'g')!;
+
+    expect(shelf).toMatchObject({ index: 0, axis: 'y', panelId: 'separator-h-c1-h0-0', behindDoor: true });
+    const columnWidth = (interiorWidth - t) * 0.75;
+    expect(shelf.length).toBeCloseTo(columnWidth, 6);
+    expect(shelf.center[1]).toBeCloseTo(0.73 - t - (interiorHeight - t) / 2 - t / 2, 6);
+  });
+
+  it('turns a position back into the share of the children before the divider', () => {
+    const root: Zone = { id: 'root', type: 'horizontal', splitRatios: [30, 30, 40], children: [leaf('a'), leaf('b'), leaf('c')] };
+    for (const divider of getDividers(root, layout)) {
+      const expected = divider.index === 0 ? 30 : 60;
+      expect(dividerPercentAt(divider, divider.center[1])).toBeCloseTo(expected, 6);
+    }
   });
 });

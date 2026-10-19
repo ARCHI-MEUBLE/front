@@ -21,8 +21,10 @@ import { ZoneHoverTag } from './scene/ZoneHoverTag';
 import { CameraRig, type CameraApi } from './scene/CameraRig';
 import { CameraToolbar } from './scene/CameraToolbar';
 import { createDoubleClickDetector, isRealClick } from './scene/pointer';
+import { DividerHandles, type DividerChange } from './scene/DividerHandles';
 import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box } from '@/lib/configurator/zoneBounds';
 import { getZoneFacade } from '@/lib/configurator/zoneStats';
+import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 export type { ThreeCanvasHandle };
 
@@ -52,9 +54,14 @@ interface ThreeViewerProps {
     useMultiColor?: boolean;
     mountingStyle?: 'applique' | 'encastre';
     onCaptureReady?: (captureFunction: () => string | null) => void;
+    // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
+    onResizeDivider?: (zoneId: string, ratios: number[]) => void;
 }
 
-
+interface DividerEvents {
+    onPreview: (change: DividerChange | null) => void;
+    onCommit: (change: DividerChange) => void;
+}
 
 function Furniture({
                        width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
@@ -68,8 +75,9 @@ function Furniture({
                        onSelectZone,
                        selectedPanelIds = new Set(),
                        onSelectPanel,
-                       deletedPanelIds = new Set()
-                   }: ThreeViewerProps) {
+                       deletedPanelIds = new Set(),
+                       dividerEvents
+                   }: ThreeViewerProps & { dividerEvents?: DividerEvents }) {
     const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -1331,7 +1339,9 @@ function Furniture({
                     );
                     if (showDecorations && !restsOnRemovedShelf) {
                         items.push(
-                            <group key={`${zone.id}-deco`} position={[x, y - height/2 + thickness/2, z]}>
+                            // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
+                            // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
+                            <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
                                 <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
                             </group>
                         );
@@ -1809,6 +1819,18 @@ function Furniture({
                     clickToOpen={!onSelectZone}
                 />
             )}
+            {dividerEvents && rootZone && !onSelectPanel && (
+                <DividerHandles
+                    rootZone={rootZone}
+                    layout={layout}
+                    widthMm={width}
+                    heightMm={height}
+                    doorsOpen={!!doorsOpen}
+                    selectedZoneIds={selectedZoneIds}
+                    onPreview={dividerEvents.onPreview}
+                    onCommit={dividerEvents.onCommit}
+                />
+            )}
 
             {rootZone && doorType !== 'none' && !hasZoneSpecificDoors && (
                 <group position={[0, sideHeight/2 + yOffset, d/2]} {...rootDoorHandlers}>
@@ -1976,8 +1998,29 @@ function NavigationHint() {
 }
 
 const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
-    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle } = props;
+    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle, onResizeDivider } = props;
     const captureRef = useRef<(() => string | null) | null>(null);
+
+    // Glissement d'une cloison ou d'une étagère : la scène suit en direct, la configuration n'est modifiée
+    // qu'au relâchement (une seule étape dans l'historique, au lieu d'une par mouvement de souris)
+    const [dividerPreview, setDividerPreview] = useState<DividerChange | null>(null);
+    const displayedRootZone = useMemo(
+        () => (dividerPreview && rootZone ? applySplitRatios(rootZone, dividerPreview.zoneId, dividerPreview.ratios) : rootZone),
+        [rootZone, dividerPreview]
+    );
+    const dividerEvents = useMemo<DividerEvents | undefined>(
+        () =>
+            onResizeDivider
+                ? {
+                    onPreview: setDividerPreview,
+                    onCommit: ({ zoneId, ratios }) => {
+                        onResizeDivider(zoneId, ratios);
+                        setDividerPreview(null);
+                    },
+                }
+                : undefined,
+        [onResizeDivider]
+    );
     const cameraApi = useRef<CameraApi | null>(null);
     const [hintVisible, setHintVisible] = useState(!navigationHintSeen);
 
@@ -2061,7 +2104,9 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                     <Room />
                     <Furniture
                         {...props}
+                        rootZone={displayedRootZone}
                         imageUrl={props.imageUrl}
+                        dividerEvents={dividerEvents}
                     />
                     <HumanSilhouette />
                     <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={15} blur={2.5} far={1.5} />
