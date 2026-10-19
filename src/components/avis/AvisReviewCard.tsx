@@ -35,7 +35,7 @@ export function AvisReviewCard({ review }: { review: AvisReviewData }) {
         <span>
           <span className="block text-[15px] font-medium text-black">{review.authorName}</span>
           {review.city && (
-            <span className="block font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
+            <span className="block eyebrow text-black/70">
               {review.city}
             </span>
           )}

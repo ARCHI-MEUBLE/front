@@ -275,7 +275,7 @@ export default function OrderConfirmationPage() {
           {/* Success Message */}
           <div className="border border-green-300 bg-green-50 p-6 text-center mb-6">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-black mb-2">
+            <h1 className="text-2xl font-semibold text-black mb-2">
               {isSamplesOnly && areSamplesFree ? 'Échantillons commandés !' : 'Commande confirmée !'}
             </h1>
             <p className="text-black/75 mb-4">
@@ -283,7 +283,7 @@ export default function OrderConfirmationPage() {
             </p>
             <div className="inline-flex items-center gap-2 bg-white border border-black/20 px-4 py-2">
               <span className="text-sm font-medium text-black/75">Numéro de commande:</span>
-              <span className="text-sm font-bold text-black">{order.order_number}</span>
+              <span className="text-sm font-semibold text-black">{order.order_number}</span>
             </div>
           </div>
 
@@ -297,7 +297,7 @@ export default function OrderConfirmationPage() {
               {/* Order Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-medium text-black/60 uppercase mb-1">Commande passée le</p>
+                  <p className="eyebrow-lg text-black/60 mb-1">Commande passée le</p>
                   <p className="text-sm text-black">
                     {new Date(order.created_at).toLocaleDateString("fr-FR", {
                       day: "numeric",
@@ -309,7 +309,7 @@ export default function OrderConfirmationPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-black/60 uppercase mb-1">Statut</p>
+                  <p className="eyebrow-lg text-black/60 mb-1">Statut</p>
                   <span className="inline-flex items-center gap-2 bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
                     {order.payment_status === 'paid' ? '✅ Payée' : '✅ Confirmée'}
                   </span>
@@ -319,7 +319,7 @@ export default function OrderConfirmationPage() {
               {/* Meubles sur mesure */}
               {hasConfigurations && (
                 <div>
-                  <p className="text-xs font-bold text-black/60 uppercase mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
+                  <p className="eyebrow-lg font-medium text-black/60 mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
                     Meubles sur mesure ({order.items!.length})
                   </p>
                   <div className="space-y-4">
@@ -375,7 +375,7 @@ export default function OrderConfirmationPage() {
               {/* Façades sur mesure */}
               {hasFacades && (
                 <div>
-                  <p className="text-xs font-bold text-black/60 uppercase mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
+                  <p className="eyebrow-lg font-medium text-black/60 mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
                     Façades sur mesure ({order.facade_items!.length})
                   </p>
                   <div className="space-y-2">
@@ -422,7 +422,7 @@ export default function OrderConfirmationPage() {
               {/* Articles boutique */}
               {hasCatalogueItems && (
                 <div>
-                  <p className="text-xs font-bold text-black/60 uppercase mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
+                  <p className="eyebrow-lg font-medium text-black/60 mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
                     Articles boutique ({order.catalogue_items!.length})
                   </p>
                   <div className="space-y-2">
@@ -460,7 +460,7 @@ export default function OrderConfirmationPage() {
               {/* Échantillons */}
               {hasSamples && (
                 <div>
-                  <p className={`text-xs font-bold uppercase mb-2 p-2 -mx-4 px-4 ${areSamplesFree ? 'text-green-700 bg-green-50' : 'text-black/60 bg-am-mist/25'}`}>
+                  <p className={`eyebrow-lg font-medium mb-2 p-2 -mx-4 px-4 ${areSamplesFree ? 'text-green-700 bg-green-50' : 'text-black/60 bg-am-mist/25'}`}>
                     Échantillons ({order.samples!.length})
                   </p>
                   <div className="space-y-2">
@@ -498,7 +498,7 @@ export default function OrderConfirmationPage() {
 
               {/* Shipping Address */}
               <div>
-                <p className="text-xs font-medium text-black/60 uppercase mb-1">Adresse de livraison</p>
+                <p className="eyebrow-lg text-black/60 mb-1">Adresse de livraison</p>
                 <p className="text-sm text-black whitespace-pre-line">{order.shipping_address}</p>
               </div>
 
@@ -506,7 +506,7 @@ export default function OrderConfirmationPage() {
               <div className="border-t-2 border-am-navy pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-semibold text-black">Total payé</span>
-                  <span className="text-xl font-bold text-black">
+                  <span className="text-xl font-semibold text-black">
                     {isSamplesOnly ? 'Gratuit' : formatPrice(order.total)}
                   </span>
                 </div>

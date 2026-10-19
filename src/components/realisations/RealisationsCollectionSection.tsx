@@ -8,6 +8,8 @@ export function RealisationsCollectionSection({
   realisations,
   categories,
   isLoading,
+  loadFailed,
+  onRetry,
   selectedCategory,
   onCategoryChange,
   onGalleryOpen,
@@ -15,6 +17,8 @@ export function RealisationsCollectionSection({
   realisations: RealisationData[];
   categories: RealisationCategory[];
   isLoading: boolean;
+  loadFailed: boolean;
+  onRetry: () => void;
   selectedCategory: string;
   onCategoryChange: (slug: string) => void;
   onGalleryOpen: (images: RealisationImage[], startIndex: number) => void;
@@ -26,11 +30,7 @@ export function RealisationsCollectionSection({
       style={{ paddingTop: "clamp(80px,10vw,144px)" }}
     >
       <div className="sticky top-[68px] z-10 mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 bg-am-paper/95 py-4 backdrop-blur-md">
-        <h2
-          id="real-projets"
-          className="m-0 font-sans font-medium tracking-[-0.04em] text-black"
-          style={{ fontSize: "clamp(24px,2.4vw,32px)" }}
-        >
+        <h2 id="real-projets" className="m-0 text-subheading text-black">
           Explorez nos projets
         </h2>
         {categories.length > 1 && (
@@ -65,6 +65,13 @@ export function RealisationsCollectionSection({
             </div>
           ))}
         </div>
+      ) : loadFailed ? (
+        <EmptyState
+          title="La galerie est momentanément indisponible"
+          text="Les réalisations n'ont pas pu être chargées. Réessayez dans un instant. Si le problème continue, l'atelier reste joignable par téléphone ou via le formulaire de contact."
+          primary={{ label: "Réessayer", onClick: onRetry }}
+          secondary={{ label: "Nous contacter", href: "/contact-request" }}
+        />
       ) : realisations.length === 0 ? (
         selectedCategory === "all" ? (
           <EmptyState

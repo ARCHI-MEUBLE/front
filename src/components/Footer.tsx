@@ -26,7 +26,7 @@ export function Footer() {
           Menuisiers à Lille, nous concevons et fabriquons des meubles sur mesure durables pour votre intérieur.
         </p>
         <div className="flex flex-col gap-1">
-          <span className={`mb-2 text-xs ${HOME_MONO}`}>Produits</span>
+          <span className={`mb-2 ${HOME_MONO}`}>Produits</span>
           {PRODUITS.map((link) => (
             <Link key={link.label} href={link.href} className="py-1.5 text-black">
               {link.label}
@@ -34,7 +34,7 @@ export function Footer() {
           ))}
         </div>
         <div className="flex flex-col gap-1">
-          <span className={`mb-2 text-xs ${HOME_MONO}`}>Services</span>
+          <span className={`mb-2 ${HOME_MONO}`}>Services</span>
           {SERVICES.map((link) => (
             <Link key={link.label} href={link.href} className="py-1.5 text-black">
               {link.label}
@@ -42,7 +42,7 @@ export function Footer() {
           ))}
         </div>
         <div className="flex flex-col gap-1">
-          <span className={`mb-2 text-xs ${HOME_MONO}`}>Atelier</span>
+          <span className={`mb-2 ${HOME_MONO}`}>Atelier</span>
           <span className="py-1 text-black">
             30 Rue Henri Regnault
             <br />
@@ -62,7 +62,7 @@ export function Footer() {
         <span className="text-am-mist" style={{ WebkitTextStroke: "2px #000000" }}>.</span>
       </div>
 
-      <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-xs ${HOME_MONO}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-1 ${HOME_MONO}`}>
         <span>© 2026 ArchiMeuble. Tous droits réservés.</span>
         <span className="flex flex-wrap gap-x-5">
           <a href="https://www.instagram.com/archimeuble" className="inline-flex min-h-11 items-center hover:text-black">Instagram</a>

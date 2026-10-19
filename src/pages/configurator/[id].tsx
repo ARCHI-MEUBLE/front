@@ -74,6 +74,7 @@ import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
+import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
@@ -361,6 +362,11 @@ export default function ConfiguratorPage() {
     if (result.removed > 0) setRootZone(result.root);
     setDeletedPanelIds(prev => new Set(Array.from(prev).filter(id => !dropped.includes(id))));
   }, [deletedPanelIds, rootZone, setRootZone]);
+
+  // Cloison ou étagère glissée dans la vue 3D (relâchement de la poignée) : une seule étape d'historique
+  const handleDividerResize = useCallback((zoneId: string, ratios: number[]) => {
+    setRootZone(prev => applySplitRatios(prev, zoneId, ratios));
+  }, [setRootZone]);
 
   const handlePanelSelect = useCallback((panelId: string | null) => {
     if (!panelId) {
@@ -2522,7 +2528,7 @@ export default function ConfiguratorPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-am-paper p-6 text-center">
         <IconInfoCircle className="h-12 w-12 text-am-navy mb-4" />
-        <h1 className="font-serif text-2xl text-black mb-2">Configuration introuvable</h1>
+        <h1 className="text-2xl text-black mb-2">Configuration introuvable</h1>
         <p className="text-black/65 max-w-md mb-8">
           Désolé, nous ne parvenons pas à charger cette configuration. Elle n&apos;existe peut-être plus ou le lien est incorrect.
         </p>
@@ -2541,7 +2547,7 @@ export default function ConfiguratorPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-am-paper">
         <div className="text-center">
-          <h1 className="font-serif text-2xl text-black">Modèle non trouvé</h1>
+          <h1 className="text-2xl text-black">Modèle non trouvé</h1>
           <button
             onClick={() => router.push('/')}
             className="mt-6 bg-am-navy px-6 py-3 text-sm font-medium text-white"
@@ -2719,18 +2725,18 @@ export default function ConfiguratorPage() {
               </Link>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="font-serif text-base text-black lg:text-lg">{model.name}</h1>
+                  <h1 className="text-base text-black lg:text-lg">{model.name}</h1>
                   {isViewMode && isAdmin && (
-                    <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
+                    <span className="bg-blue-100 text-blue-700 eyebrow px-2 py-0.5 rounded font-medium">Vue Admin</span>
                   )}
                   {isViewMode && !isAdmin && isConfigOwner && (
-                    <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Ma configuration</span>
+                    <span className="bg-emerald-100 text-emerald-700 eyebrow px-2 py-0.5 rounded font-medium">Ma configuration</span>
                   )}
                   {isEditMode && editingConfigId && isAdmin && (
-                    <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Édition Admin</span>
+                    <span className="bg-orange-100 text-orange-700 eyebrow px-2 py-0.5 rounded font-medium">Édition Admin</span>
                   )}
                   {isEditMode && editingConfigId && !isAdmin && isConfigOwner && (
-                    <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Modification</span>
+                    <span className="bg-amber-100 text-amber-700 eyebrow px-2 py-0.5 rounded font-medium">Modification</span>
                   )}
                   {editingConfigName && (isEditMode || isViewMode) && (
                     <span className="text-[11px] text-black/65 font-medium">&quot;{editingConfigName}&quot;</span>
@@ -2754,7 +2760,7 @@ export default function ConfiguratorPage() {
               )}
               <Link
                 href="/"
-                className="font-serif text-base text-black lg:text-lg"
+                className="text-base font-semibold tracking-[-0.05em] text-black lg:text-lg"
               >
                 ArchiMeuble
               </Link>
@@ -2806,6 +2812,8 @@ export default function ConfiguratorPage() {
                     selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
                     onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
                     deletedPanelIds={deletedPanelIds}
+                    // Poignées de glissement des planches : à l'étape Division seulement, hors outil « Retirer planches »
+                    onResizeDivider={!isViewMode && activeStep === STEP.DIVISION && !showPanelTool ? handleDividerResize : undefined}
                   />
                 )}
                 <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
@@ -3337,8 +3345,8 @@ export default function ConfiguratorPage() {
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-am-paper px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0">
-                <span className="text-[10px] uppercase tracking-wide text-black/65">Prix</span>
-                <div className="font-serif text-xl text-black">
+                <span className="eyebrow text-black/65">Prix</span>
+                <div className="text-xl font-medium tracking-[-0.03em] text-black">
                   {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
                     `${new Intl.NumberFormat('fr-FR', {
                       style: 'currency',
@@ -3433,7 +3441,7 @@ export default function ConfiguratorPage() {
                 {isAdminEditModel ? <IconEdit className="h-8 w-8 text-amber-600" /> : <IconPlus className="h-8 w-8 text-amber-600" />}
               </div>
 
-              <h2 className="mb-4 text-center font-serif text-2xl text-black">
+              <h2 className="mb-4 text-center text-2xl text-black">
                 {isAdminEditModel ? 'Modèle mis à jour !' : 'Modèle créé avec succès !'}
               </h2>
               <p className="mb-6 text-center text-base text-black/65">
@@ -3500,7 +3508,7 @@ export default function ConfiguratorPage() {
 
               {(isEditMode && editingConfigId) ? (
                 <>
-                  <h2 className="mb-4 text-center font-serif text-2xl text-black">
+                  <h2 className="mb-4 text-center text-2xl text-black">
                     Configuration mise à jour !
                   </h2>
                   <p className="mb-6 text-center text-base text-black/65">
@@ -3509,7 +3517,7 @@ export default function ConfiguratorPage() {
                 </>
               ) : (
                 <>
-                  <h2 className="mb-4 text-center font-serif text-2xl text-black">
+                  <h2 className="mb-4 text-center text-2xl text-black">
                     Configuration enregistrée !
                   </h2>
                   <p className="mb-6 text-center text-base text-black/65">
@@ -3604,7 +3612,7 @@ export default function ConfiguratorPage() {
                 </svg>
               </div>
 
-              <h2 className="mb-4 text-center font-serif text-2xl text-black">
+              <h2 className="mb-4 text-center text-2xl text-black">
                 Erreur
               </h2>
               <div className="mb-6 text-center text-base text-black/65 whitespace-pre-line">

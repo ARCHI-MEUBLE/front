@@ -101,11 +101,7 @@ export default function ContactRequestPage() {
           <div className="grid grid-cols-1 gap-6 rounded-3xl bg-am-mist p-[clamp(20px,3vw,36px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-[clamp(32px,4vw,56px)]">
             <div className="flex min-w-0 flex-col gap-5">
               <div className="flex flex-col gap-3">
-                <h1
-                  id="contact-title"
-                  className="m-0 font-medium leading-[1.02] tracking-[-0.04em] text-black"
-                  style={{ fontSize: "clamp(30px,3.2vw,46px)" }}
-                >
+                <h1 id="contact-title" className="m-0 text-heading text-black">
                   Comment <span className="whitespace-nowrap">pouvons-nous</span> vous aider ?
                 </h1>
                 <p className="m-0 max-w-[42ch] text-[16px] leading-[1.4] text-black">

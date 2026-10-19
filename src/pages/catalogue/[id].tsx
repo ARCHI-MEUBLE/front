@@ -157,11 +157,7 @@ export default function ProductDetail() {
 
         {related.length > 0 && (
           <section aria-labelledby="related-title" className={HOME_SECTION}>
-            <h2
-              id="related-title"
-              className="m-0 mb-8 font-sans font-medium tracking-[-0.045em] text-black"
-              style={{ fontSize: "clamp(28px,3vw,44px)" }}
-            >
+            <h2 id="related-title" className="m-0 mb-8 text-heading text-black">
               Vous aimerez aussi
             </h2>
             <RelatedProducts items={related} />

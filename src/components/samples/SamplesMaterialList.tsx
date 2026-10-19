@@ -15,12 +15,8 @@ export function SamplesMaterialList({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-baseline gap-4">
-        <span className={`text-xs ${HOME_MONO}`}>01</span>
-        <h2
-          id="ech-step1"
-          className="m-0 font-sans font-medium tracking-[-0.045em] text-black"
-          style={{ fontSize: "clamp(28px,3vw,44px)" }}
-        >
+        <span className={HOME_MONO}>01</span>
+        <h2 id="ech-step1" className="m-0 text-heading text-black">
           Choisissez votre matériau
         </h2>
       </div>
@@ -44,7 +40,7 @@ export function SamplesMaterialList({
                 <span className="h-3 w-3 rounded-full bg-am-navy" style={{ opacity: isActive ? 1 : 0 }} />
               </span>
               <span className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
-                <span className="font-medium tracking-[-0.035em]" style={{ fontSize: "clamp(20px,1.8vw,24px)" }}>
+                <span className="text-card-title">
                   {displayMaterialName(material)}
                 </span>
                 <span className="text-[15px] text-black/70">

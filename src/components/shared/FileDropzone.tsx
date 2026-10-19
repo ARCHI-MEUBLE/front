@@ -1,14 +1,38 @@
 import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
-import { HOME_MONO } from "@/components/home/homeLayout";
+import { HOME_MONO, HOME_MONO_SM } from "@/components/home/homeLayout";
 
 const FILE_TYPES = ["JPG", "PNG", "HEIC", "MP4", "MOV"];
 
 // HEIC et certaines vidéos arrivent sans type MIME (surtout sous Windows) : on se rabat sur l'extension
 const MEDIA_EXTENSION = /\.(jpe?g|png|gif|webp|avif|heic|heif|mp4|m4v|mov|avi|webm)$/i;
 
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  heic: "image/heic",
+  heif: "image/heif",
+  mp4: "video/mp4",
+  m4v: "video/x-m4v",
+  mov: "video/quicktime",
+  avi: "video/x-msvideo",
+  webm: "video/webm",
+};
+
 export function isMediaFile(file: File): boolean {
   return file.type.startsWith("image/") || file.type.startsWith("video/") || MEDIA_EXTENSION.test(file.name);
+}
+
+// Le backend trie les fichiers sur le type MIME envoyé : sans lui, un HEIC serait ignoré sans erreur
+export function withMediaType(file: File): File {
+  if (file.type) return file;
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const type = MIME_BY_EXTENSION[extension];
+  return type ? new File([file], file.name, { type, lastModified: file.lastModified }) : file;
 }
 
 export function fileKey(file: File): string {
@@ -84,11 +108,11 @@ export function FileDropzone({
             Déposez vos photos ou vidéos, ou <span className="underline underline-offset-4">parcourez</span>
           </span>
           {compact ? (
-            <span className={`text-[11px] ${HOME_MONO}`}>{FILE_TYPES.join(" · ")}</span>
+            <span className={HOME_MONO_SM}>{FILE_TYPES.join(" · ")}</span>
           ) : (
             <span className="flex flex-wrap gap-1.5">
               {FILE_TYPES.map((type) => (
-                <span key={type} className={`rounded-full border border-black/30 px-2.5 py-0.5 text-xs ${HOME_MONO}`}>
+                <span key={type} className={`rounded-full border border-black/30 px-2.5 py-0.5 ${HOME_MONO}`}>
                   {type}
                 </span>
               ))}

@@ -21,8 +21,7 @@ function ProductItem({ product, hidden }: { product: string; hidden?: boolean })
   return (
     <span
       aria-hidden={hidden}
-      className="flex items-center gap-[clamp(28px,4vw,56px)] whitespace-nowrap py-[26px] pl-[clamp(28px,4vw,56px)] font-medium tracking-[-0.04em] text-black"
-      style={{ fontSize: "clamp(22px,2.4vw,32px)" }}
+      className="flex items-center gap-[clamp(28px,4vw,56px)] whitespace-nowrap py-[26px] pl-[clamp(28px,4vw,56px)] text-subheading text-black"
     >
       <span>{product}</span>
       <span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-black bg-am-mist" />

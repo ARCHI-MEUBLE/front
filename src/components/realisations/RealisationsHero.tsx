@@ -9,11 +9,7 @@ export function RealisationsHero() {
       style={{ paddingTop: "clamp(40px,7vw,96px)" }}
     >
       <div className="grid grid-cols-1 items-center gap-[clamp(48px,6vw,96px)] lg:grid-cols-2">
-        <h1
-          id="real-title"
-          className="m-0 font-sans font-medium leading-[0.94] tracking-[-0.055em] text-black"
-          style={{ fontSize: "clamp(48px,6.6vw,104px)" }}
-        >
+        <h1 id="real-title" className="m-0 text-display text-black">
           Nos réalisations <span className="am-highlight">sur mesure</span>
         </h1>
 

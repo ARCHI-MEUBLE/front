@@ -114,7 +114,7 @@ export default function StripeCheckoutForm({ orderId, amount, onSuccess, onError
       <div className="bg-am-mist/15 p-6 rounded-lg border border-black/10">
         <div className="flex items-center justify-between mb-4">
           <span className="text-lg font-semibold text-black">Total à payer</span>
-          <span className="text-2xl font-bold text-amber-600">
+          <span className="text-2xl font-semibold text-amber-600">
             {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)}
           </span>
         </div>

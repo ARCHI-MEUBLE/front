@@ -233,7 +233,7 @@ export default function FacadeControls({
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-black/70">Surface ({formatDecimal((config.width / 1000) * (config.height / 1000))} m²)</span>
           <span className="text-sm font-medium">
-            {formatPrice((config.width / 1000) * (config.height / 1000) * Number(config.material.price_per_m2 || pricingSettings.material_price_per_m2))}
+            {formatPrice((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2))}
           </span>
         </div>
         {config.hinges.type !== 'no-hole-no-hinge' && (
@@ -266,7 +266,7 @@ export default function FacadeControls({
         )}
         <div className="flex justify-between items-center pt-4 border-t border-black/15">
           <span className="text-lg font-semibold text-black">Total</span>
-          <span className="text-2xl font-bold text-black">
+          <span className="text-2xl font-semibold text-black">
             {formatPrice(calculateTotalPrice() * quantity)} TTC
           </span>
         </div>

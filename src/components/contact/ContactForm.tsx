@@ -36,7 +36,7 @@ export function ContactForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <fieldset className="m-0 border-0 p-0">
-        <legend className={`mb-1.5 p-0 text-xs ${HOME_MONO}`}>Type de projet</legend>
+        <legend className={`mb-1.5 p-0 ${HOME_MONO}`}>Type de projet</legend>
         <div className="flex flex-wrap gap-2">
           {SUBJECTS.map((subject) => {
             const isActive = formData.subject === subject.value;
@@ -59,7 +59,7 @@ export function ContactForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className={`text-xs ${HOME_MONO}`}>Nom</span>
+          <span className={HOME_MONO}>Nom</span>
           <input
             type="text"
             required
@@ -71,7 +71,7 @@ export function ContactForm({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={`text-xs ${HOME_MONO}`}>Email</span>
+          <span className={HOME_MONO}>Email</span>
           <input
             type="email"
             required
@@ -83,7 +83,7 @@ export function ContactForm({
           />
         </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className={`text-xs ${HOME_MONO}`}>Téléphone</span>
+          <span className={HOME_MONO}>Téléphone</span>
           <input
             type="tel"
             required
@@ -97,7 +97,7 @@ export function ContactForm({
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className={`text-xs ${HOME_MONO}`}>Votre projet</span>
+        <span className={HOME_MONO}>Votre projet</span>
         <textarea
           rows={3}
           required

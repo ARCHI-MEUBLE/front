@@ -220,7 +220,7 @@ export default function PaymentLinkModal({
                     Paiement
                   </span>
                 </div>
-                <h2 className="font-serif text-2xl text-[#1A1917]">
+                <h2 className="text-2xl text-[#1A1917]">
                   Liens de paiement
                 </h2>
                 <p className="text-sm text-[#706F6C] mt-1">

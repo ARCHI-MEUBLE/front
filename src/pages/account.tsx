@@ -664,12 +664,12 @@ export default function Account() {
           <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center bg-am-navy font-serif text-lg text-white lg:h-16 lg:w-16 lg:text-xl">
+                <div className="flex h-14 w-14 items-center justify-center bg-am-navy text-lg font-medium text-white lg:h-16 lg:w-16 lg:text-xl">
                   {getInitials()}
                 </div>
                 <div>
-                  <p className="text-xs text-white/50 uppercase tracking-wider">Bienvenue</p>
-                  <h1 className="text-xl font-bold text-white lg:text-2xl">
+                  <p className="eyebrow-lg text-white/50">Bienvenue</p>
+                  <h1 className="text-xl font-semibold text-white lg:text-2xl">
                     {customer?.first_name} {customer?.last_name}
                   </h1>
                 </div>
@@ -718,10 +718,10 @@ export default function Account() {
                 {activeSection === 'orders' && (
                   <div className="space-y-8">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
+                      <span className="eyebrow-lg text-am-navy">
                         Historique
                       </span>
-                      <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Mes commandes</h2>
+                      <h2 className="mt-2 text-2xl font-semibold text-black lg:text-3xl">Mes commandes</h2>
                       <p className="mt-1 text-black/65">Suivez vos commandes et consultez votre historique</p>
                     </div>
 
@@ -737,7 +737,7 @@ export default function Account() {
                             <stat.icon size={18} className="text-black" stroke={1.5} />
                           </div>
                           <div>
-                            <p className="text-xl font-bold text-black">{stat.value}</p>
+                            <p className="text-xl font-semibold text-black">{stat.value}</p>
                             <p className="text-xs text-black/65">{stat.label}</p>
                           </div>
                         </div>
@@ -764,7 +764,7 @@ export default function Account() {
                         <div className="border border-black/10 bg-white p-6">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
-                              <h3 className="text-xl font-bold text-black">
+                              <h3 className="text-xl font-semibold text-black">
                                 Commande #{selectedOrder.order_number}
                               </h3>
                               <p className="mt-1 text-sm text-black/65">
@@ -772,10 +772,10 @@ export default function Account() {
                               </p>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${getStatusColor(selectedOrder.status, selectedOrder.payment_status)}`}>
+                              <span className={`px-3 py-1.5 eyebrow-lg font-medium ${getStatusColor(selectedOrder.status, selectedOrder.payment_status)}`}>
                                 {getStatusLabel(selectedOrder.status, selectedOrder.payment_status)}
                               </span>
-                              <span className="text-2xl font-bold text-black">
+                              <span className="text-2xl font-semibold text-black">
                                 {formatPrice(selectedOrder.total)}
                               </span>
                             </div>
@@ -785,7 +785,7 @@ export default function Account() {
                         {/* Articles */}
                         <div className="border border-black/10 bg-white">
                           <div className="border-b border-black/10 p-4">
-                            <h4 className="font-bold text-black">Articles commandés</h4>
+                            <h4 className="font-semibold text-black">Articles commandés</h4>
                           </div>
                           <div className="divide-y divide-black/10">
                             {/* Configurations */}
@@ -834,7 +834,7 @@ export default function Account() {
                                           Quantité : {item.quantity}
                                         </p>
                                       </div>
-                                      <p className="font-bold text-black">
+                                      <p className="font-semibold text-black">
                                         {formatPrice(item.total_price ?? item.unit_price)}
                                       </p>
                                     </div>
@@ -872,7 +872,7 @@ export default function Account() {
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-bold text-black">
+                                    <p className="font-semibold text-black">
                                       {formatPrice(sample.price ?? sample.unit_price ?? 0)}
                                     </p>
                                   </div>
@@ -904,7 +904,7 @@ export default function Account() {
                                     </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-bold text-black">
+                                    <p className="font-semibold text-black">
                                       {formatPrice(item.total_price || item.unit_price * item.quantity)}
                                     </p>
                                     {item.quantity > 1 && (
@@ -921,7 +921,7 @@ export default function Account() {
                             {selectedOrder.facade_items && selectedOrder.facade_items.length > 0 && (
                               <>
                                 <div className="border-t border-black/10 bg-am-mist/15 px-4 py-2">
-                                  <p className="text-xs font-bold uppercase tracking-wider text-black/65">
+                                  <p className="eyebrow-lg text-black/65">
                                     Façades sur mesure ({selectedOrder.facade_items.length})
                                   </p>
                                 </div>
@@ -965,7 +965,7 @@ export default function Account() {
                                         <p className="text-xs text-am-navy mt-1 underline">Voir les détails</p>
                                       </div>
                                       <div className="text-right">
-                                        <p className="font-bold text-black">
+                                        <p className="font-semibold text-black">
                                           {formatPrice(facade.total_price || facade.unit_price * facade.quantity)}
                                         </p>
                                         {facade.quantity > 1 && (
@@ -995,7 +995,7 @@ export default function Account() {
                         {/* Adresse de livraison */}
                         {(selectedOrder.shipping_address || selectedOrder.shipping_city) && (
                           <div className="border border-black/10 bg-white p-6">
-                            <h4 className="font-bold text-black mb-3">Adresse de livraison</h4>
+                            <h4 className="font-semibold text-black mb-3">Adresse de livraison</h4>
                             <p className="text-black/65">
                               {selectedOrder.shipping_address}<br />
                               {selectedOrder.shipping_postal_code} {selectedOrder.shipping_city}<br />
@@ -1010,7 +1010,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconClock size={20} className="text-amber-600 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-amber-800">En attente de validation</h4>
+                                <h4 className="font-semibold text-amber-800">En attente de validation</h4>
                                 <p className="mt-1 text-sm text-amber-700">
                                   Votre commande est en cours de vérification par notre équipe.
                                   Vous recevrez un email dès qu&apos;elle sera validée et prête pour le paiement.
@@ -1025,7 +1025,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconCreditCard size={20} className="text-blue-600 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-blue-800">En attente de paiement</h4>
+                                <h4 className="font-semibold text-blue-800">En attente de paiement</h4>
                                 <p className="mt-1 text-sm text-blue-700">
                                   Votre commande a été validée. Vous pouvez procéder au paiement pour lancer la fabrication.
                                 </p>
@@ -1039,7 +1039,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconCircleCheck size={20} className="text-emerald-600 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-emerald-800">Paiement reçu</h4>
+                                <h4 className="font-semibold text-emerald-800">Paiement reçu</h4>
                                 <p className="mt-1 text-sm text-emerald-700">
                                   Merci pour votre paiement ! Votre commande va être traitée prochainement.
                                 </p>
@@ -1053,7 +1053,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconBox size={20} className="text-purple-600 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-purple-800">En cours de préparation</h4>
+                                <h4 className="font-semibold text-purple-800">En cours de préparation</h4>
                                 <p className="mt-1 text-sm text-purple-700">
                                   Votre commande est actuellement en cours de préparation.
                                   Nous vous tiendrons informé de l&apos;avancement.
@@ -1068,7 +1068,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconPackage size={20} className="text-cyan-600 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-cyan-800">Expédiée</h4>
+                                <h4 className="font-semibold text-cyan-800">Expédiée</h4>
                                 <p className="mt-1 text-sm text-cyan-700">
                                   Votre commande a été expédiée ! Vous recevrez bientôt les informations de livraison.
                                 </p>
@@ -1082,7 +1082,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconCircleCheck size={20} className="text-black/70 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-black">Livrée</h4>
+                                <h4 className="font-semibold text-black">Livrée</h4>
                                 <p className="mt-1 text-sm text-black/75">
                                   Votre commande a été livrée. Nous espérons que vous êtes satisfait de votre achat !
                                 </p>
@@ -1096,7 +1096,7 @@ export default function Account() {
                             <div className="flex items-start gap-3">
                               <IconX size={20} className="text-red-600 mt-0.5" />
                               <div>
-                                <h4 className="font-bold text-red-800">Annulée</h4>
+                                <h4 className="font-semibold text-red-800">Annulée</h4>
                                 <p className="mt-1 text-sm text-red-700">
                                   Cette commande a été annulée. Contactez-nous si vous avez des questions.
                                 </p>
@@ -1135,7 +1135,7 @@ export default function Account() {
                         <div className="mx-auto flex h-16 w-16 items-center justify-center bg-am-mist/15">
                           <IconPackage size={32} className="text-black/45" stroke={1.5} />
                         </div>
-                        <h3 className="mt-6 text-lg font-bold text-black">Aucune commande</h3>
+                        <h3 className="mt-6 text-lg font-semibold text-black">Aucune commande</h3>
                         <p className="mt-2 text-black/65">Vous n&apos;avez pas encore passé de commande</p>
                         <Link
                           href="/"
@@ -1171,7 +1171,7 @@ export default function Account() {
 
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                  <p className="text-lg font-bold text-black">{formatPrice(order.total)}</p>
+                                  <p className="text-lg font-semibold text-black">{formatPrice(order.total)}</p>
                                   <span className={`inline-block px-2 py-0.5 text-xs font-medium ${getStatusColor(order.status, order.payment_status)}`}>
                                     {getStatusLabel(order.status, order.payment_status)}
                                   </span>
@@ -1191,10 +1191,10 @@ export default function Account() {
                   <div className="space-y-8">
                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                       <div>
-                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
+                        <span className="eyebrow-lg text-am-navy">
                           Vos projets
                         </span>
-                        <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Mes configurations</h2>
+                        <h2 className="mt-2 text-2xl font-semibold text-black lg:text-3xl">Mes configurations</h2>
                         <p className="mt-1 text-black/65">Retrouvez et gérez vos meubles configurés</p>
                       </div>
                       <Link
@@ -1215,7 +1215,7 @@ export default function Account() {
                         <div className="mx-auto flex h-16 w-16 items-center justify-center bg-am-mist/15">
                           <IconBox size={32} className="text-black/45" stroke={1.5} />
                         </div>
-                        <h3 className="mt-6 text-lg font-bold text-black">Aucune configuration</h3>
+                        <h3 className="mt-6 text-lg font-semibold text-black">Aucune configuration</h3>
                         <p className="mt-2 text-black/65">Créez votre première configuration pour la retrouver ici</p>
                         <Link
                           href="/models"
@@ -1259,7 +1259,7 @@ export default function Account() {
 
                               {/* Status badge */}
                               <div className="absolute top-3 right-3">
-                                <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider border ${getStatusInfo(config.status).color}`}>
+                                <span className={`px-2 py-1 eyebrow font-medium border ${getStatusInfo(config.status).color}`}>
                                   {getStatusInfo(config.status).label}
                                 </span>
                               </div>
@@ -1268,8 +1268,8 @@ export default function Account() {
                             {/* Info */}
                             <div className="p-4">
                               <div className="flex items-start justify-between gap-2">
-                                <h3 className="font-bold text-black truncate">{config.name}</h3>
-                                <p className="text-lg font-bold text-am-navy shrink-0">{formatPrice(config.price)}</p>
+                                <h3 className="font-semibold text-black truncate">{config.name}</h3>
+                                <p className="text-lg font-semibold text-am-navy shrink-0">{formatPrice(config.price)}</p>
                               </div>
 
                               <div className="mt-3 flex items-center gap-4 text-xs text-black/65">
@@ -1345,10 +1345,10 @@ export default function Account() {
                 {activeSection === 'profile' && (
                   <div className="space-y-8">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
+                      <span className="eyebrow-lg text-am-navy">
                         Paramètres
                       </span>
-                      <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Mon profil</h2>
+                      <h2 className="mt-2 text-2xl font-semibold text-black lg:text-3xl">Mon profil</h2>
                       <p className="mt-1 text-black/65">Gérez vos informations personnelles</p>
                     </div>
 
@@ -1370,7 +1370,7 @@ export default function Account() {
                       {/* Informations personnelles */}
                       <div className="border border-black/10 bg-white p-6">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-black">Informations personnelles</h3>
+                          <h3 className="font-semibold text-black">Informations personnelles</h3>
                           {editingField !== 'personal' && (
                             <button
                               onClick={handleEditPersonal}
@@ -1386,7 +1386,7 @@ export default function Account() {
                           <div className="mt-6 space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2">
                               <div>
-                                <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Prénom</label>
+                                <label className="mb-1.5 block eyebrow-lg text-black/65">Prénom</label>
                                 <input
                                   type="text"
                                   value={formData.first_name}
@@ -1395,7 +1395,7 @@ export default function Account() {
                                 />
                               </div>
                               <div>
-                                <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Nom</label>
+                                <label className="mb-1.5 block eyebrow-lg text-black/65">Nom</label>
                                 <input
                                   type="text"
                                   value={formData.last_name}
@@ -1405,7 +1405,7 @@ export default function Account() {
                               </div>
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Email</label>
+                              <label className="mb-1.5 block eyebrow-lg text-black/65">Email</label>
                               <input
                                 type="email"
                                 value={formData.email}
@@ -1414,7 +1414,7 @@ export default function Account() {
                               />
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Téléphone</label>
+                              <label className="mb-1.5 block eyebrow-lg text-black/65">Téléphone</label>
                               <input
                                 type="tel"
                                 value={formData.phone}
@@ -1467,7 +1467,7 @@ export default function Account() {
                       {/* Mot de passe */}
                       <div className="border border-black/10 bg-white p-6">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-black">Sécurité</h3>
+                          <h3 className="font-semibold text-black">Sécurité</h3>
                           {editingField !== 'password' && (
                             <button
                               onClick={handleEditPassword}
@@ -1482,7 +1482,7 @@ export default function Account() {
                         {editingField === 'password' ? (
                           <div className="mt-6 space-y-4">
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Mot de passe actuel</label>
+                              <label className="mb-1.5 block eyebrow-lg text-black/65">Mot de passe actuel</label>
                               <div className="relative">
                                 <input
                                   type={showPasswords.current ? 'text' : 'password'}
@@ -1500,7 +1500,7 @@ export default function Account() {
                               </div>
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Nouveau mot de passe</label>
+                              <label className="mb-1.5 block eyebrow-lg text-black/65">Nouveau mot de passe</label>
                               <div className="relative">
                                 <input
                                   type={showPasswords.new ? 'text' : 'password'}
@@ -1519,7 +1519,7 @@ export default function Account() {
                               </div>
                             </div>
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-black/65 uppercase tracking-wider">Confirmer</label>
+                              <label className="mb-1.5 block eyebrow-lg text-black/65">Confirmer</label>
                               <div className="relative">
                                 <input
                                   type={showPasswords.confirm ? 'text' : 'password'}
@@ -1570,7 +1570,7 @@ export default function Account() {
 
                     {/* Zone danger */}
                     <div className="border border-red-200 bg-red-50/50 p-6">
-                      <h3 className="font-bold text-red-900">Supprimer mon compte</h3>
+                      <h3 className="font-semibold text-red-900">Supprimer mon compte</h3>
                       <p className="mt-2 text-sm text-red-700/80">
                         Cette action est irréversible. Toutes vos données seront définitivement supprimées.
                       </p>
@@ -1589,10 +1589,10 @@ export default function Account() {
                 {activeSection === 'help' && (
                   <div className="space-y-8">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-am-navy">
+                      <span className="eyebrow-lg text-am-navy">
                         Support
                       </span>
-                      <h2 className="mt-2 text-2xl font-bold text-black lg:text-3xl">Aide & Contact</h2>
+                      <h2 className="mt-2 text-2xl font-semibold text-black lg:text-3xl">Aide & Contact</h2>
                       <p className="mt-1 text-black/65">Nous sommes là pour vous aider</p>
                     </div>
 
@@ -1605,7 +1605,7 @@ export default function Account() {
                         <div className="flex h-12 w-12 items-center justify-center bg-am-mist/15 transition-colors group-hover:bg-am-navy">
                           <IconMail size={20} className="text-black transition-colors group-hover:text-white" stroke={1.5} />
                         </div>
-                        <h3 className="mt-4 font-bold text-black">Email</h3>
+                        <h3 className="mt-4 font-semibold text-black">Email</h3>
                         <p className="mt-1 text-am-navy">pro.archimeuble@gmail.com</p>
                         <p className="mt-2 text-sm text-black/65">Réponse sous 24h</p>
                       </a>
@@ -1617,7 +1617,7 @@ export default function Account() {
                         <div className="flex h-12 w-12 items-center justify-center bg-am-mist/15 transition-colors group-hover:bg-am-navy">
                           <IconPhoneCall size={20} className="text-black transition-colors group-hover:text-white" stroke={1.5} />
                         </div>
-                        <h3 className="mt-4 font-bold text-black">Téléphone</h3>
+                        <h3 className="mt-4 font-semibold text-black">Téléphone</h3>
                         <p className="mt-1 text-am-navy">06 01 06 28 67</p>
                         <p className="mt-2 text-sm text-black/65">Lun - Ven, 9h - 18h</p>
                       </a>
@@ -1630,7 +1630,7 @@ export default function Account() {
                           <div className="flex h-10 w-10 items-center justify-center bg-am-mist/15">
                             <IconMessage size={18} className="text-black" stroke={1.5} />
                           </div>
-                          <h3 className="font-bold text-black">Questions fréquentes</h3>
+                          <h3 className="font-semibold text-black">Questions fréquentes</h3>
                         </div>
                       </div>
 
@@ -1663,7 +1663,7 @@ export default function Account() {
 
                     {/* CTA */}
                     <div className="bg-am-navy p-8 text-center">
-                      <h3 className="text-xl font-bold text-white">Besoin d&apos;aide pour votre projet ?</h3>
+                      <h3 className="text-xl font-semibold text-white">Besoin d&apos;aide pour votre projet ?</h3>
                       <p className="mt-2 text-white/70">Notre équipe est à votre disposition pour vous accompagner</p>
                       <Link
                         href="/contact-request"
@@ -1695,7 +1695,7 @@ export default function Account() {
           >
             {/* Header */}
             <div className="sticky top-0 flex items-center justify-between border-b border-black/10 bg-white p-6">
-              <h3 className="font-serif text-xl text-black">Détails de la façade</h3>
+              <h3 className="text-xl text-black">Détails de la façade</h3>
               <button
                 type="button"
                 onClick={() => setSelectedFacadeDetail(null)}

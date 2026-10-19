@@ -39,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Payment links proxy error:', error);
     res.status(500).json({
       error: 'Failed to manage payment links',
-      details: error instanceof Error ? error.message : String(error)
     });
   }
 }

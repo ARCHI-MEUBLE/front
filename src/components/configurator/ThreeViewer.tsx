@@ -45,6 +45,8 @@ export interface ThreeViewerProps {
   selectedPanelIds?: Set<string>;
   onSelectPanel?: (panelId: string | null) => void;
   deletedPanelIds?: Set<string>;
+  // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
+  onResizeDivider?: (zoneId: string, ratios: number[]) => void;
 }
 
 // Export du type pour utilisation externe

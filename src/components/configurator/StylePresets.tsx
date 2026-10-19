@@ -11,7 +11,7 @@ interface StylePresetsProps {
 export default function StylePresets({ onSelectPreset, selectedPresetId }: StylePresetsProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-xl font-bold mb-4">Styles prédéfinis</h3>
+      <h3 className="text-xl font-semibold mb-4">Styles prédéfinis</h3>
       <p className="text-sm text-black/70 mb-4">
         Choisissez un style pour appliquer automatiquement finitions, couleurs et configurations
       </p>

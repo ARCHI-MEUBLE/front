@@ -3,11 +3,11 @@
  * Supprime un avis (admin uniquement)
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Vérifier l'authentification admin
-  if (!hasAdminSession(req.headers.cookie)) {
+  if (!(await verifyAdminSession(req, res))) {
     return res.status(403).json({ error: 'Accès interdit. Vous devez être administrateur.' });
   }
 

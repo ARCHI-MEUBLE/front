@@ -155,7 +155,7 @@ function ShelfPositionEditor({
               >
                 <ChevronUp className="h-3 w-3" />
               </button>
-              <span className="text-xs font-mono w-12 text-center font-semibold">{percentToMm(pos)} mm</span>
+              <span className="text-xs font-mono w-12 text-center font-medium">{percentToMm(pos)} mm</span>
               <button
                 type="button"
                 onClick={() => onChange(index, Math.max(5, pos - stepPercent))}
@@ -285,7 +285,7 @@ export function SelectedZoneDimensions({
                 onChange={(e) => setWidthInput(e.target.value)}
                 onBlur={(e) => applyWidth(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && applyWidth(widthInput)}
-                className="w-20 text-center font-mono text-sm font-semibold border border-black/10 focus:border-am-navy outline-none py-1.5 pr-7"
+                className="w-20 text-center font-mono text-sm font-medium border border-black/10 focus:border-am-navy outline-none py-1.5 pr-7"
                 style={{ borderRadius: '2px' }}
                 min={50}
               />
@@ -297,11 +297,11 @@ export function SelectedZoneDimensions({
               className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white text-black transition-all hover:border-am-navy"
               style={{ borderRadius: '2px' }}
             >
-              <span className="text-sm font-bold">+</span>
+              <span className="text-sm font-semibold">+</span>
             </button>
           </div>
         ) : (
-          <span className="font-mono text-sm font-semibold text-black">{widthMm} mm</span>
+          <span className="font-mono text-sm font-medium text-black">{widthMm} mm</span>
         )}
       </div>
 
@@ -328,7 +328,7 @@ export function SelectedZoneDimensions({
                 onChange={(e) => setHeightInput(e.target.value)}
                 onBlur={(e) => applyHeight(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && applyHeight(heightInput)}
-                className="w-20 text-center font-mono text-sm font-semibold border border-black/10 focus:border-am-navy outline-none py-1.5 pr-7"
+                className="w-20 text-center font-mono text-sm font-medium border border-black/10 focus:border-am-navy outline-none py-1.5 pr-7"
                 style={{ borderRadius: '2px' }}
                 min={50}
               />
@@ -340,11 +340,11 @@ export function SelectedZoneDimensions({
               className="flex h-8 w-8 items-center justify-center border border-black/10 bg-white text-black transition-all hover:border-am-navy"
               style={{ borderRadius: '2px' }}
             >
-              <span className="text-sm font-bold">+</span>
+              <span className="text-sm font-semibold">+</span>
             </button>
           </div>
         ) : (
-          <span className="font-mono text-sm font-semibold text-black">{heightMm} mm</span>
+          <span className="font-mono text-sm font-medium text-black">{heightMm} mm</span>
         )}
       </div>
     </div>
@@ -358,7 +358,7 @@ export function SelectedZoneDimensions({
 function SectionLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div className="mb-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-black/65">{children}</p>
+      <p className="eyebrow-lg text-black/65">{children}</p>
       {hint && <p className="mt-1 text-xs text-black/65">{hint}</p>}
     </div>
   );
@@ -499,7 +499,7 @@ export function DivisionStepper({
   const blocked = !!blockedReason;
   const atMax = current >= max;
   const stepButton =
-    'flex h-9 w-9 flex-shrink-0 items-center justify-center border-2 border-black/10 bg-white text-lg font-bold text-black transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-black/10';
+    'flex h-9 w-9 flex-shrink-0 items-center justify-center border-2 border-black/10 bg-white text-lg font-semibold text-black transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-black/10';
 
   return (
     <div className="border border-black/10 bg-white p-4" style={{ borderRadius: '4px' }}>
@@ -519,7 +519,7 @@ export function DivisionStepper({
         >
           −
         </button>
-        <span className="w-10 text-center font-mono text-base font-bold text-black" aria-live="polite">
+        <span className="w-10 text-center font-mono text-base font-medium text-black" aria-live="polite">
           {value ?? '–'}
         </span>
         <button
@@ -683,7 +683,7 @@ export default function ZoneControls({
           <span className="underline decoration-dotted underline-offset-2">Groupe parent</span>
         </button>
         <span className="text-white/85">/</span>
-        <span className="font-bold text-black">Zone actuelle</span>
+        <span className="font-semibold text-black">Zone actuelle</span>
       </div>
     );
   };
@@ -860,18 +860,18 @@ export default function ZoneControls({
                     type="button"
                     onClick={() => onSetGlassShelfCount(selectedZone.id, Math.max(1, glassShelfCount - 1))}
                     disabled={glassShelfCount <= 1}
-                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-bold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-semibold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
                     style={{ borderRadius: '4px' }}
                     aria-label="Retirer une étagère"
                   >
                     −
                   </button>
-                  <span className="w-8 text-center font-mono text-base font-bold text-black">{glassShelfCount}</span>
+                  <span className="w-8 text-center font-mono text-base font-medium text-black">{glassShelfCount}</span>
                   <button
                     type="button"
                     onClick={() => onSetGlassShelfCount(selectedZone.id, Math.min(5, glassShelfCount + 1))}
                     disabled={glassShelfCount >= 5}
-                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-bold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-semibold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
                     style={{ borderRadius: '4px' }}
                     aria-label="Ajouter une étagère"
                   >

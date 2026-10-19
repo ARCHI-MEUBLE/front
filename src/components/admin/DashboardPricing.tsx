@@ -184,7 +184,7 @@ export function DashboardPricing() {
     <div className="px-4 lg:px-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des prix</h3>
+          <h3 className="text-xl font-semibold tracking-tight">Gestion des prix</h3>
           <p className="text-sm text-muted-foreground">Configurez les prix au mètre cube pour le calcul automatique</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">

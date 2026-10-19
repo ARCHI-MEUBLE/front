@@ -45,7 +45,7 @@ export function Reviews() {
               data.map((r) => ({
                 id: r.id,
                 authorName: r.authorName,
-                rating: r.rating,
+                rating: Number(r.rating),
                 text: r.text,
                 avatarUrl: avatarUrl(r.authorName, ""),
               }))

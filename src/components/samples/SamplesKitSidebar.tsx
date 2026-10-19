@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HOME_MONO } from "@/components/home/homeLayout";
+import { HOME_MONO_SM } from "@/components/home/homeLayout";
 import type { SampleColor } from "@/lib/apiClient";
 import { displayColorName, displayMaterialName } from "@/lib/displayNames";
 
@@ -22,8 +22,8 @@ export function SamplesKitSidebar({
       style={{ top: 96 }}
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="m-0 text-[24px] font-medium tracking-[-0.04em]">Votre kit</h3>
-        <span className={`text-[11px] ${HOME_MONO}`}>
+        <h3 className="m-0 text-2xl">Votre kit</h3>
+        <span className={HOME_MONO_SM}>
           {kitItems.length} / {KIT_SIZE}
         </span>
       </div>

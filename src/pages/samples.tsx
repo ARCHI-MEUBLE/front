@@ -141,8 +141,8 @@ export default function SamplesPage() {
               <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <div className="flex items-baseline gap-4">
-                    <span className="font-mono text-xs uppercase tracking-[0.05em] text-black/70">02</span>
-                    <h2 className="m-0 font-sans font-medium tracking-[-0.045em] text-black" style={{ fontSize: "clamp(28px,3vw,44px)" }}>
+                    <span className="eyebrow-lg text-black/70">02</span>
+                    <h2 className="m-0 text-heading text-black">
                       Choisissez vos teintes
                     </h2>
                   </div>

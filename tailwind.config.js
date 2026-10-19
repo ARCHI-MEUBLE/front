@@ -81,15 +81,7 @@ const config = {
         sm: "calc(var(--radius) - 4px)",
         subtle: '2px',
       },
-      fontFamily: {
-        serif: ["'Playfair Display'", "'Libre Baskerville'", "Georgia", "serif"],
-        sans: ["'Geist Sans'", "-apple-system", "'Segoe UI'", "sans-serif"],
-        mono: ["'Geist Mono'", "'SF Mono'", "monospace"],
-      },
-      fontSize: {
-        'hero': ['clamp(2.5rem, 5vw, 5rem)', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
-        'display': ['clamp(2rem, 4vw, 3.5rem)', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
-      },
+      // Polices et échelle typographique : voir @theme dans styles/globals.css (source unique)
       spacing: {
         '18': '4.5rem',
         '22': '5.5rem',

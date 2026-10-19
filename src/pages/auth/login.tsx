@@ -23,11 +23,15 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Récupérer l'URL de redirection depuis les query params
+  // Uniquement un chemin du site : « //site.com » ou « https://… » enverraient l'utilisateur ailleurs après connexion
   const { redirect } = router.query;
+  const redirectUrl =
+    typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/\\')
+      ? redirect
+      : '/';
 
   // Rediriger si déjà connecté
   if (isAuthenticated) {
-    const redirectUrl = typeof redirect === 'string' ? redirect : '/';
     router.push(redirectUrl);
     return null;
   }
@@ -47,7 +51,6 @@ export default function Login() {
       await login(formData.email, formData.password);
 
       // Rediriger vers l'URL demandée ou vers l'accueil
-      const redirectUrl = typeof redirect === 'string' ? redirect : '/';
       router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || 'Email ou mot de passe incorrect');
@@ -91,7 +94,7 @@ export default function Login() {
         <div className="flex h-full w-full flex-1 items-center justify-center bg-am-paper p-4 lg:p-8">
           <Card className="w-full max-w-md border-none bg-transparent shadow-none lg:shadow-none">
             <CardHeader className="space-y-1 text-center">
-              <h1 className="text-3xl font-bold tracking-tight text-black">
+              <h1 className="text-3xl text-black">
                 Connexion
               </h1>
               <CardDescription className="text-black/70">

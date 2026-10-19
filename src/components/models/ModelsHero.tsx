@@ -11,16 +11,12 @@ export function ModelsHero() {
     >
       <div className="grid grid-cols-1 items-center gap-[clamp(40px,6vw,96px)] lg:grid-cols-2">
         <div className="flex flex-col items-start gap-7">
-          <span className={`text-xs ${HOME_MONO}`}>Nos modèles sur mesure</span>
-          <h1
-            id="modeles-title"
-            className="m-0 font-sans font-medium leading-[0.96] tracking-[-0.055em] text-black"
-            style={{ fontSize: "clamp(44px,6.2vw,96px)" }}
-          >
+          <span className={HOME_MONO}>Nos modèles sur mesure</span>
+          <h1 id="modeles-title" className="m-0 text-display text-black">
             Fabriqués à la main,{" "}
-            <span className="am-highlight">avec cœur.</span>
+            <span className="am-highlight">avec le cœur.</span>
           </h1>
-          <p className="m-0 max-w-[44ch] text-black/85" style={{ fontSize: "clamp(17px,1.5vw,21px)" }}>
+          <p className="m-0 max-w-[44ch] text-lead text-black/85">
             Derrière chaque meuble, il y a un menuisier de notre atelier lillois qui découpe, assemble et
             ponce chaque pièce. Chaque modèle est entièrement personnalisable : dimensions, matériaux,
             finitions.

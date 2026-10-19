@@ -86,7 +86,7 @@ function Accordion({
           {index}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-serif text-sm text-[#1A1917]">{title}</span>
+          <span className="block text-sm font-medium text-[#1A1917]">{title}</span>
           <span className="block truncate text-[11px] text-[#706F6C]">{summary}</span>
         </span>
         <ChevronDown className={`h-4 w-4 flex-shrink-0 text-[#706F6C] transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -220,7 +220,7 @@ export default function DivisionSteps({
       </Accordion>
 
       <p className="text-[11px] leading-relaxed text-[#706F6C]">
-        Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
+        Astuce : glissez les séparateurs du plan, ou les poignées des planches dans la vue 3D, pour ajuster la taille des compartiments.
       </p>
     </div>
   );

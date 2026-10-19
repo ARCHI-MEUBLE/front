@@ -17,9 +17,7 @@ export function SavoirFaireStepsList() {
             <Icon className="h-7 w-7 text-black" strokeWidth={1.6} />
           </span>
           <div className="flex flex-col gap-1.5">
-            <h3 className="m-0 font-semibold leading-[1.05] tracking-[-0.045em] text-black" style={{ fontSize: "clamp(24px,2.2vw,30px)" }}>
-              {title}
-            </h3>
+            <h3 className="m-0 text-subheading text-black">{title}</h3>
             <p className="m-0 text-[17px] text-black/85">{text}</p>
           </div>
         </li>

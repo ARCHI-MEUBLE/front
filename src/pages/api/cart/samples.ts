@@ -36,7 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('[API Cart Samples] Error:', error);
     res.status(500).json({
       error: 'Erreur de connexion au backend',
-      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }

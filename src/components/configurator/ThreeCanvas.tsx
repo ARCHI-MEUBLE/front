@@ -21,8 +21,10 @@ import { ZoneHoverTag } from './scene/ZoneHoverTag';
 import { CameraRig, type CameraApi } from './scene/CameraRig';
 import { CameraToolbar } from './scene/CameraToolbar';
 import { createDoubleClickDetector, isRealClick } from './scene/pointer';
+import { DividerHandles, type DividerChange } from './scene/DividerHandles';
 import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box } from '@/lib/configurator/zoneBounds';
 import { getZoneFacade } from '@/lib/configurator/zoneStats';
+import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 export type { ThreeCanvasHandle };
 
@@ -52,9 +54,14 @@ interface ThreeViewerProps {
     useMultiColor?: boolean;
     mountingStyle?: 'applique' | 'encastre';
     onCaptureReady?: (captureFunction: () => string | null) => void;
+    // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
+    onResizeDivider?: (zoneId: string, ratios: number[]) => void;
 }
 
-
+interface DividerEvents {
+    onPreview: (change: DividerChange | null) => void;
+    onCommit: (change: DividerChange) => void;
+}
 
 function Furniture({
                        width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
@@ -68,8 +75,9 @@ function Furniture({
                        onSelectZone,
                        selectedPanelIds = new Set(),
                        onSelectPanel,
-                       deletedPanelIds = new Set()
-                   }: ThreeViewerProps) {
+                       deletedPanelIds = new Set(),
+                       dividerEvents
+                   }: ThreeViewerProps & { dividerEvents?: DividerEvents }) {
     const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -97,14 +105,15 @@ function Furniture({
         }));
     }, []);
     const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
-    const { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
+    const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
         const { width: w, depth: d, sideHeight, yOffset, thickness } = layout;
         const h = (height || 730) / 1000;
+        const backPanelThickness = 0.004;
         const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
         const doorRecess = 0;
-        return { w, h, d, sideHeight, yOffset, thickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
+        return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
     }, [layout, height, mountingStyle]);
 
     // ── Pointeur : survol, sélection et ouverture des façades ──────────────────
@@ -257,14 +266,33 @@ function Furniture({
                         ratio = 1 / zone.children!.length;
                     }
 
+                    // ANCIEN CODE (bug : n'enlevais pas l'épaisseur des séparateurs entre
+                    // compartiments) :
+                    //
+                    // if (zone.type === 'horizontal') {
+                    //     const childHeight = height * ratio;
+                    //     collectOpenSpaces(child, x, (y + height/2) - currentPos - childHeight/2, width, childHeight);
+                    //     currentPos += childHeight;
+                    // } else {
+                    //     const childWidth = width * ratio;
+                    //     collectOpenSpaces(child, x - width/2 + currentPos + childWidth/2, y, childWidth, height);
+                    //     currentPos += childWidth;
+                    // }
+
+                    const numSeparators = zone.children!.length - 1;
+
                     if (zone.type === 'horizontal') {
-                        const childHeight = height * ratio;
+                        const availableHeight = height - numSeparators * thickness;
+                        const childHeight = availableHeight * ratio;
                         collectOpenSpaces(child, x, (y + height/2) - currentPos - childHeight/2, width, childHeight);
                         currentPos += childHeight;
+                        if (i < zone.children!.length - 1) currentPos += thickness;
                     } else {
-                        const childWidth = width * ratio;
+                        const availableWidth = width - numSeparators * thickness;
+                        const childWidth = availableWidth * ratio;
                         collectOpenSpaces(child, x - width/2 + currentPos + childWidth/2, y, childWidth, height);
                         currentPos += childWidth;
+                        if (i < zone.children!.length - 1) currentPos += thickness;
                     }
                 });
             }
@@ -646,7 +674,11 @@ function Furniture({
         const sortedTopColumns = Array.from(uniqueTopColumns.entries())
             .sort(([keyA], [keyB]) => keyA - keyB);
 
-        if (sortedTopColumns.length > 1) {
+        // Désactivé : le dessus du meuble ne doit jamais être coupé par une cloison qui le
+        // touche — règle du configurateur : c'est une seule pièce, de haut en bas comme de
+        // bout en bout, rien ne la traverse. Même correctif que pour l'étagère/la cloison.
+        // (ancien comportement, gardé au cas où : `if (sortedTopColumns.length > 1) {`)
+        if (false && sortedTopColumns.length > 1) {
             sortedTopColumns.forEach(([, cells], index) => {
                 const cell = cells[0];
                 const isLeftmost = index === 0;
@@ -699,7 +731,9 @@ function Furniture({
         const sortedBottomColumns = Array.from(uniqueBottomColumns.entries())
             .sort(([keyA], [keyB]) => keyA - keyB);
 
-        if (sortedBottomColumns.length > 1) {
+        // Désactivé : même raison que pour le dessus, voir plus haut.
+        // (ancien comportement, gardé au cas où : `if (sortedBottomColumns.length > 1) {`)
+        if (false && sortedBottomColumns.length > 1) {
             sortedBottomColumns.forEach(([, cells], index) => {
                 const cell = cells[0];
                 const isLeftmost = index === 0;
@@ -851,7 +885,11 @@ function Furniture({
 
                 console.log(`Separator ${sep.path}: found ${adjacentCells.length} adjacent cells`);
 
-                if (adjacentCells.length > 0) {
+                // Désactivé : une cloison ne doit jamais être redécoupée selon les rangées
+                // adjacentes — règle du configurateur : elle va d'une planche à la suivante en
+                // un seul morceau, elle n'est jamais fragmentée par ce qui est posé à côté.
+                // (ancien comportement, gardé au cas où : `if (adjacentCells.length > 0) {`)
+                if (false && adjacentCells.length > 0) {
                     const uniqueRows = new Map<number, GridCell>();
                     adjacentCells.forEach(cell => {
                         const key = Math.round(cell.y * 1000);
@@ -893,21 +931,30 @@ function Furniture({
                             });
                         });
                 } else {
-                    let segY = sep.y;
-                    let segHeight = sep.height;
-
-                    if (sepTouchesFurnitureTop) {
-                        const gapToTop = furnitureTopInner - sepTop;
-                        const extensionTop = thickness + Math.max(0, gapToTop);
-                        segHeight += extensionTop;
-                        segY += extensionTop / 2;
-                    }
-                    if (sepTouchesFurnitureBottom) {
-                        const gapToBottom = sepBottom - yOffset;
-                        const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
-                        segHeight += extensionBottom;
-                        segY -= extensionBottom / 2;
-                    }
+                    // ANCIEN CODE (même bug que pour les étagères, version verticale : `sep.height`
+                    // est déjà exactement la bonne hauteur — collectSeparators la calcule déjà
+                    // confinée à sa propre zone, donc elle s'arrête pile à la bonne frontière
+                    // (le bas/haut du meuble, ou l'étagère au-dessus/en-dessous). Cette extension
+                    // avait un sens avec l'ancien découpage par rangée, mais maintenant que la
+                    // cloison est une seule pièce, elle la pousse EN PLUS loin que sa hauteur
+                    // réelle -> elle perce la plaque du dessus/dessous) :
+                    //
+                    // let segY = sep.y;
+                    // let segHeight = sep.height;
+                    // if (sepTouchesFurnitureTop) {
+                    //     const gapToTop = furnitureTopInner - sepTop;
+                    //     const extensionTop = thickness + Math.max(0, gapToTop);
+                    //     segHeight += extensionTop;
+                    //     segY += extensionTop / 2;
+                    // }
+                    // if (sepTouchesFurnitureBottom) {
+                    //     const gapToBottom = sepBottom - yOffset;
+                    //     const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+                    //     segHeight += extensionBottom;
+                    //     segY -= extensionBottom / 2;
+                    // }
+                    const segY = sep.y;
+                    const segHeight = sep.height;
 
                     separatorSegments.push({
                         id: `separator-v-${sep.path}-0`,
@@ -931,7 +978,11 @@ function Furniture({
                     Math.abs((cell.y - cell.height / 2) - (sep.y + thickness / 2)) < 0.05
                 );
 
-                if (adjacentCells.length > 0) {
+                // Désactivé : une étagère ne doit jamais être redécoupée selon les colonnes de
+                // la rangée du dessus — règle du configurateur : une cloison repose SUR
+                // l'étagère, elle ne la traverse pas, donc l'étagère reste une seule pièce.
+                // (ancien comportement, gardé au cas où : `if (adjacentCells.length > 0) {`)
+                if (false && adjacentCells.length > 0) {
                     const uniqueCols = new Map<number, GridCell>();
                     adjacentCells.forEach(cell => {
                         const key = Math.round(cell.x * 1000);
@@ -974,17 +1025,26 @@ function Furniture({
                             });
                         });
                 } else {
-                    let segX = sep.x;
-                    let segWidth = sep.width;
-
-                    if (sepTouchesFurnitureLeft) {
-                        segWidth += thickness;
-                        segX -= thickness / 2;
-                    }
-                    if (sepTouchesFurnitureRight) {
-                        segWidth += thickness;
-                        segX += thickness / 2;
-                    }
+                    // ANCIEN CODE (bug : `sep.width` est déjà exactement la largeur intérieure
+                    // correcte — collectSeparators la calcule déjà sans l'épaisseur des côtés.
+                    // Cette extension de +thickness avait un sens avec l'ancien découpage par
+                    // colonne (chaque morceau était alors trop étroit d'une épaisseur), mais
+                    // maintenant que l'étagère est une seule pièce, elle la pousse EN PLUS loin
+                    // que la largeur réelle -> elle déborde dans les côtés, uniquement aux
+                    // extrémités du meuble puisque sepTouchesFurnitureLeft/Right n'est vrai que là) :
+                    //
+                    // let segX = sep.x;
+                    // let segWidth = sep.width;
+                    // if (sepTouchesFurnitureLeft) {
+                    //     segWidth += thickness;
+                    //     segX -= thickness / 2;
+                    // }
+                    // if (sepTouchesFurnitureRight) {
+                    //     segWidth += thickness;
+                    //     segX += thickness / 2;
+                    // }
+                    const segX = sep.x;
+                    const segWidth = sep.width;
 
                     separatorSegments.push({
                         id: `separator-h-${sep.path}-0`,
@@ -1002,9 +1062,28 @@ function Furniture({
 
         console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
 
+        // DEBUG TEMPORAIRE : coordonnées complètes pour chercher le trou dans le fond.
+        // Comparer les bords (x ± width/2, y ± height/2) des backSegments entre eux, et avec
+        // les x/y/width/height des separatorSegments orientation 'vertical' (les cloisons) —
+        // un bord de cloison qui ne couvre pas exactement l'espace laissé par les backSegments
+        // voisins est la fuite recherchée.
+        console.log('[FIX-v1] backSegments détaillés: ' + JSON.stringify(backSegments.map(s => ({
+            id: s.id, x: +s.x.toFixed(4), y: +s.y.toFixed(4), width: +s.width.toFixed(4), height: +s.height.toFixed(4),
+        }))));
+        console.log('[FIX-v1] separatorSegments détaillés: ' + JSON.stringify(separatorSegments.map(s => ({
+            id: s.id, orientation: s.orientation, x: +s.x.toFixed(4), y: +s.y.toFixed(4), width: +s.width.toFixed(4), height: +s.height.toFixed(4),
+        }))));
+
         if (backSegments.length === 0) {
             backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
         }
+
+        console.log('[FIX-v1] leftSegments détaillés: ' + JSON.stringify(leftSegments.map(s => ({
+            id: s.id, x: +s.x.toFixed(4), y: +s.y.toFixed(4), width: +s.width.toFixed(4), height: +s.height.toFixed(4),
+        }))));
+        console.log('[FIX-v1] rightSegments détaillés: ' + JSON.stringify(rightSegments.map(s => ({
+            id: s.id, x: +s.x.toFixed(4), y: +s.y.toFixed(4), width: +s.width.toFixed(4), height: +s.height.toFixed(4),
+        }))));
 
         return { topSegments, bottomSegments, leftSegments, rightSegments, backSegments, separatorSegments };
     }, [rootZone, w, h, sideHeight, yOffset, thickness]);
@@ -1086,8 +1165,22 @@ function Furniture({
 
                 if (zone.content === 'shelf') {
                     const behindDoor = hasDoorInFront || !!zone.doorContent;
-                    const shelfDepth = behindDoor && doorRecess > 0 ? d - doorRecess : d;
-                    const shelfZ = behindDoor && doorRecess > 0 ? z - doorRecess / 2 : z;
+
+                    // ANCIEN CODE (bug : profondeur = profondeur TOTALE du meuble (d), donc le
+                    // dos de l'étagère va jusqu'au même plan que la face extérieure du panneau
+                    // de fond, au lieu de s'arrêter devant lui -> la couleur de l'étagère "sort"
+                    // à l'arrière du meuble) :
+                    //
+                    // const shelfDepth = behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                    // const shelfZ = behindDoor && doorRecess > 0 ? z - doorRecess / 2 : z;
+
+                    // On retire l'épaisseur du panneau de fond de la profondeur de l'étagère,
+                    // et on avance son centre de la moitié de ce qu'on retire pour garder sa
+                    // face avant au même endroit (seule la face arrière recule jusqu'au fond réel).
+                    const baseDepth = behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                    const baseZ = behindDoor && doorRecess > 0 ? z - doorRecess / 2 : z;
+                    const shelfDepth = baseDepth - backPanelThickness;
+                    const shelfZ = baseZ + backPanelThickness / 2;
                     items.push(
                         <mesh key={zone.id} position={[x, y, shelfZ]} castShadow receiveShadow>
                             <boxGeometry args={[width, thickness, shelfDepth]} />
@@ -1246,7 +1339,9 @@ function Furniture({
                     );
                     if (showDecorations && !restsOnRemovedShelf) {
                         items.push(
-                            <group key={`${zone.id}-deco`} position={[x, y - height/2 + thickness/2, z]}>
+                            // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
+                            // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
+                            <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
                                 <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
                             </group>
                         );
@@ -1342,22 +1437,49 @@ function Furniture({
                     }
                     console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
 
+                    // ANCIEN CODE (bug : ne soustrayait pas l'épaisseur des séparateurs entre
+                    // compartiments, contrairement à collectGridCells/collectSeparators plus haut.
+                    // Les étagères "coupait" les plaques latérales et arrières
+                    //
+                    // if (zone.type === 'horizontal') {
+                    //     const childHeight = height * ratio;
+                    //     const isFirst = i === 0;
+                    //     const isLast = i === zone.children!.length - 1;
+                    //     const childIsAtTop = isFirst ? isAtTop : false;
+                    //     const childIsAtBottom = isLast ? isAtBottom : false;
+                    //     parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight);
+                    //     currentPos += childHeight;
+                    // } else {
+                    //     const childWidth = width * ratio;
+                    //     const isFirst = i === 0;
+                    //     const isLast = i === zone.children!.length - 1;
+                    //     const childIsAtLeft = isFirst ? isAtLeft : false;
+                    //     const childIsAtRight = isLast ? isAtRight : false;
+                    //     parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight);
+                    //     currentPos += childWidth;
+                    // }
+                    const numSeparators = zone.children!.length - 1;
+
                     if (zone.type === 'horizontal') {
-                        const childHeight = height * ratio;
+                        const availableHeight = height - numSeparators * thickness;
+                        const childHeight = availableHeight * ratio;
                         const isFirst = i === 0;
                         const isLast = i === zone.children!.length - 1;
                         const childIsAtTop = isFirst ? isAtTop : false;
                         const childIsAtBottom = isLast ? isAtBottom : false;
                         parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight);
                         currentPos += childHeight;
+                        if (i < zone.children!.length - 1) currentPos += thickness;
                     } else {
-                        const childWidth = width * ratio;
+                        const availableWidth = width - numSeparators * thickness;
+                        const childWidth = availableWidth * ratio;
                         const isFirst = i === 0;
                         const isLast = i === zone.children!.length - 1;
                         const childIsAtLeft = isFirst ? isAtLeft : false;
                         const childIsAtRight = isLast ? isAtRight : false;
                         parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight);
                         currentPos += childWidth;
+                        if (i < zone.children!.length - 1) currentPos += thickness;
                     }
                 });
             }
@@ -1431,6 +1553,7 @@ function Furniture({
                         size={[segment.width, segment.height, d]}
                         hexColor={finalStructureColor}
                         imageUrl={finalStructureImageUrl}
+                        castShadow={false}
                     />
                 )
             ))}
@@ -1454,6 +1577,7 @@ function Furniture({
                         size={[segment.width, segment.height, d]}
                         hexColor={finalStructureColor}
                         imageUrl={finalStructureImageUrl}
+                        castShadow={false}
                     />
                 )
             ))}
@@ -1534,6 +1658,11 @@ function Furniture({
                 />
             ))}
 
+            {/* ANCIEN CODE (bug : profondeur = profondeur TOTALE du meuble (d), le séparateur
+                va donc jusqu'au même plan que la face extérieure du panneau de fond, au lieu de
+                s'arrêter devant lui -> sa couleur "sort" à l'arrière du meuble ; vu sous certains
+                angles ça peut aussi sembler chevaucher les côtés) :
+
             {panelSegments.separatorSegments.map((segment) => {
                 const sepDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
                 const sepZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
@@ -1560,6 +1689,115 @@ function Furniture({
                     isDeleted={deletedPanelIds.has(segment.id)}
                 />;
             })}
+            */}
+            
+            {panelSegments.separatorSegments.map((segment) => {
+                const sepBaseDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                const sepBaseZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
+                const sepDepth = sepBaseDepth - backPanelThickness;
+                const sepZ = sepBaseZ + backPanelThickness / 2;
+                return !deletedPanelIds.has(segment.id) && (
+                    <StructuralPanel
+                        key={`visual-${segment.id}`}
+                        position={[segment.x, segment.y, sepZ]}
+                        size={[segment.width, segment.height, sepDepth]}
+                        hexColor={segment.orientation === 'vertical' ? separatorColor : finalShelfColor}
+                        imageUrl={segment.orientation === 'vertical' ? separatorImageUrl : finalShelfImageUrl}
+                    />
+                );
+            })}
+            {panelSegments.separatorSegments.map((segment) => {
+                const sepHitBaseDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
+                const sepHitBaseZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
+                const sepHitDepth = sepHitBaseDepth - backPanelThickness;
+                const sepHitZ = sepHitBaseZ + backPanelThickness / 2;
+                return <PanelSegmentHitbox
+                    key={segment.id}
+                    panelId={segment.id}
+                    position={[segment.x, segment.y, sepHitZ]}
+                    size={[segment.width, segment.height, sepHitDepth]}
+                    isSelected={selectedPanelIds.has(segment.id)}
+                    onSelect={handlePanelSelect}
+                    isDeleted={deletedPanelIds.has(segment.id)}
+                />;
+            })}
+
+            {/* Bandes de fond dédiées, une par étagère/cloison : le fond est découpé en une
+                pièce par compartiment (pour pouvoir le retirer compartiment par compartiment),
+                ce qui laisse un vide exactement là où passe chaque étagère/cloison — aucune
+                pièce de fond ne "possède" cet espace-là. On pose ici une pièce de fond à part
+                entière sur cette même étroite bande, avec le même ID que le séparateur : si on
+                retire l'étagère/cloison via l'outil, cette bande de fond disparaît avec elle
+                (et inversement elle n'existe que tant que l'étagère/cloison existe).
+                Comme les backSegments normaux, on étend cette bande de +thickness quand elle
+                touche un bord du meuble — sinon elle s'arrête à la largeur/hauteur intérieure
+                du séparateur et laisse un vide juste derrière la bande de remplissage du
+                côté/dessus/dessous à cet endroit précis. */}
+            {panelSegments.separatorSegments.map((segment) => {
+                if (deletedPanelIds.has(segment.id)) return null;
+                let fillX = segment.x;
+                let fillY = segment.y;
+                let fillWidth = segment.width;
+                let fillHeight = segment.height;
+                if (segment.orientation === 'horizontal') {
+                    const touchesLeft = (segment.x - segment.width / 2) <= (-w / 2 + thickness + 0.01);
+                    const touchesRight = (segment.x + segment.width / 2) >= (w / 2 - thickness - 0.01);
+                    if (touchesLeft) { fillWidth += thickness; fillX -= thickness / 2; }
+                    if (touchesRight) { fillWidth += thickness; fillX += thickness / 2; }
+                } else {
+                    const furnitureBottomInner = yOffset + thickness;
+                    const furnitureTopInner = yOffset + sideHeight - thickness;
+                    const touchesBottom = (segment.y - segment.height / 2) <= (furnitureBottomInner + 0.01);
+                    const touchesTop = (segment.y + segment.height / 2) >= (furnitureTopInner - 0.01);
+                    if (touchesBottom) { fillHeight += thickness; fillY -= thickness / 2; }
+                    if (touchesTop) { fillHeight += thickness; fillY += thickness / 2; }
+                }
+                return (
+                    <StructuralPanel
+                        key={`back-fill-${segment.id}`}
+                        position={[fillX, fillY, -d/2 + 0.002]}
+                        size={[fillWidth, fillHeight, 0.004]}
+                        hexColor={finalBackColor}
+                        imageUrl={finalBackImageUrl}
+                        castShadow={false}
+                    />
+                );
+            })}
+
+            {/* Même principe que la bande de fond ci-dessus, mais pour les côtés gauche/droite :
+                eux aussi sont découpés par rangée (pour les retirer un par un), donc ils
+                laissent un vide à l'endroit où une étagère touche le bord du meuble. Seules les
+                étagères (horizontales) peuvent toucher un bord gauche/droit — une cloison
+                (verticale) est toujours entre deux colonnes, jamais sur le bord. */}
+            {panelSegments.separatorSegments.map((segment) => {
+                if (segment.orientation !== 'horizontal' || deletedPanelIds.has(segment.id)) {
+                    return null;
+                }
+                const touchesLeft = (segment.x - segment.width / 2) <= (-w / 2 + thickness + 0.01);
+                const touchesRight = (segment.x + segment.width / 2) >= (w / 2 - thickness - 0.01);
+                return (
+                    <React.Fragment key={`side-fill-${segment.id}`}>
+                        {touchesLeft && (
+                            <StructuralPanel
+                                position={[-w / 2 + thickness / 2, segment.y, 0]}
+                                size={[thickness, segment.height, d]}
+                                hexColor={finalStructureColor}
+                                imageUrl={finalStructureImageUrl}
+                                castShadow={false}
+                            />
+                        )}
+                        {touchesRight && (
+                            <StructuralPanel
+                                position={[w / 2 - thickness / 2, segment.y, 0]}
+                                size={[thickness, segment.height, d]}
+                                hexColor={finalStructureColor}
+                                imageUrl={finalStructureImageUrl}
+                                castShadow={false}
+                            />
+                        )}
+                    </React.Fragment>
+                );
+            })}
 
             {elements}
 
@@ -1579,6 +1817,18 @@ function Furniture({
                     widthMm={width}
                     heightMm={height}
                     clickToOpen={!onSelectZone}
+                />
+            )}
+            {dividerEvents && rootZone && !onSelectPanel && (
+                <DividerHandles
+                    rootZone={rootZone}
+                    layout={layout}
+                    widthMm={width}
+                    heightMm={height}
+                    doorsOpen={!!doorsOpen}
+                    selectedZoneIds={selectedZoneIds}
+                    onPreview={dividerEvents.onPreview}
+                    onCommit={dividerEvents.onCommit}
                 />
             )}
 
@@ -1748,8 +1998,29 @@ function NavigationHint() {
 }
 
 const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
-    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle } = props;
+    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle, onResizeDivider } = props;
     const captureRef = useRef<(() => string | null) | null>(null);
+
+    // Glissement d'une cloison ou d'une étagère : la scène suit en direct, la configuration n'est modifiée
+    // qu'au relâchement (une seule étape dans l'historique, au lieu d'une par mouvement de souris)
+    const [dividerPreview, setDividerPreview] = useState<DividerChange | null>(null);
+    const displayedRootZone = useMemo(
+        () => (dividerPreview && rootZone ? applySplitRatios(rootZone, dividerPreview.zoneId, dividerPreview.ratios) : rootZone),
+        [rootZone, dividerPreview]
+    );
+    const dividerEvents = useMemo<DividerEvents | undefined>(
+        () =>
+            onResizeDivider
+                ? {
+                    onPreview: setDividerPreview,
+                    onCommit: ({ zoneId, ratios }) => {
+                        onResizeDivider(zoneId, ratios);
+                        setDividerPreview(null);
+                    },
+                }
+                : undefined,
+        [onResizeDivider]
+    );
     const cameraApi = useRef<CameraApi | null>(null);
     const [hintVisible, setHintVisible] = useState(!navigationHintSeen);
 
@@ -1833,7 +2104,9 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                     <Room />
                     <Furniture
                         {...props}
+                        rootZone={displayedRootZone}
                         imageUrl={props.imageUrl}
+                        dividerEvents={dividerEvents}
                     />
                     <HumanSilhouette />
                     <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={15} blur={2.5} far={1.5} />

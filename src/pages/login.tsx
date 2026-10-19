@@ -28,10 +28,10 @@ export default function LoginPage() {
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
             {/* Left - Info */}
             <div className="hidden flex-col justify-center lg:flex">
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-am-navy">
+              <span className="eyebrow-lg text-am-navy">
                 Espace client
               </span>
-              <h1 className="mt-4 font-serif text-3xl text-black lg:text-4xl">
+              <h1 className="mt-4 text-heading text-black">
                 Votre espace
                 <br />
                 <span className="text-black/65">ArchiMeuble</span>
@@ -75,7 +75,7 @@ export default function LoginPage() {
               <div className="w-full max-w-md bg-white p-6 sm:p-8 lg:p-10">
                 {/* Mobile header */}
                 <div className="mb-8 text-center lg:hidden">
-                  <h1 className="font-serif text-2xl text-black">
+                  <h1 className="text-2xl text-black">
                     Connexion
                   </h1>
                   <p className="mt-2 text-sm text-black/65">

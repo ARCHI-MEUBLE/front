@@ -7,9 +7,12 @@ import { HOME_MONO, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { DevisFurnitureTypePicker } from "@/components/devis/DevisFurnitureTypePicker";
 import { DevisInterlocutorCard } from "@/components/devis/DevisInterlocutorCard";
 import { DevisChecklist } from "@/components/devis/DevisChecklist";
-import { FileDropzone, fileKey, isMediaFile } from "@/components/shared/FileDropzone";
+import { FileDropzone, fileKey, isMediaFile, withMediaType } from "@/components/shared/FileDropzone";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+// Tous les fichiers partent dans une seule requête : au-delà, le serveur la refuse en bloc
+const MAX_FILES = 10;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 
 const INPUT_CLASS =
   "min-h-11 w-full rounded-xl border border-black bg-white px-4 py-2 text-[16px] text-black outline-none";
@@ -43,10 +46,24 @@ export default function DemandeDevisPage() {
       }
       return true;
     });
-    setFiles((previous) => {
-      const known = new Set(previous.map(fileKey));
-      return [...previous, ...accepted.filter((file) => !known.has(fileKey(file)))];
-    });
+    const known = new Set(files.map(fileKey));
+    const next = [...files];
+    let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    for (const file of accepted) {
+      if (known.has(fileKey(file))) continue;
+      if (next.length >= MAX_FILES) {
+        rejection = `${MAX_FILES} fichiers maximum par demande.`;
+        break;
+      }
+      if (totalBytes + file.size > MAX_TOTAL_BYTES) {
+        rejection = `${file.name} : la demande dépasserait 50 Mo au total.`;
+        continue;
+      }
+      known.add(fileKey(file));
+      next.push(file);
+      totalBytes += file.size;
+    }
+    setFiles(next);
     setError(rejection);
   };
 
@@ -78,10 +95,17 @@ export default function DemandeDevisPage() {
       body.append("email", formData.email);
       body.append("phone", formData.phone);
       body.append("description", descriptionLines.join("\n"));
-      files.forEach((file) => body.append("files[]", file));
+      files.forEach((file) => body.append("files[]", withMediaType(file)));
 
       const response = await fetch("/backend/api/quote-request/index.php", { method: "POST", body });
-      const data = await response.json();
+      // Une requête trop lourde revient en page d'erreur HTML, pas en JSON
+      const data = await response.json().catch(() => {
+        throw new Error(
+          response.status === 413
+            ? "Vos fichiers sont trop lourds pour être envoyés ensemble. Retirez-en quelques-uns et réessayez."
+            : "Erreur lors de l'envoi de la demande"
+        );
+      });
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Erreur lors de l'envoi de la demande");
       }
@@ -110,11 +134,7 @@ export default function DemandeDevisPage() {
         <section aria-labelledby="devis-title" className={`${HOME_SECTION_NO_TOP} pb-10 pt-4 sm:pt-6`}>
           {success ? (
             <div className="rounded-3xl bg-am-mist p-[clamp(28px,6vw,72px)] text-center">
-              <h1
-                id="devis-title"
-                className="m-0 mb-3 font-medium leading-[1.02] tracking-[-0.04em] text-black"
-                style={{ fontSize: "clamp(36px,5vw,64px)" }}
-              >
+              <h1 id="devis-title" className="m-0 mb-3 text-title text-black">
                 Demande envoyée !
               </h1>
               <p className="m-0 text-[18px] text-black/85">
@@ -125,11 +145,7 @@ export default function DemandeDevisPage() {
             <div className="grid grid-cols-1 gap-6 rounded-3xl bg-am-mist p-[clamp(20px,3vw,36px)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-[clamp(32px,4vw,56px)]">
               <div className="flex min-w-0 flex-col gap-5">
                 <div className="flex flex-col gap-3">
-                  <h1
-                    id="devis-title"
-                    className="m-0 font-medium leading-[1.02] tracking-[-0.04em] text-black"
-                    style={{ fontSize: "clamp(30px,3.2vw,46px)" }}
-                  >
+                  <h1 id="devis-title" className="m-0 text-heading text-black">
                     <span className="whitespace-nowrap">Parlez-nous</span> de votre projet.
                   </h1>
                   <p className="m-0 max-w-[42ch] text-[16px] leading-[1.4] text-black">
@@ -147,7 +163,7 @@ export default function DemandeDevisPage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Nom</span>
+                    <span className={HOME_MONO}>Nom</span>
                     <input
                       name="name"
                       type="text"
@@ -160,7 +176,7 @@ export default function DemandeDevisPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Email</span>
+                    <span className={HOME_MONO}>Email</span>
                     <input
                       name="email"
                       type="email"
@@ -173,7 +189,7 @@ export default function DemandeDevisPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Téléphone</span>
+                    <span className={HOME_MONO}>Téléphone</span>
                     <input
                       name="tel"
                       type="tel"
@@ -186,7 +202,7 @@ export default function DemandeDevisPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className={`text-xs ${HOME_MONO}`}>Ville</span>
+                    <span className={HOME_MONO}>Ville</span>
                     <input
                       name="city"
                       type="text"
@@ -200,7 +216,7 @@ export default function DemandeDevisPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <span id="devis-files-label" className={`text-xs ${HOME_MONO}`}>
+                  <span id="devis-files-label" className={HOME_MONO}>
                     Photo ou vidéo d&apos;inspiration
                   </span>
                   <FileDropzone
@@ -214,7 +230,7 @@ export default function DemandeDevisPage() {
                 </div>
 
                 <label className="flex flex-col gap-1.5">
-                  <span className={`text-xs ${HOME_MONO}`}>Votre projet</span>
+                  <span className={HOME_MONO}>Votre projet</span>
                   <textarea
                     name="message"
                     rows={2}

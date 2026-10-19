@@ -41,7 +41,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Error fetching samples:', error);
     return res.status(500).json({
       error: 'Failed to fetch samples',
-      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }

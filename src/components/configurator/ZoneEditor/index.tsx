@@ -6,6 +6,7 @@ import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
 import { setDivisionCount, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 import { removeSection } from '@/lib/configurator/zoneRemoval';
+import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 export { default as PanelPlanCanvas } from './PanelPlanCanvas';
 export type { ZoneControlSection } from './ZoneControls';
@@ -510,16 +511,13 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange]
   );
 
-  // Gérer le changement de ratio depuis le canvas (drag)
+  // Gérer le changement de ratio depuis le canvas (drag). splitRatio et splitRatios restent d'accord : avec deux
+  // enfants, écrire seulement splitRatio ne changeait rien si splitRatios avait déjà été rempli (largeur saisie).
   const handleRatioChange = useCallback(
     (zoneId: string, ratios: number[]) => {
-      if (ratios.length === 2) {
-        setSplitRatio(zoneId, ratios[0]);
-      } else if (ratios.length > 2) {
-        setSplitRatios(zoneId, ratios);
-      }
+      onRootZoneChange(applySplitRatios(rootZone, zoneId, ratios));
     },
-    [setSplitRatio, setSplitRatios]
+    [rootZone, onRootZoneChange]
   );
 
   // Compteurs Colonnes / Étagères : la zone reste sélectionnée pour continuer à l'ajuster

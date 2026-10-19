@@ -40,11 +40,7 @@ export function ModelsCollectionSection({
       style={{ paddingTop: "clamp(64px,8vw,112px)" }}
     >
       <div className="sticky top-[68px] z-10 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 bg-am-paper/95 py-4 backdrop-blur-md">
-        <h2
-          id="collection-title"
-          className="m-0 font-sans font-medium tracking-[-0.04em] text-black"
-          style={{ fontSize: "clamp(24px,2.4vw,32px)" }}
-        >
+        <h2 id="collection-title" className="m-0 text-subheading text-black">
           Explorez notre collection
         </h2>
         <div role="tablist" aria-label="Catégories" className="flex flex-wrap gap-2">

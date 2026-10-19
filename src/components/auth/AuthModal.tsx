@@ -74,7 +74,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           >
             <IconX className="h-5 w-5" />
           </button>
-          <CardTitle className="text-2xl font-bold tracking-tight text-black">
+          <CardTitle className="text-2xl font-semibold tracking-tight text-black">
             {mode === 'login' ? 'Connexion' : 'Inscription'}
           </CardTitle>
           <CardDescription className="text-black/60">

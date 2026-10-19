@@ -134,7 +134,7 @@ export function DashboardFacades() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des Façades</h3>
+          <h3 className="text-xl font-semibold tracking-tight">Gestion des Façades</h3>
           <p className="text-sm text-muted-foreground">
             Configurez les matériaux, paramètres et tarification des façades
           </p>

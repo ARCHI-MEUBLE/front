@@ -36,8 +36,8 @@ export function ModelCard({ model, index }: { model: ModelCardData; index: numbe
         </span>
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
-            <h3 className="m-0 font-sans text-[22px] font-medium tracking-[-0.035em] text-black">{model.name}</h3>
-            <span className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.04em] text-black/70">
+            <h3 className="m-0 text-card-title text-black">{model.name}</h3>
+            <span className="whitespace-nowrap eyebrow text-black/70">
               {model.categoryLabel}
             </span>
           </div>
