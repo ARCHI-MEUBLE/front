@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { HOME_MONO, HOME_MONO_SM, HOME_PILL_OUTLINE, HOME_PILL_WINE, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
+import { HOME_MONO_SM, HOME_PILL_OUTLINE, HOME_PILL_WINE, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 
 export function HeroSection() {
   return (
     <section aria-labelledby="hero-title" className={`${HOME_SECTION_NO_TOP} pt-[clamp(32px,5vw,72px)]`}>
-      <div className={`mb-8 flex flex-wrap gap-x-6 gap-y-2 ${HOME_MONO}`}>
+      <div className="mb-8 flex flex-wrap gap-x-6 gap-y-2 text-[15px] text-black/70">
         <span>Menuisier à Lille</span>
         <span>Atelier, 30 rue Henri Regnault</span>
       </div>
