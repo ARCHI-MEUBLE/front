@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown, Columns3, Minus, Plus, Rows3 } from 'lucide-react';
+import { ChevronDown, Columns3, Rows3 } from 'lucide-react';
 import type { Zone } from '../ZoneEditor/types';
 import { DivisionStepper } from '../ZoneEditor/ZoneControls';
 import { partSize, splitAvailability } from '@/lib/configurator/constraints';
 import { getDivisionCount, isShelfGrid, setDivisionCount, shelfColumnWidths, type DivisionDirection } from '@/lib/configurator/zoneDivision';
-import { canResizeZone, setZoneSize, type ResizeAxis } from '@/lib/configurator/zoneResize';
 import { getZoneSize } from '@/lib/configurator/zoneStats';
 
 interface DivisionStepsProps {
@@ -14,7 +12,12 @@ interface DivisionStepsProps {
   height: number;
   onRootZoneChange: (zone: Zone) => void;
   onSelectedZoneIdsChange: (ids: string[]) => void;
+  // Volet ouvert (1 à 4) : il détermine le type d'élément sélectionnable sur le meuble
+  openStep: DivisionLevel | null;
+  onOpenStepChange: (step: DivisionLevel | null) => void;
 }
+
+export type DivisionLevel = 1 | 2 | 3 | 4;
 
 const cm = (mm: number) => `${Math.round(mm / 10)} cm`;
 
@@ -43,63 +46,13 @@ function resolveLevels(root: Zone, selectedId: string) {
   return { caisson, shelf, compartment };
 }
 
-function SizeField({
-  label,
-  icon: Icon,
-  valueMm,
-  adjustable,
-  onChange,
-}: {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  valueMm: number;
-  adjustable: boolean;
-  onChange: (mm: number) => void;
-}) {
-  const [input, setInput] = useState(String(valueMm));
-  useEffect(() => setInput(String(valueMm)), [valueMm]);
-
-  const apply = (raw: string) => {
-    const num = parseInt(raw, 10);
-    if (!isNaN(num) && num >= 50) onChange(num);
-    else setInput(String(valueMm));
-  };
-  const stepButton =
-    'flex h-8 w-8 items-center justify-center border border-[#E8E6E3] bg-white text-[#1A1917] transition-all hover:border-[#1A1917]';
-
-  return (
-    <div className="flex items-center justify-between gap-3 border border-[#E8E6E3] bg-white px-3 py-2.5" style={{ borderRadius: '4px' }}>
-      <span className="flex items-center gap-2 text-sm text-[#706F6C]">
-        <Icon className="h-4 w-4" />
-        {label}
-      </span>
-      {adjustable ? (
-        <div className="flex items-center gap-1">
-          <button type="button" className={stepButton} style={{ borderRadius: '2px' }} onClick={() => onChange(Math.max(50, valueMm - 10))} aria-label={`Réduire : ${label}`}>
-            <Minus className="h-3 w-3" />
-          </button>
-          <div className="relative">
-            <input
-              type="number"
-              value={input}
-              min={50}
-              onChange={(e) => setInput(e.target.value)}
-              onBlur={(e) => apply(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && apply(input)}
-              className="w-20 border border-[#E8E6E3] py-1.5 pr-7 text-center font-mono text-sm font-medium outline-none focus:border-[#1A1917]"
-              style={{ borderRadius: '2px' }}
-            />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#706F6C]">mm</span>
-          </div>
-          <button type="button" className={stepButton} style={{ borderRadius: '2px' }} onClick={() => onChange(valueMm + 10)} aria-label={`Agrandir : ${label}`}>
-            <Plus className="h-3 w-3" />
-          </button>
-        </div>
-      ) : (
-        <span className="font-mono text-sm font-medium text-[#1A1917]">{valueMm} mm</span>
-      )}
-    </div>
-  );
+// Zone du niveau demandé (meuble, caisson, étagère ou compartiment) qui contient la zone cliquée
+export function zoneAtLevel(root: Zone, clickedId: string, level: DivisionLevel): Zone {
+  const { caisson, shelf, compartment } = resolveLevels(root, clickedId);
+  if (level === 1) return root;
+  if (level === 2) return caisson;
+  if (level === 3) return shelf;
+  return compartment ?? shelf;
 }
 
 function Accordion({
@@ -150,22 +103,20 @@ export default function DivisionSteps({
   height,
   onRootZoneChange,
   onSelectedZoneIdsChange,
+  openStep,
+  onOpenStepChange,
 }: DivisionStepsProps) {
-  const [openStep, setOpenStep] = useState<number | null>(1);
   const { caisson, shelf, compartment } = resolveLevels(rootZone, selectedZoneIds[0] ?? 'root');
 
   const sizeOf = (zone: Zone) => getZoneSize(rootZone, zone.id, width, height) ?? { width, height };
   const caissonSize = sizeOf(caisson);
   const shelfSize = sizeOf(shelf);
-  const compartmentSize = compartment ? sizeOf(compartment) : shelfSize;
 
   const apply = (zone: Zone, direction: DivisionDirection, count: number) => {
     onRootZoneChange(setDivisionCount(rootZone, zone.id, direction, count));
     onSelectedZoneIdsChange([zone.id]);
   };
-  const resize = (zone: Zone, axis: ResizeAxis, mm: number) =>
-    onRootZoneChange(setZoneSize(rootZone, zone.id, axis, mm, width, height));
-  const toggle = (step: number) => setOpenStep((current) => (current === step ? null : step));
+  const toggle = (step: DivisionLevel) => onOpenStepChange(openStep === step ? null : step);
 
   // Niveau 1 : caissons dans le meuble
   const caissonCount = getDivisionCount(rootZone, 'vertical');
@@ -213,19 +164,12 @@ export default function DivisionSteps({
 
       <Accordion
         index={2}
-        title="Largeur des caissons & étagères"
-        summary={`${caissonLabel} · ${caissonSize.width} mm · ${shelfCount ?? '–'} étagère${(shelfCount ?? 0) > 1 ? 's' : ''}`}
+        title="Ajout d'étagères"
+        summary={`${caissonLabel} · ${shelfCount ?? '–'} étagère${(shelfCount ?? 0) > 1 ? 's' : ''}`}
         open={openStep === 2}
         onToggle={() => toggle(2)}
       >
         <p className="text-xs text-[#706F6C]">Cliquez sur un caisson du meuble pour le sélectionner.</p>
-        <SizeField
-          label={`Largeur du ${caissonLabel.toLowerCase()}`}
-          icon={Columns3}
-          valueMm={Math.round(caissonSize.width)}
-          adjustable={canResizeZone(rootZone, caisson.id, 'width')}
-          onChange={(mm) => resize(caisson, 'width', mm)}
-        />
         <DivisionStepper
           icon={Rows3}
           label="Étagères dans ce caisson"
@@ -240,19 +184,12 @@ export default function DivisionSteps({
 
       <Accordion
         index={3}
-        title="Hauteur des étagères & séparations"
-        summary={`${shelfLabel} · ${Math.round(shelfSize.height)} mm · ${dividerCount ?? '–'} compartiment${(dividerCount ?? 0) > 1 ? 's' : ''}`}
+        title="Ajout de compartiments"
+        summary={`${shelfLabel} · ${dividerCount ?? '–'} compartiment${(dividerCount ?? 0) > 1 ? 's' : ''}`}
         open={openStep === 3}
         onToggle={() => toggle(3)}
       >
         <p className="text-xs text-[#706F6C]">Cliquez sur une étagère du meuble pour la sélectionner.</p>
-        <SizeField
-          label={`Hauteur de l'${shelfLabel.toLowerCase()}`}
-          icon={Rows3}
-          valueMm={Math.round(shelfSize.height)}
-          adjustable={canResizeZone(rootZone, shelf.id, 'height')}
-          onChange={(mm) => resize(shelf, 'height', mm)}
-        />
         <DivisionStepper
           icon={Columns3}
           label="Compartiments dans cette étagère"
@@ -266,25 +203,18 @@ export default function DivisionSteps({
 
       <Accordion
         index={4}
-        title="Largeur des compartiments"
-        summary={compartment ? `Compartiment ${compartmentIndex} · ${Math.round(compartmentSize.width)} mm` : 'Aucune séparation verticale'}
+        title="Compartiments"
+        summary={compartment ? `Compartiment ${compartmentIndex} sélectionné` : 'Aucune séparation verticale'}
         open={openStep === 4}
         onToggle={() => toggle(4)}
       >
         {compartment ? (
           <>
-            <p className="text-xs text-[#706F6C]">Cliquez sur un compartiment de l&apos;étagère pour le sélectionner.</p>
-            <SizeField
-              label={`Largeur du compartiment ${compartmentIndex}`}
-              icon={Columns3}
-              valueMm={Math.round(compartmentSize.width)}
-              adjustable={canResizeZone(rootZone, compartment.id, 'width')}
-              onChange={(mm) => resize(compartment, 'width', mm)}
-            />
+            <p className="text-xs text-[#706F6C]">Cliquez sur un compartiment de l&apos;étagère pour le sélectionner, puis glissez ses séparateurs sur le plan pour changer sa largeur.</p>
           </>
         ) : (
           <p className="text-xs text-[#706F6C]">
-            Ajoutez d&apos;abord des compartiments dans une étagère (étape 3) pour régler leur largeur.
+            Ajoutez d&apos;abord des compartiments dans une étagère (étape 3) pour les ajuster.
           </p>
         )}
       </Accordion>
