@@ -27,8 +27,10 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <link rel="icon" href="/images/logo.jpg" />
-        <link rel="apple-touch-icon" href="/images/logo.jpg" />
+        {/* Monogramme AM sur fond papier : le logo complet, réduit à 16 px, était illisible dans l'onglet */}
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="theme-color" content="#F4F0E8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <CustomerProvider>

@@ -14,7 +14,7 @@ export function ModelsHero() {
           <span className={HOME_MONO}>Nos modèles sur mesure</span>
           <h1 id="modeles-title" className="m-0 text-display text-black">
             Fabriqués à la main,{" "}
-            <span className="am-highlight">avec cœur.</span>
+            <span className="am-highlight">avec le cœur.</span>
           </h1>
           <p className="m-0 max-w-[44ch] text-lead text-black/85">
             Derrière chaque meuble, il y a un menuisier de notre atelier lillois qui découpe, assemble et

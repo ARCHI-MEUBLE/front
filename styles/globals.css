@@ -196,6 +196,12 @@
     text-wrap: balance;
   }
 
+  /* Pas de 700 dans l'identité : l'emphase dans un texte est en 600 (Tailwind met « bolder », soit 700, non chargé) */
+  b,
+  strong {
+    font-weight: 600;
+  }
+
   /* Sélection de texte aux couleurs du site */
   ::selection {
     background-color: var(--am-mist);
