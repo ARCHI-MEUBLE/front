@@ -20,7 +20,7 @@ import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import StepNav from '@/components/configurator/steps/StepNav';
 import StepIntro from '@/components/configurator/steps/StepIntro';
 import StepSection from '@/components/configurator/steps/StepSection';
-import DivisionSteps from '@/components/configurator/steps/DivisionSteps';
+import DivisionSteps, { zoneAtLevel, type DivisionLevel } from '@/components/configurator/steps/DivisionSteps';
 import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
@@ -754,6 +754,15 @@ export default function ConfiguratorPage() {
     setSelectedZoneIds(zoneId ? [zoneId] : []);
     if (zoneId) setZoneTouched(true);
   }, [activeStep, handleZoneSelect]);
+
+  // Étape Division : le volet ouvert fixe le type d'élément sélectionnable (meuble, caisson, étagère, compartiment)
+  const [divisionLevel, setDivisionLevel] = useState<DivisionLevel | null>(1);
+  useEffect(() => {
+    if (activeStep !== STEP.DIVISION || divisionLevel === null) return;
+    const current = selectedZoneIds[0] ?? 'root';
+    const target = zoneAtLevel(rootZone, current, divisionLevel).id;
+    if (selectedZoneIds.length !== 1 || current !== target) setSelectedZoneIds([target]);
+  }, [activeStep, divisionLevel, rootZone, selectedZoneIds]);
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
@@ -3172,6 +3181,8 @@ export default function ConfiguratorPage() {
                         height={height}
                         onRootZoneChange={setRootZone}
                         onSelectedZoneIdsChange={setSelectedZoneIds}
+                        openStep={divisionLevel}
+                        onOpenStepChange={setDivisionLevel}
                       />
                     )}
 

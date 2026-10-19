@@ -478,7 +478,8 @@ export default function ZoneEditor({
     (zoneId: string, ratio: number) => {
       const updateZone = (z: Zone): Zone => {
         if (z.id === zoneId && (z.type === 'horizontal' || z.type === 'vertical')) {
-          return { ...z, splitRatio: ratio };
+          // splitRatios prime sur splitRatio : on l'efface pour que le nouveau ratio soit pris en compte
+          return { ...z, splitRatio: ratio, splitRatios: undefined };
         }
         if (z.children) {
           return { ...z, children: z.children.map(updateZone) };
