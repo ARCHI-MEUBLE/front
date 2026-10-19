@@ -39,7 +39,7 @@ import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, RotateCcw, Sparkles, Undo2, Redo2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, EyeOff, RotateCcw, Sparkles, Undo2, Redo2, Trash2 } from 'lucide-react';
 import {
   IconInfoCircle,
   IconEdit,
@@ -253,6 +253,8 @@ export default function ConfiguratorPage() {
 
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
+  // Affichage seulement (non enregistré) : sans les tiroirs, on voit mieux les séparations
+  const [hideDrawers, setHideDrawers] = useState(false);
   const doorsOpenRef = useRef(doorsOpen);
   const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
   const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
@@ -772,6 +774,14 @@ export default function ConfiguratorPage() {
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
+
+  // Un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
+  const drawerCountRef = useRef(zoneStats.drawers);
+  useEffect(() => {
+    if (zoneStats.drawers > drawerCountRef.current) setHideDrawers(false);
+    drawerCountRef.current = zoneStats.drawers;
+  }, [zoneStats.drawers]);
+  const canHideDrawers = show3DView && zoneStats.drawers > 0;
 
   // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
   // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
@@ -2803,6 +2813,7 @@ export default function ConfiguratorPage() {
                     isBuffet={furnitureStructure?.isBuffet}
                     doorsOpen={doorsOpen}
                     showDecorations={showDecorations}
+                    hideDrawers={hideDrawers}
                     onToggleDoors={isViewMode ? undefined : handleToggleDoors}
                     componentColors={componentColors}
                     useMultiColor={useMultiColor}
@@ -2893,6 +2904,20 @@ export default function ConfiguratorPage() {
                   >
                     {doorsOpen ? <DoorClosed className="h-4 w-4" /> : <DoorOpen className="h-4 w-4" />}
                   </button>
+                  {canHideDrawers && (
+                    <button
+                      type="button"
+                      onClick={() => setHideDrawers(!hideDrawers)}
+                      aria-pressed={hideDrawers}
+                      aria-label={hideDrawers ? 'Afficher les tiroirs' : 'Cacher les tiroirs'}
+                      className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
+                        hideDrawers ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <EyeOff className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 {!isViewMode && showQuickMenu && quickMenu && (
                   <ZoneQuickMenu
@@ -2961,6 +2986,24 @@ export default function ConfiguratorPage() {
                     <Box className="h-4 w-4" />
                     <span>{doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}</span>
                   </button>
+
+                  {canHideDrawers && (
+                    <button
+                      type="button"
+                      onClick={() => setHideDrawers(!hideDrawers)}
+                      aria-pressed={hideDrawers}
+                      className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
+                        hideDrawers
+                          ? 'border-am-navy bg-am-navy text-white'
+                          : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
+                      }`}
+                      style={{ borderRadius: '2px' }}
+                      title="Masquer les tiroirs pour mieux voir les séparations"
+                    >
+                      <EyeOff className="h-4 w-4" />
+                      <span>{hideDrawers ? 'Afficher les tiroirs' : 'Cacher les tiroirs'}</span>
+                    </button>
+                  )}
                 </div>
 
                 {!isViewMode && (

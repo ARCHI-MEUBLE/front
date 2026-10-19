@@ -34,6 +34,8 @@ export interface ThreeViewerProps {
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
+  // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
+  hideDrawers?: boolean;
   onToggleDoors?: () => void;
   componentColors?: ComponentColors;
   useMultiColor?: boolean;

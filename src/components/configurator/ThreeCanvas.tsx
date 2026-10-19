@@ -47,6 +47,8 @@ interface ThreeViewerProps {
     isBuffet?: boolean;
     doorsOpen?: boolean;
     showDecorations?: boolean;
+    // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
+    hideDrawers?: boolean;
     onToggleDoors?: () => void;
     componentColors?: ComponentColors;
     doorType?: 'none' | 'single' | 'double';
@@ -65,7 +67,7 @@ interface DividerEvents {
 
 function Furniture({
                        width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
-                       doorsOpen, showDecorations, onToggleDoors, componentColors,
+                       doorsOpen, showDecorations, hideDrawers = false, onToggleDoors, componentColors,
                        doorType = 'none',
                        doorSide = 'left',
                        useMultiColor = false,
@@ -1194,7 +1196,7 @@ function Furniture({
                             </group>
                         );
                     }
-                } else if (zone.content === 'drawer') {
+                } else if (zone.content === 'drawer' && !hideDrawers) {
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
@@ -1211,7 +1213,7 @@ function Furniture({
                             />
                         </group>
                     );
-                } else if (zone.content === 'push_drawer') {
+                } else if (zone.content === 'push_drawer' && !hideDrawers) {
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
@@ -1493,7 +1495,7 @@ function Furniture({
         finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
-        openCompartments, showDecorations, zoneHandlers,
+        openCompartments, showDecorations, hideDrawers, zoneHandlers,
         selectedPanelIds, onSelectPanel
     ]);
 
