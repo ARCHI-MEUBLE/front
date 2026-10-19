@@ -201,24 +201,6 @@ export default function DivisionSteps({
         />
       </Accordion>
 
-      <Accordion
-        index={4}
-        title="Compartiments"
-        summary={compartment ? `Compartiment ${compartmentIndex} sélectionné` : 'Aucune séparation verticale'}
-        open={openStep === 4}
-        onToggle={() => toggle(4)}
-      >
-        {compartment ? (
-          <>
-            <p className="text-xs text-[#706F6C]">Cliquez sur un compartiment de l&apos;étagère pour le sélectionner, puis glissez ses séparateurs sur le plan pour changer sa largeur.</p>
-          </>
-        ) : (
-          <p className="text-xs text-[#706F6C]">
-            Ajoutez d&apos;abord des compartiments dans une étagère (étape 3) pour les ajuster.
-          </p>
-        )}
-      </Accordion>
-
       <p className="text-[11px] leading-relaxed text-[#706F6C]">
         Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
       </p>
