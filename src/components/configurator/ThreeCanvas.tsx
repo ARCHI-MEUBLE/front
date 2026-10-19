@@ -1149,6 +1149,7 @@ function Furniture({
                 const hitboxZ = -hitboxRecess / 2;
                 // Les compartiments du bord englobent aussi les panneaux extérieurs : cliquer sur le côté, le
                 // dessus ou le dessous du meuble sélectionne le compartiment voisin au lieu de ne rien faire
+                // (quand les planches sont cliquables, leur propre zone de clic, un peu plus grande, passe devant)
                 const shell = (atEdge: boolean) => (atEdge ? thickness : 0.001);
                 const growLeft = shell(isAtLeft);
                 const growRight = shell(isAtRight);
@@ -1507,9 +1508,8 @@ function Furniture({
         onSelectPanel?.(panelId);
     }, [onSelectPanel, onSelectZone]);
 
-    // Les panneaux ne réagissent au pointeur que pendant l'outil « retirer des planches ». Le reste du temps,
-    // un clic sur un panneau (côté, dessus, cloison...) tombe sur le compartiment qu'il borde : avant, il
-    // était avalé par le panneau, qui effaçait en plus la sélection.
+    // Fourni (édition) : un clic sur une planche la choisit et ouvre son menu (« Supprimer la planche »).
+    // Sans lui (consultation), un clic sur un panneau tombe sur le compartiment qu'il borde.
     const panelToolActive = !!onSelectPanel;
     const backPanelHandlers = panelToolActive
         ? {
@@ -1807,11 +1807,10 @@ function Furniture({
                 rootZone={rootZone}
                 layout={layout}
                 selectedZoneIds={selectedZoneIds}
-                // L'outil « retirer des planches » travaille sur les panneaux : pas de survol de zone
-                hoveredZoneId={onSelectPanel ? null : hoveredZoneId}
+                hoveredZoneId={hoveredZoneId}
                 selectionTint={selectionTint}
             />
-            {hoveredZoneId && rootZone && !onSelectPanel && (
+            {hoveredZoneId && rootZone && (
                 <ZoneHoverTag
                     rootZone={rootZone}
                     zoneId={hoveredZoneId}
@@ -1821,7 +1820,7 @@ function Furniture({
                     clickToOpen={!onSelectZone}
                 />
             )}
-            {dividerEvents && rootZone && !onSelectPanel && (
+            {dividerEvents && rootZone && (
                 <DividerHandles
                     rootZone={rootZone}
                     layout={layout}

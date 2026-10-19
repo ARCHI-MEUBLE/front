@@ -39,7 +39,7 @@ import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, EyeOff, RotateCcw, Sparkles, Undo2, Redo2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, EyeOff, RotateCcw, Sparkles, Undo2, Redo2 } from 'lucide-react';
 import {
   IconInfoCircle,
   IconEdit,
@@ -311,16 +311,16 @@ export default function ConfiguratorPage() {
 
   const [selectedPanelIds, setSelectedPanelIds] = useState<Set<string>>(new Set());
   const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
-  const [showPanelTool, setShowPanelTool] = useState(false);
-  const panelToolRef = useRef<HTMLDivElement>(null);
 
+  // Le menu sur clic n'existe que sur grand écran : en dessous, les planches ne se choisissent pas
+  const [wideViewer, setWideViewer] = useState(false);
   useEffect(() => {
-    if (showPanelTool && panelToolRef.current) {
-      setTimeout(() => {
-        panelToolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }
-  }, [showPanelTool]);
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = () => setWideViewer(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
 
   const toggleSelectedPanelsDeleted = useCallback((action: 'delete' | 'restore') => {
     // Une planche intérieure retirée réunit les deux sections qu'elle séparait (au lieu d'être seulement
@@ -370,21 +370,10 @@ export default function ConfiguratorPage() {
     setRootZone(prev => applySplitRatios(prev, zoneId, ratios));
   }, [setRootZone]);
 
+  // Clic sur une planche dans la vue 3D : elle seule est choisie, son menu remplace celui de la zone
   const handlePanelSelect = useCallback((panelId: string | null) => {
-    if (!panelId) {
-      setSelectedPanelIds(new Set());
-      return;
-    }
-    setSelectedPanelIds(prev => {
-      const next = new Set(prev);
-      if (next.has(panelId)) {
-        next.delete(panelId);
-      } else {
-        next.add(panelId);
-      }
-      return next;
-    });
-    setSelectedZoneIds([]);
+    setSelectedPanelIds(panelId ? new Set([panelId]) : new Set());
+    if (panelId) setSelectedZoneIds([]);
   }, []);
 
   const handleZoneSelect = useCallback(
@@ -635,25 +624,10 @@ export default function ConfiguratorPage() {
     setViewLocked(true);
   }, []);
 
-  // Outil « Retirer planches » : les planches ne se choisissent qu'en 3D, on y passe donc à l'ouverture
-  // (en plan 2D le bouton ne faisait que cacher le menu de zone)
-  const togglePanelTool = useCallback(() => {
-    if (showPanelTool) {
-      setShowPanelTool(false);
-      setSelectedPanelIds(new Set());
-      return;
-    }
-    setShow3DView(true);
-    setShowPanelTool(true);
-  }, [showPanelTool]);
-
-  // Retour au plan 2D (bouton Plan 2D, étape Division) : l'outil n'y fonctionne pas, on le ferme
+  // Les planches ne se choisissent qu'en 3D : au passage au plan 2D, la planche choisie est oubliée
   useEffect(() => {
-    if (!show3DView && showPanelTool) {
-      setShowPanelTool(false);
-      setSelectedPanelIds(new Set());
-    }
-  }, [show3DView, showPanelTool]);
+    if (!show3DView) setSelectedPanelIds(new Set());
+  }, [show3DView]);
 
   const stepContentRef = useRef<HTMLDivElement>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -767,10 +741,12 @@ export default function ConfiguratorPage() {
   const [divisionLevel, setDivisionLevel] = useState<DivisionLevel | null>(1);
   useEffect(() => {
     if (activeStep !== STEP.DIVISION || divisionLevel === null) return;
+    // Une planche est choisie : pas de zone tant que son menu est ouvert
+    if (selectedPanelIds.size > 0) return;
     const current = selectedZoneIds[0] ?? 'root';
     const target = zoneAtLevel(rootZone, current, divisionLevel).id;
     if (selectedZoneIds.length !== 1 || current !== target) setSelectedZoneIds([target]);
-  }, [activeStep, divisionLevel, rootZone, selectedZoneIds]);
+  }, [activeStep, divisionLevel, rootZone, selectedZoneIds, selectedPanelIds]);
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
@@ -847,6 +823,28 @@ export default function ConfiguratorPage() {
     };
   }, [selectedZone, selectedZoneIds, leafZones, rootZone, width, height]);
 
+  // Menu de la planche choisie dans la vue 3D : son nom et de quoi la retirer (ou la remettre)
+  const panelMenu = useMemo(() => {
+    if (selectedPanelIds.size !== 1) return null;
+    const panelId = Array.from(selectedPanelIds)[0];
+    const deleted = deletedPanelIds.has(panelId);
+
+    // Étagère ou cloison : la retirer réunit les deux sections qu'elle séparait
+    if (panelId.startsWith('separator-')) {
+      return {
+        title: panelId.startsWith('separator-h-') ? 'Étagère' : 'Cloison',
+        subtitle: deleted ? 'Planche retirée' : 'Les deux sections seront réunies',
+        deleted,
+      };
+    }
+    const panelInfo = stringToPanelId(panelId);
+    return {
+      title: (panelInfo && PANEL_META[panelInfo.type]?.label) || 'Planche',
+      subtitle: deleted ? 'Planche retirée' : 'Panneau extérieur',
+      deleted,
+    };
+  }, [selectedPanelIds, deletedPanelIds]);
+
   // Hauteur disponible pour le plan 2D : il remplit le viewer au lieu d'être plafonné, ce qui laisse
   // assez de place aux meubles très divisés
   const planViewportRef = useRef<HTMLDivElement>(null);
@@ -880,7 +878,7 @@ export default function ConfiguratorPage() {
   // Dimensions et Matières où il n'apporte rien tant qu'aucune zone n'a été choisie
   const showQuickMenu =
     !!quickMenu &&
-    !showPanelTool &&
+    !panelMenu &&
     !(
       !zoneTouched &&
       selectedZoneIds.length === 1 &&
@@ -1559,7 +1557,6 @@ export default function ConfiguratorPage() {
     setSelectedZoneIds(['root']);
     setDeletedPanelIds(new Set());
     setSelectedPanelIds(new Set());
-    setShowPanelTool(false);
 
     try {
       localStorage.removeItem(localStorageKey);
@@ -2820,11 +2817,11 @@ export default function ConfiguratorPage() {
                     doorType={doorType}
                     doorSide={doorSide}
                     mountingStyle={mountingStyle}
-                    selectedPanelIds={isViewMode || !showPanelTool ? new Set<string>() : selectedPanelIds}
-                    onSelectPanel={isViewMode || !showPanelTool ? undefined : handlePanelSelect}
+                    selectedPanelIds={isViewMode ? new Set<string>() : selectedPanelIds}
+                    onSelectPanel={isViewMode || !wideViewer ? undefined : handlePanelSelect}
                     deletedPanelIds={deletedPanelIds}
-                    // Poignées de glissement des planches : à l'étape Division seulement, hors outil « Retirer planches »
-                    onResizeDivider={!isViewMode && activeStep === STEP.DIVISION && !showPanelTool ? handleDividerResize : undefined}
+                    // Poignées de glissement des planches : à l'étape Division seulement
+                    onResizeDivider={!isViewMode && activeStep === STEP.DIVISION ? handleDividerResize : undefined}
                   />
                 )}
                 <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
@@ -2930,34 +2927,18 @@ export default function ConfiguratorPage() {
                     onClose={() => setSelectedZoneIds([])}
                   />
                 )}
+                {!isViewMode && panelMenu && (
+                  <ZoneQuickMenu
+                    title={panelMenu.title}
+                    subtitle={panelMenu.subtitle}
+                    deleteLabel="Supprimer la planche"
+                    deleteHint="Retirer cette planche du meuble"
+                    onDelete={panelMenu.deleted ? undefined : () => toggleSelectedPanelsDeleted('delete')}
+                    onRestore={panelMenu.deleted ? () => toggleSelectedPanelsDeleted('restore') : undefined}
+                    onClose={() => setSelectedPanelIds(new Set())}
+                  />
+                )}
                 <div className="absolute bottom-4 right-4 z-20 hidden flex-col gap-2 lg:flex">
-                  {!isViewMode && (
-                    <button
-                      type="button"
-                      onClick={togglePanelTool}
-                      aria-pressed={showPanelTool}
-                      className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
-                        showPanelTool
-                          ? 'border-am-wine bg-am-wine text-white'
-                          : 'border-am-wine/50 bg-am-wine/10 text-am-wine hover:border-am-wine hover:bg-am-wine hover:text-white'
-                      }`}
-                      style={{ borderRadius: '2px' }}
-                      title={showPanelTool ? 'Terminer le retrait de planches' : 'Retirer des planches du meuble (en vue 3D)'}
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="4" width="20" height="4" rx="0.5" />
-                        <line x1="6" y1="12" x2="18" y2="12" strokeDasharray="2 2" opacity="0.5" />
-                        <rect x="2" y="16" width="20" height="4" rx="0.5" />
-                      </svg>
-                      <span>{showPanelTool ? 'Terminer le retrait' : 'Retirer planches'}</span>
-                      {deletedPanelIds.size > 0 && (
-                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-am-wine">
-                          {deletedPanelIds.size}
-                        </span>
-                      )}
-                    </button>
-                  )}
-
                   <button
                     type="button"
                     onClick={() => setShowDecorations(!showDecorations)}
@@ -3036,92 +3017,6 @@ export default function ConfiguratorPage() {
                     >
                       <Redo2 className="h-4 w-4" />
                     </button>
-                  </div>
-                )}
-
-                {!isViewMode && showPanelTool && (
-                  // Même emplacement que le menu de zone (jamais affichés ensemble) : la colonne des commandes de caméra occupe le bord droit.
-                  // Affichée dès l'ouverture de l'outil, pour dire quoi faire tant qu'aucune planche n'est choisie
-                  <div className="pointer-events-none absolute z-20 hidden justify-center lg:left-[7.5rem] lg:right-[11.5rem] lg:top-4 lg:flex">
-                    <div
-                      role="toolbar"
-                      aria-label="Retrait de planches"
-                      className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 border border-am-navy bg-white px-3 py-2 shadow-sm"
-                      style={{ borderRadius: '2px' }}
-                    >
-                      <div className="h-3 w-3 rounded-full bg-am-navy" />
-                      {selectedPanelIds.size === 0 ? (
-                        <span className="text-sm text-black">
-                          <span className="font-medium">Retrait de planches</span>
-                          <span className="text-black/65"> · cliquez sur une planche du meuble</span>
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-sm font-medium text-black">
-                            {selectedPanelIds.size === 1 ? (
-                              (() => {
-                                const panelId = Array.from(selectedPanelIds)[0];
-                                // Les cloisons n'ont pas le préfixe « panel- » attendu par stringToPanelId : sans ceci, l'identifiant brut s'affichait
-                                if (panelId.startsWith('separator-')) {
-                                  return `Séparateur ${panelId.startsWith('separator-h-') ? 'horizontal' : 'vertical'}`;
-                                }
-                                const panelInfo = stringToPanelId(panelId);
-                                if (panelInfo) {
-                                  if (panelInfo.type === 'separator') {
-                                    const isHorizontal = panelId.includes('-h-');
-                                    return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
-                                  }
-                                  const baseLabel = PANEL_META[panelInfo.type]?.label || panelId;
-                                  if (panelInfo.index !== undefined) {
-                                    return `${baseLabel} (segment ${panelInfo.index + 1})`;
-                                  }
-                                  return baseLabel;
-                                }
-                                return panelId;
-                              })()
-                            ) : (
-                              `${selectedPanelIds.size} panneaux sélectionnés`
-                            )}
-                          </span>
-                          {Array.from(selectedPanelIds).some(id => id.startsWith('separator-')) && (
-                            <span className="text-xs text-black/65">· les sections de part et d&apos;autre seront réunies</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectedPanelsDeleted('delete')}
-                            className="ml-1 text-am-wine hover:text-am-wine"
-                            title={`Retirer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectedPanelsDeleted('restore')}
-                            className="ml-1 text-am-navy hover:text-am-navy"
-                            title={`Restaurer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPanelIds(new Set())}
-                            className="ml-1 text-black/65 hover:text-black"
-                            title="Désélectionner tout"
-                          >
-                            <IconTablerX className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                      <span className="mx-1 h-5 w-px bg-black/10" />
-                      <button
-                        type="button"
-                        onClick={togglePanelTool}
-                        className="text-xs font-medium text-am-navy hover:underline"
-                        title="Quitter l'outil et retrouver le menu de zone"
-                      >
-                        Terminer
-                      </button>
-                    </div>
                   </div>
                 )}
 
