@@ -100,11 +100,7 @@ function Furniture({
     const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
         const { width: w, depth: d, sideHeight, yOffset, thickness } = layout;
         const h = (height || 730) / 1000;
-        const d = (depth || 500) / 1000;
-        const thickness = 0.019;
         const backPanelThickness = 0.004;
-        const sideHeight = hasSocle ? h - 0.1 : h;
-        const yOffset = hasSocle ? 0.1 : 0;
         const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
