@@ -1,5 +1,5 @@
 import { HOME_MONO, HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
-import { SavoirFaireStepsGrid } from "@/components/shared/SavoirFaireSteps";
+import { SavoirFaireStepsList } from "@/components/shared/SavoirFaireSteps";
 
 export function RealisationsSavoirFaire() {
   return (
@@ -13,17 +13,17 @@ export function RealisationsSavoirFaire() {
           <span className={`text-xs ${HOME_MONO}`}>Notre savoir-faire</span>
           <h2
             id="real-savoir"
-            className="m-0 font-[Geist] font-medium leading-none tracking-[-0.05em] text-[#161513]"
+            className="m-0 font-sans font-medium leading-none tracking-[-0.05em] text-black"
             style={{ fontSize: "clamp(32px,4vw,56px)" }}
           >
             L&apos;artisanat français au service de vos projets
           </h2>
-          <p className="m-0 max-w-[48ch] text-[17px] leading-[1.55] text-[#3B3832]">
+          <p className="m-0 max-w-[48ch] text-[17px] leading-[1.55] text-black/85">
             Basés dans la métropole lilloise, nous concevons et fabriquons chaque meuble dans notre atelier. Du
             premier croquis à la pose finale, nous maîtrisons chaque étape pour vous garantir un résultat parfait.
           </p>
         </div>
-        <SavoirFaireStepsGrid />
+        <SavoirFaireStepsList />
       </div>
     </section>
   );

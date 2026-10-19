@@ -3,17 +3,15 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import Link from 'next/link';
-import Viewer from '@/components/configurator/Viewer';
 import { adminUrl } from '@/lib/adminPath';
-import type { ThreeCanvasHandle } from '@/components/configurator/types';
 
 const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '500px' }}>
+    <div className="flex h-full w-full items-center justify-center bg-am-paper" style={{ minHeight: '500px' }}>
       <div className="flex flex-col items-center gap-3">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
-        <p className="text-sm font-medium text-[#706F6C]">Chargement du studio 3D...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-am-navy border-t-transparent" />
+        <p className="text-sm font-medium text-black/65">Chargement du studio 3D...</p>
       </div>
     </div>
   ),
@@ -22,37 +20,29 @@ import DimensionsPanel from '@/components/configurator/DimensionsPanel';
 import StepNav from '@/components/configurator/steps/StepNav';
 import StepIntro from '@/components/configurator/steps/StepIntro';
 import StepSection from '@/components/configurator/steps/StepSection';
+import DivisionSteps from '@/components/configurator/steps/DivisionSteps';
 import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
 import MountingStyleSelector from '@/components/configurator/steps/MountingStyleSelector';
-import FacadeColorSelector from '@/components/configurator/steps/FacadeColorSelector';
 import {
   CONFIG_STEPS,
-  DOMAIN_STEP,
   LAST_STEP,
   STEP,
   type ConfigStep,
-  type ZoneDomain,
 } from '@/components/configurator/steps/steps';
 import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
-import DoorSelector from '@/components/configurator/DoorSelector';
-import MaterialSelector, { ComponentColors } from '@/components/configurator/MaterialSelector';
+import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import AuthModal from '@/components/auth/AuthModal';
-import { Header } from '@/components/Header';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
-import { ArrowLeft, ArrowRight, ChevronLeft, Settings, Palette, Box, RotateCcw, Sparkles, Flower2, Download, Undo2, Redo2, Edit3, Trash2 } from 'lucide-react';
-import { 
-  IconRuler2, 
-  IconPalette as IconTablerPalette, 
-  IconApps, 
-  IconInfoCircle, 
+import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, RotateCcw, Sparkles, Undo2, Redo2, Trash2 } from 'lucide-react';
+import {
+  IconInfoCircle,
   IconEdit,
-  IconTrendingUp,
   IconPlus,
   IconRefresh,
   IconX as IconTablerX
@@ -74,17 +64,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import toast, { Toaster } from 'react-hot-toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
-  MATERIAL_LABEL_BY_KEY,
-  MATERIAL_PRICE_BY_KEY,
   DEFAULT_COLOR_HEX,
   HANDLE_TYPE_CODE,
   normalizeMaterialKey,
-  materialLabelFromKey,
 } from '@/lib/configurator/materials';
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
-import { computeZoneStats, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
@@ -104,7 +93,7 @@ export default function ConfiguratorPage() {
   const [isCreateModelDialogOpen, setIsCreateModelDialogOpen] = useState(false);
   const [showModelCreatedModal, setShowModelCreatedModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isSavingModel, setIsSavingModel] = useState(false);
+  const [, setIsSavingModel] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
 
 
@@ -273,8 +262,6 @@ export default function ConfiguratorPage() {
   }, [doorsOpen]);
 
   const [useMultiColor, setUseMultiColor] = useState(false);
-  // Vrai quand l'utilisateur a activé lui-même les couleurs par composant (réglage avancé)
-  const [advancedColorsFlag, setAdvancedColorsFlag] = useState(false);
   const [componentColors, setComponentColors] = useState<ComponentColors>({
     structure: { colorId: null, hex: null },
     drawers: { colorId: null, hex: null },
@@ -318,8 +305,7 @@ export default function ConfiguratorPage() {
   }, [canUndoZone, canRedoZone, undoZone, redoZone]);
 
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(['root']);
-  const [doors, setDoors] = useState(0);
-  
+
   const [selectedPanelIds, setSelectedPanelIds] = useState<Set<string>>(new Set());
   const [deletedPanelIds, setDeletedPanelIds] = useState<Set<string>>(new Set());
   const [showPanelTool, setShowPanelTool] = useState(false);
@@ -333,31 +319,48 @@ export default function ConfiguratorPage() {
     }
   }, [showPanelTool]);
 
-  const togglePanelDeleted = useCallback((panelId: string) => {
-    setDeletedPanelIds(prev => {
-      const next = new Set(prev);
-      if (next.has(panelId)) {
-        next.delete(panelId);
-      } else {
-        next.add(panelId);
-      }
-      return next;
-    });
-  }, []);
-
   const toggleSelectedPanelsDeleted = useCallback((action: 'delete' | 'restore') => {
+    // Une planche intérieure retirée réunit les deux sections qu'elle séparait (au lieu d'être seulement
+    // cachée) ; les panneaux extérieurs, eux, restent simplement masqués
+    const separatorIds = Array.from(selectedPanelIds).filter(id => id.startsWith('separator-'));
+    if (action === 'delete' && separatorIds.length > 0) {
+      const result = removeSeparators(rootZone, separatorIds);
+      if (result.removed > 0) {
+        setRootZone(result.root);
+        toast.success(result.removed > 1 ? 'Planches retirées : les sections sont réunies' : 'Planche retirée : les deux sections sont réunies');
+      }
+      if (result.blocked > 0) {
+        toast.error("Cette planche sépare deux zones elles-mêmes découpées : supprimez d'abord les sections de l'une d'elles.");
+      }
+    }
+
     setDeletedPanelIds(prev => {
       const next = new Set(prev);
       selectedPanelIds.forEach(panelId => {
         if (action === 'delete') {
-          next.add(panelId);
+          if (!panelId.startsWith('separator-')) next.add(panelId);
         } else {
           next.delete(panelId);
         }
       });
       return next;
     });
-  }, [selectedPanelIds]);
+    if (action === 'delete') setSelectedPanelIds(new Set());
+  }, [selectedPanelIds, rootZone, setRootZone]);
+
+  // Configurations enregistrées avant ce changement : une planche intérieure « retirée » y était seulement
+  // cachée. On réunit ses deux sections une fois la configuration chargée.
+  // Une planche entre deux zones découpées ne peut pas être fusionnée : elle reste cachée comme avant.
+  useEffect(() => {
+    const legacySeparators = Array.from(deletedPanelIds).filter(id => id.startsWith('separator-'));
+    if (legacySeparators.length === 0) return;
+    const result = removeSeparators(rootZone, legacySeparators);
+    const kept = new Set(result.blockedIds);
+    const dropped = legacySeparators.filter(id => !kept.has(id));
+    if (dropped.length === 0) return;
+    if (result.removed > 0) setRootZone(result.root);
+    setDeletedPanelIds(prev => new Set(Array.from(prev).filter(id => !dropped.includes(id))));
+  }, [deletedPanelIds, rootZone, setRootZone]);
 
   const handlePanelSelect = useCallback((panelId: string | null) => {
     if (!panelId) {
@@ -460,40 +463,6 @@ export default function ConfiguratorPage() {
 
   const selectedZone = useMemo(() => findZone(rootZone, selectedZoneIds[0] || null), [rootZone, selectedZoneIds, findZone]);
 
-  const splitZone = useCallback((zoneId: string, direction: 'horizontal' | 'vertical', count: number = 2) => {
-    const updateZone = (z: Zone): Zone => {
-      if (z.id === zoneId) {
-        let splitRatios: number[] | undefined = undefined;
-        if (count > 2) {
-          const equalRatio = 100 / count;
-          const ratios = Array(count).fill(Math.round(equalRatio));
-          const sum = ratios.reduce((a: number, b: number) => a + b, 0);
-          ratios[ratios.length - 1] += 100 - sum;
-          splitRatios = ratios;
-        }
-
-        return {
-          ...z,
-          type: direction,
-          content: undefined,
-          splitRatio: count === 2 ? 50 : undefined,
-          splitRatios,
-          children: Array.from({ length: count }, (_, i) => ({
-            id: `${zoneId}-${i}`,
-            type: 'leaf' as const,
-            content: 'empty' as ZoneContent,
-          })),
-        };
-      }
-      if (z.children) {
-        return { ...z, children: z.children.map(updateZone) };
-      }
-      return z;
-    };
-    setRootZone(updateZone(rootZone));
-    setSelectedZoneIds([zoneId]);
-  }, [rootZone]);
-
   const setZoneContent = useCallback((zoneId: string, content: ZoneContent) => {
     const { root, removed } = setZoneFacade(rootZone, zoneId, content);
     setRootZone(root);
@@ -557,6 +526,16 @@ export default function ConfiguratorPage() {
     toast.success(forceContent ? "Porte ajoutée sur l'ensemble sélectionné" : 'Zones groupées avec succès');
     notifyRemovedFacades(result.removed);
   }, [rootZone]);
+
+  // Supprimer une section : sa voisine (au-dessus ou à gauche, sinon en dessous ou à droite) prend sa place
+  const deleteSection = useCallback((zoneId: string) => {
+    const result = removeSection(rootZone, zoneId);
+    if (!result.root) return;
+    setRootZone(result.root);
+    setSelectedZoneIds([result.keptId]);
+    setSelectedPanelIds(new Set());
+    toast.success('Section supprimée (Ctrl+Z pour annuler)');
+  }, [rootZone, setRootZone]);
 
   const setZoneDoorContent = useCallback((zoneId: string, content: ZoneContent) => {
     const { root, removed } = setZoneFacade(rootZone, zoneId, content);
@@ -639,12 +618,35 @@ export default function ConfiguratorPage() {
   const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<ConfigStep>>(() => new Set<ConfigStep>([1]));
   // Vue du viewer : 3D par défaut ; le plan 2D s'ouvre de lui-même à l'étape Division tant que
   // l'utilisateur n'a pas choisi sa vue
+  // Faux tant qu'aucune zone n'a été choisie : la sélection du meuble entier est alors celle par défaut
+  const [zoneTouched, setZoneTouched] = useState(false);
   const [show3DView, setShow3DView] = useState(true);
   const [viewLocked, setViewLocked] = useState(false);
   const chooseView = useCallback((view3D: boolean) => {
     setShow3DView(view3D);
     setViewLocked(true);
   }, []);
+
+  // Outil « Retirer planches » : les planches ne se choisissent qu'en 3D, on y passe donc à l'ouverture
+  // (en plan 2D le bouton ne faisait que cacher le menu de zone)
+  const togglePanelTool = useCallback(() => {
+    if (showPanelTool) {
+      setShowPanelTool(false);
+      setSelectedPanelIds(new Set());
+      return;
+    }
+    setShow3DView(true);
+    setShowPanelTool(true);
+  }, [showPanelTool]);
+
+  // Retour au plan 2D (bouton Plan 2D, étape Division) : l'outil n'y fonctionne pas, on le ferme
+  useEffect(() => {
+    if (!show3DView && showPanelTool) {
+      setShowPanelTool(false);
+      setSelectedPanelIds(new Set());
+    }
+  }, [show3DView, showPanelTool]);
+
   const stepContentRef = useRef<HTMLDivElement>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const pendingSaveRef = useRef(false);
@@ -705,12 +707,18 @@ export default function ConfiguratorPage() {
         (selectedZone !== null && !(selectedZone.id === 'root' && selectedZone.type !== 'leaf'));
       if (!keepSelection) {
         const leafId = firstLeafId(rootZone);
-        if (leafId) setSelectedZoneIds([leafId]);
+        if (leafId) {
+          setSelectedZoneIds([leafId]);
+          setZoneTouched(true);
+        }
       }
     } else if (step === STEP.FINISHES) {
       if (!(selectedZoneIds.length === 1 && selectedZone?.type === 'leaf')) {
         const leafId = firstLeafId(selectedZone ?? rootZone);
-        if (leafId) setSelectedZoneIds([leafId]);
+        if (leafId) {
+          setSelectedZoneIds([leafId]);
+          setZoneTouched(true);
+        }
       }
     }
   }, [rootZone, selectedZone, selectedZoneIds, viewLocked]);
@@ -739,19 +747,45 @@ export default function ConfiguratorPage() {
   const handleZoneClick = useCallback((zoneId: string | null) => {
     if (activeStep === STEP.DOORS && multiSelectKeyRef.current) {
       handleZoneSelect(zoneId);
+      if (zoneId) setZoneTouched(true);
       return;
     }
     setSelectedPanelIds(new Set());
     setSelectedZoneIds(zoneId ? [zoneId] : []);
+    if (zoneId) setZoneTouched(true);
   }, [activeStep, handleZoneSelect]);
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
 
+  // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
+  // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
+  const constraintIssues = useMemo(
+    () => findConstraintIssues(rootZone, { width, height, depth }),
+    [rootZone, width, height, depth]
+  );
+  const hasZoneIssues = constraintIssues.length > 0;
+
+  // Ouvre l'étape où se corrige le premier problème, avec la zone concernée sélectionnée
+  const focusZoneIssue = useCallback(() => {
+    const issue = constraintIssues[0];
+    if (!issue) return;
+    const stepByKind: Record<IssueKind, ConfigStep> = {
+      dimensions: STEP.DIMENSIONS,
+      division: STEP.DIVISION,
+      facade: STEP.DOORS,
+      accessory: STEP.FINISHES,
+    };
+    goToStep(stepByKind[issue.kind]);
+    if (issue.zoneId) setSelectedZoneIds([issue.zoneId]);
+  }, [constraintIssues, goToStep]);
+
+  // Menu de la zone sélectionnée : son titre, sa taille, ses voisines et son groupe parent
   const quickMenu = useMemo(() => {
     if (selectedZoneIds.length === 0 || !selectedZone) return null;
 
     const isMulti = selectedZoneIds.length > 1;
+    const parent = findParentZone(rootZone, selectedZone.id);
     const leafIndex = !isMulti && selectedZone.type === 'leaf' ? leafZones.findIndex((z) => z.id === selectedZone.id) : -1;
 
     let title = 'Meuble entier';
@@ -763,70 +797,102 @@ export default function ConfiguratorPage() {
       title = `Groupe · ${selectedZone.children?.length ?? 0} ${selectedZone.type === 'horizontal' ? 'niveaux' : 'colonnes'}`;
     }
 
+    // Zone voisine : un compartiment passe au suivant dans l'ordre du plan, un groupe à son voisin direct
+    let neighbours: { prev: string; next: string } | null = null;
+    if (!isMulti && leafIndex >= 0 && leafZones.length > 1) {
+      neighbours = {
+        prev: leafZones[(leafIndex - 1 + leafZones.length) % leafZones.length].id,
+        next: leafZones[(leafIndex + 1) % leafZones.length].id,
+      };
+    } else if (!isMulti && selectedZone.type !== 'leaf' && parent?.children && parent.children.length > 1) {
+      const siblings = parent.children;
+      const index = siblings.findIndex((z) => z.id === selectedZone.id);
+      neighbours = {
+        prev: siblings[(index - 1 + siblings.length) % siblings.length].id,
+        next: siblings[(index + 1) % siblings.length].id,
+      };
+    }
+
     return {
       title,
-      leafIndex,
       size: isMulti ? null : getZoneSize(rootZone, selectedZone.id, width, height),
+      neighbours,
+      parentId: parent?.id ?? null,
+      canDelete: !isMulti && !!parent,
     };
   }, [selectedZone, selectedZoneIds, leafZones, rootZone, width, height]);
 
-  const selectAdjacentLeaf = useCallback((delta: 1 | -1) => {
-    if (!quickMenu || quickMenu.leafIndex < 0 || leafZones.length < 2) return;
-    const next = leafZones[(quickMenu.leafIndex + delta + leafZones.length) % leafZones.length];
-    setSelectedZoneIds([next.id]);
-  }, [leafZones, quickMenu]);
+  // Hauteur disponible pour le plan 2D : il remplit le viewer au lieu d'être plafonné, ce qui laisse
+  // assez de place aux meubles très divisés
+  const planViewportRef = useRef<HTMLDivElement>(null);
+  const [planViewportHeight, setPlanViewportHeight] = useState(0);
+  useEffect(() => {
+    const element = planViewportRef.current;
+    if (!element) return;
+    const update = () => setPlanViewportHeight(element.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [show3DView, loading, model]);
 
-  // Couleur des façades : elle suit la structure tant qu'on ne choisit pas une autre couleur
+  // Choisit une zone depuis le menu (voisine ou groupe parent)
+  const selectZoneFromMenu = useCallback((zoneId: string) => {
+    setSelectedPanelIds(new Set());
+    setSelectedZoneIds([zoneId]);
+    setZoneTouched(true);
+  }, []);
+
+  // Zones mises en évidence dans la vue 3D. La sélection par défaut (le meuble entier, jamais choisie par
+  // l'utilisateur) n'en fait pas partie : elle teinterait tout le meuble dès le chargement.
+  const highlightedZoneIds = useMemo(
+    () =>
+      isViewMode || (!zoneTouched && selectedZoneIds.length === 1 && selectedZoneIds[0] === 'root') ? [] : selectedZoneIds,
+    [isViewMode, zoneTouched, selectedZoneIds]
+  );
+
+  // Le menu reste affiché à toutes les étapes, sauf pour la sélection par défaut (meuble entier) aux étapes
+  // Dimensions et Matières où il n'apporte rien tant qu'aucune zone n'a été choisie
+  const showQuickMenu =
+    !!quickMenu &&
+    !showPanelTool &&
+    !(
+      !zoneTouched &&
+      selectedZoneIds.length === 1 &&
+      selectedZoneIds[0] === 'root' &&
+      (activeStep === STEP.DIMENSIONS || activeStep === STEP.MATERIALS)
+    );
+
+  // Couleur de chaque partie du meuble telle qu'affichée : en couleur unique, toutes les parties la partagent
+  const singleColorEntry = { colorId: selectedColorId, hex: color || DEFAULT_COLOR_HEX, imageUrl: selectedColorImage };
+  const displayedComponentColors: ComponentColors = useMultiColor
+    ? componentColors
+    : {
+        structure: singleColorEntry,
+        doors: singleColorEntry,
+        drawers: singleColorEntry,
+        shelves: singleColorEntry,
+        back: singleColorEntry,
+        base: singleColorEntry,
+      };
+
+  // Couleur « par défaut » de la façade sélectionnée : celle de la partie du meuble (portes ou tiroirs),
+  // qui peut différer de la structure
+  const selectedFacadeDefault =
+    displayedComponentColors[
+      selectedZone?.content === 'drawer' || selectedZone?.content === 'push_drawer' ? 'drawers' : 'doors'
+    ];
+  const selectedFacadeDefaultName =
+    colorsForMaterial.find((option) => option.id === selectedFacadeDefault.colorId)?.name ?? null;
+
+  // Récapitulatif : couleur des façades seulement si elle diffère de la structure
   const facadeSameAsStructure =
     !useMultiColor ||
     (componentColors.doors.colorId === componentColors.structure.colorId &&
       componentColors.drawers.colorId === componentColors.structure.colorId);
-  // Réglage avancé : activé à la main, ou déduit d'une configuration enregistrée dont le corps du meuble
-  // n'a pas une couleur uniforme (un simple changement de couleur de façade ne le déclenche pas)
-  const coreColorsUniform = (['shelves', 'back', 'base'] as const).every(
-    (key) =>
-      componentColors[key].colorId === componentColors.structure.colorId &&
-      componentColors[key].hex === componentColors.structure.hex
-  );
-  const advancedColors = useMultiColor && (advancedColorsFlag || !coreColorsUniform);
-  useEffect(() => {
-    if (!useMultiColor) setAdvancedColorsFlag(false);
-  }, [useMultiColor]);
-  const facadeColorId = useMultiColor ? componentColors.doors.colorId : selectedColorId;
   const facadeColorLabel = facadeSameAsStructure
     ? null
     : colorsForMaterial.find((option) => option.id === componentColors.doors.colorId)?.name || 'Personnalisée';
-
-  const handleFacadeColorChange = (option: SampleColor) => {
-    const facade = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
-
-    if (useMultiColor) {
-      setComponentColors((prev) => ({ ...prev, doors: facade, drawers: facade }));
-      return;
-    }
-
-    // Première couleur de façade : on passe en couleurs par composant, le reste garde la couleur actuelle
-    const current = { colorId: selectedColorId, hex: color || DEFAULT_COLOR_HEX, imageUrl: selectedColorImage };
-    setUseMultiColor(true);
-    setComponentColors({
-      structure: current,
-      shelves: current,
-      back: current,
-      base: current,
-      doors: facade,
-      drawers: facade,
-    });
-  };
-
-  const handleFacadeColorReset = () => {
-    if (!useMultiColor) return;
-    if (!advancedColors) {
-      // Seules les façades avaient une couleur à part : on revient à une couleur unique
-      setUseMultiColor(false);
-      return;
-    }
-    setComponentColors((prev) => ({ ...prev, doors: prev.structure, drawers: prev.structure }));
-  };
 
   const priceDisplaySettings = useMemo(() => {
     const displayConfig = pricingParams?.display?.price;
@@ -1024,7 +1090,6 @@ export default function ConfiguratorPage() {
         
         const match = hMatch || vMatch || gMatch;
         const ratiosStr = match![1] && (isH || isV) ? match![1] : (isG ? match![2] : undefined);
-        const countValue = match![2] && (isH || isV) ? parseInt(match![2]) : undefined;
         const inner = isG ? match![3] : match![3];
         
         const parts: string[] = [];
@@ -2053,7 +2118,7 @@ export default function ConfiguratorPage() {
       setGlbUrl(glbUrlAbsolute);
       setDxfUrl(result.dxf_url || null);
     } catch (error) {
-      console.error('Erreur génération:', error);
+      console.warn('Génération 3D impossible :', error instanceof Error ? error.message : error);
     } finally {
       setGenerating(false);
     }
@@ -2104,9 +2169,11 @@ export default function ConfiguratorPage() {
       componentColors
     }));
 
+    if (hasZoneIssues) return;
+
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId]);
+  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
 
   const handleToggleDoors = useCallback(() => {
     setDoorsOpen(prev => !prev);
@@ -2126,72 +2193,41 @@ export default function ConfiguratorPage() {
     const resetZoneColors = hasZoneColors(rootZone);
 
     if (useMultiColor || resetZoneColors) {
-      if (useMultiColor) {
-        setUseMultiColor(false);
-        setAdvancedColorsFlag(false);
-      }
+      if (useMultiColor) setUseMultiColor(false);
       if (resetZoneColors) setRootZone(clearZoneColors(rootZone));
       toast('Couleurs réinitialisées : choisissez-les dans la nouvelle matière.');
     }
   };
 
-  const handleColorChange = (option: SampleColor) => {
+  const applySingleColor = (option: SampleColor) => {
     setSelectedColorId(option.id);
     setColor(option.hex || DEFAULT_COLOR_HEX);
     setColorLabel(option.name || selectedMaterialLabel);
     setSelectedColorImage(option.image_url || null);
-
-    // Les façades colorées à part gardent leur couleur ; le reste du meuble suit la nouvelle couleur
-    if (useMultiColor) {
-      const entry = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
-      setComponentColors((prev) => ({
-        structure: entry,
-        shelves: entry,
-        back: entry,
-        base: entry,
-        doors: facadeSameAsStructure ? entry : prev.doors,
-        drawers: facadeSameAsStructure ? entry : prev.drawers,
-      }));
-    }
   };
 
-  const handleAdvancedColorsChange = (value: boolean) => {
-    setAdvancedColorsFlag(value);
-    if (value) {
-      // Les composants sont déjà initialisés si les façades avaient une couleur à part
-      if (!useMultiColor) handleUseMultiColorChange(true);
-    } else {
-      setUseMultiColor(false);
-    }
+  // Couleur d'une partie du meuble : les autres parties gardent la leur
+  const handleComponentColorChange = (component: ColorComponent, option: SampleColor) => {
+    const entry = { colorId: option.id, hex: option.hex || DEFAULT_COLOR_HEX, imageUrl: option.image_url || null };
+    setUseMultiColor(true);
+    setComponentColors({ ...displayedComponentColors, [component]: entry });
+    // La structure donne la couleur principale (récapitulatif, enregistrement)
+    if (component === 'structure') applySingleColor(option);
   };
 
-  const handleComponentColorChange = (component: keyof ComponentColors, colorId: number, hex: string, imageUrl?: string | null) => {
-    setComponentColors((prev) => ({
-      ...prev,
-      [component]: { colorId, hex, imageUrl },
-    }));
-  };
-
-  const handleUseMultiColorChange = (value: boolean) => {
-    setUseMultiColor(value);
-
-    if (value) {
-      const currentHex = color || '#D8C7A1';
-      const currentImageUrl = selectedColorImage;
-      const currentColorId = selectedColorId;
-
-      setComponentColors({
-        structure: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        drawers: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        doors: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        shelves: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        back: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-        base: { colorId: currentColorId, hex: currentHex, imageUrl: currentImageUrl },
-      });
-    }
+  // Une seule couleur pour tout le meuble
+  const handleApplyColorToAll = (option: SampleColor) => {
+    applySingleColor(option);
+    setUseMultiColor(false);
   };
 
   const saveAsModel = async () => {
+    if (hasZoneIssues) {
+      toast.error(`Ce meuble dépasse une limite de fabrication : ${constraintIssues[0].message}`);
+      focusZoneIssue();
+      return;
+    }
+
     console.log('🔵 FONCTION saveAsModel APPELEE !');
     console.log('🔵 isAdmin:', isAdmin);
     console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
@@ -2305,6 +2341,12 @@ export default function ConfiguratorPage() {
   };
 
   const saveConfiguration = async () => {
+    if (hasZoneIssues) {
+      toast.error(`Ce meuble dépasse une limite de fabrication : ${constraintIssues[0].message}`);
+      focusZoneIssue();
+      return;
+    }
+
     const isAdminEditingConfig = isEditMode && editingConfigId;
 
     if (!isAdmin && !isAdminEditingConfig && (!isAuthenticated || !customer)) {
@@ -2446,10 +2488,10 @@ export default function ConfiguratorPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
+      <div className="flex min-h-screen items-center justify-center bg-am-paper">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-          <p className="mt-4 text-sm text-[#706F6C]">Chargement de la configuration...</p>
+          <div className="mx-auto h-8 w-8 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
+          <p className="mt-4 text-sm text-black/65">Chargement de la configuration...</p>
         </div>
       </div>
     );
@@ -2469,15 +2511,15 @@ export default function ConfiguratorPage() {
 
   if (!model) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF9] p-6 text-center">
-        <IconInfoCircle className="h-12 w-12 text-[#8B7355] mb-4" />
-        <h1 className="font-serif text-2xl text-[#1A1917] mb-2">Configuration introuvable</h1>
-        <p className="text-[#706F6C] max-w-md mb-8">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-am-paper p-6 text-center">
+        <IconInfoCircle className="h-12 w-12 text-am-navy mb-4" />
+        <h1 className="font-serif text-2xl text-black mb-2">Configuration introuvable</h1>
+        <p className="text-black/65 max-w-md mb-8">
           Désolé, nous ne parvenons pas à charger cette configuration. Elle n&apos;existe peut-être plus ou le lien est incorrect.
         </p>
         <button 
           onClick={() => router.push('/')}
-          className="bg-[#1A1917] text-white px-8 py-3 text-sm font-medium hover:bg-[#2A2927] transition-colors"
+          className="bg-am-navy text-white px-8 py-3 text-sm font-medium hover:bg-am-navy/90 transition-colors"
           style={{ borderRadius: '2px' }}
         >
           Retour à l&apos;accueil
@@ -2488,12 +2530,12 @@ export default function ConfiguratorPage() {
 
   if (!model) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9]">
+      <div className="flex min-h-screen items-center justify-center bg-am-paper">
         <div className="text-center">
-          <h1 className="font-serif text-2xl text-[#1A1917]">Modèle non trouvé</h1>
+          <h1 className="font-serif text-2xl text-black">Modèle non trouvé</h1>
           <button
             onClick={() => router.push('/')}
-            className="mt-6 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white"
+            className="mt-6 bg-am-navy px-6 py-3 text-sm font-medium text-white"
             style={{ borderRadius: '2px' }}
           >
             Retour à l&apos;accueil
@@ -2516,8 +2558,10 @@ export default function ConfiguratorPage() {
     onSetZoneContent: setZoneContent,
     onSetDoorContent: setZoneDoorContent,
     onSetHandleType: setZoneHandleType,
+    onDeleteSection: deleteSection,
     width,
     height,
+    depth,
     onSelectZone: handleZoneClick,
     isAdminCreateModel,
     hideCanvas: true,
@@ -2581,7 +2625,7 @@ export default function ConfiguratorPage() {
                   type="number"
                   value={modelForm.price}
                   readOnly
-                  className="bg-gray-50 font-semibold"
+                  className="bg-am-mist/15 font-semibold"
                 />
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   Auto-calculé
@@ -2618,7 +2662,7 @@ export default function ConfiguratorPage() {
                     disabled={isUploading}
                     className="cursor-pointer"
                   />
-                  {isUploading && <IconRefresh className="h-4 w-4 animate-spin text-[#8B7355]" />}
+                  {isUploading && <IconRefresh className="h-4 w-4 animate-spin text-am-navy" />}
                 </div>
                 <p className="text-[10px] text-muted-foreground italic">
                   Format JPG, PNG ou WEBP. Max 20Mo.
@@ -2645,7 +2689,7 @@ export default function ConfiguratorPage() {
                 saveAsModel();
               }}
               disabled={!modelForm.name}
-              className="bg-[#1A1917] text-white"
+              className="bg-am-navy text-white"
             >
               {isAdminEditModel ? 'Mettre à jour' : 'Enregistrer le modèle'}
             </Button>
@@ -2653,20 +2697,20 @@ export default function ConfiguratorPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex min-h-screen flex-col bg-[#FAFAF9] lg:h-screen lg:overflow-hidden">
-        <header className="flex-shrink-0 border-b border-[#E8E6E3] bg-white">
+      <div className="flex min-h-screen flex-col bg-am-paper lg:h-screen lg:overflow-hidden">
+        <header className="flex-shrink-0 border-b border-black/10 bg-am-paper">
           <div className="mx-auto flex h-14 items-center justify-between px-4 lg:h-16 lg:max-w-screen-2xl lg:px-6">
             <div className="flex items-center gap-3 lg:gap-4">
               <Link
                 href="/models"
-                className="flex h-9 w-9 items-center justify-center border border-[#E8E6E3] text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] lg:h-10 lg:w-10"
+                className="flex h-9 w-9 items-center justify-center border border-black/10 text-black/65 transition-colors hover:border-am-navy hover:text-black lg:h-10 lg:w-10"
                 style={{ borderRadius: '2px' }}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="font-serif text-base text-[#1A1917] lg:text-lg">{model.name}</h1>
+                  <h1 className="font-serif text-base text-black lg:text-lg">{model.name}</h1>
                   {isViewMode && isAdmin && (
                     <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Vue Admin</span>
                   )}
@@ -2680,10 +2724,10 @@ export default function ConfiguratorPage() {
                     <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Modification</span>
                   )}
                   {editingConfigName && (isEditMode || isViewMode) && (
-                    <span className="text-[11px] text-[#706F6C] font-medium">&quot;{editingConfigName}&quot;</span>
+                    <span className="text-[11px] text-black/65 font-medium">&quot;{editingConfigName}&quot;</span>
                   )}
                 </div>
-                <p className="hidden text-xs text-[#706F6C] sm:block">
+                <p className="hidden text-xs text-black/65 sm:block">
                   {isViewMode
                     ? (isAdmin ? 'Consultation de la configuration client' : 'Aperçu de votre configuration')
                     : (isEditMode && editingConfigId
@@ -2695,13 +2739,13 @@ export default function ConfiguratorPage() {
 
             <div className="flex items-center gap-3">
               {!isAdminCreateModel && !isAdminEditModel && isAuthenticated && customer && (
-                <span className="hidden text-xs text-[#706F6C] md:block">
+                <span className="hidden text-xs text-black/65 md:block">
                   {customer.first_name} {customer.last_name}
                 </span>
               )}
               <Link
                 href="/"
-                className="font-serif text-base text-[#1A1917] lg:text-lg"
+                className="font-serif text-base text-black lg:text-lg"
               >
                 ArchiMeuble
               </Link>
@@ -2710,11 +2754,11 @@ export default function ConfiguratorPage() {
         </header>
 
         <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden">
-          <div className="sticky top-0 z-30 flex flex-col bg-[#FAFAF9] lg:static lg:z-auto lg:flex-1">
+          <div className="sticky top-0 z-30 flex flex-col bg-am-paper lg:static lg:z-auto lg:flex-1">
             <div className="relative h-[40vh] min-h-[260px] lg:h-auto lg:flex-1">
               <div className="absolute inset-0">
                 {!show3DView ? (
-                  <div className="h-full w-full overflow-auto bg-white px-3 pb-3 pt-14 sm:p-8">
+                  <div ref={planViewportRef} className="h-full w-full overflow-auto bg-am-paper px-3 pb-3 pt-14 sm:px-8 sm:pb-8 sm:pt-20">
                     <ZoneEditor
                       rootZone={rootZone}
                       selectedZoneIds={selectedZoneIds}
@@ -2723,8 +2767,9 @@ export default function ConfiguratorPage() {
                       width={width}
                       height={height}
                       onSelectZone={isViewMode ? undefined : handleZoneClick}
-                      canvasMaxHeight={isMobile ? 190 : undefined}
+                      canvasMaxHeight={isMobile ? 190 : planViewportHeight ? Math.min(720, Math.max(240, planViewportHeight - 230)) : undefined}
                       hideControls
+                      deletedPanelIds={deletedPanelIds}
                     />
                   </div>
                 ) : (
@@ -2737,7 +2782,7 @@ export default function ConfiguratorPage() {
                     hasSocle={socle !== 'none'}
                     socle={socle}
                     rootZone={rootZone}
-                    selectedZoneIds={isViewMode ? [] : selectedZoneIds}
+                    selectedZoneIds={highlightedZoneIds}
                     selectionTint={activeStep !== STEP.MATERIALS}
                     onSelectZone={isViewMode ? undefined : handleZoneClick}
                     isBuffet={furnitureStructure?.isBuffet}
@@ -2754,15 +2799,15 @@ export default function ConfiguratorPage() {
                     deletedPanelIds={deletedPanelIds}
                   />
                 )}
-                <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-[#E8E6E3] bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
+                <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
                   <button
                     type="button"
                     onClick={() => chooseView(false)}
                     aria-pressed={!show3DView}
                     className={`px-3 py-2 text-xs font-medium transition-colors ${
                       !show3DView
-                        ? 'bg-[#1A1917] text-white'
-                        : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                        ? 'bg-am-navy text-white'
+                        : 'text-black/65 hover:bg-am-mist/30 hover:text-black'
                     }`}
                   >
                     Plan 2D
@@ -2771,29 +2816,75 @@ export default function ConfiguratorPage() {
                     type="button"
                     onClick={() => chooseView(true)}
                     aria-pressed={show3DView}
-                    className={`flex items-center gap-1.5 border-l border-[#E8E6E3] px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 border-l border-black/10 px-3 py-2 text-xs font-medium transition-colors ${
                       show3DView
-                        ? 'bg-[#1A1917] text-white'
-                        : 'text-[#706F6C] hover:bg-[#FAFAF9] hover:text-[#1A1917]'
+                        ? 'bg-am-navy text-white'
+                        : 'text-black/65 hover:bg-am-mist/30 hover:text-black'
                     }`}
                   >
                     <Box className="h-3.5 w-3.5" />
                     Vue 3D
                   </button>
                 </div>
-                {!isViewMode && quickMenu && !showPanelTool && !(
-                  selectedZoneIds.length === 1 && selectedZone?.id === 'root' && (selectedZone.type !== 'leaf' || activeStep === STEP.DIMENSIONS || activeStep === STEP.MATERIALS)
-                ) && (
+                {/* Mobile : ces commandes du viewer vivaient dans la barre du bas, avec des emoji sans libellé */}
+                {!isViewMode && (
+                  <div className="absolute left-3 top-3 z-20 flex gap-1 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={undoZone}
+                      disabled={!canUndoZone}
+                      aria-label="Annuler"
+                      className="flex h-10 w-10 items-center justify-center border border-black/10 bg-white text-black shadow-sm disabled:text-black/30"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoZone}
+                      disabled={!canRedoZone}
+                      aria-label="Rétablir"
+                      className="flex h-10 w-10 items-center justify-center border border-black/10 bg-white text-black shadow-sm disabled:text-black/30"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="absolute right-3 top-14 z-20 flex flex-col gap-2 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowDecorations(!showDecorations)}
+                    aria-pressed={showDecorations}
+                    aria-label={showDecorations ? 'Cacher les décorations' : 'Afficher les décorations'}
+                    className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
+                      showDecorations ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleToggleDoors}
+                    aria-pressed={doorsOpen}
+                    aria-label={doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}
+                    className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
+                      doorsOpen ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                    }`}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {doorsOpen ? <DoorClosed className="h-4 w-4" /> : <DoorOpen className="h-4 w-4" />}
+                  </button>
+                </div>
+                {!isViewMode && showQuickMenu && quickMenu && (
                   <ZoneQuickMenu
                     title={quickMenu.title}
                     size={quickMenu.size}
-                    canNavigate={quickMenu.leafIndex >= 0 && leafZones.length > 1}
-                    onPrev={() => selectAdjacentLeaf(-1)}
-                    onNext={() => selectAdjacentLeaf(1)}
-                    activeDomain={
-                      (Object.keys(DOMAIN_STEP) as ZoneDomain[]).find((domain) => DOMAIN_STEP[domain] === activeStep) ?? null
-                    }
-                    onDomain={(domain) => goToStep(DOMAIN_STEP[domain])}
+                    onPrev={quickMenu.neighbours ? () => selectZoneFromMenu(quickMenu.neighbours!.prev) : undefined}
+                    onNext={quickMenu.neighbours ? () => selectZoneFromMenu(quickMenu.neighbours!.next) : undefined}
+                    onParent={quickMenu.parentId ? () => selectZoneFromMenu(quickMenu.parentId!) : undefined}
+                    onDelete={quickMenu.canDelete ? () => deleteSection(selectedZoneIds[0]) : undefined}
                     onClose={() => setSelectedZoneIds([])}
                   />
                 )}
@@ -2801,28 +2892,24 @@ export default function ConfiguratorPage() {
                   {!isViewMode && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowPanelTool(!showPanelTool);
-                        if (showPanelTool) {
-                          setSelectedPanelIds(new Set());
-                        }
-                      }}
+                      onClick={togglePanelTool}
+                      aria-pressed={showPanelTool}
                       className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
                         showPanelTool
-                          ? 'border-[#E64A19] bg-[#E64A19] text-white'
-                          : 'border-[#FF8A65] bg-[#FFF3E0] text-[#E64A19] hover:border-[#E64A19] hover:bg-[#E64A19] hover:text-white'
+                          ? 'border-am-wine bg-am-wine text-white'
+                          : 'border-am-wine/50 bg-am-wine/10 text-am-wine hover:border-am-wine hover:bg-am-wine hover:text-white'
                       }`}
                       style={{ borderRadius: '2px' }}
-                      title={showPanelTool ? "Fermer l'outil" : "Retirer des planches"}
+                      title={showPanelTool ? 'Terminer le retrait de planches' : 'Retirer des planches du meuble (en vue 3D)'}
                     >
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="2" y="4" width="20" height="4" rx="0.5" />
                         <line x1="6" y1="12" x2="18" y2="12" strokeDasharray="2 2" opacity="0.5" />
                         <rect x="2" y="16" width="20" height="4" rx="0.5" />
                       </svg>
-                      <span>Retirer planches</span>
+                      <span>{showPanelTool ? 'Terminer le retrait' : 'Retirer planches'}</span>
                       {deletedPanelIds.size > 0 && (
-                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-[#E64A19]">
+                        <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-medium text-am-wine">
                           {deletedPanelIds.size}
                         </span>
                       )}
@@ -2834,8 +2921,8 @@ export default function ConfiguratorPage() {
                     onClick={() => setShowDecorations(!showDecorations)}
                     className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
                       showDecorations
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                        ? 'border-am-navy bg-am-navy text-white'
+                        : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
                     }`}
                     style={{ borderRadius: '2px' }}
                     title={showDecorations ? "Cacher les décorations" : "Afficher les décorations"}
@@ -2849,8 +2936,8 @@ export default function ConfiguratorPage() {
                     onClick={handleToggleDoors}
                     className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
                       doorsOpen
-                        ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                        : 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
+                        ? 'border-am-navy bg-am-navy text-white'
+                        : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
                     }`}
                     style={{ borderRadius: '2px' }}
                   >
@@ -2867,8 +2954,8 @@ export default function ConfiguratorPage() {
                       disabled={!canUndoZone}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
                         canUndoZone
-                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
-                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                          ? 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
+                          : 'border-black/10 bg-am-mist/15 text-black/30 cursor-not-allowed'
                       }`}
                       style={{ borderRadius: '2px' }}
                       title="Annuler (Ctrl+Z)"
@@ -2881,8 +2968,8 @@ export default function ConfiguratorPage() {
                       disabled={!canRedoZone}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm transition-all ${
                         canRedoZone
-                          ? 'border-[#E8E6E3] bg-white text-[#706F6C] hover:border-[#1A1917] hover:text-[#1A1917]'
-                          : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4] cursor-not-allowed'
+                          ? 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
+                          : 'border-black/10 bg-am-mist/15 text-black/30 cursor-not-allowed'
                       }`}
                       style={{ borderRadius: '2px' }}
                       title="Rétablir (Ctrl+Y)"
@@ -2892,55 +2979,87 @@ export default function ConfiguratorPage() {
                   </div>
                 )}
 
-                {selectedPanelIds.size > 0 && !isViewMode && showPanelTool && (
-                  <div className="absolute right-4 top-16 z-20 hidden lg:block">
-                    <div className="flex items-center gap-2 border border-[#2196F3] bg-white px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
-                      <div className="h-3 w-3 rounded-full bg-[#2196F3]" />
-                      <span className="text-sm font-medium text-[#1A1917]">
-                        {selectedPanelIds.size === 1 ? (
-                          (() => {
-                            const panelId = Array.from(selectedPanelIds)[0];
-                            const panelInfo = stringToPanelId(panelId);
-                            if (panelInfo) {
-                              if (panelInfo.type === 'separator') {
-                                const isHorizontal = panelId.includes('-h-');
-                                return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
-                              }
-                              const baseLabel = PANEL_META[panelInfo.type]?.label || panelId;
-                              if (panelInfo.index !== undefined) {
-                                return `${baseLabel} (segment ${panelInfo.index + 1})`;
-                              }
-                              return baseLabel;
-                            }
-                            return panelId;
-                          })()
-                        ) : (
-                          `${selectedPanelIds.size} panneaux sélectionnés`
-                        )}
-                      </span>
+                {!isViewMode && showPanelTool && (
+                  // Même emplacement que le menu de zone (jamais affichés ensemble) : la colonne des commandes de caméra occupe le bord droit.
+                  // Affichée dès l'ouverture de l'outil, pour dire quoi faire tant qu'aucune planche n'est choisie
+                  <div className="pointer-events-none absolute z-20 hidden justify-center lg:left-[7.5rem] lg:right-[11.5rem] lg:top-4 lg:flex">
+                    <div
+                      role="toolbar"
+                      aria-label="Retrait de planches"
+                      className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 border border-am-navy bg-white px-3 py-2 shadow-sm"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <div className="h-3 w-3 rounded-full bg-am-navy" />
+                      {selectedPanelIds.size === 0 ? (
+                        <span className="text-sm text-black">
+                          <span className="font-medium">Retrait de planches</span>
+                          <span className="text-black/65"> · cliquez sur une planche du meuble</span>
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-sm font-medium text-black">
+                            {selectedPanelIds.size === 1 ? (
+                              (() => {
+                                const panelId = Array.from(selectedPanelIds)[0];
+                                // Les cloisons n'ont pas le préfixe « panel- » attendu par stringToPanelId : sans ceci, l'identifiant brut s'affichait
+                                if (panelId.startsWith('separator-')) {
+                                  return `Séparateur ${panelId.startsWith('separator-h-') ? 'horizontal' : 'vertical'}`;
+                                }
+                                const panelInfo = stringToPanelId(panelId);
+                                if (panelInfo) {
+                                  if (panelInfo.type === 'separator') {
+                                    const isHorizontal = panelId.includes('-h-');
+                                    return `Séparateur ${isHorizontal ? 'horizontal' : 'vertical'}`;
+                                  }
+                                  const baseLabel = PANEL_META[panelInfo.type]?.label || panelId;
+                                  if (panelInfo.index !== undefined) {
+                                    return `${baseLabel} (segment ${panelInfo.index + 1})`;
+                                  }
+                                  return baseLabel;
+                                }
+                                return panelId;
+                              })()
+                            ) : (
+                              `${selectedPanelIds.size} panneaux sélectionnés`
+                            )}
+                          </span>
+                          {Array.from(selectedPanelIds).some(id => id.startsWith('separator-')) && (
+                            <span className="text-xs text-black/65">· les sections de part et d&apos;autre seront réunies</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectedPanelsDeleted('delete')}
+                            className="ml-1 text-am-wine hover:text-am-wine"
+                            title={`Retirer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectedPanelsDeleted('restore')}
+                            className="ml-1 text-am-navy hover:text-am-navy"
+                            title={`Restaurer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPanelIds(new Set())}
+                            className="ml-1 text-black/65 hover:text-black"
+                            title="Désélectionner tout"
+                          >
+                            <IconTablerX className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      <span className="mx-1 h-5 w-px bg-black/10" />
                       <button
                         type="button"
-                        onClick={() => toggleSelectedPanelsDeleted('delete')}
-                        className="ml-1 text-[#FF5722] hover:text-[#E64A19]"
-                        title={`Retirer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
+                        onClick={togglePanelTool}
+                        className="text-xs font-medium text-am-navy hover:underline"
+                        title="Quitter l'outil et retrouver le menu de zone"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleSelectedPanelsDeleted('restore')}
-                        className="ml-1 text-[#4CAF50] hover:text-[#388E3C]"
-                        title={`Restaurer ${selectedPanelIds.size > 1 ? 'les panneaux' : 'le panneau'}`}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPanelIds(new Set())}
-                        className="ml-1 text-[#706F6C] hover:text-[#1A1917]"
-                        title="Désélectionner tout"
-                      >
-                        <IconTablerX className="h-4 w-4" />
+                        Terminer
                       </button>
                     </div>
                   </div>
@@ -2949,10 +3068,10 @@ export default function ConfiguratorPage() {
                 {generating && (
                   <div
                     role="status"
-                    className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-[#E8E6E3] bg-white/95 px-3 py-1.5 text-[11px] font-medium text-[#706F6C] shadow-sm lg:bottom-4"
+                    className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-black/10 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-black/65 shadow-sm lg:bottom-4"
                     style={{ borderRadius: '2px' }}
                   >
-                    <span className="h-3 w-3 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
+                    <span className="h-3 w-3 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
                     Mise à jour…
                   </div>
                 )}
@@ -2960,7 +3079,7 @@ export default function ConfiguratorPage() {
             </div>
           </div>
 
-          <div className="flex flex-col border-t border-[#E8E6E3] bg-white lg:min-h-0 lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
+          <div className="flex flex-col border-t border-black/10 bg-am-paper lg:min-h-0 lg:w-[620px] lg:flex-none lg:border-l lg:border-t-0">
             {isViewMode ? (
               <ConfigurationSummary
                 width={width}
@@ -2982,7 +3101,7 @@ export default function ConfiguratorPage() {
               />
             ) : (
               <>
-                <div className="flex-shrink-0 border-b border-[#E8E6E3] px-4 pb-3 pt-4 sm:px-6">
+                <div className="flex-shrink-0 border-b border-black/10 px-4 pb-3 pt-4 sm:px-6">
                   <StepNav
                     steps={CONFIG_STEPS}
                     activeStep={activeStep}
@@ -2993,6 +3112,29 @@ export default function ConfiguratorPage() {
 
                 <div ref={stepContentRef} className="px-4 pb-24 pt-5 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pb-0">
                   <div className="space-y-6 pb-6">
+                    {hasZoneIssues && (
+                      <div className="flex items-start gap-3 border border-am-wine/30 bg-am-wine/5 px-4 py-3" style={{ borderRadius: '2px' }} role="alert">
+                        <IconInfoCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-am-wine" />
+                        <div className="min-w-0 flex-1 text-xs leading-relaxed text-am-wine">
+                          <p className="font-semibold">Ce meuble ne peut pas être fabriqué tel quel</p>
+                          <ul className="mt-1 space-y-0.5">
+                            {constraintIssues.slice(0, 3).map((issue, index) => (
+                              <li key={`${issue.kind}-${issue.zoneId}-${index}`}>{issue.message}</li>
+                            ))}
+                            {constraintIssues.length > 3 && <li>Et {constraintIssues.length - 3} autre(s) point(s).</li>}
+                          </ul>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={focusZoneIssue}
+                          className="flex-shrink-0 border border-am-wine px-3 py-1.5 text-[11px] font-medium text-am-wine transition-colors hover:bg-am-wine hover:text-white"
+                          style={{ borderRadius: '2px' }}
+                        >
+                          Corriger
+                        </button>
+                      </div>
+                    )}
+
                     <StepIntro step={CONFIG_STEPS[activeStep - 1]} total={LAST_STEP} />
 
                     {activeStep === STEP.DIMENSIONS && (
@@ -3002,7 +3144,7 @@ export default function ConfiguratorPage() {
                             <button
                               type="button"
                               onClick={resetConfiguration}
-                              className="flex items-center gap-2 border border-[#E8E6E3] bg-white px-3 py-2 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917]"
+                              className="flex items-center gap-2 border border-black/10 bg-white px-3 py-2 text-xs font-medium text-black/65 transition-colors hover:border-am-navy hover:text-black"
                               style={{ borderRadius: '2px' }}
                             >
                               <RotateCcw className="h-4 w-4" />
@@ -3023,18 +3165,14 @@ export default function ConfiguratorPage() {
                     )}
 
                     {activeStep === STEP.DIVISION && (
-                      <div className="space-y-4">
-                        {selectedZoneIds.length === 0 ? (
-                          <ZoneEmptyState>
-                            Cliquez sur un compartiment du plan pour le diviser en étagères ou en colonnes.
-                          </ZoneEmptyState>
-                        ) : (
-                          <ZoneEditor {...zoneEditorProps} controlSections={['division']} />
-                        )}
-                        <p className="text-[11px] leading-relaxed text-[#706F6C]">
-                          Astuce : glissez les séparateurs sur le plan pour ajuster la taille des compartiments.
-                        </p>
-                      </div>
+                      <DivisionSteps
+                        rootZone={rootZone}
+                        selectedZoneIds={selectedZoneIds}
+                        width={width}
+                        height={height}
+                        onRootZoneChange={setRootZone}
+                        onSelectedZoneIdsChange={setSelectedZoneIds}
+                      />
                     )}
 
                     {activeStep === STEP.DOORS && (
@@ -3055,7 +3193,7 @@ export default function ConfiguratorPage() {
                               controlSections={['facades', 'storage', 'handles']}
                             />
                           )}
-                          <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                          <p className="text-[11px] leading-relaxed text-black/65">
                             Astuce : maintenez Maj et cliquez sur un compartiment voisin pour poser une seule porte sur l&apos;ensemble.
                           </p>
                         </StepSection>
@@ -3067,49 +3205,34 @@ export default function ConfiguratorPage() {
                         <MaterialSelector
                           materialsMap={materialsMap}
                           selectedMaterialKey={selectedMaterialLabel}
-                          selectedColorId={selectedColorId}
                           onMaterialChange={handleMaterialChange}
-                          onColorChange={handleColorChange}
                           loading={materialsLoading}
-                          useMultiColor={advancedColors}
-                          onUseMultiColorChange={handleAdvancedColorsChange}
-                          componentColors={componentColors}
+                          componentColors={displayedComponentColors}
                           onComponentColorChange={handleComponentColorChange}
+                          onApplyToAll={handleApplyColorToAll}
+                          hiddenComponents={[
+                            ...(zoneStats.doors === 0 ? (['doors'] as const) : []),
+                            ...(zoneStats.drawers === 0 ? (['drawers'] as const) : []),
+                          ]}
                         />
 
-                        <StepSection title="Couleur des façades" aside="Portes et tiroirs">
-                          {zoneStats.doors + zoneStats.drawers === 0 ? (
-                            <p className="text-xs leading-relaxed text-[#706F6C]">
-                              Vous n&apos;avez pas encore posé de porte ni de tiroir. Revenez à l&apos;étape Portes pour en ajouter : vous pourrez ensuite les colorer ici.
-                            </p>
-                          ) : (
-                            <FacadeColorSelector
-                              colors={colorsForMaterial}
-                              selectedColorId={facadeColorId}
-                              sameAsStructure={facadeSameAsStructure}
-                              loading={materialsLoading}
-                              onSelect={handleFacadeColorChange}
-                              onReset={handleFacadeColorReset}
-                            />
-                          )}
-                        </StepSection>
-
                         {isSelectedZoneColorizable && selectedZone ? (
-                          <StepSection title="Une façade en particulier" aside="Compartiment sélectionné">
+                          <StepSection title="Une porte ou un tiroir en particulier" aside="Compartiment sélectionné">
                             <ZoneColorPicker
                               inline
                               zone={selectedZone}
                               materialsMap={materialsMap}
                               selectedMaterialKey={selectedMaterialLabel}
-                              defaultColor={color}
-                              defaultImageUrl={selectedColorImage}
+                              defaultColor={selectedFacadeDefault.hex || color}
+                              defaultImageUrl={selectedFacadeDefault.imageUrl ?? null}
+                              defaultColorName={selectedFacadeDefaultName}
                               onColorChange={setZoneColor}
                               onClose={() => setSelectedZoneIds([])}
                             />
                           </StepSection>
                         ) : (
                           zoneStats.doors + zoneStats.drawers > 0 && (
-                            <p className="text-[11px] leading-relaxed text-[#706F6C]">
+                            <p className="text-[11px] leading-relaxed text-black/65">
                               Astuce : cliquez sur une porte ou un tiroir du meuble pour lui donner une couleur différente.
                             </p>
                           )
@@ -3156,41 +3279,33 @@ export default function ConfiguratorPage() {
                     )}
                   </div>
 
-                  <div className="-mx-4 flex items-center justify-between gap-3 border-t border-[#E8E6E3] bg-white px-4 py-3 sm:-mx-6 sm:px-6 sticky bottom-[69px] z-10 lg:bottom-0">
+                  <div className="-mx-4 flex items-center justify-between gap-3 border-t border-black/10 bg-am-paper px-4 py-3 sm:-mx-6 sm:px-6 sticky bottom-[69px] z-10 lg:bottom-0">
                     <button
                       type="button"
                       onClick={() => goToStep((activeStep - 1) as ConfigStep)}
                       disabled={activeStep === STEP.DIMENSIONS}
-                      className="flex items-center gap-1.5 border border-[#E8E6E3] px-4 py-2.5 text-xs font-medium text-[#706F6C] transition-colors hover:border-[#1A1917] hover:text-[#1A1917] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1.5 border border-black/10 px-4 py-2.5 text-xs font-medium text-black/65 transition-colors hover:border-am-navy hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ borderRadius: '2px' }}
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
                       Retour
                     </button>
-                    {activeStep < LAST_STEP ? (
+                    {/* Dernière étape : le bouton du pied de page (prix + enregistrer) est l'action finale, pas besoin d'un second bouton identique */}
+                    {activeStep < LAST_STEP && (
                       <button
                         type="button"
                         onClick={() => goToStep((activeStep + 1) as ConfigStep)}
-                        className="flex items-center gap-1.5 bg-[#1A1917] px-5 py-2.5 text-xs font-medium text-white transition-colors hover:bg-[#2A2927]"
+                        className="flex items-center gap-1.5 bg-am-navy px-5 py-2.5 text-xs font-medium text-white transition-colors hover:bg-am-navy/90"
                         style={{ borderRadius: '2px' }}
                       >
                         Suivant : {CONFIG_STEPS[activeStep].label}
                         <ArrowRight className="h-3.5 w-3.5" />
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
-                        className="bg-[#D4FF3A] px-5 py-2.5 text-xs font-medium text-[#161513] transition-colors hover:bg-[#C4EF2A]"
-                        style={{ borderRadius: '2px' }}
-                      >
-                        Valider la configuration
-                      </button>
                     )}
                   </div>
                 </div>
 
-                <div className="hidden flex-shrink-0 border-t border-[#E8E6E3] bg-white px-6 py-4 lg:block">
+                <div className="hidden flex-shrink-0 border-t border-black/10 bg-am-paper px-6 py-4 lg:block">
                   <PriceDisplay
                     price={price}
                     onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
@@ -3208,11 +3323,11 @@ export default function ConfiguratorPage() {
         </div>
 
         {!isViewMode && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E8E6E3] bg-white px-4 py-3 lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-am-paper px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0">
-                <span className="text-[10px] uppercase tracking-wide text-[#706F6C]">Prix</span>
-                <div className="font-serif text-xl text-[#1A1917]">
+                <span className="text-[10px] uppercase tracking-wide text-black/65">Prix</span>
+                <div className="font-serif text-xl text-black">
                   {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
                     `${new Intl.NumberFormat('fr-FR', {
                       style: 'currency',
@@ -3235,57 +3350,11 @@ export default function ConfiguratorPage() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={undoZone}
-                  disabled={!canUndoZone}
-                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
-                    canUndoZone
-                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
-                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
-                  }`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <Undo2 className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={redoZone}
-                  disabled={!canRedoZone}
-                  className={`flex items-center justify-center w-9 h-9 border transition-colors ${
-                    canRedoZone
-                      ? 'border-[#E8E6E3] bg-white text-[#706F6C]'
-                      : 'border-[#E8E6E3] bg-[#F5F5F5] text-[#C4C4C4]'
-                  }`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <Redo2 className="h-4 w-4" />
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={handleToggleDoors}
-                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${doorsOpen ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
-                style={{ borderRadius: '2px' }}
-              >
-                <span>{doorsOpen ? '🚪' : '📦'}</span>
-                <span className="hidden sm:inline">{doorsOpen ? 'Ouvert' : 'Fermé'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDecorations(!showDecorations)}
-                className={`flex items-center gap-1.5 border px-3 py-2 text-xs transition-colors ${showDecorations ? 'border-[#1A1917] bg-[#1A1917] text-white' : 'border-[#E8E6E3] bg-white text-[#706F6C]'}`}
-                style={{ borderRadius: '2px' }}
-              >
-                <span>{showDecorations ? '🏺' : '✨'}</span>
-                <span className="hidden sm:inline">Déco</span>
-              </button>
               {(!isAdminCreateModel && !isAdminEditModel) ? (
                 <button
                   type="button"
                   onClick={saveConfiguration}
-                  className="flex h-11 flex-1 max-w-[180px] items-center justify-center gap-2 bg-[#1A1917] text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  className="flex h-11 flex-1 max-w-[240px] items-center justify-center gap-2 bg-am-wine text-sm font-medium text-white transition-colors hover:bg-am-wine/90"
                   style={{ borderRadius: '2px' }}
                 >
                   <Box className="h-4 w-4" />
@@ -3297,7 +3366,7 @@ export default function ConfiguratorPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateModelDialogOpen(true)}
-                  className="flex h-11 flex-1 max-w-[200px] items-center justify-center gap-2 bg-[#8B7355] text-sm font-medium text-white transition-colors hover:bg-[#705D45]"
+                  className="flex h-11 flex-1 max-w-[200px] items-center justify-center gap-2 bg-am-navy text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
                   <IconPlus className="h-4 w-4" />
@@ -3322,13 +3391,13 @@ export default function ConfiguratorPage() {
             <Button 
               variant="outline" 
               onClick={discardPendingRestore}
-              className="border-[#E8E6E3] text-[#706F6C] hover:bg-[#F5F5F5] hover:text-[#1A1917]"
+              className="border-black/10 text-black/65 hover:bg-am-mist/30 hover:text-black"
             >
               Ignorer
             </Button>
             <Button 
               onClick={applyPendingRestore}
-              className="bg-[#1A1917] text-white hover:bg-[#333]"
+              className="bg-am-navy text-white hover:bg-am-navy/90"
             >
               Restaurer ma session
             </Button>
@@ -3353,13 +3422,13 @@ export default function ConfiguratorPage() {
                 {isAdminEditModel ? <IconEdit className="h-8 w-8 text-amber-600" /> : <IconPlus className="h-8 w-8 text-amber-600" />}
               </div>
 
-              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+              <h2 className="mb-4 text-center font-serif text-2xl text-black">
                 {isAdminEditModel ? 'Modèle mis à jour !' : 'Modèle créé avec succès !'}
               </h2>
-              <p className="mb-6 text-center text-base text-[#706F6C]">
+              <p className="mb-6 text-center text-base text-black/65">
                 {isAdminEditModel 
-                  ? <>Le modèle <span className="font-semibold text-[#1A1917]">&quot;{modelForm.name}&quot;</span> a été mis à jour avec succès dans le catalogue.</>
-                  : <>Votre nouveau modèle <span className="font-semibold text-[#1A1917]">&quot;{modelForm.name}&quot;</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
+                  ? <>Le modèle <span className="font-semibold text-black">&quot;{modelForm.name}&quot;</span> a été mis à jour avec succès dans le catalogue.</>
+                  : <>Votre nouveau modèle <span className="font-semibold text-black">&quot;{modelForm.name}&quot;</span> a été ajouté au catalogue et est désormais visible par tous les clients.</>
                 }
               </p>
 
@@ -3367,7 +3436,7 @@ export default function ConfiguratorPage() {
                 <button
                   type="button"
                   onClick={() => router.push(adminUrl('/dashboard?section=models'))}
-                  className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
                   Retour au catalogue
@@ -3388,7 +3457,7 @@ export default function ConfiguratorPage() {
                         resetConfiguration();
                       }
                     }}
-                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    className="border-2 border-black/10 bg-white px-4 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                     style={{ borderRadius: '2px' }}
                   >
                     {isAdminEditModel ? 'Continuer à modifier' : 'Créer un autre'}
@@ -3396,7 +3465,7 @@ export default function ConfiguratorPage() {
                   <button
                     type="button"
                     onClick={() => router.push(adminUrl('/dashboard'))}
-                    className="border-2 border-[#E8E6E3] bg-white px-4 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                    className="border-2 border-black/10 bg-white px-4 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                     style={{ borderRadius: '2px' }}
                   >
                     Dashboard
@@ -3420,21 +3489,21 @@ export default function ConfiguratorPage() {
 
               {(isEditMode && editingConfigId) ? (
                 <>
-                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                  <h2 className="mb-4 text-center font-serif text-2xl text-black">
                     Configuration mise à jour !
                   </h2>
-                  <p className="mb-6 text-center text-base text-[#706F6C]">
-                    La configuration <span className="font-semibold text-[#1A1917]">&quot;{editingConfigName}&quot;</span> a été modifiée avec succès.
+                  <p className="mb-6 text-center text-base text-black/65">
+                    La configuration <span className="font-semibold text-black">&quot;{editingConfigName}&quot;</span> a été modifiée avec succès.
                   </p>
                 </>
               ) : (
                 <>
-                  <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+                  <h2 className="mb-4 text-center font-serif text-2xl text-black">
                     Configuration enregistrée !
                   </h2>
-                  <p className="mb-6 text-center text-base text-[#706F6C]">
+                  <p className="mb-6 text-center text-base text-black/65">
                     {customer?.civility === 'M' ? 'Monsieur' : customer?.civility === 'Mme' ? 'Madame' : ''}{' '}
-                    <span className="font-semibold text-[#1A1917]">
+                    <span className="font-semibold text-black">
                       {customer?.last_name}
                     </span>
                     , un menuisier va vous rappeler au plus vite pour valider votre projet et finaliser votre commande.
@@ -3443,11 +3512,11 @@ export default function ConfiguratorPage() {
               )}
 
               {!(isEditMode && editingConfigId) && !isAdmin && (
-                <div className="mb-6 border-t border-[#E8E6E3] pt-4">
-                  <p className="text-sm text-[#706F6C]">
-                    <strong className="text-[#1A1917]">Prochaines étapes :</strong>
+                <div className="mb-6 border-t border-black/10 pt-4">
+                  <p className="text-sm text-black/65">
+                    <strong className="text-black">Prochaines étapes :</strong>
                   </p>
-                  <ul className="mt-2 space-y-2 text-sm text-[#706F6C]">
+                  <ul className="mt-2 space-y-2 text-sm text-black/65">
                     <li className="flex items-start gap-2">
                       <span className="mt-0.5">📞</span>
                       <span>Notre menuisier vous contactera pour valider les détails du projet</span>
@@ -3472,7 +3541,7 @@ export default function ConfiguratorPage() {
                       onClick={() => {
                         router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/account?section=configurations');
                       }}
-                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
                     >
                       Retour aux configurations
@@ -3480,7 +3549,7 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmationModal(false)}
-                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}
                     >
                       Continuer à modifier
@@ -3493,7 +3562,7 @@ export default function ConfiguratorPage() {
                       onClick={() => {
                         router.push(isAdmin ? adminUrl('/dashboard') : '/account?section=configurations');
                       }}
-                      className="flex-1 border-2 border-[#E8E6E3] bg-white px-6 py-3 text-sm font-medium text-[#1A1917] transition-colors hover:border-[#1A1917]"
+                      className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}
                     >
                       {isAdmin ? 'Retour au Dashboard' : 'Mes configurations'}
@@ -3501,7 +3570,7 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => router.push('/')}
-                      className="flex-1 bg-[#1A1917] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                      className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
                     >
                       Retour à l&apos;accueil
@@ -3524,10 +3593,10 @@ export default function ConfiguratorPage() {
                 </svg>
               </div>
 
-              <h2 className="mb-4 text-center font-serif text-2xl text-[#1A1917]">
+              <h2 className="mb-4 text-center font-serif text-2xl text-black">
                 Erreur
               </h2>
-              <div className="mb-6 text-center text-base text-[#706F6C] whitespace-pre-line">
+              <div className="mb-6 text-center text-base text-black/65 whitespace-pre-line">
                 {errorMessage}
               </div>
 
@@ -3535,7 +3604,7 @@ export default function ConfiguratorPage() {
                 <button
                   type="button"
                   onClick={() => setShowErrorModal(false)}
-                  className="bg-[#1A1917] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#2A2927]"
+                  className="bg-am-navy px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
                   Fermer

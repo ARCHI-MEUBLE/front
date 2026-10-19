@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { JapaneseMinimalist, ScandinavianLandscape, BauhausGeometric, WallClock } from './wall-art';
 
+// Inclinaison de chaque feuille de la plante. Fixe : tirée au hasard à chaque rendu, la plante changeait de
+// forme à chaque clic sur le meuble.
+const PLANT_LEAF_TILTS: [number, number][] = Array.from({ length: 12 }, (_, i) => [
+    0.4 + 0.4 * Math.sin(i * 12.9898),
+    0.4 + 0.4 * Math.sin(i * 78.233),
+]);
+
 export function Room() {
     return (
         <group>
@@ -35,32 +42,13 @@ export function Room() {
                 <meshStandardMaterial color="#f0f0f0" />
             </mesh>
 
-            <group position={[-1.8, 0, -1]}>
-                <mesh position={[0, 0.15, 0]} castShadow>
-                    <cylinderGeometry args={[0.15, 0.1, 0.3, 16]} />
-                    <meshStandardMaterial color="#444444" />
-                </mesh>
-                {Array.from({ length: 12 }).map((_, i) => (
-                    <mesh
-                        key={i}
-                        position={[0, 0.5, 0]}
-                        rotation={[Math.random() * 0.8, i * Math.PI/6, Math.random() * 0.8]}
-                        castShadow
-                    >
-                        <capsuleGeometry args={[0.03, 0.6, 4, 8]} />
-                        <meshStandardMaterial color="#2D5A27" roughness={0.8} />
-                    </mesh>
-                ))}
-            </group>
-
-
             <JapaneseMinimalist position={[0.3, 2.6, -1.97]} width={1.2} height={0.95} />
 
             <ScandinavianLandscape position={[-2.2, 2.4, -1.97]} width={0.8} height={0.95} />
 
             <BauhausGeometric position={[2.5, 2.8, -1.97]} width={0.65} height={0.8} />
 
-            <WallClock position={[2.5, 1.8, -1.97]} radius={0.25} />
+            <WallClock position={[2, 1.8, -1.97]} radius={0.25} />
 
             <BauhausGeometric position={[-3.5, 2.2, -1.97]} width={0.55} height={0.7} />
 

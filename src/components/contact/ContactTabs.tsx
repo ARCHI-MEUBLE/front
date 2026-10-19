@@ -19,8 +19,8 @@ export function ContactTabs({
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
-            className={`min-h-11 rounded-full border-[1.5px] border-[#161513] px-6 py-2.5 text-[15px] ${
-              isActive ? "bg-[#161513] font-semibold text-[#F7F6F2]" : "bg-transparent text-[#161513]"
+            className={`min-h-10 rounded-full border-[1.5px] border-black px-5 py-1.5 text-[14px] ${
+              isActive ? "bg-am-navy font-semibold text-white" : "bg-transparent text-black"
             }`}
           >
             {tab.label}

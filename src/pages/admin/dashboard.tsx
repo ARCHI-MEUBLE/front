@@ -19,13 +19,13 @@ import { DashboardPricingCombined } from '@/components/admin/DashboardPricingCom
 import { DashboardSamples } from '@/components/admin/DashboardSamples';
 import { DashboardRealisations } from '@/components/admin/DashboardRealisations';
 import { DashboardFacades } from '@/components/admin/DashboardFacades';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
 import NotificationsModal from '@/components/admin/NotificationsModal';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
-  if (!hasAdminSession(req.headers.cookie)) {
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+  if (!(await verifyAdminSession(req, res))) {
     return {
       redirect: {
         destination: adminUrl('/login'),

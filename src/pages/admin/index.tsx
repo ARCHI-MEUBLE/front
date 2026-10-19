@@ -1,9 +1,9 @@
 import type { GetServerSideProps } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
-  const destination = hasAdminSession(req.headers.cookie)
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+  const destination = (await verifyAdminSession(req, res))
     ? adminUrl('/dashboard')
     : adminUrl('/login');
 

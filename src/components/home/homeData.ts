@@ -31,14 +31,6 @@ export function swatchImage(file: string): string {
   return "/images/photos_meuble_couleur/" + file;
 }
 
-export const PROCESS: { title: string; tag: string; text: string; image: string }[] = [
-  { title: "Demande", tag: "J+0", text: "À réception de la demande, un chargé de projet est attribué.", image: "https://images.unsplash.com/photo-1687422810663-c316494f725a?auto=format&fit=crop&w=900&q=70" },
-  { title: "Maquette 3D", tag: "Devis", text: "Une maquette 3D et un devis détaillé sont transmis pour servir de base à l'affinage du projet.", image: "https://images.unsplash.com/photo-1659930087003-2d64e33181f7?auto=format&fit=crop&w=900&q=70" },
-  { title: "Prise de mesures", tag: "Sur place", text: "Après validation du devis, une prise de mesures précises est effectuée sur place.", image: "https://images.unsplash.com/photo-1638718260002-18bdc8082608?auto=format&fit=crop&w=900&q=70" },
-  { title: "Production", tag: "30 jours", text: "Les découpes et les perçages sont faits en usine. 30 jours plus tard, le meuble est prêt.", image: "https://images.unsplash.com/photo-1547609434-b732edfee020?auto=format&fit=crop&w=900&q=70" },
-  { title: "Pose", tag: "Finitions", text: "La pose et les finitions sont réalisées sur place pour une intégration parfaite.", image: "https://images.unsplash.com/photo-1631396326838-de37e5f8bcbc?auto=format&fit=crop&w=900&q=70" },
-];
-
 export const TESTIMONIALS: { quote: string; name: string; city: string; rating: number; avatarParams: string }[] = [
   { quote: "Un travail remarquable du début à la fin. Notre bibliothèque s'intègre parfaitement dans le salon, comme si elle avait toujours été là.", name: "Marie-Claire D.", city: "Lille", rating: 5, avatarParams: "&hair=variant02&beardProbability=0" },
   { quote: "Le configurateur en ligne est vraiment bien fait. J'ai pu visualiser mon dressing avant de commander.", name: "Thomas L.", city: "Roubaix", rating: 4, avatarParams: "&hair=variant05&beardProbability=0" },

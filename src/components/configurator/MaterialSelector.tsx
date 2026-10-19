@@ -1,14 +1,26 @@
-import { useMemo, useState, useCallback } from 'react';
+/* ****************************************
+ * 
+ * A panel for selecting materials and colors.
+ *
+ * 
+ * ******************************************/
+
+
+import { useMemo, useState } from 'react';
+import { Archive, Box, DoorClosed, Frame, PanelBottom, Rows3, type LucideIcon } from 'lucide-react';
 import type { SampleType, SampleColor } from '@/lib/apiClient';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
+import ColorCheckBadge from './ColorCheckBadge';
 
 // Composant pour afficher une couleur avec fallback si l'image ne charge pas
-function ColorSwatch({ color, size = 'md' }: { color: SampleColor; size?: 'sm' | 'md' | 'lg' }) {
+function ColorSwatch({ color, size = 'md' }: { color: SampleColor; size?: 'sm' | 'md' | 'lg' | 'fill' }) {
   const [imgError, setImgError] = useState(false);
 
   const sizeClasses = {
     sm: 'h-6 w-6',
     md: 'h-10 w-10',
     lg: 'h-16 w-16 sm:h-24 sm:w-24',
+    fill: 'h-full w-full',
   };
 
   // L'URL de l'image (le rewrite dans next.config.js gère la redirection vers le backend)
@@ -18,7 +30,7 @@ function ColorSwatch({ color, size = 'md' }: { color: SampleColor; size?: 'sm' |
 
   return (
     <div
-      className={`${sizeClasses[size]} flex-shrink-0 border border-[#E8E6E3] overflow-hidden`}
+      className={`${sizeClasses[size]} flex-shrink-0 border border-black/10 overflow-hidden`}
       style={{
         borderRadius: '2px',
         backgroundColor: bgColor,
@@ -44,7 +56,7 @@ function MiniSwatch({ hex, imageUrl }: { hex?: string | null; imageUrl?: string 
 
   return (
     <div
-      className="h-8 w-8 flex-shrink-0 border border-[#E8E6E3] overflow-hidden"
+      className="h-8 w-8 flex-shrink-0 border border-black/10 overflow-hidden"
       style={{
         borderRadius: '2px',
         backgroundColor: bgColor,
@@ -71,105 +83,125 @@ export type ComponentColors = {
   base: { colorId: number | null; hex: string | null; imageUrl?: string | null };
 };
 
+export type ColorComponent = keyof ComponentColors;
+type ComponentColor = ComponentColors[ColorComponent];
+
 interface MaterialSelectorProps {
   materialsMap: Record<string, SampleType[]>;
   selectedMaterialKey: string;
-  selectedColorId: number | null;
   onMaterialChange: (materialKey: string) => void;
-  onColorChange: (color: SampleColor) => void;
   loading?: boolean;
-  // Multi-color mode
-  useMultiColor?: boolean;
-  onUseMultiColorChange?: (value: boolean) => void;
-  componentColors?: ComponentColors;
-  onComponentColorChange?: (component: keyof ComponentColors, colorId: number, hex: string, imageUrl?: string | null) => void;
+  // Couleur actuelle de chaque partie du meuble
+  componentColors: ComponentColors;
+  onComponentColorChange: (component: ColorComponent, color: SampleColor) => void;
+  onApplyToAll: (color: SampleColor) => void;
+  // Parties absentes du meuble (ex. pas de porte) : inutile de proposer leur couleur
+  hiddenComponents?: ColorComponent[];
 }
 
-const COMPONENT_DEFINITIONS = [
-  { key: 'structure' as const, label: 'Structure', icon: '🏗️', desc: 'Corps du meuble' },
-  { key: 'drawers' as const, label: 'Tiroirs', icon: '📦', desc: 'Façades de tiroirs' },
-  { key: 'doors' as const, label: 'Portes', icon: '🚪', desc: 'Portes battantes' },
-  { key: 'shelves' as const, label: 'Étagères', icon: '📏', desc: 'Tablettes intérieures' },
-  { key: 'back' as const, label: 'Fond', icon: '📋', desc: 'Panneau arrière' },
-  { key: 'base' as const, label: 'Socle', icon: '⬛', desc: 'Base du meuble' },
+const COMPONENT_DEFINITIONS: { key: ColorComponent; label: string; Icon: LucideIcon; desc: string }[] = [
+  { key: 'structure', label: 'Structure', Icon: Box, desc: 'Corps du meuble' },
+  { key: 'doors', label: 'Portes', Icon: DoorClosed, desc: 'Toutes les portes' },
+  { key: 'drawers', label: 'Tiroirs', Icon: Archive, desc: 'Toutes les façades de tiroirs' },
+  { key: 'shelves', label: 'Étagères', Icon: Rows3, desc: 'Tablettes et séparations' },
+  { key: 'back', label: 'Fond', Icon: Frame, desc: 'Panneau arrière' },
+  { key: 'base', label: 'Socle', Icon: PanelBottom, desc: 'Base du meuble' },
 ];
+
+const isSameColor = (entry: ComponentColor | undefined, color: SampleColor) =>
+  !!entry &&
+  (entry.colorId === color.id ||
+    (!!entry.hex && entry.hex === color.hex && (entry.imageUrl ?? null) === (color.image_url ?? null)));
 
 export default function MaterialSelector({
   materialsMap,
   selectedMaterialKey,
-  selectedColorId,
   onMaterialChange,
-  onColorChange,
   loading = false,
-  useMultiColor = false,
-  onUseMultiColorChange,
   componentColors,
   onComponentColorChange,
+  onApplyToAll,
+  hiddenComponents = [],
 }: MaterialSelectorProps) {
-  // État pour le composant en cours d'édition en mode multi-couleurs
-  const [activeComponent, setActiveComponent] = useState<keyof ComponentColors | null>(null);
+  // Partie dont la palette est ouverte (sur ordinateur)
+  const [activeComponent, setActiveComponent] = useState<ColorComponent>('structure');
 
   // Ordonner les matériaux dynamiquement - tous les matériaux de l'API sont affichés
   const orderedMaterialLabels = useMemo(() => {
-    // On prend TOUS les matériaux présents dans la map (venant de l'API)
-    const materials = Object.keys(materialsMap);
-
-    // Tri alphabétique simple en français
-    return materials.sort((a, b) => a.localeCompare(b, 'fr'));
+    return Object.keys(materialsMap).sort((a, b) => a.localeCompare(b, 'fr'));
   }, [materialsMap]);
 
-  // Retrouver le label correct
+  // Retrouver le label correct (casse et accents ignorés)
   const selectedMaterialLabel = useMemo(() => {
-    // Essai 1: Correspondance exacte (priorité)
-    if (materialsMap[selectedMaterialKey]) {
-      return selectedMaterialKey;
-    }
-    
-    // Essai 2: Recherche insensible à la casse et aux accents
-    const keys = Object.keys(materialsMap);
-    const normalizedKey = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-    const targetNormalized = normalizedKey(selectedMaterialKey);
-
-    const match = keys.find(k => normalizedKey(k) === targetNormalized);
-    if (match) {
-      return match;
-    }
-
-    return selectedMaterialKey;
+    if (materialsMap[selectedMaterialKey]) return selectedMaterialKey;
+    const normalizedKey = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const target = normalizedKey(selectedMaterialKey);
+    return Object.keys(materialsMap).find((k) => normalizedKey(k) === target) ?? selectedMaterialKey;
   }, [selectedMaterialKey, materialsMap]);
-  const materialTypesForSelection = materialsMap[selectedMaterialLabel] || [];
 
-  const colorsForMaterial = useMemo<SampleColor[]>(() => {
-    const list: SampleColor[] = [];
-    const seen = new Set<string>(); // Utiliser une clé combinée pour l'unicité
-    
-    for (const type of materialTypesForSelection) {
-      if (type.colors && Array.isArray(type.colors)) {
-        for (const colorOption of type.colors) {
-          // Clé d'unicité basée sur le nom, l'hex et l'image pour éviter les doublons visuels
-          // mais permettre des couleurs différentes avec le même nom si nécessaire
-          const uniqueKey = `${colorOption.name}-${colorOption.hex}-${colorOption.image_url}`;
-          
-          if (seen.has(uniqueKey)) continue;
-          seen.add(uniqueKey);
-          list.push(colorOption);
-        }
-      }
-    }
-    // Trier par nom pour la cohérence
-    list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
-    
-    return list;
-  }, [materialTypesForSelection]);
+  // Toutes les couleurs de la matière (doublons compris) : sert à retrouver le nom d'une couleur choisie
+  const allColors = useMemo<SampleColor[]>(
+    () => (materialsMap[selectedMaterialLabel] || []).flatMap((type) => type.colors || []),
+    [materialsMap, selectedMaterialLabel]
+  );
 
-  const selectedColor = colorsForMaterial.find((c) => c.id === selectedColorId);
+  // Palette affichée : une seule fois chaque couleur visible, triée par nom
+  const palette = useMemo<SampleColor[]>(() => {
+    const seen = new Set<string>();
+    return allColors
+      .filter((color) => {
+        const key = `${color.name}-${color.hex}-${color.image_url}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+  }, [allColors]);
+
+  const colorName = (entry: ComponentColor) =>
+    displayColorName((allColors.find((c) => c.id === entry.colorId) ?? palette.find((c) => isSameColor(entry, c)))?.name) || 'Couleur par défaut';
+
+  const components = COMPONENT_DEFINITIONS.filter(({ key }) => !hiddenComponents.includes(key));
+  const active = components.some((c) => c.key === activeComponent) ? activeComponent : 'structure';
+  const activeDefinition = COMPONENT_DEFINITIONS.find((c) => c.key === active)!;
+  const activeColor = palette.find((c) => isSameColor(componentColors[active], c));
+
+  // Pastille de couleur : la couleur choisie est entourée de bleu et porte une coche, sans être assombrie.
+  // Le nom s'affiche dessous quand la place le permet (sur téléphone, la palette est trop serrée)
+  const swatchButton = (component: ColorComponent, color: SampleColor, showName = false) => {
+    const isSelected = isSameColor(componentColors[component], color);
+    return (
+      <button
+        key={color.id}
+        type="button"
+        onClick={() => onComponentColorChange(component, color)}
+        aria-pressed={isSelected}
+        aria-label={displayColorName(color.name) || 'Couleur'}
+        title={displayColorName(color.name) || 'Sans nom'}
+        className="group flex min-w-0 flex-col gap-1.5 text-left"
+      >
+        <div
+          className={`relative aspect-square border-2 p-0.5 transition-all ${
+            isSelected ? 'border-am-navy ring-4 ring-am-navy/15' : 'border-black/10 group-hover:border-am-navy'
+          }`}
+          style={{ borderRadius: '2px' }}
+        >
+          <ColorSwatch color={color} size="fill" />
+          {isSelected && <ColorCheckBadge />}
+        </div>
+        {showName && (
+          <span className={`line-clamp-2 text-[11px] leading-tight ${isSelected ? 'font-medium text-black' : 'text-black/65'}`}>
+            {displayColorName(color.name) || 'Sans nom'}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-center py-8">
-          <div className="h-6 w-6 animate-spin border-2 border-[#1A1917] border-t-transparent" style={{ borderRadius: '50%' }} />
-        </div>
+      <div className="flex items-center justify-center py-8">
+        <div className="h-6 w-6 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
       </div>
     );
   }
@@ -178,9 +210,7 @@ export default function MaterialSelector({
     <div className="space-y-6">
       {/* Sélection du matériau */}
       <div className="space-y-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-          Matière
-        </span>
+        <span className="text-xs font-medium uppercase tracking-wide text-black/65">Matière</span>
         <div className="flex flex-wrap gap-2">
           {orderedMaterialLabels.map((label) => {
             const isActive = selectedMaterialLabel === label;
@@ -191,247 +221,114 @@ export default function MaterialSelector({
                 onClick={() => onMaterialChange(label)}
                 className={`border px-3 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
                   isActive
-                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                    : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                    ? 'border-am-navy bg-am-navy text-white'
+                    : 'border-black/10 bg-white text-black hover:border-am-navy'
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                {label}
+                {displayMaterialName(label)}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Toggle multi-couleurs */}
-      {onUseMultiColorChange && (
-        <div className="flex items-center justify-between gap-3 border border-[#E8E6E3] bg-[#FAFAF9] p-3 sm:p-4" style={{ borderRadius: '2px' }}>
-          <div>
-            <span className="text-sm font-medium text-[#1A1917]">Mode de coloration</span>
-            <p className="mt-0.5 text-xs text-[#706F6C]">
-              {useMultiColor
-                ? 'Couleurs personnalisées par composant'
-                : 'Couleur unique pour tout le meuble'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onUseMultiColorChange(!useMultiColor)}
-            className={`relative flex h-6 w-11 items-center border transition-colors ${
-              useMultiColor ? 'border-[#1A1917] bg-[#1A1917]' : 'border-[#E8E6E3] bg-white'
-            }`}
-            style={{ borderRadius: '2px' }}
-          >
-            <span
-              className={`block h-4 w-4 border transition-transform ${
-                useMultiColor
-                  ? 'translate-x-6 border-[#1A1917] bg-white'
-                  : 'translate-x-1 border-[#E8E6E3] bg-[#706F6C]'
-              }`}
-              style={{ borderRadius: '1px' }}
-            />
-          </button>
-        </div>
-      )}
-
-      {/* Mode multi-couleurs */}
-      {useMultiColor && componentColors && onComponentColorChange && colorsForMaterial.length > 0 ? (
-        <div className="space-y-4">
-          <div>
-            <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-              Couleurs par composant
-            </span>
-            <p className="mt-1 text-xs text-[#706F6C]">
-              Cliquez sur un composant pour changer sa couleur
-            </p>
-          </div>
-
-          {/* Grille des composants - vue compacte */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {COMPONENT_DEFINITIONS.map(({ key, label, icon }) => {
-              const isActive = activeComponent === key;
-              const componentColor = componentColors?.[key];
-              const colorName = colorsForMaterial.find(c => c.id === componentColor?.colorId)?.name;
-
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveComponent(isActive ? null : key)}
-                  className={`flex items-center gap-2 border p-2 text-left transition-all ${
-                    isActive
-                      ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                      : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
-                  }`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <MiniSwatch hex={componentColor?.hex} imageUrl={componentColor?.imageUrl} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">{icon}</span>
-                      <span className="text-xs font-medium truncate">{label}</span>
-                    </div>
-                    <p className={`text-[10px] truncate ${isActive ? 'text-white/70' : 'text-[#706F6C]'}`}>
-                      {colorName || 'Non défini'}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Palette de couleurs pour le composant actif */}
-          {activeComponent && (
-            <div
-              className="border border-[#1A1917] bg-white p-4 animate-in slide-in-from-top-2 duration-200"
-              style={{ borderRadius: '2px' }}
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">
-                    {COMPONENT_DEFINITIONS.find(c => c.key === activeComponent)?.icon}
-                  </span>
-                  <div>
-                    <h4 className="text-sm font-medium text-[#1A1917]">
-                      {COMPONENT_DEFINITIONS.find(c => c.key === activeComponent)?.label}
-                    </h4>
-                    <p className="text-xs text-[#706F6C]">
-                      {COMPONENT_DEFINITIONS.find(c => c.key === activeComponent)?.desc}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveComponent(null)}
-                  className="p-1 text-[#706F6C] hover:text-[#1A1917] transition-colors"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6">
-                {colorsForMaterial.map((color) => {
-                  const isSelected = componentColors?.[activeComponent]?.colorId === color.id;
-                  return (
-                    <button
-                      key={color.id}
-                      type="button"
-                      onClick={() => {
-                        onComponentColorChange?.(activeComponent, color.id, color.hex || '#D8C7A1', color.image_url);
-                      }}
-                      className={`group relative aspect-square border-2 transition-all ${
-                        isSelected
-                          ? 'border-[#1A1917] ring-2 ring-[#1A1917] ring-offset-1'
-                          : 'border-[#E8E6E3] hover:border-[#1A1917]'
-                      }`}
-                      style={{ borderRadius: '2px' }}
-                      title={color.name || 'Sans nom'}
-                    >
-                      <ColorSwatch color={color} size="md" />
-                      {isSelected && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <svg className="h-4 w-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Nom de la couleur sélectionnée */}
-              {componentColors?.[activeComponent]?.colorId && (
-                <p className="mt-3 text-center text-xs text-[#706F6C]">
-                  {colorsForMaterial.find(c => c.id === componentColors[activeComponent]?.colorId)?.name || 'Couleur sélectionnée'}
-                </p>
-              )}
+      {palette.length > 0 && (
+        <>
+          {/* ── Ordinateur : grille des parties du meuble + palette de la partie choisie ── */}
+          <div className="hidden space-y-4 lg:block">
+            <div>
+              <span className="text-xs font-medium uppercase tracking-wide text-black/65">Couleurs</span>
+              <p className="mt-1 text-xs text-black/65">Choisissez une partie du meuble, puis sa couleur.</p>
             </div>
-          )}
 
-          {/* Résumé visuel des couleurs */}
-          <div className="border-t border-[#E8E6E3] pt-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-                Aperçu
-              </span>
-              <div className="flex gap-1">
-                {COMPONENT_DEFINITIONS.map(({ key }) => (
-                  <div
-                    key={key}
-                    className="h-6 w-6 border border-[#E8E6E3]"
-                    style={{
-                      borderRadius: '2px',
-                      backgroundColor: componentColors?.[key]?.hex || '#D8C7A1',
-                      backgroundImage: componentColors?.[key]?.imageUrl ? `url(${componentColors[key].imageUrl})` : undefined,
-                      backgroundSize: 'cover',
-                    }}
-                    title={COMPONENT_DEFINITIONS.find(c => c.key === key)?.label}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Mode couleur unique */
-        colorsForMaterial.length > 0 && (
-          <div className="space-y-3">
-            <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-              Couleur
-            </span>
-            <div className="grid grid-cols-1 gap-2 xs:grid-cols-2">
-              {colorsForMaterial.map((color) => {
-                const isActive = selectedColorId === color.id;
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {components.map(({ key, label, Icon }) => {
+                const isActive = active === key;
+                const entry = componentColors[key];
                 return (
+                  // La partie en cours de réglage est cerclée de bleu, comme la palette qui lui correspond dessous
                   <button
-                    key={color.id}
+                    key={key}
                     type="button"
-                    onClick={() => onColorChange(color)}
-                    className={`flex items-center gap-3 border p-3 text-left transition-colors ${
+                    onClick={() => setActiveComponent(key)}
+                    aria-pressed={isActive}
+                    className={`flex items-center gap-2 border p-2 text-left text-black transition-all ${
                       isActive
-                        ? 'border-[#1A1917] bg-[#FAFAF9]'
-                        : 'border-[#E8E6E3] bg-white hover:border-[#1A1917]'
+                        ? 'border-am-navy bg-am-mist/30 ring-1 ring-am-navy'
+                        : 'border-black/10 bg-white hover:border-am-navy'
                     }`}
                     style={{ borderRadius: '2px' }}
                   >
-                    <ColorSwatch color={color} size="md" />
-                    <span className={`text-sm font-medium ${isActive ? 'text-[#1A1917]' : 'text-[#706F6C]'}`}>
-                      {color.name || 'Sans nom'}
-                    </span>
+                    <MiniSwatch hex={entry?.hex} imageUrl={entry?.imageUrl} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1">
+                        <Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                        <span className="truncate text-xs font-medium">{label}</span>
+                      </div>
+                      <p className="truncate text-[10px] text-black/65">{colorName(entry)}</p>
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-        )
-      )}
 
-      {/* Aperçu sélectionné (mode unique seulement) */}
-      {!useMultiColor && selectedColor && (
-        <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3 sm:p-4" style={{ borderRadius: '2px' }}>
-          <div className="flex gap-3 sm:gap-4">
-            <ColorSwatch color={selectedColor} size="lg" />
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
-                Sélectionné
-              </span>
-              <h4 className="mt-1 truncate text-sm font-medium text-[#1A1917] sm:text-base">
-                {selectedColor.name || 'Finition personnalisée'}
-              </h4>
-              <p className="mt-1 text-xs text-[#706F6C]">{selectedMaterialLabel}</p>
-              <button
-                type="button"
-                className="mt-2 text-xs text-[#8B7355] underline hover:no-underline sm:mt-3"
-                onClick={() => window.open('/samples', '_blank')}
-              >
-                Commander des échantillons
-              </button>
+            <div className="border border-am-navy bg-white p-4" style={{ borderRadius: '2px' }}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <activeDefinition.Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  <div>
+                    <h4 className="text-sm font-medium text-black">{activeDefinition.label}</h4>
+                    <p className="text-xs text-black/65">
+                      {activeDefinition.desc} · <span className="font-medium text-black">{colorName(componentColors[active])}</span>
+                    </p>
+                  </div>
+                </div>
+                {activeColor && (
+                  <button
+                    type="button"
+                    onClick={() => onApplyToAll(activeColor)}
+                    className="text-right text-xs text-am-navy underline hover:no-underline"
+                  >
+                    Appliquer « {displayColorName(activeColor.name)} » à tout le meuble
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 md:grid-cols-5">
+                {palette.map((color) => swatchButton(active, color, true))}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* ── Téléphone : toutes les couleurs à la suite, une palette par partie du meuble ── */}
+          <div className="space-y-5 lg:hidden">
+            <span className="text-xs font-medium uppercase tracking-wide text-black/65">Couleurs</span>
+            {components.map(({ key, label, desc }) => (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MiniSwatch hex={componentColors[key]?.hex} imageUrl={componentColors[key]?.imageUrl} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-black">{label}</p>
+                    <p className="truncate text-[11px] text-black/65">
+                      {colorName(componentColors[key])} · {desc}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-9">
+                  {palette.map((color) => swatchButton(key, color))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="text-xs text-am-navy underline hover:no-underline"
+            onClick={() => window.open('/samples', '_blank')}
+          >
+            Commander des échantillons
+          </button>
+        </>
       )}
     </div>
   );

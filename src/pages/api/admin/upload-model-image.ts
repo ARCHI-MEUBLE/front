@@ -2,7 +2,7 @@
  * API Admin - Proxy Upload d'images
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 import formidable from 'formidable'; // Utilisation de formidable pour gérer les fichiers multi-part
 import fs from 'fs';
 
@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   // Vérifier l'authentification admin
-  if (!hasAdminSession(req.headers.cookie)) {
+  if (!(await verifyAdminSession(req, res))) {
     return res.status(401).json({ error: 'Non authentifié' });
   }
 

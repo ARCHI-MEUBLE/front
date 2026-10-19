@@ -7,13 +7,15 @@ import { CheckCircle, Package, Home, Layers, ShoppingBag, Box } from "lucide-rea
 import { UserNavigation } from "@/components/UserNavigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { useCustomer } from "@/context/CustomerContext";
+import { displayColorName, displayMaterialName } from "@/lib/displayNames";
+import { formatPrice } from "@/lib/format";
 
 // Import dynamique du viewer 3D pour éviter les erreurs SSR
 const ThreeViewer = dynamic(() => import("@/components/configurator/ThreeViewer"), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full flex items-center justify-center bg-gray-100">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+    <div className="h-full w-full flex items-center justify-center bg-am-mist/25">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/30 border-t-transparent" />
     </div>
   ),
 });
@@ -153,8 +155,8 @@ export default function OrderConfirmationPage() {
         <UserNavigation />
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-am-navy mx-auto"></div>
+            <p className="mt-4 text-black/70">Chargement...</p>
           </div>
         </div>
       </>
@@ -168,7 +170,7 @@ export default function OrderConfirmationPage() {
           <title>Erreur - ArchiMeuble</title>
         </Head>
         <UserNavigation />
-        <div className="min-h-screen bg-gray-50 px-4 py-12">
+        <div className="min-h-screen bg-am-paper px-4 py-12">
           <div className="mx-auto max-w-2xl">
             <div className="border border-red-300 bg-red-50 p-4 text-center">
               <p className="text-red-700">{error || "Commande introuvable"}</p>
@@ -259,7 +261,7 @@ export default function OrderConfirmationPage() {
       </Head>
       <UserNavigation />
 
-      <div className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="min-h-screen bg-am-paper px-4 py-8">
         <div className="mx-auto max-w-4xl">
           <Breadcrumb
             items={[
@@ -273,30 +275,30 @@ export default function OrderConfirmationPage() {
           {/* Success Message */}
           <div className="border border-green-300 bg-green-50 p-6 text-center mb-6">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-black mb-2">
               {isSamplesOnly && areSamplesFree ? 'Échantillons commandés !' : 'Commande confirmée !'}
             </h1>
-            <p className="text-gray-700 mb-4">
+            <p className="text-black/75 mb-4">
               {getMainMessage()}
             </p>
-            <div className="inline-flex items-center gap-2 bg-white border border-gray-300 px-4 py-2">
-              <span className="text-sm font-medium text-gray-700">Numéro de commande:</span>
-              <span className="text-sm font-bold text-gray-900">{order.order_number}</span>
+            <div className="inline-flex items-center gap-2 bg-white border border-black/20 px-4 py-2">
+              <span className="text-sm font-medium text-black/75">Numéro de commande:</span>
+              <span className="text-sm font-bold text-black">{order.order_number}</span>
             </div>
           </div>
 
           {/* Order Summary */}
-          <div className="border border-gray-200 bg-white mb-6">
-            <div className="border-b border-gray-200 p-4">
-              <h2 className="text-lg font-semibold text-gray-900">Récapitulatif de la commande</h2>
+          <div className="border border-black/10 bg-white mb-6">
+            <div className="border-b border-black/10 p-4">
+              <h2 className="text-lg font-semibold text-black">Récapitulatif de la commande</h2>
             </div>
 
             <div className="p-4 space-y-4">
               {/* Order Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-1">Commande passée le</p>
-                  <p className="text-sm text-gray-900">
+                  <p className="text-xs font-medium text-black/60 uppercase mb-1">Commande passée le</p>
+                  <p className="text-sm text-black">
                     {new Date(order.created_at).toLocaleDateString("fr-FR", {
                       day: "numeric",
                       month: "long",
@@ -307,7 +309,7 @@ export default function OrderConfirmationPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-1">Statut</p>
+                  <p className="text-xs font-medium text-black/60 uppercase mb-1">Statut</p>
                   <span className="inline-flex items-center gap-2 bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
                     {order.payment_status === 'paid' ? '✅ Payée' : '✅ Confirmée'}
                   </span>
@@ -317,7 +319,7 @@ export default function OrderConfirmationPage() {
               {/* Meubles sur mesure */}
               {hasConfigurations && (
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-2 bg-gray-100 p-2 -mx-4 px-4">
+                  <p className="text-xs font-bold text-black/60 uppercase mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
                     Meubles sur mesure ({order.items!.length})
                   </p>
                   <div className="space-y-4">
@@ -331,9 +333,9 @@ export default function OrderConfirmationPage() {
                       const advancedZones = configData?.advancedZones;
 
                       return (
-                        <div key={`config-${item.id || index}`} className="border border-gray-200 overflow-hidden">
+                        <div key={`config-${item.id || index}`} className="border border-black/10 overflow-hidden">
                           {/* Aperçu 3D */}
-                          <div className="h-48 bg-[#FAFAF9] relative">
+                          <div className="h-48 bg-am-mist/15 relative">
                             <ThreeViewer
                               width={dimensions.width || 1000}
                               height={dimensions.height || 2000}
@@ -352,15 +354,15 @@ export default function OrderConfirmationPage() {
                             />
                           </div>
                           {/* Infos */}
-                          <div className="p-3 flex items-center justify-between border-t border-gray-200">
+                          <div className="p-3 flex items-center justify-between border-t border-black/10">
                             <div>
-                              <p className="font-medium text-sm text-gray-900">{itemName}</p>
-                              <p className="text-xs text-gray-600">
+                              <p className="font-medium text-sm text-black">{itemName}</p>
+                              <p className="text-xs text-black/70">
                                 {dimensions.width || '?'} × {dimensions.height || '?'} × {dimensions.depth || '?'} mm · Quantité: {item.quantity}
                               </p>
                             </div>
-                            <p className="font-semibold text-sm text-gray-900">
-                              {(item.total_price || item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                            <p className="font-semibold text-sm text-black">
+                              {formatPrice(item.total_price || item.unit_price * item.quantity)}
                             </p>
                           </div>
                         </div>
@@ -373,21 +375,21 @@ export default function OrderConfirmationPage() {
               {/* Façades sur mesure */}
               {hasFacades && (
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-2 bg-gray-100 p-2 -mx-4 px-4">
+                  <p className="text-xs font-bold text-black/60 uppercase mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
                     Façades sur mesure ({order.facade_items!.length})
                   </p>
                   <div className="space-y-2">
                     {order.facade_items!.map((facade, index) => {
                       const config = facade.config || (typeof facade.config_data === 'string' ? JSON.parse(facade.config_data) : facade.config_data);
-                      const materialName = config?.material?.name || 'Matériau';
+                      const materialName = displayColorName(config?.material?.name) || 'Matériau';
                       const width = config?.width ? (config.width / 10) : 0;
                       const height = config?.height ? (config.height / 10) : 0;
                       const depth = config?.depth || 19;
 
                       return (
-                        <div key={`facade-${facade.id || index}`} className="border border-gray-200 p-3 flex items-center gap-3">
+                        <div key={`facade-${facade.id || index}`} className="border border-black/10 p-3 flex items-center gap-3">
                           <div
-                            className="h-12 w-12 flex items-center justify-center border border-gray-200"
+                            className="h-12 w-12 flex items-center justify-center border border-black/10"
                             style={{
                               backgroundColor: config?.material?.color_hex || '#E5E7EB',
                               backgroundImage: config?.material?.texture_url ? `url(${config.material.texture_url})` : undefined,
@@ -396,19 +398,19 @@ export default function OrderConfirmationPage() {
                             }}
                           >
                             {!config?.material?.texture_url && !config?.material?.color_hex && (
-                              <Layers className="h-5 w-5 text-gray-500" />
+                              <Layers className="h-5 w-5 text-black/60" />
                             )}
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium text-sm text-gray-900">
+                            <p className="font-medium text-sm text-black">
                               Façade {width} × {height} cm · {depth} mm
                             </p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-black/70">
                               {materialName} · Quantité: {facade.quantity}
                             </p>
                           </div>
-                          <p className="font-semibold text-sm text-gray-900">
-                            {(facade.total_price || facade.unit_price * facade.quantity).toLocaleString('fr-FR')} €
+                          <p className="font-semibold text-sm text-black">
+                            {formatPrice(facade.total_price || facade.unit_price * facade.quantity)}
                           </p>
                         </div>
                       );
@@ -420,13 +422,13 @@ export default function OrderConfirmationPage() {
               {/* Articles boutique */}
               {hasCatalogueItems && (
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-2 bg-gray-100 p-2 -mx-4 px-4">
+                  <p className="text-xs font-bold text-black/60 uppercase mb-2 bg-am-mist/25 p-2 -mx-4 px-4">
                     Articles boutique ({order.catalogue_items!.length})
                   </p>
                   <div className="space-y-2">
                     {order.catalogue_items!.map((item, index) => (
-                      <div key={`catalogue-${item.id || index}`} className="border border-gray-200 p-3 flex items-center gap-3">
-                        <div className="h-12 w-12 bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-200">
+                      <div key={`catalogue-${item.id || index}`} className="border border-black/10 p-3 flex items-center gap-3">
+                        <div className="h-12 w-12 bg-am-mist/25 overflow-hidden flex items-center justify-center border border-black/10">
                           {item.image_url ? (
                             <img
                               src={item.image_url}
@@ -434,20 +436,20 @@ export default function OrderConfirmationPage() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <ShoppingBag className="h-5 w-5 text-gray-500" />
+                            <ShoppingBag className="h-5 w-5 text-black/60" />
                           )}
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-sm text-gray-900">
+                          <p className="font-medium text-sm text-black">
                             {item.name || item.item_name || 'Article boutique'}
                           </p>
                           {item.variation_name && (
-                            <p className="text-xs text-gray-600">{item.variation_name}</p>
+                            <p className="text-xs text-black/70">{item.variation_name}</p>
                           )}
-                          <p className="text-xs text-gray-600">Quantité: {item.quantity}</p>
+                          <p className="text-xs text-black/70">Quantité: {item.quantity}</p>
                         </div>
-                        <p className="font-semibold text-sm text-gray-900">
-                          {(item.total_price || item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                        <p className="font-semibold text-sm text-black">
+                          {formatPrice(item.total_price || item.unit_price * item.quantity)}
                         </p>
                       </div>
                     ))}
@@ -458,34 +460,34 @@ export default function OrderConfirmationPage() {
               {/* Échantillons */}
               {hasSamples && (
                 <div>
-                  <p className={`text-xs font-bold uppercase mb-2 p-2 -mx-4 px-4 ${areSamplesFree ? 'text-green-700 bg-green-50' : 'text-gray-500 bg-gray-100'}`}>
+                  <p className={`text-xs font-bold uppercase mb-2 p-2 -mx-4 px-4 ${areSamplesFree ? 'text-green-700 bg-green-50' : 'text-black/60 bg-am-mist/25'}`}>
                     Échantillons ({order.samples!.length})
                   </p>
                   <div className="space-y-2">
                     {order.samples!.map((sample, index) => {
                       const samplePrice = (sample.price || 0) * sample.quantity;
                       return (
-                        <div key={`sample-${sample.id || index}`} className="border border-gray-200 p-3 flex items-center gap-3">
+                        <div key={`sample-${sample.id || index}`} className="border border-black/10 p-3 flex items-center gap-3">
                           <div
-                            className="h-12 w-12 flex-shrink-0 border border-gray-200"
+                            className="h-12 w-12 flex-shrink-0 border border-black/10"
                             style={{ backgroundColor: sample.hex || '#E5E7EB' }}
                           >
                             {sample.image_url && (
                               <img
                                 src={sample.image_url}
-                                alt={sample.sample_name}
+                                alt={displayColorName(sample.sample_name)}
                                 className="h-full w-full object-cover"
                               />
                             )}
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium text-sm text-gray-900">{sample.sample_name}</p>
-                            <p className="text-xs text-gray-600">
-                              {sample.sample_type_name || sample.material} · Quantité: {sample.quantity}
+                            <p className="font-medium text-sm text-black">{displayColorName(sample.sample_name)}</p>
+                            <p className="text-xs text-black/70">
+                              {displayMaterialName(sample.sample_type_name || sample.material)} · Quantité: {sample.quantity}
                             </p>
                           </div>
-                          <p className={`font-semibold text-sm ${samplePrice === 0 ? 'text-green-600' : 'text-gray-900'}`}>
-                            {samplePrice === 0 ? 'Gratuit' : `${samplePrice.toLocaleString('fr-FR')} €`}
+                          <p className={`font-semibold text-sm ${samplePrice === 0 ? 'text-green-600' : 'text-black'}`}>
+                            {samplePrice === 0 ? 'Gratuit' : formatPrice(samplePrice)}
                           </p>
                         </div>
                       );
@@ -496,16 +498,16 @@ export default function OrderConfirmationPage() {
 
               {/* Shipping Address */}
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase mb-1">Adresse de livraison</p>
-                <p className="text-sm text-gray-900 whitespace-pre-line">{order.shipping_address}</p>
+                <p className="text-xs font-medium text-black/60 uppercase mb-1">Adresse de livraison</p>
+                <p className="text-sm text-black whitespace-pre-line">{order.shipping_address}</p>
               </div>
 
               {/* Total */}
-              <div className="border-t-2 border-gray-900 pt-3">
+              <div className="border-t-2 border-am-navy pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-base font-semibold text-gray-900">Total payé</span>
-                  <span className="text-xl font-bold text-gray-900">
-                    {isSamplesOnly ? 'Gratuit' : `${order.total.toLocaleString('fr-FR')} €`}
+                  <span className="text-base font-semibold text-black">Total payé</span>
+                  <span className="text-xl font-bold text-black">
+                    {isSamplesOnly ? 'Gratuit' : formatPrice(order.total)}
                   </span>
                 </div>
               </div>
@@ -513,9 +515,9 @@ export default function OrderConfirmationPage() {
           </div>
 
           {/* Next Steps */}
-          <div className="border border-gray-200 bg-white p-4 mb-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Prochaines étapes</h3>
-            <ol className="space-y-2 text-sm text-gray-700">
+          <div className="border border-black/10 bg-white p-4 mb-6">
+            <h3 className="text-sm font-semibold text-black mb-3">Prochaines étapes</h3>
+            <ol className="space-y-2 text-sm text-black/75">
               <li className="flex gap-2">
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700 font-medium">1</span>
                 <span>Un email de confirmation a été envoyé à <strong>{order.customer_email || customer?.email}</strong></span>
@@ -537,14 +539,14 @@ export default function OrderConfirmationPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href="/account?section=orders"
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-6 py-3 text-sm font-medium hover:bg-gray-800"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-am-navy text-white px-6 py-3 text-sm font-medium hover:bg-am-navy/90"
             >
               <Package className="h-4 w-4" />
               Voir mes commandes
             </Link>
             <Link
               href="/"
-              className="flex-1 inline-flex items-center justify-center gap-2 border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="flex-1 inline-flex items-center justify-center gap-2 border border-black/20 px-6 py-3 text-sm font-medium text-black/75 hover:bg-am-mist/30"
             >
               <Home className="h-4 w-4" />
               Continuer mes achats

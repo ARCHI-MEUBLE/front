@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
 import AuthModal from '@/components/auth/AuthModal';
+import { formatDecimal, formatPrice } from '@/lib/format';
+import { displayColorName } from '@/lib/displayNames';
 
 interface FacadeControlsProps {
   config: FacadeConfig;
@@ -146,25 +148,22 @@ export default function FacadeControls({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-[#E8E6E3]">
+    <div className="flex flex-col h-full bg-am-paper border-t border-black/15 lg:border-l lg:border-t-0">
       {/* Header with step indicator */}
-      <div className="border-b border-[#E8E6E3] p-4">
+      <div className="border-b border-black/15 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-[#706F6C]">
+          <span className="text-xs font-medium text-black/70">
             ÉTAPE {currentStepData.number}/{steps.length}
           </span>
-          <span className="text-xs text-[#706F6C]">
-            {currentStepIndex + 1} sur {steps.length}
-          </span>
         </div>
-        <h2 className="text-lg font-semibold text-[#1A1917]">
+        <h2 className="text-lg font-semibold text-black">
           {currentStepData.label}
         </h2>
         
         {/* Progress bar */}
-        <div className="mt-3 h-1 bg-[#E8E6E3] rounded-full overflow-hidden">
+        <div className="mt-3 h-1 bg-black/10 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-[#1A1917] transition-all duration-300"
+            className="h-full bg-am-navy transition-all duration-300"
             style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
           />
         </div>
@@ -202,26 +201,26 @@ export default function FacadeControls({
       </div>
 
       {/* Navigation buttons */}
-      <div className="border-t border-[#E8E6E3] p-4">
+      <div className="border-t border-black/15 p-4">
         <div className="flex gap-3">
           <button
             onClick={handlePrevious}
             disabled={currentStepIndex === 0}
-            className="flex-1 px-4 py-3 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ← Précédent
           </button>
           {currentStep === 'summary' ? (
             <button
               onClick={handleAddToCart}
-              className="flex-1 px-4 py-3 bg-[#16a34a] text-white rounded-lg hover:bg-[#15803d] transition-colors font-medium"
+              className="flex-1 px-4 py-3 bg-am-wine text-white rounded-lg hover:bg-am-wine/90 transition-colors font-medium"
             >
               Ajouter au panier
             </button>
           ) : (
             <button
               onClick={handleNext}
-              className="flex-1 px-4 py-3 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors font-medium"
+              className="flex-1 px-4 py-3 bg-am-navy text-white rounded-lg hover:bg-am-wine transition-colors font-medium"
             >
               Suivant →
             </button>
@@ -230,45 +229,45 @@ export default function FacadeControls({
       </div>
 
       {/* Price Summary */}
-      <div className="border-t border-[#E8E6E3] p-6 bg-[#FAFAF9]">
+      <div className="border-t border-black/15 p-4 bg-am-mist/25">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-[#706F6C]">Surface ({((config.width / 1000) * (config.height / 1000)).toFixed(2)} m²)</span>
+          <span className="text-sm text-black/70">Surface ({formatDecimal((config.width / 1000) * (config.height / 1000))} m²)</span>
           <span className="text-sm font-medium">
-            {((config.width / 1000) * (config.height / 1000) * Number(config.material.price_per_m2 || pricingSettings.material_price_per_m2)).toFixed(2)} €
+            {formatPrice((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2))}
           </span>
         </div>
         {config.hinges.type !== 'no-hole-no-hinge' && (
           <>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-[#706F6C]">Charnières ({config.hinges.count}×)</span>
+              <span className="text-sm text-black/70">Charnières ({config.hinges.count}×)</span>
               <span className="text-sm font-medium">
-                {(pricingSettings.hinge_base_price * config.hinges.count).toFixed(2)} €
+                {formatPrice(pricingSettings.hinge_base_price * config.hinges.count)}
               </span>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-[#706F6C]">Supplément charnières</span>
+              <span className="text-sm text-black/70">Supplément charnières</span>
               <span className="text-sm font-medium">
-                {(
+                {formatPrice(
                   (((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2)) +
                   (pricingSettings.hinge_base_price * config.hinges.count)) *
                   (pricingSettings.hinge_coefficient * config.hinges.count)
-                ).toFixed(2)} €
+                )}
               </span>
             </div>
           </>
         )}
         {config.drillings.length > 0 && (
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-[#706F6C]">Perçages</span>
+            <span className="text-sm text-black/70">Perçages</span>
             <span className="text-sm font-medium">
-              {config.drillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0).toFixed(2)} €
+              {formatPrice(config.drillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0))}
             </span>
           </div>
         )}
-        <div className="flex justify-between items-center pt-4 border-t border-[#E8E6E3]">
-          <span className="text-lg font-semibold text-[#1A1917]">Total</span>
-          <span className="text-2xl font-bold text-[#1A1917]">
-            {(calculateTotalPrice() * quantity).toFixed(2)} € TTC
+        <div className="flex justify-between items-center pt-4 border-t border-black/15">
+          <span className="text-lg font-semibold text-black">Total</span>
+          <span className="text-2xl font-bold text-black">
+            {formatPrice(calculateTotalPrice() * quantity)} TTC
           </span>
         </div>
       </div>
@@ -293,11 +292,11 @@ export default function FacadeControls({
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-[#1A1917] text-center mb-2">
+            <h3 className="text-lg font-semibold text-black text-center mb-2">
               Ajouté au panier
             </h3>
-            <p className="text-sm text-[#706F6C] text-center mb-4">
-              {quantity} façade{quantity > 1 ? 's' : ''} · {(calculateTotalPrice() * quantity).toFixed(2)} €
+            <p className="text-sm text-black/70 text-center mb-4">
+              {quantity} façade{quantity > 1 ? 's' : ''} · {formatPrice(calculateTotalPrice() * quantity)}
             </p>
             <div className="flex gap-3">
               <button
@@ -306,13 +305,13 @@ export default function FacadeControls({
                   setCurrentStep('dimensions');
                   setQuantity(1);
                 }}
-                className="flex-1 px-4 py-2.5 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-sm font-medium"
+                className="flex-1 px-4 py-2.5 border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors text-sm font-medium"
               >
                 Nouvelle façade
               </button>
               <button
                 onClick={() => window.location.href = '/cart'}
-                className="flex-1 px-4 py-2.5 bg-[#1A1917] text-white rounded-lg hover:bg-[#2A2927] transition-colors text-sm font-medium"
+                className="flex-1 px-4 py-2.5 bg-am-navy text-white rounded-lg hover:bg-am-wine transition-colors text-sm font-medium"
               >
                 Voir le panier
               </button>
@@ -335,57 +334,61 @@ function DimensionsPanel({
   // Conversion mm -> cm pour l'affichage
   const widthInCm = Math.round(config.width / 10);
   const heightInCm = Math.round(config.height / 10);
+  const widthId = useId();
+  const heightId = useId();
 
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-[#1A1917] mb-2">
+        <label htmlFor={widthId} className="block text-sm font-medium text-black mb-2">
           Largeur (cm)
         </label>
         <input
+          id={widthId}
           type="number"
           min="10"
           max="60"
           step="1"
           value={widthInCm}
           onChange={(e) => onUpdateConfig({ width: Number(e.target.value) * 10 })}
-          className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
+          className="w-full px-4 py-2 border border-black/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
-        <p className="text-xs text-[#706F6C] mt-1">Maximum : 60 cm</p>
+        <p className="text-xs text-black/70 mt-1">Maximum : 60 cm</p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1A1917] mb-2">
+        <label htmlFor={heightId} className="block text-sm font-medium text-black mb-2">
           Hauteur (cm)
         </label>
         <input
+          id={heightId}
           type="number"
           min="50"
           max="230"
           step="1"
           value={heightInCm}
           onChange={(e) => onUpdateConfig({ height: Number(e.target.value) * 10 })}
-          className="w-full px-4 py-2 border border-[#E8E6E3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1A1917]"
+          className="w-full px-4 py-2 border border-black/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
-        <p className="text-xs text-[#706F6C] mt-1">Maximum : 230 cm</p>
+        <p className="text-xs text-black/70 mt-1">Maximum : 230 cm</p>
       </div>
 
       {/* Info épaisseur fixe */}
-      <div className="p-4 bg-[#FAFAF9] rounded-lg border border-[#E8E6E3]">
-        <p className="text-sm text-[#706F6C]">
-          <span className="font-medium text-[#1A1917]">Épaisseur :</span> 19 mm (fixe)
+      <div className="p-4 bg-am-mist/25 rounded-lg border border-black/15">
+        <p className="text-sm text-black/70">
+          <span className="font-medium text-black">Épaisseur :</span> 19 mm (fixe)
         </p>
       </div>
 
       {/* Presets */}
-      <div className="pt-4 border-t border-[#E8E6E3]">
-        <p className="text-sm font-medium text-[#1A1917] mb-3">Dimensions prédéfinies</p>
+      <div className="pt-4 border-t border-black/15">
+        <p className="text-sm font-medium text-black mb-3">Dimensions prédéfinies</p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() =>
               onUpdateConfig({ width: 400, height: 600 })
             }
-            className="px-3 py-2 text-sm border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors"
+            className="px-3 py-2 text-sm border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors"
           >
             40×60 cm
           </button>
@@ -393,7 +396,7 @@ function DimensionsPanel({
             onClick={() =>
               onUpdateConfig({ width: 500, height: 800 })
             }
-            className="px-3 py-2 text-sm border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors"
+            className="px-3 py-2 text-sm border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors"
           >
             50×80 cm
           </button>
@@ -401,7 +404,7 @@ function DimensionsPanel({
             onClick={() =>
               onUpdateConfig({ width: 600, height: 1000 })
             }
-            className="px-3 py-2 text-sm border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors"
+            className="px-3 py-2 text-sm border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors"
           >
             60×100 cm
           </button>
@@ -409,7 +412,7 @@ function DimensionsPanel({
             onClick={() =>
               onUpdateConfig({ width: 600, height: 2000 })
             }
-            className="px-3 py-2 text-sm border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors"
+            className="px-3 py-2 text-sm border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors"
           >
             60×200 cm
           </button>
@@ -431,7 +434,7 @@ function MaterialPanel({
 }) {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[#706F6C]">
+      <p className="text-sm text-black/70">
         Sélectionnez le matériau et la couleur de votre façade
       </p>
 
@@ -442,12 +445,12 @@ function MaterialPanel({
             onClick={() => onUpdateConfig({ material })}
             className={`relative flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
               config.material.id === material.id
-                ? 'border-[#1A1917] bg-[#FAFAF9]'
-                : 'border-[#E8E6E3] hover:border-[#706F6C]'
+                ? 'border-black bg-am-mist/25'
+                : 'border-black/15 hover:border-black/40'
             }`}
           >
             <div
-              className="relative w-16 h-16 rounded-lg mb-2 shadow-sm border border-[#E8E6E3] overflow-hidden"
+              className="relative w-16 h-16 rounded-lg mb-2 shadow-sm border border-black/15 overflow-hidden"
               style={{
                 backgroundColor: material.color_hex,
                 backgroundImage: material.texture_url ? `url(${material.texture_url})` : undefined,
@@ -457,13 +460,13 @@ function MaterialPanel({
               }}
             >
               {material.texture_url && (
-                <span className="absolute top-1 right-1 text-[10px] px-1 py-0.5 bg-white/85 border border-[#E8E6E3] rounded text-[#1A1917] font-semibold">
+                <span className="absolute top-1 right-1 text-[10px] px-1 py-0.5 bg-white/85 border border-black/15 rounded text-black font-semibold">
                   Texture
                 </span>
               )}
             </div>
             <span className="text-xs font-medium text-center">
-              {material.name}
+              {displayColorName(material.name)}
             </span>
           </button>
         ))}
@@ -498,7 +501,7 @@ function HingesPanel({
         return (
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
             {/* Porte simple sans charnière */}
-            <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
+            <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#000000" strokeWidth="2" rx="2"/>
             <circle cx="40" cy="32" r="2" fill="#6B7280"/>
             {/* Croix pour indiquer "sans" */}
             <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
@@ -509,64 +512,64 @@ function HingesPanel({
         return (
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
             {/* Montant du meuble */}
-            <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#000000" strokeWidth="1.5"/>
             {/* Porte en applique (devant le montant) */}
-            <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
             {/* Charnière visible (2 plaques reliées) */}
-            <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#000000" strokeWidth="1" rx="1"/>
             {/* Vis de fixation */}
             <circle cx="22" cy="24" r="1.5" fill="#374151"/>
             <circle cx="22" cy="29" r="1.5" fill="#374151"/>
             <circle cx="17" cy="26" r="1.5" fill="#374151"/>
             {/* Poignée */}
-            <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+            <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#000000" strokeWidth="1"/>
           </svg>
         );
       case 'hole-with-twin-hinge':
         return (
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
             {/* Montant central */}
-            <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#000000" strokeWidth="1.5"/>
             {/* Porte gauche */}
-            <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
             {/* Porte droite */}
-            <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
             {/* Charnière gauche */}
-            <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#000000" strokeWidth="1" rx="1"/>
             {/* Charnière droite */}
-            <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#000000" strokeWidth="1" rx="1"/>
             {/* Vis */}
             <circle cx="29" cy="24" r="1.2" fill="#374151"/>
             <circle cx="35" cy="24" r="1.2" fill="#374151"/>
             {/* Poignées */}
-            <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
-            <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
+            <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#000000" strokeWidth="0.8"/>
+            <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#000000" strokeWidth="0.8"/>
           </svg>
         );
       case 'hole-with-integrated-hinge':
         return (
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
             {/* Montant du meuble (avec encastrement) */}
-            <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
+            <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#000000" strokeWidth="1.5"/>
             {/* Découpe pour encastrement */}
-            <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+            <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#000000" strokeWidth="1"/>
             {/* Porte encastrée */}
-            <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
+            <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
             {/* Charnière encastrée (invisible, représentée par des trous) */}
-            <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-            <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-            <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
+            <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#000000" strokeWidth="1.5"/>
+            <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#000000" strokeWidth="1.5"/>
+            <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#000000" strokeWidth="1.5"/>
             {/* Bras de charnière (partie visible) */}
-            <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-            <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-            <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#000000" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#000000" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#000000" strokeWidth="0.8" rx="0.5"/>
             {/* Flèche indiquant l'encastrement */}
-            <path d="M 50 28 L 46 32 L 50 36" stroke="#1A1917" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M 50 28 L 46 32 L 50 36" stroke="#000000" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
             {/* Poignée */}
-            <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+            <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#000000" strokeWidth="1"/>
           </svg>
         );
       default:
@@ -637,7 +640,7 @@ function HingesPanel({
     <div className="space-y-6">
       {/* Type de charnière */}
       <div>
-        <p className="text-sm font-medium text-[#1A1917] mb-3">
+        <p className="text-sm font-medium text-black mb-3">
           SÉLECTIONNEZ LES CHARNIÈRES POUR VOTRE FAÇADE
         </p>
         <div className="space-y-2">
@@ -647,23 +650,23 @@ function HingesPanel({
               onClick={() => updateHinge('type', type.id)}
               className={`w-full flex items-center justify-between p-4 border-2 rounded-lg transition-all ${
                 config.hinges.type === type.id
-                  ? 'border-[#1A1917] bg-[#FAFAF9]'
-                  : 'border-[#E8E6E3] hover:border-[#706F6C]'
+                  ? 'border-black bg-am-mist/25'
+                  : 'border-black/15 hover:border-black/40'
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0">{getHingeIcon(type.id)}</div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-[#1A1917]">
+                  <p className="text-sm font-medium text-black">
                     {type.label}
                   </p>
-                  <p className="text-xs text-[#706F6C] mt-1">
-                    Prix unit. {Number(type.price).toFixed(2)} € TTC
+                  <p className="text-xs text-black/70 mt-1">
+                    Prix unit. {formatPrice(Number(type.price))} TTC
                   </p>
                 </div>
               </div>
               {config.hinges.type === type.id && (
-                <div className="w-5 h-5 rounded-full bg-[#1A1917] flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-am-navy flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
                   </svg>
@@ -677,10 +680,10 @@ function HingesPanel({
       {/* Nombre de charnières */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-sm font-medium text-[#1A1917]">
+          <p className="text-sm font-medium text-black">
             NOMBRE DE CHARNIÈRES À PRÉVOIR PAR FAÇADE
           </p>
-          <button className="w-5 h-5 rounded-full bg-[#1A1917] text-white flex items-center justify-center text-xs">
+          <button className="w-5 h-5 rounded-full bg-am-navy text-white flex items-center justify-center text-xs">
             ?
           </button>
         </div>
@@ -691,8 +694,8 @@ function HingesPanel({
               onClick={() => updateHinge('count', count)}
               className={`flex-1 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
                 config.hinges.count === count
-                  ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                  : 'border-[#E8E6E3] text-[#706F6C] hover:border-[#1A1917]'
+                  ? 'border-black bg-am-navy text-white'
+                  : 'border-black/15 text-black/70 hover:border-black'
               }`}
             >
               {count} charnières
@@ -704,10 +707,10 @@ function HingesPanel({
       {/* Sens d'ouverture */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-sm font-medium text-[#1A1917]">
+          <p className="text-sm font-medium text-black">
             SENS D&apos;OUVERTURE DE LA FAÇADE
           </p>
-          <button className="w-5 h-5 rounded-full bg-[#1A1917] text-white flex items-center justify-center text-xs">
+          <button className="w-5 h-5 rounded-full bg-am-navy text-white flex items-center justify-center text-xs">
             ?
           </button>
         </div>
@@ -716,8 +719,8 @@ function HingesPanel({
             onClick={() => updateHinge('direction', 'right')}
             className={`flex-1 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
               config.hinges.direction === 'right'
-                ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                : 'border-[#E8E6E3] text-[#706F6C] hover:border-[#1A1917]'
+                ? 'border-black bg-am-navy text-white'
+                : 'border-black/15 text-black/70 hover:border-black'
             }`}
           >
             Droite
@@ -726,8 +729,8 @@ function HingesPanel({
             onClick={() => updateHinge('direction', 'left')}
             className={`flex-1 px-4 py-3 border-2 rounded-lg font-medium transition-all ${
               config.hinges.direction === 'left'
-                ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                : 'border-[#E8E6E3] text-[#706F6C] hover:border-[#1A1917]'
+                ? 'border-black bg-am-navy text-white'
+                : 'border-black/15 text-black/70 hover:border-black'
             }`}
           >
             Gauche
@@ -786,7 +789,7 @@ function DrillingPanel({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A1917]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -802,7 +805,7 @@ function DrillingPanel({
 
       {/* Types de perçages disponibles */}
       <div>
-        <p className="text-sm font-medium text-[#1A1917] mb-3">
+        <p className="text-sm font-medium text-black mb-3">
           TYPES DE PERÇAGES DISPONIBLES
         </p>
         <div className="space-y-2">
@@ -810,29 +813,29 @@ function DrillingPanel({
             <button
               key={type.id}
               onClick={() => handleAddDrilling(type)}
-              className="w-full flex items-center justify-between p-4 border-2 border-[#E8E6E3] rounded-lg hover:border-[#1A1917] transition-all"
+              className="w-full flex items-center justify-between p-4 border-2 border-black/15 rounded-lg hover:border-black transition-all"
             >
               <div className="flex items-center gap-3">
                 {/* SÉCURITÉ: SVG sanitisé pour prévenir XSS */}
                 <div
-                  className="w-12 h-12 flex items-center justify-center bg-[#FAFAF9] rounded-lg"
+                  className="w-12 h-12 flex items-center justify-center bg-am-mist/25 rounded-lg"
                   dangerouslySetInnerHTML={getSafeSvgMarkup(type.icon_svg, '0 0 24 24', 'w-8 h-8') || undefined}
                 />
                 <div className="text-left">
-                  <p className="text-sm font-medium text-[#1A1917]">
+                  <p className="text-sm font-medium text-black">
                     {type.name}
                   </p>
-                  <p className="text-xs text-[#706F6C] mt-1">
+                  <p className="text-xs text-black/70 mt-1">
                     {type.description}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-[#1A1917]">
-                  +{Number(type.price).toFixed(2)} €
+                <p className="text-sm font-semibold text-black">
+                  +{formatPrice(Number(type.price))}
                 </p>
                 <button
-                  className="mt-1 px-3 py-1 bg-[#1A1917] text-white text-xs rounded hover:bg-[#2A2927] transition-colors"
+                  className="mt-1 px-3 py-1 bg-am-navy text-white text-xs rounded hover:bg-am-wine transition-colors"
                 >
                   Ajouter
                 </button>
@@ -844,27 +847,27 @@ function DrillingPanel({
 
       {/* Liste des perçages ajoutés */}
       {customDrillings.length > 0 && (
-        <div className="pt-4 border-t border-[#E8E6E3]">
-          <p className="text-sm font-medium text-[#1A1917] mb-3">
+        <div className="pt-4 border-t border-black/15">
+          <p className="text-sm font-medium text-black mb-3">
             PERÇAGES AJOUTÉS ({customDrillings.length})
           </p>
           <div className="space-y-2">
             {customDrillings.map((drilling: FacadeDrilling) => (
               <div
                 key={drilling.id}
-                className="flex items-center justify-between p-3 bg-[#FAFAF9] rounded-lg border border-[#E8E6E3]"
+                className="flex items-center justify-between p-3 bg-am-mist/25 rounded-lg border border-black/15"
               >
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-[#1A1917]">
+                  <p className="text-sm font-medium text-black">
                     {drilling.typeName}
                   </p>
-                  <p className="text-xs text-[#706F6C] mt-1">
+                  <p className="text-xs text-black/70 mt-1">
                     Position : {drilling.x.toFixed(0)}% × {drilling.y.toFixed(0)}%
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-[#1A1917]">
-                    {Number(drilling.price || 0).toFixed(2)} €
+                  <span className="text-sm font-medium text-black">
+                    {formatPrice(Number(drilling.price || 0))}
                   </span>
                   <button
                     onClick={() => handleRemoveDrilling(drilling.id)}
@@ -878,13 +881,13 @@ function DrillingPanel({
           </div>
           
           {/* Total des perçages */}
-          <div className="mt-4 p-4 bg-white border border-[#E8E6E3] rounded-lg">
+          <div className="mt-4 p-4 bg-white border border-black/15 rounded-lg">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-[#706F6C]">
+              <span className="text-sm text-black/70">
                 Total perçages ({customDrillings.length})
               </span>
-              <span className="text-lg font-semibold text-[#1A1917]">
-                {customDrillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0).toFixed(2)} € TTC
+              <span className="text-lg font-semibold text-black">
+                {formatPrice(customDrillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0))} TTC
               </span>
             </div>
           </div>
@@ -893,11 +896,11 @@ function DrillingPanel({
 
       {/* Message si aucun perçage */}
       {customDrillings.length === 0 && (
-        <div className="p-6 text-center border-2 border-dashed border-[#E8E6E3] rounded-lg">
-          <p className="text-sm text-[#706F6C]">
+        <div className="p-6 text-center border-2 border-dashed border-black/15 rounded-lg">
+          <p className="text-sm text-black/70">
             Aucun perçage ajouté pour le moment
           </p>
-          <p className="text-xs text-[#706F6C] mt-1">
+          <p className="text-xs text-black/70 mt-1">
             Sélectionnez un type ci-dessus pour commencer
           </p>
         </div>
@@ -943,7 +946,7 @@ function SummaryPanel({
       case 'no-hole-no-hinge':
         return (
           <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-            <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
+            <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#000000" strokeWidth="2" rx="2"/>
             <circle cx="40" cy="32" r="2" fill="#6B7280"/>
             <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
             <line x1="52" y1="12" x2="12" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
@@ -952,45 +955,45 @@ function SummaryPanel({
       case 'hole-with-applied-hinge':
         return (
           <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-            <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-            <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-            <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#000000" strokeWidth="1.5"/>
+            <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
+            <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#000000" strokeWidth="1" rx="1"/>
             <circle cx="22" cy="24" r="1.5" fill="#374151"/>
             <circle cx="22" cy="29" r="1.5" fill="#374151"/>
             <circle cx="17" cy="26" r="1.5" fill="#374151"/>
-            <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+            <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#000000" strokeWidth="1"/>
           </svg>
         );
       case 'hole-with-twin-hinge':
         return (
           <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-            <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-            <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-            <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-            <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-            <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
+            <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#000000" strokeWidth="1.5"/>
+            <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
+            <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
+            <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#000000" strokeWidth="1" rx="1"/>
+            <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#000000" strokeWidth="1" rx="1"/>
             <circle cx="29" cy="24" r="1.2" fill="#374151"/>
             <circle cx="35" cy="24" r="1.2" fill="#374151"/>
-            <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
-            <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
+            <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#000000" strokeWidth="0.8"/>
+            <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#000000" strokeWidth="0.8"/>
           </svg>
         );
       case 'hole-with-integrated-hinge':
         return (
           <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-            <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-            <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-            <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-            <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-            <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-            <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-            <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-            <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-            <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-            <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
+            <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#000000" strokeWidth="1.5"/>
+            <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#000000" strokeWidth="1"/>
+            <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#000000" strokeWidth="2" rx="1"/>
+            <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#000000" strokeWidth="1.5"/>
+            <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#000000" strokeWidth="1.5"/>
+            <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#000000" strokeWidth="1.5"/>
+            <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#000000" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#000000" strokeWidth="0.8" rx="0.5"/>
+            <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#000000" strokeWidth="0.8" rx="0.5"/>
+            <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#000000" strokeWidth="1"/>
           </svg>
         );
       default:
@@ -1002,32 +1005,32 @@ function SummaryPanel({
     <div className="space-y-6">
       {/* Dimensions */}
       <div>
-        <p className="text-sm font-medium text-[#1A1917] mb-3">Dimensions</p>
+        <p className="text-sm font-medium text-black mb-3">Dimensions</p>
         <div className="flex gap-4">
           <div>
-            <p className="text-2xl font-semibold text-[#1A1917]">{config.width / 10}</p>
-            <p className="text-xs text-[#706F6C]">Largeur (cm)</p>
+            <p className="text-2xl font-semibold text-black">{config.width / 10}</p>
+            <p className="text-xs text-black/70">Largeur (cm)</p>
           </div>
-          <div className="text-2xl text-[#706F6C]">×</div>
+          <div className="text-2xl text-black/70">×</div>
           <div>
-            <p className="text-2xl font-semibold text-[#1A1917]">{config.height / 10}</p>
-            <p className="text-xs text-[#706F6C]">Hauteur (cm)</p>
+            <p className="text-2xl font-semibold text-black">{config.height / 10}</p>
+            <p className="text-xs text-black/70">Hauteur (cm)</p>
           </div>
-          <div className="text-2xl text-[#706F6C]">×</div>
+          <div className="text-2xl text-black/70">×</div>
           <div>
-            <p className="text-2xl font-semibold text-[#1A1917]">{config.depth}</p>
-            <p className="text-xs text-[#706F6C]">Ép. (mm)</p>
+            <p className="text-2xl font-semibold text-black">{config.depth}</p>
+            <p className="text-xs text-black/70">Ép. (mm)</p>
           </div>
         </div>
-        <p className="text-xs text-[#706F6C] mt-2">Surface : {surfaceM2.toFixed(2)} m²</p>
+        <p className="text-xs text-black/70 mt-2">Surface : {formatDecimal(surfaceM2)} m²</p>
       </div>
 
       {/* Matériau */}
-      <div className="pt-4 border-t border-[#E8E6E3]">
-        <p className="text-sm font-medium text-[#1A1917] mb-3">Matériau</p>
+      <div className="pt-4 border-t border-black/15">
+        <p className="text-sm font-medium text-black mb-3">Matériau</p>
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded border border-[#E8E6E3] overflow-hidden"
+            className="w-10 h-10 rounded border border-black/15 overflow-hidden"
             style={{
               backgroundColor: config.material.color_hex,
               backgroundImage: config.material.texture_url ? `url(${config.material.texture_url})` : undefined,
@@ -1036,23 +1039,23 @@ function SummaryPanel({
             }}
           />
           <div>
-            <p className="text-sm font-medium text-[#1A1917]">{config.material.name}</p>
-            <p className="text-xs text-[#706F6C]">{pricePerM2.toFixed(2)} €/m²</p>
+            <p className="text-sm font-medium text-black">{displayColorName(config.material.name)}</p>
+            <p className="text-xs text-black/70">{formatPrice(pricePerM2)}/m²</p>
           </div>
         </div>
       </div>
 
       {/* Charnières */}
-      <div className="pt-4 border-t border-[#E8E6E3]">
-        <p className="text-sm font-medium text-[#1A1917] mb-3">Charnières</p>
+      <div className="pt-4 border-t border-black/15">
+        <p className="text-sm font-medium text-black mb-3">Charnières</p>
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">{getHingeIcon(config.hinges.type)}</div>
           {config.hinges.type === 'no-hole-no-hinge' ? (
-            <p className="text-sm text-[#706F6C]">Aucune charnière</p>
+            <p className="text-sm text-black/70">Aucune charnière</p>
           ) : (
             <div className="space-y-1">
-              <p className="text-sm text-[#1A1917]">{getHingeTypeLabel(config.hinges.type)}</p>
-              <p className="text-xs text-[#706F6C]">
+              <p className="text-sm text-black">{getHingeTypeLabel(config.hinges.type)}</p>
+              <p className="text-xs text-black/70">
                 {config.hinges.count} charnières · Ouverture {config.hinges.direction === 'left' ? 'gauche' : 'droite'}
               </p>
             </div>
@@ -1061,19 +1064,19 @@ function SummaryPanel({
       </div>
 
       {/* Quantité */}
-      <div className="pt-4 border-t border-[#E8E6E3]">
-        <p className="text-sm font-medium text-[#1A1917] mb-3">Quantité</p>
+      <div className="pt-4 border-t border-black/15">
+        <p className="text-sm font-medium text-black mb-3">Quantité</p>
         <div className="flex items-center gap-3">
           <button
             onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-            className="w-10 h-10 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-lg"
+            className="w-10 h-10 border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors text-lg"
           >
             −
           </button>
-          <span className="text-xl font-semibold text-[#1A1917] w-8 text-center">{quantity}</span>
+          <span className="text-xl font-semibold text-black w-8 text-center">{quantity}</span>
           <button
             onClick={() => onQuantityChange(quantity + 1)}
-            className="w-10 h-10 border border-[#E8E6E3] rounded-lg hover:bg-[#FAFAF9] transition-colors text-lg"
+            className="w-10 h-10 border border-black/15 rounded-lg hover:bg-am-mist/30 transition-colors text-lg"
           >
             +
           </button>
@@ -1081,8 +1084,8 @@ function SummaryPanel({
       </div>
 
       {/* Info livraison */}
-      <div className="pt-4 border-t border-[#E8E6E3]">
-        <p className="text-xs text-[#706F6C]">
+      <div className="pt-4 border-t border-black/15">
+        <p className="text-xs text-black/70">
           Délai de fabrication : 2-3 semaines
         </p>
       </div>

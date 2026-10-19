@@ -62,7 +62,7 @@ export function LoginForm() {
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+              className="mt-2 w-full rounded-sm border border-black/10 bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             />
           </div>
         )}
@@ -76,7 +76,7 @@ export function LoginForm() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            className="mt-2 w-full rounded-sm border border-black/10 bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
         <div>
@@ -90,7 +90,7 @@ export function LoginForm() {
             minLength={6}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-2 w-full rounded-sm border border-[#e0d7cc] bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            className="mt-2 w-full rounded-sm border border-black/10 bg-white px-4 py-3 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
 
@@ -99,7 +99,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[#14100f] disabled:cursor-not-allowed disabled:bg-ink/60"
+          className="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:bg-ink/60"
         >
           {loading ? "Veuillez patienter..." : mode === "login" ? "Se connecter" : "Créer mon compte"}
         </button>

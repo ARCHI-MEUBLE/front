@@ -1,3 +1,5 @@
+import { HOME_MONO } from "@/components/home/homeLayout";
+
 const FURNITURE_TYPES = ["Dressing", "Bibliothèque", "Buffet", "Bureau", "Meuble TV", "Autre"];
 
 export function DevisFurnitureTypePicker({
@@ -9,13 +11,8 @@ export function DevisFurnitureTypePicker({
 }) {
   return (
     <fieldset className="m-0 border-0 p-0">
-      <legend
-        className="mb-4 font-[Geist] font-semibold leading-[1.05] tracking-[-0.04em] text-[#161513]"
-        style={{ fontSize: "clamp(26px,2.6vw,38px)" }}
-      >
-        Type de meuble
-      </legend>
-      <div className="flex flex-wrap gap-2.5">
+      <legend className={`mb-1.5 p-0 text-xs ${HOME_MONO}`}>Type de meuble</legend>
+      <div className="flex flex-wrap gap-2">
         {FURNITURE_TYPES.map((type) => {
           const isActive = type === value;
           return (
@@ -24,8 +21,8 @@ export function DevisFurnitureTypePicker({
               type="button"
               aria-pressed={isActive}
               onClick={() => onChange(type)}
-              className={`min-h-[52px] rounded-full border-[1.5px] border-[#161513] px-6 py-3 text-[16px] ${
-                isActive ? "bg-[#161513] font-semibold text-[#F7F6F2]" : "bg-transparent font-normal text-[#161513]"
+              className={`min-h-10 rounded-full border-[1.5px] border-black px-3.5 py-1.5 text-[14px] ${
+                isActive ? "bg-am-navy font-semibold text-white" : "bg-transparent font-normal text-black"
               }`}
             >
               {type}

@@ -1,8 +1,11 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
-import ZoneControls, { MAX_SPLIT_PARTS, SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
+import ZoneControls, { SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
+import { setDivisionCount, type DivisionDirection } from '@/lib/configurator/zoneDivision';
+import { removeSection } from '@/lib/configurator/zoneRemoval';
 
 export { default as PanelPlanCanvas } from './PanelPlanCanvas';
 export type { ZoneControlSection } from './ZoneControls';
@@ -15,6 +18,8 @@ interface ZoneEditorProps {
   onSelectedZoneIdsChange: (ids: string[]) => void;
   width: number;
   height: number;
+  // Profondeur du meuble : certaines options en dépendent (tiroirs, penderie)
+  depth?: number;
   hideControls?: boolean;
   hideCanvas?: boolean;
   // Masque les champs largeur/hauteur de la zone sélectionnée (utile hors de l'étape Division)
@@ -24,6 +29,8 @@ interface ZoneEditorProps {
   // Sections de réglages affichées sous le plan (toutes par défaut)
   controlSections?: ZoneControlSection[];
   showNumbers?: boolean;
+  // Planches retirées avec l'outil 3D : montrées en pointillés sur le plan
+  deletedPanelIds?: ReadonlySet<string>;
   // Contenu à afficher entre le canvas et les contrôles
   renderAfterCanvas?: React.ReactNode;
   // Expose les actions pour une utilisation externe (ActionBar)
@@ -36,6 +43,7 @@ interface ZoneEditorProps {
   onToggleDressing?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
+  onDeleteSection?: (zoneId: string) => void;
   isAdminCreateModel?: boolean;
   exposeActions?: (actions: {
     splitZone: (zoneId: string, direction: 'horizontal' | 'vertical', count?: number) => void;
@@ -57,12 +65,14 @@ export default function ZoneEditor({
   onSelectedZoneIdsChange,
   width,
   height,
+  depth,
   hideControls,
   hideCanvas,
   hideDimensions,
   canvasMaxHeight,
   controlSections,
   showNumbers,
+  deletedPanelIds,
   renderAfterCanvas,
   onToggleLight,
   onToggleCableHole,
@@ -71,6 +81,7 @@ export default function ZoneEditor({
   onSetHandleType,
   onSetZoneContent,
   onSetDoorContent,
+  onDeleteSection,
   isAdminCreateModel,
   exposeActions,
   onSelectZone,
@@ -222,10 +233,19 @@ export default function ZoneEditor({
     [calculateZoneWidth, selectedZone.id]
   );
 
+  // Largeur couverte par plusieurs compartiments voisins (porte commune)
+  const multiSelectionWidthMm = useMemo(() => {
+    if (selectedZoneIds.length < 2) return undefined;
+    const parent = findZoneWithParent(rootZone, selectedZoneIds[0])?.parent;
+    if (!parent) return undefined;
+    if (parent.type !== 'vertical') return Math.round(calculateZoneWidth(selectedZoneIds[0]));
+    return Math.round(selectedZoneIds.reduce((sum, id) => sum + calculateZoneWidth(id), 0));
+  }, [selectedZoneIds, rootZone, findZoneWithParent, calculateZoneWidth]);
+
   // Diviser une zone
   const splitZone = useCallback(
     (zoneId: string, direction: 'horizontal' | 'vertical', requestedCount: number = 2) => {
-      const count = Math.min(Math.max(requestedCount, 2), MAX_SPLIT_PARTS);
+      const count = Math.max(requestedCount, 2);
       const updateZone = (z: Zone): Zone => {
         if (z.id === zoneId) {
           // Pour 2 enfants: utiliser splitRatio
@@ -438,160 +458,19 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
   );
 
-  // Supprimer une colonne/rangée
-  // Si c'est une colonne aux extrémités : supprime tout (avec les séparateurs)
-  // Si c'est une colonne au milieu : garde le bas pour connecter les colonnes adjacentes
-  const deleteColumn = useCallback(
+  // Supprimer une section : sa voisine (au-dessus ou à gauche, sinon en dessous ou à droite) prend sa place
+  const deleteSection = useCallback(
     (zoneId: string) => {
-      // Trouver le parent et l'index de la zone à supprimer
-      const findParentAndIndex = (current: Zone, targetId: string, parent: Zone | null = null): { parent: Zone; index: number } | null => {
-        if (current.children) {
-          const index = current.children.findIndex(child => child.id === targetId);
-          if (index !== -1) {
-            return { parent: current, index };
-          }
-          for (const child of current.children) {
-            const result = findParentAndIndex(child, targetId, current);
-            if (result) return result;
-          }
-        }
-        return null;
-      };
-
-      const parentInfo = findParentAndIndex(rootZone, zoneId);
-      
-      if (!parentInfo) {
-        // La zone est la racine, on ne peut pas la supprimer
+      if (onDeleteSection) {
+        onDeleteSection(zoneId);
         return;
       }
-
-      const { parent, index } = parentInfo;
-      const siblings = parent.children || [];
-      const isVerticalSplit = parent.type === 'vertical'; // colonnes côte à côte
-      
-      // Déterminer si c'est une position aux extrémités
-      const isFirstChild = index === 0;
-      const isLastChild = index === siblings.length - 1;
-      const isEdgePosition = isFirstChild || isLastChild;
-      const isMiddlePosition = !isEdgePosition;
-
-      const updateZone = (z: Zone): Zone => {
-        if (z.id === parent.id) {
-          const newChildren = [...siblings];
-          
-          if (siblings.length <= 2) {
-            // S'il ne reste que 2 enfants et on en supprime un, 
-            // on remplace le parent par l'enfant restant
-            const remainingChild = newChildren.filter((_, i) => i !== index)[0];
-            return {
-              ...remainingChild,
-              id: parent.id, // Garder l'ID du parent
-            };
-          }
-
-          if (isMiddlePosition && isVerticalSplit) {
-            // Colonne au milieu : transformer en espace ouvert
-            // Garde la même taille mais marque comme "open space" (pas de fond, pas de haut)
-            const targetZone = newChildren[index];
-            newChildren[index] = {
-              ...targetZone,
-              type: 'leaf',
-              content: 'empty',
-              children: undefined,
-              doorContent: undefined,
-              hasLight: false,
-              hasCableHole: false,
-              hasDressing: false,
-              isOpenSpace: true, // Marquer comme espace ouvert
-            };
-
-            // Garder les ratios tels quels (pas de redistribution)
-            return {
-              ...z,
-              children: newChildren,
-            };
-          } else {
-            // Position aux extrémités ou division horizontale : suppression complète
-            newChildren.splice(index, 1);
-
-            // Recalculer les ratios
-            const currentRatios = z.splitRatios || siblings.map(() => 100 / siblings.length);
-            const removedRatio = currentRatios[index];
-            const newRatios = currentRatios
-              .filter((_, i) => i !== index)
-              .map(ratio => ratio + (removedRatio / (siblings.length - 1)));
-
-            // Normaliser les ratios pour qu'ils totalisent 100
-            const total = newRatios.reduce((sum, r) => sum + r, 0);
-            const normalizedRatios = newRatios.map(r => (r / total) * 100);
-
-            return {
-              ...z,
-              children: newChildren,
-              splitRatios: normalizedRatios.length > 2 ? normalizedRatios : undefined,
-              splitRatio: normalizedRatios.length === 2 ? normalizedRatios[0] : undefined,
-            };
-          }
-        }
-
-        if (z.children) {
-          return { ...z, children: z.children.map(updateZone) };
-        }
-        return z;
-      };
-
-      const newRootZone = updateZone(rootZone);
-      onRootZoneChange(newRootZone);
-      
-      // Sélectionner une zone adjacente après suppression
-      if (siblings.length > 1) {
-        const newIndex = isLastChild ? index - 1 : index;
-        const adjacentZoneId = siblings[newIndex === index ? index + 1 : newIndex]?.id;
-        if (adjacentZoneId) {
-          onSelectedZoneIdsChange([adjacentZoneId]);
-        } else {
-          onSelectedZoneIdsChange([parent.id]);
-        }
-      } else {
-        onSelectedZoneIdsChange([parent.id]);
-      }
+      const result = removeSection(rootZone, zoneId);
+      if (!result.root) return;
+      onRootZoneChange(result.root);
+      onSelectedZoneIdsChange([result.keptId]);
     },
-    [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
-  );
-
-  // Obtenir les infos de position d'une zone enfant (pour le bouton supprimer)
-  const getColumnPositionInfo = useCallback(
-    (zoneId: string): { isEdge: boolean; isMiddle: boolean; canDelete: boolean; parentType: 'vertical' | 'horizontal' | null } | null => {
-      const findParentAndIndex = (current: Zone, targetId: string): { parent: Zone; index: number } | null => {
-        if (current.children) {
-          const index = current.children.findIndex(child => child.id === targetId);
-          if (index !== -1) {
-            return { parent: current, index };
-          }
-          for (const child of current.children) {
-            const result = findParentAndIndex(child, targetId);
-            if (result) return result;
-          }
-        }
-        return null;
-      };
-
-      const parentInfo = findParentAndIndex(rootZone, zoneId);
-      if (!parentInfo) return null;
-
-      const { parent, index } = parentInfo;
-      const siblings = parent.children || [];
-      const isFirst = index === 0;
-      const isLast = index === siblings.length - 1;
-
-      return {
-        isEdge: isFirst || isLast,
-        isMiddle: !isFirst && !isLast,
-        canDelete: siblings.length > 1,
-        parentType: parent.type === 'vertical' ? 'vertical' : parent.type === 'horizontal' ? 'horizontal' : null,
-      };
-    },
-    [rootZone]
+    [rootZone, onDeleteSection, onRootZoneChange, onSelectedZoneIdsChange]
   );
 
   // Modifier le ratio
@@ -642,6 +521,15 @@ export default function ZoneEditor({
     [setSplitRatio, setSplitRatios]
   );
 
+  // Compteurs Colonnes / Étagères : la zone reste sélectionnée pour continuer à l'ajuster
+  const setZoneDivisionCount = useCallback(
+    (zoneId: string, direction: DivisionDirection, count: number) => {
+      onRootZoneChange(setDivisionCount(rootZone, zoneId, direction, count));
+      onSelectedZoneIdsChange([zoneId]);
+    },
+    [rootZone, onRootZoneChange, onSelectedZoneIdsChange]
+  );
+
   // Grouper des zones
   const groupZones = useCallback(
     (zoneIds: string[], forceContent?: ZoneContent) => {
@@ -682,6 +570,7 @@ export default function ZoneEditor({
           height={height}
           showNumbers={showNumbers}
           maxCanvasHeight={canvasMaxHeight}
+          deletedPanelIds={deletedPanelIds}
         />
       )}
 
@@ -708,7 +597,7 @@ export default function ZoneEditor({
             const currentSizesMm = currentRatios.map(r => (r / 100) * parentWidthMm);
 
             // Limiter la nouvelle largeur
-            const minSize = 50;
+            const minSize = MIN_COMPARTMENT_WIDTH_MM;
             const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
             const clampedNewWidth = Math.max(minSize, Math.min(maxSize, newWidthMm));
 
@@ -737,7 +626,7 @@ export default function ZoneEditor({
             const currentSizesMm = currentRatios.map(r => (r / 100) * parentHeightMm);
 
             // Limiter la nouvelle hauteur
-            const minSize = 50;
+            const minSize = MIN_COMPARTMENT_HEIGHT_MM;
             const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
             const clampedNewHeight = Math.max(minSize, Math.min(maxSize, newHeightMm));
 
@@ -786,7 +675,7 @@ export default function ZoneEditor({
 
               const currentSizesMm = currentRatios.map(r => (r / 100) * grandParentWidthMm);
 
-              const minSize = 50;
+              const minSize = MIN_COMPARTMENT_WIDTH_MM;
               const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
               const clampedNewWidth = Math.max(minSize, Math.min(maxSize, newWidthMm));
 
@@ -811,7 +700,7 @@ export default function ZoneEditor({
 
               const currentSizesMm = currentRatios.map(r => (r / 100) * grandParentHeightMm);
 
-              const minSize = 50;
+              const minSize = MIN_COMPARTMENT_HEIGHT_MM;
               const maxSize = currentSizesMm[myIndex] + currentSizesMm[neighborIndex] - minSize;
               const clampedNewHeight = Math.max(minSize, Math.min(maxSize, newHeightMm));
 
@@ -831,15 +720,17 @@ export default function ZoneEditor({
 
       {/* Contrôles dans une card - masqués en mode hideControls ou si aucune zone sélectionnée */}
       {!hideControls && selectedZoneIds.length > 0 && (
-        <div className="border border-[#E8E6E3] bg-[#FAFAF9] p-3" style={{ borderRadius: '2px' }}>
+        <div className="border border-black/10 bg-am-mist/15 p-3" style={{ borderRadius: '2px' }}>
           <ZoneControls
             selectedZone={selectedZone}
             selectedZoneIds={selectedZoneIds}
             parentZone={parentZone}
             onSplitZone={splitZone}
+            onSetDivisionCount={setZoneDivisionCount}
             onSetContent={setZoneContent}
             onSetDoorContent={onSetDoorContent || setDoorContent}
             onResetZone={resetZone}
+            onDeleteSection={parentZone ? deleteSection : undefined}
             onSetSplitRatio={setSplitRatio}
             onSetSplitRatios={setSplitRatios}
             onToggleLight={onToggleLight || toggleLight}
@@ -851,6 +742,8 @@ export default function ZoneEditor({
             onSetGlassShelfPositions={setGlassShelfPositions}
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}
+            depthMm={depth}
+            selectionWidthMm={multiSelectionWidthMm}
             onSelectParent={parentZone ? () => onSelectedZoneIdsChange([parentZone.id]) : undefined}
             sections={controlSections}
           />

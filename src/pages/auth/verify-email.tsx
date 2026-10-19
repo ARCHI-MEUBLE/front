@@ -156,14 +156,14 @@ export default function VerifyEmail() {
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-black p-1">
               <span className="text-xl font-bold text-white">A</span>
             </div>
-            <span className="font-serif text-xl font-medium text-[#1A1917]">ArchiMeuble</span>
+            <span className="font-serif text-xl font-medium text-black">ArchiMeuble</span>
           </Link>
         </div>
 
         {/* Panneau gauche - Image */}
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
           <div
-            className="absolute inset-0 bg-zinc-900"
+            className="absolute inset-0 bg-am-navy"
             style={{
               backgroundImage: 'url("https://images.unsplash.com/photo-1590069261209-f8e9b8642343?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1376&q=80")',
               backgroundSize: 'cover',
@@ -190,19 +190,19 @@ export default function VerifyEmail() {
         </div>
 
         {/* Panneau droit - Formulaire */}
-        <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-black lg:p-8 h-full w-full">
+        <div className="flex flex-1 items-center justify-center bg-am-mist/15 p-4 dark:bg-black lg:p-8 h-full w-full">
           <Card className="w-full max-w-md border-none shadow-none bg-transparent lg:shadow-none dark:bg-transparent">
             <CardHeader className="space-y-1 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#1A1917]">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-am-navy">
                 <IconMail className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-3xl font-bold tracking-tight text-[#1A1917] dark:text-white">
+              <CardTitle className="text-3xl font-bold tracking-tight text-black dark:text-white">
                 Vérifiez votre email
               </CardTitle>
-              <CardDescription className="text-zinc-500 dark:text-zinc-400">
+              <CardDescription className="text-black/60 dark:text-zinc-400">
                 Nous avons envoyé un code à 6 chiffres à
                 <br />
-                <span className="font-medium text-[#1A1917] dark:text-white">
+                <span className="font-medium text-black dark:text-white">
                   {email || 'votre adresse email'}
                 </span>
               </CardDescription>
@@ -236,14 +236,14 @@ export default function VerifyEmail() {
                       onKeyDown={(e) => handleKeyDown(index, e)}
                       onPaste={handlePaste}
                       disabled={isLoading}
-                      className="h-14 w-11 sm:h-16 sm:w-14 rounded-lg border-2 border-zinc-200 bg-white text-center text-2xl font-bold text-[#1A1917] transition-all focus:border-[#1A1917] focus:outline-none focus:ring-2 focus:ring-[#1A1917]/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="h-14 w-11 sm:h-16 sm:w-14 rounded-lg border-2 border-black/10 bg-white text-center text-2xl font-bold text-black transition-all focus:border-am-navy focus:outline-none focus:ring-2 focus:ring-am-navy/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     />
                   ))}
                 </div>
 
                 <Button
                   type="submit"
-                  className="h-11 w-full bg-[#1A1917] text-white hover:bg-zinc-800 rounded-md transition-all dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm"
+                  className="h-11 w-full bg-am-navy text-white hover:bg-am-navy/90 rounded-md transition-all dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm"
                   disabled={isLoading || code.join('').length !== 6}
                 >
                   {isLoading ? (
@@ -259,14 +259,14 @@ export default function VerifyEmail() {
 
               {/* Renvoyer le code */}
               <div className="mt-6 text-center">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                <p className="text-sm text-black/60 dark:text-zinc-400">
                   Vous n&apos;avez pas reçu le code ?
                 </p>
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={countdown > 0 || isResending}
-                  className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-[#1A1917] hover:underline disabled:opacity-50 disabled:no-underline dark:text-white"
+                  className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-black hover:underline disabled:opacity-50 disabled:no-underline dark:text-white"
                 >
                   {isResending ? (
                     <>
@@ -286,15 +286,15 @@ export default function VerifyEmail() {
             </CardContent>
 
             <CardFooter className="flex flex-col gap-6 text-center mt-2">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm text-black/60 dark:text-zinc-400">
                 Mauvaise adresse email ?{' '}
-                <Link href="/auth/register" className="font-semibold text-[#1A1917] hover:underline dark:text-white">
+                <Link href="/auth/register" className="font-semibold text-black hover:underline dark:text-white">
                   Modifier
                 </Link>
               </p>
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-[#1A1917] dark:text-zinc-400 dark:hover:text-white transition-colors group"
+                className="inline-flex items-center gap-2 text-sm text-black/60 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors group"
               >
                 <IconArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Retour à l&apos;accueil

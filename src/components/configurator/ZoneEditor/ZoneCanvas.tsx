@@ -1,5 +1,42 @@
 import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
+import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
+import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
+import { layoutLeafText } from './leafLayout';
+
+// Jamais plus large que ça, même sur un très grand écran
+const MAX_CANVAS_WIDTH = 1100;
+
+interface LeafVisual {
+    // Même icône que dans le panneau de réglage : on reconnaît le contenu d'un coup d'œil
+    Icon?: LucideIcon;
+    // Couleurs de la case au repos (sélectionnée, elle passe au bleu foncé)
+    classes: string;
+}
+
+const EMPTY_VISUAL: LeafVisual = { classes: 'border-black/20 bg-white text-black/65 hover:bg-am-mist/30' };
+const DRAWER_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-am-wine/35 bg-am-wine/10 text-am-wine' });
+const DOOR_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-am-mist bg-am-mist/35 text-am-navy' });
+const GLASS_VISUAL = (Icon: LucideIcon): LeafVisual => ({ Icon, classes: 'border-am-mist bg-am-mist/20 text-am-navy' });
+
+function getLeafVisual(content: ZoneContent | undefined): LeafVisual {
+    switch (content) {
+        case 'drawer': return DRAWER_VISUAL(Archive);
+        case 'push_drawer': return DRAWER_VISUAL(BoxSelect);
+        case 'door':
+        case 'door_right':
+        case 'door_double': return DOOR_VISUAL(DoorClosed);
+        case 'push_door':
+        case 'push_door_right': return DOOR_VISUAL(Hand);
+        case 'mirror_door':
+        case 'mirror_door_right': return GLASS_VISUAL(Sparkles);
+        case 'glass_shelf': return GLASS_VISUAL(Square);
+        case 'dressing': return DRAWER_VISUAL(Shirt);
+        default: return EMPTY_VISUAL;
+    }
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 interface ZoneNodeProps {
     zone: Zone;
@@ -11,6 +48,12 @@ interface ZoneNodeProps {
     realHeight: number;
     showNumbers?: boolean;
     leafNumbers?: Record<string, number>;
+    // Pixels par millimètre : permet d'adapter le texte à la taille de la case à l'écran
+    pxPerMm?: number;
+    // Planches retirées avec l'outil 3D, et chemin de la zone au format des identifiants de ThreeCanvas
+    // (séparateur « separator-h-<chemin>h<i>-<segment> »)
+    deletedPanelIds?: ReadonlySet<string>;
+    panelPath?: string;
 }
 
 function ZoneNode({
@@ -23,6 +66,9 @@ function ZoneNode({
                       realHeight,
                       showNumbers = false,
                       leafNumbers,
+                      pxPerMm,
+                      deletedPanelIds,
+                      panelPath = '',
                   }: ZoneNodeProps) {
     const isSelected = selectedZoneIds.includes(zone.id);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -90,9 +136,11 @@ function ZoneNode({
         // Position cumulée souhaitée (basée sur la position de la souris)
         let desiredCumBefore = rawPos * 100;
 
-        // Calculer les limites pour que chaque zone ait au moins 10%
-        const minRatio = 10;
+        // Chaque zone garde au moins 5 % et la taille minimale d'une case (sans dépasser un partage égal)
         const numZones = orderedRatios.length;
+        const sizeMm = isHorizontal ? realHeight : realWidth;
+        const minPartMm = isHorizontal ? MIN_COMPARTMENT_HEIGHT_MM : MIN_COMPARTMENT_WIDTH_MM;
+        const minRatio = Math.min(100 / numZones, Math.max(5, (minPartMm / sizeMm) * 100));
 
         // Limite min : somme des ratios min des zones avant + ratio min de la zone courante
         const minCumBefore = (dragIndex + 1) * minRatio;
@@ -123,7 +171,7 @@ function ZoneNode({
             // Haute précision pour éviter les erreurs d'arrondi au mm
             onRatioChange(zone.id, normalizedRatios.map(r => Math.round(r * 10000) / 10000));
         }
-    }, [isDragging, dragIndex, zone, onRatioChange, getChildRatios]);
+    }, [isDragging, dragIndex, zone, onRatioChange, getChildRatios, realWidth, realHeight]);
 
     const handleDragEnd = useCallback(() => {
         setIsDragging(false);
@@ -167,40 +215,59 @@ function ZoneNode({
         const meta = ZONE_CONTENT_META[zone.content ?? 'empty'] || ZONE_CONTENT_META['empty'];
         const zoneNumber = leafNumbers?.[zone.id];
         const isOpenSpace = zone.isOpenSpace;
+        const visual = getLeafVisual(zone.content);
+        const widthMm = Math.round(realWidth);
+        const heightMm = Math.round(realHeight);
+        const description = isOpenSpace ? `Espace ouvert, ${widthMm} × ${heightMm} mm` : `${meta.label}, ${widthMm} × ${heightMm} mm`;
+
+        // Ce que la case peut afficher selon sa taille réelle à l'écran : le contenu reste toujours
+        // reconnaissable (couleur et icône), même dans une case minuscule d'un très grand meuble
+        const pxWidth = pxPerMm ? realWidth * pxPerMm : Infinity;
+        const pxHeight = pxPerMm ? realHeight * pxPerMm : Infinity;
+        const Icon = visual.Icon;
+        const layout = layoutLeafText({ pxWidth, pxHeight, label: meta.shortLabel, widthMm, heightMm, hasIcon: !!Icon });
 
         return (
             <button
                 type="button"
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
-                className={`relative flex h-full w-full flex-col items-center justify-center overflow-hidden border-2 transition-all duration-200 ${
-                    isOpenSpace
-                        ? isSelected
-                            ? 'border-[#4CAF50] bg-[#4CAF50]/20 text-[#2E7D32] z-10 shadow-[0_0_8px_rgba(76,175,80,0.3)]'
-                            : 'border-[#4CAF50] border-dashed bg-[#E8F5E9] text-[#4CAF50] hover:bg-[#C8E6C9]'
-                        : isSelected
-                            ? 'border-[#FF9800] bg-[#FF9800]/20 text-[#E65100] z-10 shadow-[0_0_8px_rgba(255,152,0,0.3)]'
-                            : 'border-[#D0CEC9] bg-white text-[#706F6C] hover:border-[#FF9800]/50 hover:bg-[#F5F5F4] hover:text-[#1A1917]'
+                title={description}
+                aria-label={description}
+                className={`relative flex h-full w-full flex-col items-center justify-center gap-px overflow-hidden border-2 transition-all duration-200 ${
+                    isSelected
+                        ? 'border-am-navy bg-am-navy text-white z-10 shadow-[0_0_0_3px_rgba(59,62,88,0.25)]'
+                        : isOpenSpace
+                            ? 'border-am-navy border-dashed bg-am-mist/20 text-am-navy hover:bg-am-mist/40'
+                            : `${visual.classes} hover:border-am-navy/50`
                 }`}
                 style={{ borderRadius: '4px' }}
             >
                 {showNumbers && zoneNumber && (
-                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm ${isOpenSpace ? 'bg-[#4CAF50]' : 'bg-[#1A1917]'}`}>
+                    // Pastille inversée sur une case choisie (fond navy), sinon elle s'y fond
+                    <div className={`absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-sm ${isSelected ? 'bg-white text-am-navy' : 'bg-am-navy text-white'}`}>
                         {zoneNumber}
                     </div>
                 )}
                 {isOpenSpace ? (
                     <>
-                        <span className="text-2xl mb-1">🖼️</span>
+                        <Frame className="mb-1 h-6 w-6" aria-hidden="true" />
                         <span className="text-sm font-semibold">Espace ouvert</span>
-                        <span className="text-xs text-[#4CAF50]">Pas de fond</span>
+                        <span className="text-xs opacity-80">Pas de fond</span>
                     </>
                 ) : (
                     <>
-                        <span className="text-xs font-semibold leading-tight sm:text-lg">{meta.shortLabel}</span>
-                        <span className="mt-1 text-center font-mono text-[9px] leading-tight text-[#706F6C] sm:mt-2 sm:text-base">
-                            {Math.round(realWidth)} × {Math.round(realHeight)} mm
-                        </span>
+                        {Icon && layout.icon > 0 && <Icon style={{ width: layout.icon, height: layout.icon }} />}
+                        {layout.label && (
+                            <span className="whitespace-nowrap font-semibold leading-tight" style={{ fontSize: layout.label.size }}>
+                                {layout.label.text}
+                            </span>
+                        )}
+                        {layout.dims && (
+                            <span className="whitespace-nowrap text-center font-mono leading-tight opacity-80" style={{ fontSize: layout.dims.size }}>
+                                {layout.dims.text}
+                            </span>
+                        )}
                     </>
                 )}
             </button>
@@ -217,6 +284,7 @@ function ZoneNode({
     // Pas d'inversion - affichage dans l'ordre naturel (haut en bas, gauche à droite)
     const orderedChildren = children;
     const orderedRatios = ratios;
+    const groupPxWidth = pxPerMm ? realWidth * pxPerMm : Infinity;
 
     const getChildDimensions = (index: number): { w: number; h: number } => {
         const ratio = orderedRatios[index] / 100;
@@ -235,8 +303,8 @@ function ZoneNode({
             onKeyDown={handleKeyDown}
             className={`relative flex h-full w-full border-2 transition-all duration-200 ${
                 isSelected
-                    ? 'border-[#3B82F6] bg-[#3B82F6]/5 ring-2 ring-[#3B82F6]/20'
-                    : 'border-[#D0CEC9] bg-[#FAFAF9] hover:border-[#3B82F6]/50'
+                    ? 'border-am-navy bg-am-navy/5 ring-2 ring-am-navy/20'
+                    : 'border-black/20 bg-am-mist/15 hover:border-am-navy/50'
             }`}
             style={{
                 flexDirection: isHorizontal ? 'column' : 'row',
@@ -245,15 +313,39 @@ function ZoneNode({
             }}
         >
             {hasDoor && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                    <div className="bg-[#1A1917]/80 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm border border-white/20">
-                        {meta.label}
+                <>
+                    {/* Contour en pointillés : la porte recouvre tout le groupe */}
+                    <div
+                        className="pointer-events-none absolute inset-[3px] z-10 border-2 border-dashed border-am-navy/40"
+                        style={{ borderRadius: '3px' }}
+                    />
+                    <div
+                        className="pointer-events-none absolute left-1/2 top-[5px] z-10 flex max-w-[95%] -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-white/20 bg-am-navy/85 px-2 py-0.5 text-[10px] font-semibold text-white shadow"
+                        title={meta.label}
+                    >
+                        <DoorClosed className="h-3 w-3 flex-shrink-0" />
+                        {groupPxWidth >= 90 && <span className="truncate">{meta.shortLabel}</span>}
                     </div>
-                </div>
+                </>
             )}
             {orderedChildren.map((child, index) => {
                 const dims = getChildDimensions(index);
                 const showDivider = index < orderedChildren.length - 1;
+                // Zone de saisie du séparateur : proportionnée aux petites cases voisines pour ne jamais
+                // les recouvrir entièrement (sinon elles ne seraient plus cliquables)
+                const nextDims = showDivider ? getChildDimensions(index + 1) : dims;
+                const smallestPx = pxPerMm
+                    ? Math.min(isHorizontal ? dims.h : dims.w, isHorizontal ? nextDims.h : nextDims.w) * pxPerMm
+                    : Infinity;
+                const grip = Number.isFinite(smallestPx) ? clamp(smallestPx * 0.4, 10, 32) : 32;
+
+                const childPath = orderedChildren.length === 1
+                    ? `${panelPath}c0-`
+                    : `${panelPath}${isHorizontal ? 'r' : 'c'}${index}-`;
+                const axis = isHorizontal ? 'h' : 'v';
+                const separatorPrefix = `separator-${axis}-${panelPath}${axis}${index}-`;
+                const dividerRemoved =
+                    showDivider && !!deletedPanelIds && Array.from(deletedPanelIds).some((id) => id.startsWith(separatorPrefix));
 
                 return (
                     <div
@@ -262,8 +354,8 @@ function ZoneNode({
                         style={{
                             flexGrow: orderedRatios[index] ?? 1,
                             flexBasis: 0,
-                            minWidth: isHorizontal ? undefined : '40px',
-                            minHeight: isHorizontal ? '40px' : undefined,
+                            minWidth: 0,
+                            minHeight: 0,
                         }}
                     >
                         <ZoneNode
@@ -276,25 +368,51 @@ function ZoneNode({
                             realHeight={dims.h}
                             showNumbers={showNumbers}
                             leafNumbers={leafNumbers}
+                            pxPerMm={pxPerMm}
+                            deletedPanelIds={deletedPanelIds}
+                            panelPath={childPath}
                         />
+
+                        {dividerRemoved && (
+                            // Planche retirée dans la vue 3D : le plan la montre en pointillés au lieu d'un séparateur plein
+                            <div
+                                className={`pointer-events-none absolute z-30 flex items-center justify-center ${
+                                    isHorizontal ? 'bottom-0 left-0 right-0 h-0' : 'right-0 top-0 bottom-0 w-0'
+                                }`}
+                                title="Planche retirée"
+                            >
+                                <div
+                                    className={`absolute border-dashed border-am-wine ${
+                                        isHorizontal ? 'left-0 right-0 border-t-2' : 'top-0 bottom-0 border-l-2'
+                                    }`}
+                                />
+                                <span className="relative whitespace-nowrap rounded-sm bg-am-wine px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                                    Planche retirée
+                                </span>
+                            </div>
+                        )}
 
                         {showDivider && onRatioChange && (
                             <div
                                 className={`absolute z-20 ${
                                     isHorizontal
-                                        ? 'bottom-0 left-0 right-0 h-8 -mb-4 cursor-row-resize'
-                                        : 'right-0 top-0 bottom-0 w-8 -mr-4 cursor-col-resize'
+                                        ? 'bottom-0 left-0 right-0 cursor-row-resize'
+                                        : 'right-0 top-0 bottom-0 cursor-col-resize'
                                 }`}
                                 onPointerDown={handleDragStart(index)}
-                                style={{ touchAction: 'none' }}
+                                style={
+                                    isHorizontal
+                                        ? { height: grip, marginBottom: -grip / 2, touchAction: 'none' }
+                                        : { width: grip, marginRight: -grip / 2, touchAction: 'none' }
+                                }
                             >
                                 <div
-                                    className={`absolute bg-[#FF9800] transition-opacity ${
+                                    className={`absolute bg-am-navy transition-opacity ${
                                         isDragging && dragIndex === index ? 'opacity-100' : 'opacity-30 hover:opacity-80'
                                     } ${
                                         isHorizontal
-                                            ? 'left-4 right-4 top-1/2 h-1.5 -translate-y-1/2'
-                                            : 'top-4 bottom-4 left-1/2 w-1.5 -translate-x-1/2'
+                                            ? 'left-[15%] right-[15%] top-1/2 h-1.5 -translate-y-1/2'
+                                            : 'top-[15%] bottom-[15%] left-1/2 w-1.5 -translate-x-1/2'
                                     }`}
                                     style={{ borderRadius: '2px' }}
                                 />
@@ -317,6 +435,8 @@ interface ZoneCanvasProps {
     showNumbers?: boolean;
     // Hauteur maximale du dessin en pixels (400 par défaut)
     maxCanvasHeight?: number;
+    // Planches retirées avec l'outil 3D « Retirer planches »
+    deletedPanelIds?: ReadonlySet<string>;
 }
 
 export default function ZoneCanvas({
@@ -328,30 +448,28 @@ export default function ZoneCanvas({
                                        height,
                                        showNumbers = false,
                                        maxCanvasHeight = 400,
+                                       deletedPanelIds,
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
-    const maxWidth = 500;
-    const maxHeight = maxCanvasHeight;
-
-    // Calcul du ratio réel du meuble (identique au modèle 3D)
+    // Calcul du ratio réel du meuble (identique au modèle 3D), dans la boîte disponible
     const aspectRatio = width / height;
+    const boxWidth = availableWidth === null ? 500 : Math.max(1, Math.min(availableWidth - 32, MAX_CANVAS_WIDTH));
+    const boxHeight = Math.max(1, maxCanvasHeight);
 
-    let naturalCanvasWidth: number;
-    let naturalCanvasHeight: number;
+    let canvasWidth: number;
+    let canvasHeight: number;
 
-    if (aspectRatio > maxWidth / maxHeight) {
-        naturalCanvasWidth = maxWidth;
-        naturalCanvasHeight = maxWidth / aspectRatio;
+    if (aspectRatio > boxWidth / boxHeight) {
+        canvasWidth = boxWidth;
+        canvasHeight = boxWidth / aspectRatio;
     } else {
-        naturalCanvasHeight = maxHeight;
-        naturalCanvasWidth = maxHeight * aspectRatio;
+        canvasHeight = boxHeight;
+        canvasWidth = boxHeight * aspectRatio;
     }
 
-    const maxAvailableCanvasWidth = availableWidth === null ? maxWidth : Math.max(1, availableWidth - 32);
-    const scale = Math.min(1, maxAvailableCanvasWidth / naturalCanvasWidth);
-    const canvasWidth = Math.max(1, naturalCanvasWidth * scale);
-    const canvasHeight = Math.max(1, naturalCanvasHeight * scale);
+    canvasWidth = Math.max(1, canvasWidth);
+    canvasHeight = Math.max(1, canvasHeight);
 
     useEffect(() => {
         const element = canvasContainerRef.current;
@@ -379,11 +497,11 @@ export default function ZoneCanvas({
     computeNumbers(zone);
 
     return (
-        <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
+        <div className="border border-black/10 bg-white p-5" style={{ borderRadius: '4px' }}>
             {/* Header - Titre et dimensions */}
             <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#1A1917]">Plan du meuble</h3>
-                <span className="font-mono text-base font-medium text-[#1A1917]">
+                <h3 className="text-lg font-semibold text-black">Plan du meuble</h3>
+                <span className="font-mono text-base font-medium text-black">
                     {width} × {height} mm
                 </span>
             </div>
@@ -391,7 +509,7 @@ export default function ZoneCanvas({
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
                 ref={canvasContainerRef}
-                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-[#FAFAF9] p-2 cursor-default sm:p-4"
+                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-am-mist/15 p-2 cursor-default sm:p-4"
                 onClick={() => onSelect(null)}
                 style={{
                     borderRadius: '4px',
@@ -413,12 +531,14 @@ export default function ZoneCanvas({
                         realHeight={height}
                         showNumbers={showNumbers}
                         leafNumbers={leafNumbers}
+                        pxPerMm={canvasWidth / width}
+                        deletedPanelIds={deletedPanelIds}
                     />
                 </div>
             </div>
 
             {/* Instruction claire */}
-            <p className="mt-4 text-center text-base text-[#706F6C]">
+            <p className="mt-4 text-center text-base text-black/65">
                 {showNumbers ? "Les numéros correspondent à l'inventaire détaillé" : "Cliquez sur une zone pour la modifier"}
             </p>
         </div>

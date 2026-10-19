@@ -1,4 +1,5 @@
 import type { ZoneStats } from '@/lib/configurator/zoneStats';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import type { MountingStyle } from './MountingStyleSelector';
 
 interface ConfigRecapProps {
@@ -28,9 +29,9 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`) {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[#E8E6E3] py-2 last:border-b-0">
-      <dt className="text-xs text-[#706F6C]">{label}</dt>
-      <dd className="text-right text-xs font-medium text-[#1A1917]">{children}</dd>
+    <div className="flex items-start justify-between gap-4 border-b border-black/10 py-2 last:border-b-0">
+      <dt className="text-xs text-black/65">{label}</dt>
+      <dd className="text-right text-xs font-medium text-black">{children}</dd>
     </div>
   );
 }
@@ -58,14 +59,14 @@ export default function ConfigRecap({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="border border-[#E8E6E3] bg-white" style={{ borderRadius: '2px' }}>
+    <div className="border border-black/10 bg-white" style={{ borderRadius: '2px' }}>
       <dl className="px-4 py-1">
         <Row label="Dimensions">
           <span className="font-mono">
             {width} × {depth} × {height} mm
           </span>
         </Row>
-        <Row label="Matière">{finish}</Row>
+        <Row label="Matière">{displayMaterialName(finish)}</Row>
         <Row label="Couleur">
           <span className="inline-flex items-center gap-1.5">
             <span
@@ -76,10 +77,10 @@ export default function ConfigRecap({
                 backgroundSize: 'cover',
               }}
             />
-            {colorLabel}
+            {displayColorName(colorLabel)}
           </span>
         </Row>
-        {facadeColorLabel && <Row label="Façades">{facadeColorLabel}</Row>}
+        {facadeColorLabel && <Row label="Façades">{displayColorName(facadeColorLabel)}</Row>}
         <Row label="Compartiments">{stats.compartments}</Row>
         <Row label="Montage">{mountingStyle === 'encastre' ? 'Encastré' : 'En applique'}</Row>
         <Row label="Pieds">{SOCLE_LABELS[socle] ?? socle}</Row>

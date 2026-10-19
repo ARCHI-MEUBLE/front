@@ -21,6 +21,8 @@ const parseForm = (req: NextApiRequest): Promise<{ fields: Fields; files: Files 
   return new Promise((resolve, reject) => {
     const form = new IncomingForm({
       maxFileSize: 20 * 1024 * 1024, // 20MB
+      // Sans ça, formidable plafonne le total à maxFileSize (la demande de devis accepte 50 Mo)
+      maxTotalFileSize: 55 * 1024 * 1024,
       keepExtensions: true,
     });
     form.parse(req, (err, fields, files) => {
@@ -45,10 +47,11 @@ const createMultipartBody = async (fields: Fields, files: Files): Promise<{ body
   const boundary = '----FormBoundary' + Math.random().toString(36).substring(2);
   const parts: Buffer[] = [];
 
-  // Add fields
+  // Add fields (tous les éléments : un champ peut être répété, ex. tags[])
   for (const [key, value] of Object.entries(fields)) {
-    const fieldValue = Array.isArray(value) ? value[0] : value;
-    if (fieldValue !== undefined) {
+    const fieldValues = Array.isArray(value) ? value : [value];
+    for (const fieldValue of fieldValues) {
+      if (fieldValue === undefined) continue;
       parts.push(Buffer.from(
         `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="${key}"\r\n\r\n` +
@@ -57,11 +60,13 @@ const createMultipartBody = async (fields: Fields, files: Files): Promise<{ body
     }
   }
 
-  // Add files
+  // Add files (tous les fichiers : la demande de devis en envoie plusieurs sous files[])
   for (const [key, fileArray] of Object.entries(files)) {
-    const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
-    if (file) {
-      const filename = file.originalFilename || 'file';
+    const fileList = Array.isArray(fileArray) ? fileArray : [fileArray];
+    for (const file of fileList) {
+      if (!file) continue;
+      // Les guillemets et retours à la ligne casseraient l'en-tête multipart
+      const filename = (file.originalFilename || 'file').replace(/["\r\n]/g, '_');
       const mimeType = file.mimetype || 'application/octet-stream';
       const fileContent = fs.readFileSync(file.filepath);
 
@@ -180,9 +185,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : '';
     console.error('Error details:', { message: errorMessage, stack: errorStack });
-    res.status(500).json({
-      error: 'Erreur de connexion au serveur',
-      details: errorMessage
-    });
+    res.status(500).json({ error: 'Erreur de connexion au serveur' });
   }
 }

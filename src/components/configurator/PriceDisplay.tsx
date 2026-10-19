@@ -46,10 +46,10 @@ export default function PriceDisplay({
     <div className="flex items-center justify-between gap-4">
       {/* Prix */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-[#706F6C]">
+        <span className="text-xs font-medium uppercase tracking-wide text-black/65">
           Prix estimé
         </span>
-        <div className="font-serif text-3xl text-[#1A1917]">
+        <div className="font-serif text-3xl text-black">
           {priceContent}
         </div>
       </div>
@@ -60,7 +60,7 @@ export default function PriceDisplay({
           type="button"
           onClick={onAddToCart}
           disabled={loading}
-          className="flex h-12 items-center justify-center gap-2 bg-[#1A1917] px-6 text-sm font-medium text-white transition-colors hover:bg-[#2A2927] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 items-center justify-center gap-2 bg-am-wine px-6 text-sm font-medium text-white transition-colors hover:bg-am-wine/90 disabled:cursor-not-allowed disabled:opacity-50"
           style={{ borderRadius: '2px' }}
         >
           {loading ? (
@@ -82,7 +82,7 @@ export default function PriceDisplay({
           type="button"
           onClick={onAddToCart}
           disabled={loading}
-          className="flex h-12 items-center justify-center gap-2 bg-[#8B7355] px-6 text-sm font-medium text-white transition-colors hover:bg-[#705D45] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 items-center justify-center gap-2 bg-am-navy px-6 text-sm font-medium text-white transition-colors hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
           style={{ borderRadius: '2px' }}
         >
           {loading ? (
