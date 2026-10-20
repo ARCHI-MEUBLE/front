@@ -25,13 +25,11 @@ interface OrbitControlsLike {
 interface CameraRigProps {
   furnitureBox: Box;
   selectionBox: Box | null;
-  // Change quand les dimensions du meuble changent : la caméra se recadre alors toute seule
-  sizeKey: string;
   apiRef: MutableRefObject<CameraApi | null>;
 }
 
 // Dernière vue de la caméra. Le plan 2D démonte la scène 3D : on retrouve la même vue au retour.
-let savedView: { position: Vec3; target: Vec3; sizeKey: string } | null = null;
+let savedView: { position: Vec3; target: Vec3 } | null = null;
 
 const FURNITURE_MARGIN = 1.12;
 const SELECTION_MARGIN = 1.5;
@@ -41,13 +39,13 @@ const TRAVEL_SPEED = 8;
 
 const toVec3 = (vector: THREE.Vector3): Vec3 => [vector.x, vector.y, vector.z];
 
-export function CameraRig({ furnitureBox, selectionBox, sizeKey, apiRef }: CameraRigProps) {
+export function CameraRig({ furnitureBox, selectionBox, apiRef }: CameraRigProps) {
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
   const size = useThree((state) => state.size);
   const controls = useThree((state) => state.controls) as unknown as OrbitControlsLike | null;
 
-  const latest = useRef({ furnitureBox, selectionBox, sizeKey, aspect: 1 });
-  latest.current = { furnitureBox, selectionBox, sizeKey, aspect: size.width / Math.max(size.height, 1) };
+  const latest = useRef({ furnitureBox, selectionBox, aspect: 1 });
+  latest.current = { furnitureBox, selectionBox, aspect: size.width / Math.max(size.height, 1) };
 
   // Destination en cours : la caméra s'y rend progressivement (aucune tant qu'on ne demande rien)
   const goal = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
@@ -84,7 +82,9 @@ export function CameraRig({ furnitureBox, selectionBox, sizeKey, apiRef }: Camer
     [camera, moveTo]
   );
 
-  // Placement initial : la vue d'avant si on revient du plan 2D, sinon le meuble cadré en vue ¾
+  // Placement initial : la vue d'avant si on revient du plan 2D, sinon le meuble cadré en vue ¾.
+  // Ensuite la caméra ne bouge plus d'elle-même (pas de recadrage quand les dimensions changent, demande
+  // utilisateur) : seuls les gestes et les boutons de la barre d'outils la déplacent, dont « Recentrer sur le meuble ».
   const placed = useRef(false);
   useEffect(() => {
     if (!controls || placed.current) return;
@@ -92,19 +92,10 @@ export function CameraRig({ furnitureBox, selectionBox, sizeKey, apiRef }: Camer
 
     if (savedView) {
       moveTo({ position: savedView.position, target: savedView.target }, false);
-      if (savedView.sizeKey !== latest.current.sizeKey) frameFurniture(currentDirection(), true);
     } else {
       frameFurniture(VIEW_DIRECTIONS.threeQuarter, false);
     }
-  }, [controls, moveTo, frameFurniture, currentDirection]);
-
-  // Nouvelles dimensions : on recadre le meuble sans changer l'angle de vue
-  const lastSizeKey = useRef(sizeKey);
-  useEffect(() => {
-    if (!controls || lastSizeKey.current === sizeKey) return;
-    lastSizeKey.current = sizeKey;
-    frameFurniture(currentDirection(), true);
-  }, [sizeKey, controls, frameFurniture, currentDirection]);
+  }, [controls, moveTo, frameFurniture]);
 
   // Actions demandées par la barre d'outils
   useEffect(() => {
@@ -146,7 +137,7 @@ export function CameraRig({ furnitureBox, selectionBox, sizeKey, apiRef }: Camer
   useEffect(() => {
     if (!controls) return;
     const save = () => {
-      savedView = { position: toVec3(camera.position), target: toVec3(controls.target), sizeKey: latest.current.sizeKey };
+      savedView = { position: toVec3(camera.position), target: toVec3(controls.target) };
     };
     const cancel = () => {
       goal.current = null;

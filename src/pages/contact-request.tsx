@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, FormEvent } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
@@ -6,18 +6,11 @@ import { Footer } from "@/components/Footer";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { DevisInterlocutorCard } from "@/components/devis/DevisInterlocutorCard";
 import { DevisChecklist } from "@/components/devis/DevisChecklist";
-import { ContactTabs } from "@/components/contact/ContactTabs";
 import { ContactForm, ContactFormData } from "@/components/contact/ContactForm";
-import { AppointmentPanel } from "@/components/contact/AppointmentPanel";
 import { ContactFaqAccordion } from "@/components/contact/ContactFaqAccordion";
 
 export default function ContactRequestPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"contact" | "appointment">("contact");
-  const [appointmentType, setAppointmentType] = useState<"phone" | "visio">("phone");
-  const [phoneUrl, setPhoneUrl] = useState("");
-  const [visioUrl, setVisioUrl] = useState("");
-
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
@@ -28,22 +21,6 @@ export default function ContactRequestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const res = await fetch("/api/config");
-        if (res.ok) {
-          const data = await res.json();
-          setPhoneUrl(data.calendly?.phoneUrl || "");
-          setVisioUrl(data.calendly?.visioUrl || "");
-        }
-      } catch (err) {
-        console.error("Erreur lors du chargement de la configuration:", err);
-      }
-    };
-    fetchConfig();
-  }, []);
 
   const handleChange = (field: keyof ContactFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -105,7 +82,7 @@ export default function ContactRequestPage() {
                   Comment <span className="whitespace-nowrap">pouvons-nous</span> vous aider ?
                 </h1>
                 <p className="m-0 max-w-[42ch] text-[16px] leading-[1.4] text-black">
-                  Écrivez-nous ou réservez un créneau : la consultation est gratuite.
+                  Écrivez-nous : la consultation est gratuite.
                 </p>
               </div>
               <DevisInterlocutorCard />
@@ -120,25 +97,13 @@ export default function ContactRequestPage() {
                   Message envoyé ! Nous vous répondrons dans les plus brefs délais. Redirection automatique...
                 </p>
               ) : (
-                <>
-                  <ContactTabs active={activeTab} onChange={setActiveTab} />
-                  {activeTab === "contact" ? (
-                    <ContactForm
-                      formData={formData}
-                      onChange={handleChange}
-                      onSubmit={handleSubmit}
-                      isLoading={isLoading}
-                      error={error}
-                    />
-                  ) : (
-                    <AppointmentPanel
-                      appointmentType={appointmentType}
-                      onTypeChange={setAppointmentType}
-                      phoneUrl={phoneUrl}
-                      visioUrl={visioUrl}
-                    />
-                  )}
-                </>
+                <ContactForm
+                  formData={formData}
+                  onChange={handleChange}
+                  onSubmit={handleSubmit}
+                  isLoading={isLoading}
+                  error={error}
+                />
               )}
             </div>
           </div>

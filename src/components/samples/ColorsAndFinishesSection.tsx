@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { HOME_MONO, HOME_MONO_SM, HOME_PILL_DARK, HOME_PILL_OUTLINE, HOME_SECTION } from "@/components/home/homeLayout";
-import { SWATCHES, swatchImage } from "@/components/home/homeData";
+import { SWATCHES, swatchImage } from "@/components/samples/swatches";
 
 export function ColorsAndFinishesSection() {
   const [selected, setSelected] = useState(0);
@@ -59,9 +59,10 @@ export function ColorsAndFinishesSection() {
             Teinte sélectionnée : <span className="text-black">{active.name}</span>
           </p>
           <div className="flex flex-wrap gap-2.5">
-            <Link href="/samples" className={HOME_PILL_DARK}>
+            {/* Sur la page des échantillons : le bouton mène au choix du matériau plus bas, comme celui du haut de page */}
+            <a href="#ech-step1" className={HOME_PILL_DARK}>
               Commander un échantillon
-            </Link>
+            </a>
             <Link href="/models" className={HOME_PILL_OUTLINE}>
               Voir les modèles
             </Link>
