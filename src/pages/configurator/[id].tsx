@@ -240,6 +240,10 @@ export default function ConfiguratorPage() {
     };
   } | null>(null);
   const arModelRef = useRef<{ sourceGlbUrl: string; glbUrl: Promise<string> } | null>(null);
+  // Échec de la dernière génération (message du backend) : glbUrl montre alors une version précédente du meuble
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  // Prompt de la configuration actuelle, pour relancer la génération à la demande
+  const latestPromptRef = useRef<string | null>(null);
   const [dxfUrl, setDxfUrl] = useState<string | null>(null);
   const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
   const [editingConfigName, setEditingConfigName] = useState<string>('');
@@ -2179,8 +2183,10 @@ export default function ConfiguratorPage() {
       let glbUrlAbsolute = result.glb_url;
       setGlbUrl(glbUrlAbsolute);
       setDxfUrl(result.dxf_url || null);
+      setGenerationError(null);
     } catch (error) {
       console.warn('Génération 3D impossible :', error instanceof Error ? error.message : error);
+      setGenerationError(error instanceof Error && error.message ? error.message : 'erreur inconnue');
     } finally {
       setGenerating(false);
     }
@@ -2208,6 +2214,10 @@ export default function ConfiguratorPage() {
     }
     return pending.glbUrl;
   }, []);
+
+  const retryGeneration = useCallback(() => {
+    if (latestPromptRef.current) generateModel(latestPromptRef.current);
+  }, [generateModel]);
 
   useEffect(() => {
     if (!templatePrompt || !initialConfigApplied) return;
@@ -2254,6 +2264,7 @@ export default function ConfiguratorPage() {
       componentColors
     }));
 
+    latestPromptRef.current = prompt;
     if (hasZoneIssues) return;
 
     const timer = setTimeout(() => generateModel(prompt), 300);
@@ -3370,6 +3381,8 @@ export default function ConfiguratorPage() {
                         <ArViewSection
                           sourceGlbUrl={glbUrl}
                           generating={generating}
+                          generationError={generationError}
+                          onRetryGeneration={retryGeneration}
                           disabledReason={hasZoneIssues ? "Corrigez d'abord le meuble : il ne peut pas être fabriqué tel quel." : null}
                           prepareModel={prepareArModel}
                           width={width}
@@ -3479,8 +3492,15 @@ export default function ConfiguratorPage() {
         )}
       </div>
 
-      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
-        <DialogContent className="bg-white">
+      {/* Fermer la fenêtre sans choisir laissait le configurateur en attente (initialConfigApplied jamais vrai) : plus aucune
+          génération 3D ni sauvegarde. La croix vaut « Ignorer » ; un clic à côté ou Échap ne ferment pas, pour ne pas
+          effacer une session par mégarde. */}
+      <Dialog open={showRestoreDialog} onOpenChange={(open) => !open && discardPendingRestore()}>
+        <DialogContent
+          className="bg-white"
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Reprendre votre session ?</DialogTitle>
             <DialogDescription>

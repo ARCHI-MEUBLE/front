@@ -11,6 +11,10 @@ interface ArViewSectionProps {
   sourceGlbUrl: string | null;
   // Aperçu en cours de génération
   generating: boolean;
+  // Message d'échec de la dernière génération : sourceGlbUrl est alors celui d'une version précédente du meuble
+  generationError?: string | null;
+  // Relance la génération de l'aperçu pour la configuration actuelle
+  onRetryGeneration: () => void;
   // Raison pour laquelle le meuble ne peut pas être montré (configuration hors limites)
   disabledReason?: string | null;
   // Adresse du GLB du meuble fermé (tiroirs et portes rentrés), généré si besoin
@@ -30,6 +34,8 @@ const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 export default function ArViewSection({
   sourceGlbUrl,
   generating,
+  generationError,
+  onRetryGeneration,
   disabledReason,
   prepareModel,
   width,
@@ -45,7 +51,7 @@ export default function ArViewSection({
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!arCapable || generating || disabledReason || !sourceGlbUrl) return;
+    if (!arCapable || generating || generationError || disabledReason || !sourceGlbUrl) return;
     let cancelled = false;
     // Court délai : plusieurs réglages à la suite ne lancent qu'une génération
     const timer = window.setTimeout(() => {
@@ -64,9 +70,9 @@ export default function ArViewSection({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [arCapable, generating, disabledReason, sourceGlbUrl, prepareModel, attempt]);
+  }, [arCapable, generating, generationError, disabledReason, sourceGlbUrl, prepareModel, attempt]);
 
-  const file = !generating && prepared?.source === sourceGlbUrl ? prepared.file : null;
+  const file = !generating && !generationError && prepared?.source === sourceGlbUrl ? prepared.file : null;
   const ar = useArModel(device, file);
 
   const [qr, setQr] = useState<QrState | null>(null);
@@ -97,7 +103,6 @@ export default function ArViewSection({
     setQr(null);
   };
 
-  const noModel = !sourceGlbUrl && !generating;
   let button: { label: string; onClick?: () => void; disabled?: boolean; busy?: boolean };
   let note: string | null = null;
 
@@ -109,13 +114,15 @@ export default function ArViewSection({
   } else if (device === 'phone-without-ar') {
     button = { label: AR_MESSAGES.launch, disabled: true };
     note = AR_MESSAGES.wrongBrowser;
-  } else if (noModel) {
-    button = { label: AR_MESSAGES.launch, disabled: true };
-    note = "Le modèle 3D n'est pas disponible pour le moment.";
+  } else if (generationError && !generating) {
+    // Le meuble affiché en 3D n'a pas de fichier à jour : on montre la raison plutôt qu'une ancienne version
+    button = { label: AR_MESSAGES.retry, onClick: onRetryGeneration };
+    note = `Le modèle 3D n'a pas pu être généré : ${generationError}`;
+  } else if (generating || !sourceGlbUrl) {
+    // Pas encore de fichier : la génération de l'aperçu part 300 ms après le dernier réglage
+    button = { label: AR_MESSAGES.preparing, busy: true };
   } else if (device === 'desktop') {
-    button = generating
-      ? { label: AR_MESSAGES.preparing, busy: true }
-      : { label: AR_MESSAGES.launch, onClick: openQrCode };
+    button = { label: AR_MESSAGES.launch, onClick: openQrCode };
     note = 'Sur ordinateur, un QR code ouvre le meuble sur votre téléphone.';
   } else if (ar.status === 'error' || (failedSource !== null && failedSource === sourceGlbUrl)) {
     button = {

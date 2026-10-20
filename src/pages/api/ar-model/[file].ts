@@ -16,19 +16,27 @@ export const config = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');
-    return res.status(405).end();
+    res.status(405).end();
+    return;
   }
 
   const file = typeof req.query.file === 'string' ? req.query.file : '';
-  if (!isArModelFile(file)) return res.status(404).end();
+  if (!isArModelFile(file)) {
+    res.status(404).end();
+    return;
+  }
 
   try {
     const upstream = await fetch(`${BACKEND_URL}/models/${file}`);
-    if (!upstream.ok) return res.status(upstream.status === 404 ? 404 : 502).end();
-    if (Number(upstream.headers.get('content-length') || 0) > MAX_BYTES) return res.status(502).end();
-
+    if (!upstream.ok || Number(upstream.headers.get('content-length') || 0) > MAX_BYTES) {
+      res.status(upstream.status === 404 ? 404 : 502).end();
+      return;
+    }
     const source = new Uint8Array(await upstream.arrayBuffer());
-    if (source.byteLength > MAX_BYTES) return res.status(502).end();
+    if (source.byteLength > MAX_BYTES) {
+      res.status(502).end();
+      return;
+    }
     const glb = prepareGlbForAr(source);
 
     res.setHeader('Content-Type', 'model/gltf-binary');
@@ -36,9 +44,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Le générateur ne réécrit jamais un fichier : chaque génération a son propre nom
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    return res.status(200).send(Buffer.from(glb.buffer, glb.byteOffset, glb.byteLength));
+    res.status(200).send(Buffer.from(glb.buffer, glb.byteOffset, glb.byteLength));
   } catch (error) {
     console.error('[AR MODEL] Préparation impossible :', error instanceof Error ? error.message : error);
-    return res.status(502).end();
+    res.status(502).end();
   }
 }
