@@ -119,6 +119,7 @@ describe('prepareGlbForAr', () => {
 describe('noms de fichiers acceptés', () => {
   it("n'accepte que les GLB du générateur", () => {
     expect(isArModelFile('meuble_6ad74b733d9a7.glb')).toBe(true);
+    expect(isArModelFile('ar_77faf65dfb22b4410480b09f.glb')).toBe(true);
     expect(isArModelFile('../meuble_x.glb')).toBe(false);
     expect(isArModelFile('meuble_x.glb.php')).toBe(false);
     expect(isArModelFile('autre.glb')).toBe(false);

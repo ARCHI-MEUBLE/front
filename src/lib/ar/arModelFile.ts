@@ -1,6 +1,7 @@
-// Fichiers du générateur 3D (« meuble_<uniqid>.glb », servis par le backend sous /models) : ce sont les seuls noms
-// que la route /api/ar-model et la page /ar acceptent, pour qu'elles ne relaient rien d'autre.
-const AR_MODEL_FILE = /^meuble_[A-Za-z0-9]+\.glb$/;
+// Fichiers 3D servis par le backend sous /models : ceux du générateur Python (« meuble_<uniqid>.glb ») et les exports
+// du configurateur pour la réalité augmentée (« ar_<aléatoire>.glb »). Ce sont les seuls noms que la route
+// /api/ar-model et la page /ar acceptent, pour qu'elles ne relaient rien d'autre.
+const AR_MODEL_FILE = /^(meuble|ar)_[A-Za-z0-9]+\.glb$/;
 
 export const isArModelFile = (name: string) => AR_MODEL_FILE.test(name);
 

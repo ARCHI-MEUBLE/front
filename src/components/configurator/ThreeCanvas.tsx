@@ -70,7 +70,8 @@ interface DividerEvents {
     onCommit: (change: DividerChange) => void;
 }
 
-function Furniture({
+// Exporté pour la réalité augmentée : components/ar/FurnitureSnapshot.tsx le rend hors écran, portes fermées
+export function Furniture({
                        width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
                        doorsOpen, showDecorations, hideDrawers = false, onToggleDoors, componentColors,
                        doorType = 'none',

@@ -1,106 +1,168 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
+import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
 import { AR_MESSAGES } from '@/components/ar/arMessages';
-import { useArDevice, useArModel } from '@/components/ar/useArViewer';
-import { arModelFileFromUrl } from '@/lib/ar/arModelFile';
+import { useArDevice } from '@/components/ar/useArViewer';
+import { apiClient } from '@/lib/apiClient';
+import { arModelFileFromUrl, arModelPath } from '@/lib/ar/arModelFile';
+import { furnitureToGlb, furnitureToUsdzUrl, prepareFurnitureForExport } from '@/lib/ar/exportFurniture';
+import { openQuickLook, openSceneViewer } from '@/lib/ar/launchAr';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+// Scène hors écran montée le temps d'un export (WebGL : navigateur seulement)
+const FurnitureSnapshot = dynamic(() => import('@/components/ar/FurnitureSnapshot'), { ssr: false });
+
 interface ArViewSectionProps {
-  // GLB de l'aperçu en cours : quand il change, la version réalité augmentée est préparée à nouveau
-  sourceGlbUrl: string | null;
-  // Aperçu en cours de génération
-  generating: boolean;
-  // Message d'échec de la dernière génération : sourceGlbUrl est alors celui d'une version précédente du meuble
-  generationError?: string | null;
-  // Relance la génération de l'aperçu pour la configuration actuelle
-  onRetryGeneration: () => void;
+  // Le meuble tel que le montre le configurateur
+  furniture: ThreeViewerProps;
+  // Change à chaque modification du meuble : la vue AR préparée pour une version précédente est écartée
+  configKey: string;
   // Raison pour laquelle le meuble ne peut pas être montré (configuration hors limites)
   disabledReason?: string | null;
-  // Adresse du GLB du meuble fermé (tiroirs et portes rentrés), généré si besoin
-  prepareModel: () => Promise<string>;
-  width: number;
-  depth: number;
-  height: number;
 }
 
 type QrState = { status: 'loading' } | { status: 'ready'; image: string; link: string } | { status: 'error' };
+// Vue AR prête pour une version du meuble : USDZ dans le navigateur (iPhone) ou GLB déposé sur le backend (Android, QR)
+type Prepared = { key: string; usdzUrl: string } | { key: string; file: string };
+type SnapshotRequest = { id: number; key: string; purpose: 'device' | 'qr' };
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+const AR_TITLE = 'Votre meuble';
 
 // Dernière section des Finitions : le meuble à taille réelle dans la pièce, par la caméra du téléphone.
-// Sur téléphone, le modèle est préparé dès l'arrivée sur la section, pour que le bouton ouvre la vue AR dans le clic.
+// La vue AR est exportée de la scène du configurateur elle-même (portes et tiroirs fermés, poignées, couleurs et
+// textures comprises), pas du modèle simplifié du générateur Python.
+// Sur téléphone, elle est préparée dès l'arrivée sur la section, pour que le bouton ouvre la vue AR dans le clic.
 // Sur ordinateur, le bouton affiche un QR code qui ouvre ce meuble sur le téléphone (page /ar).
-export default function ArViewSection({
-  sourceGlbUrl,
-  generating,
-  generationError,
-  onRetryGeneration,
-  disabledReason,
-  prepareModel,
-  width,
-  depth,
-  height,
-}: ArViewSectionProps) {
+export default function ArViewSection({ furniture, configKey, disabledReason }: ArViewSectionProps) {
   const device = useArDevice();
   const arCapable = device === 'quick-look' || device === 'scene-viewer';
 
-  // GLB fermé préparé pour l'aperçu dont il vient : un nouvel aperçu le rend caduc
-  const [prepared, setPrepared] = useState<{ source: string; file: string } | null>(null);
-  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<SnapshotRequest | null>(null);
+  const [prepared, setPrepared] = useState<Prepared | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Android : Chrome est revenu sur la page faute de Scene Viewer (ARCore absent)
+  const [unavailable, setUnavailable] = useState(false);
+  const [qr, setQr] = useState<QrState | null>(null);
+
+  const requestId = useRef(0);
+  const qrRequest = useRef(0);
+  const latestKey = useRef(configKey);
+  // Dernier GLB déposé : le QR code d'un meuble inchangé ne relance ni export ni envoi
+  const uploaded = useRef<{ key: string; file: string } | null>(null);
 
   useEffect(() => {
-    if (!arCapable || generating || generationError || disabledReason || !sourceGlbUrl) return;
-    let cancelled = false;
-    // Court délai : plusieurs réglages à la suite ne lancent qu'une génération
+    latestKey.current = configKey;
+  }, [configKey]);
+
+  // Téléphone : prépare la vue AR du meuble affiché, après un court délai (plusieurs réglages à la suite = un export)
+  useEffect(() => {
+    if (!arCapable || disabledReason) return;
     const timer = window.setTimeout(() => {
-      prepareModel()
-        .then((url) => {
-          if (cancelled) return;
-          const file = arModelFileFromUrl(url);
-          if (file) setPrepared({ source: sourceGlbUrl, file });
-          else setFailedSource(sourceGlbUrl);
-        })
-        .catch(() => {
-          if (!cancelled) setFailedSource(sourceGlbUrl);
-        });
-    }, 400);
+      setSnapshot({ id: ++requestId.current, key: configKey, purpose: 'device' });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [arCapable, configKey, disabledReason, attempt]);
+
+  // L'USDZ d'une version précédente n'est plus utile
+  useEffect(() => {
+    const url = prepared && 'usdzUrl' in prepared ? prepared.usdzUrl : null;
     return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
+      if (url) URL.revokeObjectURL(url);
     };
-  }, [arCapable, generating, generationError, disabledReason, sourceGlbUrl, prepareModel, attempt]);
+  }, [prepared]);
 
-  const file = !generating && !generationError && prepared?.source === sourceGlbUrl ? prepared.file : null;
-  const ar = useArModel(device, file);
+  const uploadGlb = useCallback(async (root: THREE.Group, key: string) => {
+    if (uploaded.current?.key === key) return uploaded.current.file;
+    const file = arModelFileFromUrl(await apiClient.arModels.upload(await furnitureToGlb(root)));
+    if (!file) throw new Error('Adresse du fichier 3D inattendue');
+    uploaded.current = { key, file };
+    return file;
+  }, []);
 
-  const [qr, setQr] = useState<QrState | null>(null);
-  const qrRequest = useRef(0);
-
-  const openQrCode = async () => {
-    const request = ++qrRequest.current;
-    setQr({ status: 'loading' });
-    try {
-      const qrFile = arModelFileFromUrl(await prepareModel());
-      if (!qrFile) throw new Error('Fichier 3D inattendu');
+  const showQrCode = useCallback(
+    async (file: string, request: number) => {
       const link = new URL('/ar', window.location.origin);
-      link.searchParams.set('m', qrFile);
-      link.searchParams.set('l', String(width));
-      link.searchParams.set('p', String(depth));
-      link.searchParams.set('h', String(height));
+      link.searchParams.set('m', file);
+      link.searchParams.set('l', String(furniture.width));
+      link.searchParams.set('p', String(furniture.depth));
+      link.searchParams.set('h', String(furniture.height));
       const { toDataURL } = await import('qrcode');
       const image = await toDataURL(link.toString(), { margin: 1, width: 480, errorCorrectionLevel: 'M' });
       if (request === qrRequest.current) setQr({ status: 'ready', image, link: link.toString() });
-    } catch (error) {
-      console.warn('QR code de la réalité augmentée impossible :', error instanceof Error ? error.message : error);
-      if (request === qrRequest.current) setQr({ status: 'error' });
+    },
+    [furniture.width, furniture.depth, furniture.height]
+  );
+
+  const handleSnapshotReady = useCallback(
+    (object: THREE.Object3D) => {
+      const request = snapshot;
+      if (!request) return;
+      const root = prepareFurnitureForExport(object);
+      setSnapshot(null);
+
+      if (request.purpose === 'qr') {
+        const qrId = qrRequest.current;
+        uploadGlb(root, request.key)
+          .then((file) => showQrCode(file, qrId))
+          .catch((error) => {
+            console.warn('QR code de la réalité augmentée impossible :', error instanceof Error ? error.message : error);
+            if (qrId === qrRequest.current) setQr({ status: 'error' });
+          });
+        return;
+      }
+
+      const stale = () => request.key !== latestKey.current;
+      const fail = (error: unknown) => {
+        console.warn('Vue en réalité augmentée impossible :', error instanceof Error ? error.message : error);
+        if (!stale()) setFailedKey(request.key);
+      };
+      if (device === 'quick-look') {
+        furnitureToUsdzUrl(root)
+          .then((usdzUrl) => {
+            if (stale()) URL.revokeObjectURL(usdzUrl);
+            else setPrepared({ key: request.key, usdzUrl });
+          })
+          .catch(fail);
+      } else {
+        uploadGlb(root, request.key)
+          .then((file) => {
+            if (!stale()) setPrepared({ key: request.key, file });
+          })
+          .catch(fail);
+      }
+    },
+    [snapshot, device, uploadGlb, showQrCode]
+  );
+
+  const openQrCode = () => {
+    const qrId = ++qrRequest.current;
+    setQr({ status: 'loading' });
+    if (uploaded.current?.key === configKey) {
+      const { file } = uploaded.current;
+      showQrCode(file, qrId).catch(() => qrId === qrRequest.current && setQr({ status: 'error' }));
+      return;
     }
+    setSnapshot({ id: ++requestId.current, key: configKey, purpose: 'qr' });
   };
 
   const closeQrCode = () => {
     qrRequest.current++;
     setQr(null);
+  };
+
+  const launch = () => {
+    if (!prepared || prepared.key !== configKey) return;
+    if ('usdzUrl' in prepared) {
+      openQuickLook(prepared.usdzUrl);
+    } else {
+      setUnavailable(false);
+      openSceneViewer(arModelPath(prepared.file), AR_TITLE, () => setUnavailable(true));
+    }
   };
 
   let button: { label: string; onClick?: () => void; disabled?: boolean; busy?: boolean };
@@ -114,31 +176,23 @@ export default function ArViewSection({
   } else if (device === 'phone-without-ar') {
     button = { label: AR_MESSAGES.launch, disabled: true };
     note = AR_MESSAGES.wrongBrowser;
-  } else if (generationError && !generating) {
-    // Le meuble affiché en 3D n'a pas de fichier à jour : on montre la raison plutôt qu'une ancienne version
-    button = { label: AR_MESSAGES.retry, onClick: onRetryGeneration };
-    note = `Le modèle 3D n'a pas pu être généré : ${generationError}`;
-  } else if (generating || !sourceGlbUrl) {
-    // Pas encore de fichier : la génération de l'aperçu part 300 ms après le dernier réglage
-    button = { label: AR_MESSAGES.preparing, busy: true };
   } else if (device === 'desktop') {
     button = { label: AR_MESSAGES.launch, onClick: openQrCode };
     note = 'Sur ordinateur, un QR code ouvre le meuble sur votre téléphone.';
-  } else if (ar.status === 'error' || (failedSource !== null && failedSource === sourceGlbUrl)) {
+  } else if (prepared?.key === configKey) {
+    button = { label: AR_MESSAGES.launch, onClick: launch };
+    note = unavailable ? AR_MESSAGES.unavailable : AR_MESSAGES.tip;
+  } else if (failedKey === configKey) {
     button = {
       label: AR_MESSAGES.retry,
       onClick: () => {
-        setFailedSource(null);
+        setFailedKey(null);
         setAttempt((value) => value + 1);
-        ar.retry();
       },
     };
     note = AR_MESSAGES.failed;
-  } else if (ar.status !== 'ready') {
-    button = { label: AR_MESSAGES.preparing, busy: true };
   } else {
-    button = { label: AR_MESSAGES.launch, onClick: ar.launch };
-    note = ar.unavailable ? AR_MESSAGES.unavailable : AR_MESSAGES.tip;
+    button = { label: AR_MESSAGES.preparing, busy: true };
   }
 
   const onLocalHost = typeof window !== 'undefined' && LOCAL_HOSTS.includes(window.location.hostname);
@@ -154,6 +208,8 @@ export default function ArViewSection({
           {note}
         </p>
       )}
+
+      {snapshot && <FurnitureSnapshot key={snapshot.id} furniture={furniture} onReady={handleSnapshotReady} />}
 
       {!arCapable && (
         <Dialog open={qr !== null} onOpenChange={(open) => !open && closeQrCode()}>

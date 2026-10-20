@@ -656,6 +656,29 @@ export const generateApi = {
 };
 
 /**
+ * API Client - Réalité augmentée
+ */
+export const arModelsApi = {
+  /**
+   * Dépose le GLB exporté par le configurateur (vue en réalité augmentée) et renvoie son adresse (/models/ar_….glb).
+   * Scene Viewer (Android) et le QR code de l'ordinateur ont besoin d'un fichier que le téléphone télécharge lui-même.
+   */
+  async upload(glb: ArrayBuffer): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/api/ar-model`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'model/gltf-binary' },
+      body: glb,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || typeof data.glb_url !== 'string') {
+      throw new ApiClientError(data.error || `Erreur HTTP ${response.status}`, response.status, data);
+    }
+    return data.glb_url;
+  },
+};
+
+/**
  * Export de l'API client complet
  */
 export const apiClient = {
@@ -666,6 +689,7 @@ export const apiClient = {
   configurations: configurationsApi,
   generate: generateApi,
   samples: samplesApi,
+  arModels: arModelsApi,
 };
 
 export default apiClient;
