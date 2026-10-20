@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Html } from '@react-three/drei';
+import { ScreenHtml } from './ScreenHtml';
 import type { Zone } from '@/components/configurator/ZoneEditor/types';
 import { describeZone, getZoneBox, type FurnitureLayout } from '@/lib/configurator/zoneBounds';
 
@@ -21,7 +21,7 @@ export function ZoneHoverTag({ rootZone, zoneId, layout, widthMm, heightMm, clic
   if (!description || !box) return null;
 
   return (
-    <Html
+    <ScreenHtml
       position={[box.center[0], box.center[1] + box.size[1] / 2, layout.depth / 2]}
       // Sous les boutons de la page (z-20) mais au-dessus de la scène
       zIndexRange={[10, 0]}
@@ -38,6 +38,6 @@ export function ZoneHoverTag({ rootZone, zoneId, layout, widthMm, heightMm, clic
           <div className="mt-0.5 text-[10px] text-am-mist">{clickToOpen ? 'Clic' : 'Double-clic'} : ouvrir / fermer</div>
         )}
       </div>
-    </Html>
+    </ScreenHtml>
   );
 }

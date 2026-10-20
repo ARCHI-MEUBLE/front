@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { Zone } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
+import type { RoomScene } from './scene/Room';
 
 // On utilise dynamic import pour forcer le rendu côté client uniquement
 const ThreeCanvas = dynamic(() => import('./ThreeCanvas'), {
@@ -34,6 +35,12 @@ export interface ThreeViewerProps {
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
+  // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
+  hideDrawers?: boolean;
+  // Pièce autour du meuble (neutre par défaut)
+  roomScene?: RoomScene;
+  // Salon, Chambre : lampes allumées, ambiance du soir
+  roomLightsOn?: boolean;
   onToggleDoors?: () => void;
   componentColors?: ComponentColors;
   useMultiColor?: boolean;
