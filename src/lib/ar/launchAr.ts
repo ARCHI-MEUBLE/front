@@ -97,5 +97,8 @@ export function openSceneViewer(glbPath: string, title: string, onUnavailable: (
   anchor.href =
     `intent://arvr.google.com/scene-viewer/1.0?${params}#Intent;scheme=https;package=com.google.ar.core;` +
     `action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(fallback.toString())};end;`;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
 }
