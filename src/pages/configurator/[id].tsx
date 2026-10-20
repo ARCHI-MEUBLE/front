@@ -24,6 +24,7 @@ import DivisionSteps, { zoneAtLevel, type DivisionLevel } from '@/components/con
 import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
+import ArViewSection from '@/components/configurator/ArViewSection';
 import MountingStyleSelector from '@/components/configurator/steps/MountingStyleSelector';
 import {
   CONFIG_STEPS,
@@ -226,6 +227,19 @@ export default function ConfiguratorPage() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [pendingRestoreConfig, setPendingRestoreDialog] = useState<any>(null);
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
+  // Dernière génération de l'aperçu, pour la relancer à l'identique en mode fermé (réalité augmentée, voir prepareArModel)
+  const lastGenerationRef = useRef<{
+    glbUrl: string;
+    closed: boolean;
+    request: {
+      prompt: string;
+      singleColor?: string;
+      furnitureColors?: FurnitureColors;
+      deletedPanels?: string[];
+      zones?: Zone;
+    };
+  } | null>(null);
+  const arModelRef = useRef<{ sourceGlbUrl: string; glbUrl: Promise<string> } | null>(null);
   const [dxfUrl, setDxfUrl] = useState<string | null>(null);
   const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
   const [editingConfigName, setEditingConfigName] = useState<string>('');
@@ -2147,15 +2161,21 @@ export default function ConfiguratorPage() {
 
       const zonesForSegmentation = deletedPanelsArray.length > 0 ? rootZone : undefined;
 
+      const deletedPanels = deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined;
       const result = await apiClient.generate.generate(
         prompt,
         excludeDoors,
         singleColor,
         furnitureColors,
-        deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined,
+        deletedPanels,
         zonesForSegmentation
       );
 
+      lastGenerationRef.current = {
+        glbUrl: result.glb_url,
+        closed: excludeDoors,
+        request: { prompt, singleColor, furnitureColors, deletedPanels, zones: zonesForSegmentation },
+      };
       let glbUrlAbsolute = result.glb_url;
       setGlbUrl(glbUrlAbsolute);
       setDxfUrl(result.dxf_url || null);
@@ -2165,6 +2185,29 @@ export default function ConfiguratorPage() {
       setGenerating(false);
     }
   }, [selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds, rootZone]);
+
+  // GLB de la réalité augmentée : celui de l'aperçu, mais tiroirs et portes fermés comme à la livraison.
+  // L'aperçu les sort quand les portes sont affichées ouvertes : on relance alors la même génération en mode fermé,
+  // une seule fois par aperçu (la promesse est partagée entre le bouton du téléphone et le QR code de l'ordinateur).
+  const prepareArModel = useCallback(async () => {
+    const last = lastGenerationRef.current;
+    if (!last) throw new Error('Aucun modèle 3D généré');
+    if (last.closed) return last.glbUrl;
+    let pending = arModelRef.current;
+    if (pending?.sourceGlbUrl !== last.glbUrl) {
+      const { prompt, singleColor, furnitureColors, deletedPanels, zones } = last.request;
+      const glbUrl = apiClient.generate
+        .generate(prompt, true, singleColor, furnitureColors, deletedPanels, zones)
+        .then((result) => result.glb_url);
+      pending = { sourceGlbUrl: last.glbUrl, glbUrl };
+      arModelRef.current = pending;
+      // Échec : la prochaine demande relance la génération
+      glbUrl.catch(() => {
+        if (arModelRef.current?.glbUrl === glbUrl) arModelRef.current = null;
+      });
+    }
+    return pending.glbUrl;
+  }, []);
 
   useEffect(() => {
     if (!templatePrompt || !initialConfigApplied) return;
@@ -3323,6 +3366,16 @@ export default function ConfiguratorPage() {
                             stats={zoneStats}
                           />
                         </StepSection>
+
+                        <ArViewSection
+                          sourceGlbUrl={glbUrl}
+                          generating={generating}
+                          disabledReason={hasZoneIssues ? "Corrigez d'abord le meuble : il ne peut pas être fabriqué tel quel." : null}
+                          prepareModel={prepareArModel}
+                          width={width}
+                          depth={depth}
+                          height={height}
+                        />
                       </>
                     )}
                   </div>
