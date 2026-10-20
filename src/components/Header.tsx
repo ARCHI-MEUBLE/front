@@ -3,25 +3,85 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { Menu, X, ShoppingBag, User, ChevronRight, Layers } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Menu, X, ShoppingBag, User, ChevronRight, ChevronDown, Layers, Package, DoorClosed, Palette } from "lucide-react";
 import { useCustomer } from "@/context/CustomerContext";
+import { NavDropdown, isPathActive, type NavDropdownItem } from "@/components/NavDropdown";
 
-const navLinks = [
+interface NavGroup {
+  label: string;
+  items: NavDropdownItem[];
+}
+
+type NavItem = NavDropdownItem | NavGroup;
+
+const isGroup = (item: NavItem): item is NavGroup => "items" in item;
+
+// Boutique est un menu déroulant : le catalogue, les façades et les échantillons y sont regroupés
+const navItems: NavItem[] = [
   { href: "/models", label: "Nos modèles" },
-  { href: "/catalogue", label: "Boutique" },
-  { href: "/facades", label: "Façades" },
+  {
+    label: "Boutique",
+    // Les lignes descriptives reprennent le ton des pages : « produits et accessoires » (boutique), « Configurateur de façades »,
+    // « Touchez la qualité avant de commander » (échantillons)
+    items: [
+      { href: "/catalogue", label: "Tous les produits", description: "Produits et accessoires", icon: Package },
+      { href: "/facades", label: "Façades", description: "Configurez vos façades", icon: DoorClosed },
+      { href: "/samples", label: "Échantillons", description: "Touchez avant de commander", icon: Palette },
+    ],
+  },
   { href: "/realisations", label: "Réalisations" },
   { href: "/contact-request", label: "Contact" },
 ];
 
-// Plus de place dans le tiroir mobile que dans la barre du haut
-const drawerLinks = [
-  ...navLinks.slice(0, 4),
-  { href: "/samples", label: "Échantillons" },
-  { href: "/avis", label: "Avis clients" },
-  navLinks[4],
-];
+// Plus de place dans le tiroir mobile que dans la barre du haut : les avis s'y ajoutent, avant Contact
+const drawerItems: NavItem[] = [...navItems.slice(0, -1), { href: "/avis", label: "Avis clients" }, navItems[navItems.length - 1]];
+
+// Groupe du tiroir mobile : se déplie au toucher, ouvert d'emblée quand la page courante en fait partie
+function DrawerGroup({ group, pathname, onNavigate }: { group: NavGroup; pathname: string; onNavigate: () => void }) {
+  const hasActive = group.items.some((item) => isPathActive(pathname, item.href));
+  const [open, setOpen] = useState(hasActive);
+  const panelId = useId();
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((current) => !current)}
+        className={
+          "flex w-full items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-black " +
+          (hasActive && !open ? "bg-am-mist/30" : "hover:bg-am-mist/30")
+        }
+      >
+        {group.label}
+        <ChevronDown aria-hidden="true" className={`h-4 w-4 text-black/40 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div id={panelId} className="mb-1 ml-4 mt-1 space-y-1 border-l border-black/15 pl-2">
+          {group.items.map((item) => {
+            const isActive = isPathActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={isActive ? "page" : undefined}
+                className={
+                  "flex items-center rounded-lg px-4 py-2.5 text-[15px] font-medium text-black " +
+                  (isActive ? "bg-am-mist/30" : "hover:bg-am-mist/30")
+                }
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Header() {
   const router = useRouter();
@@ -74,18 +134,21 @@ export function Header() {
           </Link>
 
           <div className="hidden items-center gap-1 xl:flex">
-            {navLinks.map((link) => {
-              const isActive = router.pathname === link.href || router.pathname.startsWith(link.href + "/");
+            {navItems.map((item) => {
+              if (isGroup(item)) {
+                return <NavDropdown key={item.label} label={item.label} items={item.items} pathname={router.pathname} />;
+              }
+              const isActive = isPathActive(router.pathname, item.href);
               return (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  key={item.href}
+                  href={item.href}
                   aria-current={isActive ? "page" : undefined}
                   className={`rounded-full px-4 py-2.5 text-[14px] font-medium text-black transition-colors hover:bg-am-mist/30 ${
                     isActive ? "bg-am-mist/30" : ""
                   }`}
                 >
-                  {link.label}
+                  {item.label}
                 </Link>
               );
             })}
@@ -167,20 +230,24 @@ export function Header() {
 
           <nav className="flex-1 overflow-y-auto px-4 py-6">
             <div className="space-y-1">
-              {drawerLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={
-                    "flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-black " +
-                    (router.pathname === link.href ? "bg-am-mist/30" : "hover:bg-am-mist/30")
-                  }
-                >
-                  {link.label}
-                  <ChevronRight className="h-4 w-4 text-black/40" />
-                </Link>
-              ))}
+              {drawerItems.map((item) =>
+                isGroup(item) ? (
+                  <DrawerGroup key={item.label} group={item} pathname={router.pathname} onNavigate={() => setIsMenuOpen(false)} />
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={
+                      "flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-black " +
+                      (router.pathname === item.href ? "bg-am-mist/30" : "hover:bg-am-mist/30")
+                    }
+                  >
+                    {item.label}
+                    <ChevronRight className="h-4 w-4 text-black/40" />
+                  </Link>
+                )
+              )}
             </div>
 
             <div className="my-6 border-t border-black/15" />

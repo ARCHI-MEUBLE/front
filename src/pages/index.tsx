@@ -9,7 +9,6 @@ import { FaqSection } from "@/components/home/FaqSection";
 import { FinalCtaSection } from "@/components/home/FinalCtaSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
 import { QuoteRequestCTA } from "@/components/home/QuoteRequestCTA";
-import { ColorsAndFinishesSection } from "@/components/home/ColorsAndFinishesSection";
 import { ContactUniqueSection } from "@/components/shared/ContactUniqueSection";
 
 export default function HomePage() {
@@ -26,7 +25,6 @@ export default function HomePage() {
       <main className="flex flex-1 flex-col">
         <HeroSection />
         <ProductsMarquee />
-        <ColorsAndFinishesSection />
         <WhyChooseUs />
         <QuoteRequestCTA />
         <TestimonialsSection />

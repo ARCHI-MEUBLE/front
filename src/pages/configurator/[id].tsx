@@ -2918,7 +2918,7 @@ export default function ConfiguratorPage() {
                       type="button"
                       onClick={() => setRoomLightsOn(!roomLightsOn)}
                       aria-pressed={roomLightsOn}
-                      aria-label={roomLightsOn ? 'Éteindre les lumières' : 'Allumer les lumières'}
+                      aria-label={roomLightsOn ? 'Éteindre les lumières' : 'jour / nuit'}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
                         roomLightsOn ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
                       }`}

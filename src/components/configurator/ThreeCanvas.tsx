@@ -2062,7 +2062,6 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
         if (!rootZone || !selectedZoneIds?.length) return null;
         return unionBoxes(selectedZoneIds.map((id) => getZoneBox(rootZone, id, layout)).filter((box): box is Box => !!box));
     }, [rootZone, selectedZoneIds, layout]);
-    const sizeKey = `${layout.width.toFixed(3)}|${(layout.sideHeight + layout.yOffset).toFixed(3)}|${layout.depth.toFixed(3)}`;
 
     return (
         <div
@@ -2094,7 +2093,7 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
                     maxDistance={14}
                     maxPolarAngle={Math.PI / 2 - 0.05}
                 />
-                <CameraRig furnitureBox={furnitureBox} selectionBox={selectionBox} sizeKey={sizeKey} apiRef={cameraApi} />
+                <CameraRig furnitureBox={furnitureBox} selectionBox={selectionBox} apiRef={cameraApi} />
                 <ambientLight intensity={evening ? 0.12 : 0.4} />
                 <hemisphereLight intensity={evening ? 0.15 : 0.5} groundColor="#ffffff" color={evening ? "#AFC0DD" : "#ffffff"} />
                 <pointLight position={[10, 10, 10]} intensity={evening ? 0.2 : 1.0} />

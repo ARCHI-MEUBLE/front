@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { SamplesHero } from "@/components/samples/SamplesHero";
+import { ColorsAndFinishesSection } from "@/components/samples/ColorsAndFinishesSection";
 import { SamplesMaterialList } from "@/components/samples/SamplesMaterialList";
 import { SampleSwatch } from "@/components/samples/SampleSwatch";
 import { SamplesKitSidebar } from "@/components/samples/SamplesKitSidebar";
@@ -123,6 +124,8 @@ export default function SamplesPage() {
       <Header />
       <main className="flex-1">
         <SamplesHero />
+
+        <ColorsAndFinishesSection />
 
         <section
           aria-labelledby="ech-step1-title"
