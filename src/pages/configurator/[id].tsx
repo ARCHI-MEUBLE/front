@@ -75,6 +75,44 @@ import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constra
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
 
+// Au-delà de cette largeur (mm), un meuble vierge est automatiquement scindé en 2 caissons
+// côte à côte — même règle et même seuil que CAISSON_LARGEUR_MAX_MM dans procedure_real.py.
+const CAISSON_WIDTH_THRESHOLD_MM = 1000;
+
+// Si l'utilisateur repasse sous le seuil dans ce délai (ms) sans avoir touché au caisson
+// auto-créé, celui-ci est retiré automatiquement. Passé ce délai, il devient définitif.
+const CAISSON_AUTO_REMOVE_GRACE_MS = 20000;
+
+// Construit récursivement des caissons de ≤ CAISSON_WIDTH_THRESHOLD_MM chacun — si une moitié
+// est encore trop large après la coupe, elle est recoupée à son tour (même logique que
+// decouper_en_caissons dans procedure_real.py). `isCaisson` marque les divisions créées ici,
+// pour que ThreeCanvas sache lesquelles doubler sans deviner via l'id ou le nombre d'enfants.
+function buildCaissonTree(id: string, widthMm: number): Zone {
+  if (widthMm <= CAISSON_WIDTH_THRESHOLD_MM) {
+    return { id, type: 'leaf', content: 'empty' };
+  }
+  return {
+    id,
+    type: 'vertical',
+    splitRatio: 50,
+    children: [
+      buildCaissonTree(`${id}-0`, widthMm / 2),
+      buildCaissonTree(`${id}-1`, widthMm / 2),
+    ],
+  };
+}
+
+// Vrai si `zone` est exactement ce que buildCaissonTree produirait — c'est-à-dire si rien n'a
+// encore été configuré dedans (condition pour le retrait automatique pendant le délai de grâce).
+function isUntouchedCaissonTree(zone: Zone): boolean {
+  if (zone.type === 'leaf') {
+    return zone.content === 'empty' && !zone.children;
+  }
+  return zone.type === 'vertical'
+    && zone.children?.length === 2
+    && zone.children.every(isUntouchedCaissonTree);
+}
+
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
   if (removed === 1) toast('La porte ou le tiroir qui se superposait a été retiré.');
@@ -283,6 +321,44 @@ export default function ConfiguratorPage() {
     type: 'leaf',
     content: 'empty',
   }, { maxHistory: 30 });
+
+  // Au-delà de cette largeur (mm), un meuble encore vierge (jamais configuré) est
+  // automatiquement scindé en 2 caissons côte à côte — même règle et même seuil que
+  // CAISSON_LARGEUR_MAX_MM dans procedure_real.py.
+  // Pendant CAISSON_AUTO_REMOVE_GRACE_MS après cette création automatique, si l'utilisateur
+  // repasse sous le seuil sans avoir touché au caisson (toujours 2 colonnes vides), il est
+  // retiré automatiquement. Passé ce délai, il devient définitif.
+  const autoCaissonPendingRef = useRef(false);
+  const caissonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const isBlankLeaf = rootZone.type === 'leaf' && rootZone.content === 'empty' && !rootZone.children;
+    const isUntouchedAutoCaisson = isUntouchedCaissonTree(rootZone) && rootZone.type === 'vertical';
+
+    if (width > CAISSON_WIDTH_THRESHOLD_MM && isBlankLeaf) {
+      setRootZone(buildCaissonTree('root', width));
+      autoCaissonPendingRef.current = true;
+      if (caissonTimerRef.current) clearTimeout(caissonTimerRef.current);
+      caissonTimerRef.current = setTimeout(() => {
+        autoCaissonPendingRef.current = false;
+        caissonTimerRef.current = null;
+      }, CAISSON_AUTO_REMOVE_GRACE_MS);
+      return;
+    }
+
+    if (width <= CAISSON_WIDTH_THRESHOLD_MM && autoCaissonPendingRef.current && isUntouchedAutoCaisson) {
+      setRootZone({ id: 'root', type: 'leaf', content: 'empty' });
+      autoCaissonPendingRef.current = false;
+      if (caissonTimerRef.current) {
+        clearTimeout(caissonTimerRef.current);
+        caissonTimerRef.current = null;
+      }
+    }
+  }, [width, rootZone, setRootZone]);
+
+  useEffect(() => () => {
+    if (caissonTimerRef.current) clearTimeout(caissonTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
