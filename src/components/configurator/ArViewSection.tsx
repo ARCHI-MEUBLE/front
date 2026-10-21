@@ -4,7 +4,7 @@ import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
 import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import { AR_MESSAGES } from '@/components/ar/arMessages';
+import { AR_MESSAGES, arErrorMessage } from '@/components/ar/arMessages';
 import { useArDevice } from '@/components/ar/useArViewer';
 import { apiClient } from '@/lib/apiClient';
 import { arModelFileFromUrl, arModelPath } from '@/lib/ar/arModelFile';
@@ -24,13 +24,18 @@ interface ArViewSectionProps {
   disabledReason?: string | null;
 }
 
-type QrState = { status: 'loading' } | { status: 'ready'; image: string; link: string } | { status: 'error' };
+type QrState = { status: 'loading' } | { status: 'ready'; image: string; link: string } | { status: 'error'; message: string };
 // Vue AR prête pour une version du meuble : USDZ dans le navigateur (iPhone) ou GLB déposé sur le backend (Android, QR)
 type Prepared = { key: string; usdzUrl: string } | { key: string; file: string };
 type SnapshotRequest = { id: number; key: string; purpose: 'device' | 'qr' };
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 const AR_TITLE = 'Votre meuble';
+
+// Gardés hors du composant : la section est démontée quand on quitte l'étape Finitions. En y revenant, un meuble
+// inchangé n'est ni réexporté ni redéposé.
+let preparedCache: Prepared | null = null;
+let uploadedCache: { key: string; file: string } | null = null;
 
 // Dernière section des Finitions : le meuble à taille réelle dans la pièce, par la caméra du téléphone.
 // La vue AR est exportée de la scène du configurateur elle-même (portes et tiroirs fermés, poignées, couleurs et
@@ -42,18 +47,17 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   const arCapable = device === 'quick-look' || device === 'scene-viewer';
 
   const [snapshot, setSnapshot] = useState<SnapshotRequest | null>(null);
-  const [prepared, setPrepared] = useState<Prepared | null>(null);
-  const [failedKey, setFailedKey] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<Prepared | null>(() => preparedCache);
+  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
   // Android : Chrome est revenu sur la page faute de Scene Viewer (ARCore absent)
   const [unavailable, setUnavailable] = useState(false);
   const [qr, setQr] = useState<QrState | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const requestId = useRef(0);
   const qrRequest = useRef(0);
   const latestKey = useRef(configKey);
-  // Dernier GLB déposé : le QR code d'un meuble inchangé ne relance ni export ni envoi
-  const uploaded = useRef<{ key: string; file: string } | null>(null);
 
   useEffect(() => {
     latestKey.current = configKey;
@@ -61,26 +65,27 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
 
   // Téléphone : prépare la vue AR du meuble affiché, après un court délai (plusieurs réglages à la suite = un export)
   useEffect(() => {
-    if (!arCapable || disabledReason) return;
+    if (!arCapable || disabledReason || preparedCache?.key === configKey) return;
     const timer = window.setTimeout(() => {
       setSnapshot({ id: ++requestId.current, key: configKey, purpose: 'device' });
     }, 700);
     return () => window.clearTimeout(timer);
   }, [arCapable, configKey, disabledReason, attempt]);
 
-  // L'USDZ d'une version précédente n'est plus utile
-  useEffect(() => {
-    const url = prepared && 'usdzUrl' in prepared ? prepared.usdzUrl : null;
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [prepared]);
+  // Nouvelle vue AR prête : l'USDZ de la précédente n'est plus utile
+  const storePrepared = useCallback((next: Prepared) => {
+    const previous = preparedCache;
+    if (previous && previous !== next && 'usdzUrl' in previous) URL.revokeObjectURL(previous.usdzUrl);
+    preparedCache = next;
+    setPrepared(next);
+  }, []);
 
+  // Le GLB d'un meuble inchangé n'est déposé qu'une fois (et le backend nomme les fichiers d'après leur contenu)
   const uploadGlb = useCallback(async (root: THREE.Group, key: string) => {
-    if (uploaded.current?.key === key) return uploaded.current.file;
+    if (uploadedCache?.key === key) return uploadedCache.file;
     const file = arModelFileFromUrl(await apiClient.arModels.upload(await furnitureToGlb(root)));
     if (!file) throw new Error('Adresse du fichier 3D inattendue');
-    uploaded.current = { key, file };
+    uploadedCache = { key, file };
     return file;
   }, []);
 
@@ -111,7 +116,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
           .then((file) => showQrCode(file, qrId))
           .catch((error) => {
             console.warn('QR code de la réalité augmentée impossible :', error instanceof Error ? error.message : error);
-            if (qrId === qrRequest.current) setQr({ status: 'error' });
+            if (qrId === qrRequest.current) setQr({ status: 'error', message: arErrorMessage(error) });
           });
         return;
       }
@@ -119,32 +124,34 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       const stale = () => request.key !== latestKey.current;
       const fail = (error: unknown) => {
         console.warn('Vue en réalité augmentée impossible :', error instanceof Error ? error.message : error);
-        if (!stale()) setFailedKey(request.key);
+        if (!stale()) setFailed({ key: request.key, message: arErrorMessage(error) });
       };
       if (device === 'quick-look') {
         furnitureToUsdzUrl(root)
           .then((usdzUrl) => {
             if (stale()) URL.revokeObjectURL(usdzUrl);
-            else setPrepared({ key: request.key, usdzUrl });
+            else storePrepared({ key: request.key, usdzUrl });
           })
           .catch(fail);
       } else {
         uploadGlb(root, request.key)
           .then((file) => {
-            if (!stale()) setPrepared({ key: request.key, file });
+            if (!stale()) storePrepared({ key: request.key, file });
           })
           .catch(fail);
       }
     },
-    [snapshot, device, uploadGlb, showQrCode]
+    [snapshot, device, uploadGlb, showQrCode, storePrepared]
   );
 
   const openQrCode = () => {
     const qrId = ++qrRequest.current;
     setQr({ status: 'loading' });
-    if (uploaded.current?.key === configKey) {
-      const { file } = uploaded.current;
-      showQrCode(file, qrId).catch(() => qrId === qrRequest.current && setQr({ status: 'error' }));
+    setCopied(false);
+    if (uploadedCache?.key === configKey) {
+      showQrCode(uploadedCache.file, qrId).catch(
+        (error) => qrId === qrRequest.current && setQr({ status: 'error', message: arErrorMessage(error) })
+      );
       return;
     }
     setSnapshot({ id: ++requestId.current, key: configKey, purpose: 'qr' });
@@ -153,6 +160,14 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   const closeQrCode = () => {
     qrRequest.current++;
     setQr(null);
+  };
+
+  // Lien à envoyer soi-même (message, e-mail) quand scanner n'est pas pratique
+  const copyLink = (link: string) => {
+    navigator.clipboard
+      ?.writeText(link)
+      .then(() => setCopied(true))
+      .catch(() => setCopied(false));
   };
 
   const launch = () => {
@@ -182,15 +197,15 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   } else if (prepared?.key === configKey) {
     button = { label: AR_MESSAGES.launch, onClick: launch };
     note = unavailable ? AR_MESSAGES.unavailable : AR_MESSAGES.tip;
-  } else if (failedKey === configKey) {
+  } else if (failed?.key === configKey) {
     button = {
       label: AR_MESSAGES.retry,
       onClick: () => {
-        setFailedKey(null);
+        setFailed(null);
         setAttempt((value) => value + 1);
       },
     };
-    note = AR_MESSAGES.failed;
+    note = failed.message;
   } else {
     button = { label: AR_MESSAGES.preparing, busy: true };
   }
@@ -226,7 +241,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
                 // eslint-disable-next-line @next/next/no-img-element -- image générée dans la page (data:), rien à optimiser
                 <img src={qr.image} alt="QR code vers la vue en réalité augmentée" width={240} height={240} />
               ) : qr?.status === 'error' ? (
-                <p className="text-center text-sm text-black/65">{AR_MESSAGES.failed}</p>
+                <p className="text-center text-sm text-black/65">{qr.message}</p>
               ) : (
                 <span
                   aria-label={AR_MESSAGES.preparing}
@@ -235,6 +250,26 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
                 />
               )}
             </div>
+            {qr?.status === 'ready' && (
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={qr.link}
+                  aria-label="Lien vers la vue en réalité augmentée"
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="min-w-0 flex-1 border border-black/10 bg-am-paper px-2 py-2 font-mono text-[11px] text-black/70"
+                  style={{ borderRadius: '2px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => copyLink(qr.link)}
+                  className="flex-shrink-0 border border-am-navy px-3 py-2 text-xs font-medium text-am-navy transition-colors hover:bg-am-navy hover:text-white"
+                  style={{ borderRadius: '2px' }}
+                >
+                  {copied ? 'Lien copié' : 'Copier le lien'}
+                </button>
+              </div>
+            )}
             {qr?.status === 'ready' && onLocalHost && (
               <p className="text-[11px] leading-relaxed text-am-wine">
                 Le site est ouvert sur localhost : votre téléphone ne peut pas joindre cette adresse. Ouvrez-le avec

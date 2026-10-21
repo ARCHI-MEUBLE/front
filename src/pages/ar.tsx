@@ -1,12 +1,16 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
 import { AR_MESSAGES } from '@/components/ar/arMessages';
-import { useArDevice, useArModel } from '@/components/ar/useArViewer';
-import { isArModelFile } from '@/lib/ar/arModelFile';
+import { useArDevice, useArModel, useArModelAvailability } from '@/components/ar/useArViewer';
+import { arModelPath, isArModelFile } from '@/lib/ar/arModelFile';
+
+// Aperçu 3D (WebGL : navigateur seulement)
+const ArModelPreview = dynamic(() => import('@/components/ar/ArModelPreview'), { ssr: false });
 
 const STEPS = [
   'Visez le sol de la pièce et bougez doucement le téléphone.',
@@ -26,6 +30,7 @@ export default function ArPage() {
   const size = [dimension(l), dimension(p), dimension(h)];
   const device = useArDevice();
   const arCapable = device === 'quick-look' || device === 'scene-viewer';
+  const availability = useArModelAvailability(file);
   const ar = useArModel(device, file);
 
   let content: React.ReactNode;
@@ -38,6 +43,8 @@ export default function ArPage() {
         Finitions.
       </p>
     );
+  } else if (availability === 'missing') {
+    content = <p className="text-sm leading-relaxed text-black/65">{AR_MESSAGES.expired}</p>;
   } else if (!arCapable) {
     content = (
       <p className="text-sm leading-relaxed text-black/65">
@@ -87,6 +94,15 @@ export default function ArPage() {
             <p className="mt-3 font-mono text-sm text-black/70">
               {size[0]} × {size[1]} × {size[2]} mm
             </p>
+          )}
+
+          {file && (availability === 'available' || availability === 'unknown') && (
+            <figure className="mt-8">
+              <div className="h-[300px] overflow-hidden border border-black/10 bg-white" style={{ borderRadius: '2px', touchAction: 'none' }}>
+                <ArModelPreview url={arModelPath(file)} />
+              </div>
+              <figcaption className="mt-2 text-xs text-black/65">Aperçu : faites tourner le meuble du doigt.</figcaption>
+            </figure>
           )}
 
           <div className="mt-8 space-y-3">{content}</div>
