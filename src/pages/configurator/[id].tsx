@@ -24,6 +24,8 @@ import DivisionSteps, { zoneAtLevel, type DivisionLevel } from '@/components/con
 import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
+import ArViewSection from '@/components/configurator/ArViewSection';
+import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import MountingStyleSelector from '@/components/configurator/steps/MountingStyleSelector';
 import {
   CONFIG_STEPS,
@@ -79,6 +81,44 @@ import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 // Pièce choisie pour la vue 3D, retenue d'une visite à l'autre
 const ROOM_SCENE_KEY = 'archimeuble:room-scene';
+
+// Au-delà de cette largeur (mm), un meuble vierge est automatiquement scindé en 2 caissons
+// côte à côte — même règle et même seuil que CAISSON_LARGEUR_MAX_MM dans procedure_real.py.
+const CAISSON_WIDTH_THRESHOLD_MM = 1000;
+
+// Si l'utilisateur repasse sous le seuil dans ce délai (ms) sans avoir touché au caisson
+// auto-créé, celui-ci est retiré automatiquement. Passé ce délai, il devient définitif.
+const CAISSON_AUTO_REMOVE_GRACE_MS = 20000;
+
+// Construit récursivement des caissons de ≤ CAISSON_WIDTH_THRESHOLD_MM chacun — si une moitié
+// est encore trop large après la coupe, elle est recoupée à son tour (même logique que
+// decouper_en_caissons dans procedure_real.py). `isCaisson` marque les divisions créées ici,
+// pour que ThreeCanvas sache lesquelles doubler sans deviner via l'id ou le nombre d'enfants.
+function buildCaissonTree(id: string, widthMm: number): Zone {
+  if (widthMm <= CAISSON_WIDTH_THRESHOLD_MM) {
+    return { id, type: 'leaf', content: 'empty' };
+  }
+  return {
+    id,
+    type: 'vertical',
+    splitRatio: 50,
+    children: [
+      buildCaissonTree(`${id}-0`, widthMm / 2),
+      buildCaissonTree(`${id}-1`, widthMm / 2),
+    ],
+  };
+}
+
+// Vrai si `zone` est exactement ce que buildCaissonTree produirait — c'est-à-dire si rien n'a
+// encore été configuré dedans (condition pour le retrait automatique pendant le délai de grâce).
+function isUntouchedCaissonTree(zone: Zone): boolean {
+  if (zone.type === 'leaf') {
+    return zone.content === 'empty' && !zone.children;
+  }
+  return zone.type === 'vertical'
+    && zone.children?.length === 2
+    && zone.children.every(isUntouchedCaissonTree);
+}
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
 function notifyRemovedFacades(removed: number) {
@@ -306,6 +346,44 @@ export default function ConfiguratorPage() {
     type: 'leaf',
     content: 'empty',
   }, { maxHistory: 30 });
+
+  // Au-delà de cette largeur (mm), un meuble encore vierge (jamais configuré) est
+  // automatiquement scindé en 2 caissons côte à côte — même règle et même seuil que
+  // CAISSON_LARGEUR_MAX_MM dans procedure_real.py.
+  // Pendant CAISSON_AUTO_REMOVE_GRACE_MS après cette création automatique, si l'utilisateur
+  // repasse sous le seuil sans avoir touché au caisson (toujours 2 colonnes vides), il est
+  // retiré automatiquement. Passé ce délai, il devient définitif.
+  const autoCaissonPendingRef = useRef(false);
+  const caissonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const isBlankLeaf = rootZone.type === 'leaf' && rootZone.content === 'empty' && !rootZone.children;
+    const isUntouchedAutoCaisson = isUntouchedCaissonTree(rootZone) && rootZone.type === 'vertical';
+
+    if (width > CAISSON_WIDTH_THRESHOLD_MM && isBlankLeaf) {
+      setRootZone(buildCaissonTree('root', width));
+      autoCaissonPendingRef.current = true;
+      if (caissonTimerRef.current) clearTimeout(caissonTimerRef.current);
+      caissonTimerRef.current = setTimeout(() => {
+        autoCaissonPendingRef.current = false;
+        caissonTimerRef.current = null;
+      }, CAISSON_AUTO_REMOVE_GRACE_MS);
+      return;
+    }
+
+    if (width <= CAISSON_WIDTH_THRESHOLD_MM && autoCaissonPendingRef.current && isUntouchedAutoCaisson) {
+      setRootZone({ id: 'root', type: 'leaf', content: 'empty' });
+      autoCaissonPendingRef.current = false;
+      if (caissonTimerRef.current) {
+        clearTimeout(caissonTimerRef.current);
+        caissonTimerRef.current = null;
+      }
+    }
+  }, [width, rootZone, setRootZone]);
+
+  useEffect(() => () => {
+    if (caissonTimerRef.current) clearTimeout(caissonTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -630,6 +708,29 @@ export default function ConfiguratorPage() {
       shelfCount: shelfCount,
     };
   }, [glbUrl, templatePrompt, shelfCount]);
+
+  // Meuble exporté pour la réalité augmentée (section « Voir chez moi ») : celui de la vue 3D, sans pièce ni sélection
+  const arFurniture = useMemo<ThreeViewerProps>(() => ({
+    width,
+    height,
+    depth,
+    color,
+    imageUrl: selectedColorImage,
+    hasSocle: socle !== 'none',
+    socle,
+    rootZone,
+    isBuffet: templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3'),
+    componentColors,
+    useMultiColor,
+    doorType,
+    doorSide,
+    mountingStyle,
+    deletedPanelIds,
+  }), [width, height, depth, color, selectedColorImage, socle, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds]);
+  const arConfigKey = useMemo(
+    () => JSON.stringify({ ...arFurniture, deletedPanelIds: Array.from(deletedPanelIds) }),
+    [arFurniture, deletedPanelIds]
+  );
 
   const [activeStep, setActiveStep] = useState<ConfigStep>(1);
   const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<ConfigStep>>(() => new Set<ConfigStep>([1]));
@@ -2918,7 +3019,7 @@ export default function ConfiguratorPage() {
                       type="button"
                       onClick={() => setRoomLightsOn(!roomLightsOn)}
                       aria-pressed={roomLightsOn}
-                      aria-label={roomLightsOn ? 'Éteindre les lumières' : 'Allumer les lumières'}
+                      aria-label={roomLightsOn ? 'Éteindre les lumières' : 'jour / nuit'}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
                         roomLightsOn ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
                       }`}
@@ -3323,6 +3424,12 @@ export default function ConfiguratorPage() {
                             stats={zoneStats}
                           />
                         </StepSection>
+
+                        <ArViewSection
+                          furniture={arFurniture}
+                          configKey={arConfigKey}
+                          disabledReason={hasZoneIssues ? "Corrigez d'abord le meuble : il ne peut pas être fabriqué tel quel." : null}
+                        />
                       </>
                     )}
                   </div>
@@ -3426,8 +3533,15 @@ export default function ConfiguratorPage() {
         )}
       </div>
 
-      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
-        <DialogContent className="bg-white">
+      {/* Fermer la fenêtre sans choisir laissait le configurateur en attente (initialConfigApplied jamais vrai) : plus aucune
+          génération 3D ni sauvegarde. La croix vaut « Ignorer » ; un clic à côté ou Échap ne ferment pas, pour ne pas
+          effacer une session par mégarde. */}
+      <Dialog open={showRestoreDialog} onOpenChange={(open) => !open && discardPendingRestore()}>
+        <DialogContent
+          className="bg-white"
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Reprendre votre session ?</DialogTitle>
             <DialogDescription>
