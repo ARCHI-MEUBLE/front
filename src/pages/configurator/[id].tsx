@@ -25,6 +25,7 @@ import ZoneQuickMenu from '@/components/configurator/steps/ZoneQuickMenu';
 import ZoneEmptyState from '@/components/configurator/steps/ZoneEmptyState';
 import ConfigRecap from '@/components/configurator/steps/ConfigRecap';
 import ArViewSection from '@/components/configurator/ArViewSection';
+import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import MountingStyleSelector from '@/components/configurator/steps/MountingStyleSelector';
 import {
   CONFIG_STEPS,
@@ -227,23 +228,6 @@ export default function ConfiguratorPage() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [pendingRestoreConfig, setPendingRestoreDialog] = useState<any>(null);
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
-  // Dernière génération de l'aperçu, pour la relancer à l'identique en mode fermé (réalité augmentée, voir prepareArModel)
-  const lastGenerationRef = useRef<{
-    glbUrl: string;
-    closed: boolean;
-    request: {
-      prompt: string;
-      singleColor?: string;
-      furnitureColors?: FurnitureColors;
-      deletedPanels?: string[];
-      zones?: Zone;
-    };
-  } | null>(null);
-  const arModelRef = useRef<{ sourceGlbUrl: string; glbUrl: Promise<string> } | null>(null);
-  // Échec de la dernière génération (message du backend) : glbUrl montre alors une version précédente du meuble
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  // Prompt de la configuration actuelle, pour relancer la génération à la demande
-  const latestPromptRef = useRef<string | null>(null);
   const [dxfUrl, setDxfUrl] = useState<string | null>(null);
   const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
   const [editingConfigName, setEditingConfigName] = useState<string>('');
@@ -648,6 +632,29 @@ export default function ConfiguratorPage() {
       shelfCount: shelfCount,
     };
   }, [glbUrl, templatePrompt, shelfCount]);
+
+  // Meuble exporté pour la réalité augmentée (section « Voir chez moi ») : celui de la vue 3D, sans pièce ni sélection
+  const arFurniture = useMemo<ThreeViewerProps>(() => ({
+    width,
+    height,
+    depth,
+    color,
+    imageUrl: selectedColorImage,
+    hasSocle: socle !== 'none',
+    socle,
+    rootZone,
+    isBuffet: templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3'),
+    componentColors,
+    useMultiColor,
+    doorType,
+    doorSide,
+    mountingStyle,
+    deletedPanelIds,
+  }), [width, height, depth, color, selectedColorImage, socle, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds]);
+  const arConfigKey = useMemo(
+    () => JSON.stringify({ ...arFurniture, deletedPanelIds: Array.from(deletedPanelIds) }),
+    [arFurniture, deletedPanelIds]
+  );
 
   const [activeStep, setActiveStep] = useState<ConfigStep>(1);
   const [visitedSteps, setVisitedSteps] = useState<ReadonlySet<ConfigStep>>(() => new Set<ConfigStep>([1]));
@@ -2165,59 +2172,24 @@ export default function ConfiguratorPage() {
 
       const zonesForSegmentation = deletedPanelsArray.length > 0 ? rootZone : undefined;
 
-      const deletedPanels = deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined;
       const result = await apiClient.generate.generate(
         prompt,
         excludeDoors,
         singleColor,
         furnitureColors,
-        deletedPanels,
+        deletedPanelsArray.length > 0 ? deletedPanelsArray : undefined,
         zonesForSegmentation
       );
 
-      lastGenerationRef.current = {
-        glbUrl: result.glb_url,
-        closed: excludeDoors,
-        request: { prompt, singleColor, furnitureColors, deletedPanels, zones: zonesForSegmentation },
-      };
       let glbUrlAbsolute = result.glb_url;
       setGlbUrl(glbUrlAbsolute);
       setDxfUrl(result.dxf_url || null);
-      setGenerationError(null);
     } catch (error) {
       console.warn('Génération 3D impossible :', error instanceof Error ? error.message : error);
-      setGenerationError(error instanceof Error && error.message ? error.message : 'erreur inconnue');
     } finally {
       setGenerating(false);
     }
   }, [selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds, rootZone]);
-
-  // GLB de la réalité augmentée : celui de l'aperçu, mais tiroirs et portes fermés comme à la livraison.
-  // L'aperçu les sort quand les portes sont affichées ouvertes : on relance alors la même génération en mode fermé,
-  // une seule fois par aperçu (la promesse est partagée entre le bouton du téléphone et le QR code de l'ordinateur).
-  const prepareArModel = useCallback(async () => {
-    const last = lastGenerationRef.current;
-    if (!last) throw new Error('Aucun modèle 3D généré');
-    if (last.closed) return last.glbUrl;
-    let pending = arModelRef.current;
-    if (pending?.sourceGlbUrl !== last.glbUrl) {
-      const { prompt, singleColor, furnitureColors, deletedPanels, zones } = last.request;
-      const glbUrl = apiClient.generate
-        .generate(prompt, true, singleColor, furnitureColors, deletedPanels, zones)
-        .then((result) => result.glb_url);
-      pending = { sourceGlbUrl: last.glbUrl, glbUrl };
-      arModelRef.current = pending;
-      // Échec : la prochaine demande relance la génération
-      glbUrl.catch(() => {
-        if (arModelRef.current?.glbUrl === glbUrl) arModelRef.current = null;
-      });
-    }
-    return pending.glbUrl;
-  }, []);
-
-  const retryGeneration = useCallback(() => {
-    if (latestPromptRef.current) generateModel(latestPromptRef.current);
-  }, [generateModel]);
 
   useEffect(() => {
     if (!templatePrompt || !initialConfigApplied) return;
@@ -2264,7 +2236,6 @@ export default function ConfiguratorPage() {
       componentColors
     }));
 
-    latestPromptRef.current = prompt;
     if (hasZoneIssues) return;
 
     const timer = setTimeout(() => generateModel(prompt), 300);
@@ -3379,15 +3350,9 @@ export default function ConfiguratorPage() {
                         </StepSection>
 
                         <ArViewSection
-                          sourceGlbUrl={glbUrl}
-                          generating={generating}
-                          generationError={generationError}
-                          onRetryGeneration={retryGeneration}
+                          furniture={arFurniture}
+                          configKey={arConfigKey}
                           disabledReason={hasZoneIssues ? "Corrigez d'abord le meuble : il ne peut pas être fabriqué tel quel." : null}
-                          prepareModel={prepareArModel}
-                          width={width}
-                          depth={depth}
-                          height={height}
                         />
                       </>
                     )}

@@ -21,6 +21,29 @@ export function useArDevice(): ArDevice | null {
 
 export type ArModelStatus = 'idle' | 'preparing' | 'ready' | 'error';
 
+// Le fichier d'un QR code existe-t-il encore ? Le backend supprime les vues AR non redéposées depuis 30 jours.
+// 'unknown' : le serveur n'a pas répondu, on laisse la page tenter sa chance.
+export function useArModelAvailability(file: string | null): 'checking' | 'available' | 'missing' | 'unknown' {
+  const [result, setResult] = useState<{ file: string; status: 'available' | 'missing' | 'unknown' } | null>(null);
+
+  useEffect(() => {
+    if (!file) return;
+    let cancelled = false;
+    fetch(arModelPath(file), { method: 'HEAD' })
+      .then((response) => {
+        if (!cancelled) setResult({ file, status: response.ok ? 'available' : response.status === 404 ? 'missing' : 'unknown' });
+      })
+      .catch(() => {
+        if (!cancelled) setResult({ file, status: 'unknown' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
+
+  return result?.file === file ? result.status : 'checking';
+}
+
 // Nom affiché par Scene Viewer au-dessus du meuble
 const AR_TITLE = 'Votre meuble';
 
