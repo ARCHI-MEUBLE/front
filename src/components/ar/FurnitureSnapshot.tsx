@@ -63,7 +63,7 @@ export default function FurnitureSnapshot({ furniture, onReady }: FurnitureSnaps
             {...furniture}
             doorsOpen={false}
             showDecorations={false}
-            hideDrawers={false}
+            hideFacades={false}
             selectedZoneIds={NO_ZONES}
             selectionTint={false}
             onSelectZone={undefined}

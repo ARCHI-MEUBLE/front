@@ -74,6 +74,7 @@ import {
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
@@ -298,7 +299,7 @@ export default function ConfiguratorPage() {
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
   // Affichage seulement (non enregistré) : sans les tiroirs, on voit mieux les séparations
-  const [hideDrawers, setHideDrawers] = useState(false);
+  const [hideFacades, setHideFacades] = useState(false);
   // Pièce de la vue 3D : préférence d'affichage du visiteur, gardée dans son navigateur (pas dans la config)
   const [roomScene, setRoomScene] = useState<RoomScene>('neutral');
   // Salon, Chambre : lampes allumées (ambiance du soir) ou éteintes (lumière du jour)
@@ -671,7 +672,7 @@ export default function ConfiguratorPage() {
   const isSelectedZoneColorizable = useMemo(() => {
     if (!selectedZone) return false;
 
-    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right'];
+    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right', 'niche'];
 
     if (selectedZone.type === 'leaf' && colorableContents.includes(selectedZone.content || '')) {
       return true;
@@ -872,13 +873,14 @@ export default function ConfiguratorPage() {
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
 
-  // Un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
-  const drawerCountRef = useRef(zoneStats.drawers);
+  // Une porte ou un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
+  const facadeCount = zoneStats.drawers + zoneStats.doors;
+  const facadeCountRef = useRef(facadeCount);
   useEffect(() => {
-    if (zoneStats.drawers > drawerCountRef.current) setHideDrawers(false);
-    drawerCountRef.current = zoneStats.drawers;
-  }, [zoneStats.drawers]);
-  const canHideDrawers = show3DView && zoneStats.drawers > 0;
+    if (facadeCount > facadeCountRef.current) setHideFacades(false);
+    facadeCountRef.current = facadeCount;
+  }, [facadeCount]);
+  const canHideFacades = show3DView && facadeCount > 0;
 
   // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
   // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
@@ -1028,6 +1030,8 @@ export default function ConfiguratorPage() {
     ];
   const selectedFacadeDefaultName =
     colorsForMaterial.find((option) => option.id === selectedFacadeDefault.colorId)?.name ?? null;
+  // Une niche, elle, prend par défaut le fond du meuble en plus sombre
+  const selectedIsNiche = selectedZone?.content === 'niche';
 
   // Récapitulatif : couleur des façades seulement si elle diffère de la structure
   const facadeSameAsStructure =
@@ -2931,7 +2935,7 @@ export default function ConfiguratorPage() {
                     isBuffet={furnitureStructure?.isBuffet}
                     doorsOpen={doorsOpen}
                     showDecorations={showDecorations}
-                    hideDrawers={hideDrawers}
+                    hideFacades={hideFacades}
                     roomScene={roomScene}
                     roomLightsOn={roomLightsOn}
                     onToggleDoors={isViewMode ? undefined : handleToggleDoors}
@@ -3052,14 +3056,14 @@ export default function ConfiguratorPage() {
                   >
                     {doorsOpen ? <DoorClosed className="h-4 w-4" /> : <DoorOpen className="h-4 w-4" />}
                   </button>
-                  {canHideDrawers && (
+                  {canHideFacades && (
                     <button
                       type="button"
-                      onClick={() => setHideDrawers(!hideDrawers)}
-                      aria-pressed={hideDrawers}
-                      aria-label={hideDrawers ? 'Afficher les tiroirs' : 'Cacher les tiroirs'}
+                      onClick={() => setHideFacades(!hideFacades)}
+                      aria-pressed={hideFacades}
+                      aria-label={hideFacades ? 'Afficher les tiroirs et portes' : 'Cacher les tiroirs et portes'}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
-                        hideDrawers ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                        hideFacades ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
                       }`}
                       style={{ borderRadius: '2px' }}
                     >
@@ -3160,21 +3164,21 @@ export default function ConfiguratorPage() {
                     <span>{doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}</span>
                   </button>
 
-                  {canHideDrawers && (
+                  {canHideFacades && (
                     <button
                       type="button"
-                      onClick={() => setHideDrawers(!hideDrawers)}
-                      aria-pressed={hideDrawers}
+                      onClick={() => setHideFacades(!hideFacades)}
+                      aria-pressed={hideFacades}
                       className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
-                        hideDrawers
+                        hideFacades
                           ? 'border-am-navy bg-am-navy text-white'
                           : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
                       }`}
                       style={{ borderRadius: '2px' }}
-                      title="Masquer les tiroirs pour mieux voir les séparations"
+                      title="Masquer les tiroirs et les portes pour mieux voir les séparations"
                     >
                       <EyeOff className="h-4 w-4" />
-                      <span>{hideDrawers ? 'Afficher les tiroirs' : 'Cacher les tiroirs'}</span>
+                      <span>{hideFacades ? 'Afficher les tiroirs et portes' : 'Cacher les tiroirs et portes'}</span>
                     </button>
                   )}
                 </div>
@@ -3366,23 +3370,39 @@ export default function ConfiguratorPage() {
                         />
 
                         {isSelectedZoneColorizable && selectedZone ? (
-                          <StepSection title="Une porte ou un tiroir en particulier" aside="Compartiment sélectionné">
+                          <StepSection
+                            title={selectedIsNiche ? 'Une niche en particulier' : 'Une porte ou un tiroir en particulier'}
+                            aside="Compartiment sélectionné"
+                          >
                             <ZoneColorPicker
                               inline
                               zone={selectedZone}
                               materialsMap={materialsMap}
                               selectedMaterialKey={selectedMaterialLabel}
-                              defaultColor={selectedFacadeDefault.hex || color}
-                              defaultImageUrl={selectedFacadeDefault.imageUrl ?? null}
-                              defaultColorName={selectedFacadeDefaultName}
+                              defaultColor={
+                                selectedIsNiche
+                                  ? nicheDefaultColor(displayedComponentColors.back.hex || color)
+                                  : selectedFacadeDefault.hex || color
+                              }
+                              defaultImageUrl={selectedIsNiche ? null : selectedFacadeDefault.imageUrl ?? null}
+                              defaultColorName={selectedIsNiche ? null : selectedFacadeDefaultName}
                               onColorChange={setZoneColor}
                               onClose={() => setSelectedZoneIds([])}
                             />
                           </StepSection>
                         ) : (
-                          zoneStats.doors + zoneStats.drawers > 0 && (
+                          zoneStats.doors + zoneStats.drawers + zoneStats.niches > 0 && (
                             <p className="text-[11px] leading-relaxed text-black/65">
-                              Astuce : cliquez sur une porte ou un tiroir du meuble pour lui donner une couleur différente.
+                              Astuce : cliquez sur{' '}
+                              {[
+                                zoneStats.doors > 0 && 'une porte',
+                                zoneStats.drawers > 0 && 'un tiroir',
+                                zoneStats.niches > 0 && 'une niche',
+                              ]
+                                .filter(Boolean)
+                                .join(', ')
+                                .replace(/, ([^,]*)$/, ' ou $1')}{' '}
+                              du meuble pour lui donner une couleur différente.
                             </p>
                           )
                         )}
