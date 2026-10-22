@@ -53,7 +53,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const text = await upstream.text();
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(text);
   } catch (error) {
-    console.error('[AR UPLOAD] Backend injoignable :', error instanceof Error ? error.message : error);
+    // « fetch failed » ne dit rien : la cause (ECONNREFUSED quand le backend démarre encore, ECONNRESET…) est en dessous
+    const cause = error instanceof Error ? (error.cause as { code?: string; message?: string } | undefined) : undefined;
+    console.error(
+      '[AR UPLOAD] Backend injoignable :',
+      error instanceof Error ? error.message : error,
+      cause ? `(${cause.code ?? cause.message ?? 'cause inconnue'}, ${BACKEND_URL})` : ''
+    );
     res.status(502).json({ success: false, error: 'Le serveur des modèles 3D ne répond pas. Réessayez dans un instant.' });
   }
 }
