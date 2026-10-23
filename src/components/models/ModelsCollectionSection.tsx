@@ -66,11 +66,11 @@ export function ModelsCollectionSection({
       </div>
 
       {isLoading ? (
-        <div className="grid items-center gap-10 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-12">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-12 w-40 animate-pulse rounded-lg bg-am-wine/15" />
-            <div className="h-16 w-[230px] animate-pulse rounded-lg bg-am-wine/25" />
-            <div className="h-12 w-40 animate-pulse rounded-lg bg-am-wine/15" />
+        <div className="grid items-center gap-10 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
+          <div className="mx-auto flex w-[230px] flex-col gap-[56px] lg:w-[260px]">
+            <div className="h-5 w-32 animate-pulse rounded bg-am-wine/15" />
+            <div className="h-7 w-48 animate-pulse rounded bg-am-wine/30" />
+            <div className="h-5 w-28 animate-pulse rounded bg-am-wine/15" />
           </div>
           <div className="grid grid-cols-1 gap-3 px-10 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -97,7 +97,7 @@ export function ModelsCollectionSection({
       ) : (
         // reducedMotion="user" : les déplacements deviennent instantanés si le système demande moins d'animations
         <MotionConfig reducedMotion="user">
-          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-12">
+          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
             <CategoryCarousel groups={groups} virtualIndex={nav.virtualIndex} onStep={stepCategory} />
             <ProductCarousel
               groups={groups}

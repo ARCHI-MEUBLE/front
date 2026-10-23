@@ -86,3 +86,5 @@ public/models/*.dxf
 .env
 .env.example
 .env.server_test
+scripts/meubles-test-carrousel.pdf
+scripts/meubles-test-carrousel.md
