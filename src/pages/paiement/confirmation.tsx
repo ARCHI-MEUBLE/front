@@ -234,7 +234,8 @@ export default function PaymentConfirmation() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    window.open(`/backend/api/payment-link/download-invoice.php?payment_intent_id=${payment_intent}`, '_blank');
+                    const params = new URLSearchParams({ payment_intent_id: String(payment_intent), payment_intent_client_secret: String(payment_intent_client_secret ?? '') });
+                    window.open(`/backend/api/payment-link/download-invoice.php?${params}`, '_blank');
                   }}
                   className="flex-1 h-12"
                   size="lg"
