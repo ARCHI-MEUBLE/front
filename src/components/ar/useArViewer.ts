@@ -7,6 +7,7 @@ import {
   openQuickLook,
   openSceneViewer,
   type ArPlatform,
+  type SceneViewerIssue,
 } from '@/lib/ar/launchAr';
 
 export type ArDevice = ArPlatform | 'phone-without-ar' | 'desktop';
@@ -54,8 +55,8 @@ export function useArModel(device: ArDevice | null, file: string | null) {
   const [usdz, setUsdz] = useState<{ file: string; url: string } | null>(null);
   const [failedFile, setFailedFile] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  // Android : Chrome est revenu sur la page faute de Scene Viewer (ARCore absent)
-  const [unavailable, setUnavailable] = useState(false);
+  // Android : Scene Viewer ne s'est pas ouvert (voir openSceneViewer)
+  const [issue, setIssue] = useState<SceneViewerIssue | null>(null);
 
   useEffect(() => {
     if (device !== 'quick-look' || !file) return;
@@ -88,8 +89,8 @@ export function useArModel(device: ArDevice | null, file: string | null) {
     if (device === 'quick-look' && usdz?.file === file) {
       openQuickLook(usdz.url);
     } else if (device === 'scene-viewer') {
-      setUnavailable(false);
-      openSceneViewer(arModelPath(file), AR_TITLE, () => setUnavailable(true));
+      setIssue(null);
+      openSceneViewer(arModelPath(file), AR_TITLE, setIssue);
     }
   }, [device, file, usdz]);
 
@@ -98,5 +99,5 @@ export function useArModel(device: ArDevice | null, file: string | null) {
     setAttempt((value) => value + 1);
   }, []);
 
-  return { status, launch, retry, unavailable };
+  return { status, launch, retry, issue };
 }
