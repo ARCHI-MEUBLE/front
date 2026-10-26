@@ -16,7 +16,7 @@ export const DIMENSION_LIMITS = {
   // Le dessus et le dessous sont d'un seul tenant : pas plus long qu'une plaque
   width: { min: 300, max: PANEL_MAX_LENGTH_MM },
   // Hauteur totale, pieds compris
-  height: { min: 300, max: 2000 },
+  height: { min: 300, max: 2400 },
   depth: { min: 200, max: 800 },
 } as const;
 

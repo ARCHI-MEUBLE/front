@@ -26,8 +26,11 @@ export default function ProjectRequestDialog({ open, onOpenChange, getShare, pri
   const [error, setError] = useState<string | null>(null);
   const [sentLink, setSentLink] = useState<string | null>(null);
 
-  const update = (field: keyof typeof EMPTY_FORM) => (event: { target: { value: string } }) =>
+  // Le message d'erreur disparaît dès que le client corrige le formulaire
+  const update = (field: keyof typeof EMPTY_FORM) => (event: { target: { value: string } }) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
+    setError(null);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

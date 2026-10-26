@@ -17,9 +17,10 @@ function leaf(id: string, extra: Partial<Zone> = {}): Zone {
 }
 
 describe('dimensions', () => {
-  it('caps the height at 2 m and the width at one panel length', () => {
-    expect(DIMENSION_LIMITS.height.max).toBe(2000);
-    expect(clampDimension('height', 2400)).toBe(2000);
+  it('caps the height at 2.4 m and the width at one panel length', () => {
+    expect(DIMENSION_LIMITS.height.max).toBe(2400);
+    expect(clampDimension('height', 2400)).toBe(2400);
+    expect(clampDimension('height', 2600)).toBe(2400);
     expect(clampDimension('width', 6000)).toBe(2800);
     expect(clampDimension('depth', 50)).toBe(200);
   });
@@ -103,7 +104,7 @@ describe('findConstraintIssues', () => {
       splitRatios: [45, 45, 10],
       children: [leaf('wide-drawer', { content: 'drawer' }), leaf('wide-door', { content: 'door' }), tiny],
     };
-    const issues = findConstraintIssues(root, { width: 2100, height: 2400, depth: 390 });
+    const issues = findConstraintIssues(root, { width: 2100, height: 2500, depth: 390 });
     const kinds = issues.map((issue) => issue.kind);
 
     expect(kinds).toContain('dimensions');

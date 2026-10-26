@@ -15,10 +15,15 @@ export default function PaymentConfirmation() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!router.isReady) return;
     if (payment_intent && typeof payment_intent === 'string') {
       verifyPayment(payment_intent);
+    } else {
+      // Adresse ouverte sans paiement à vérifier (recopiée, retour Stripe incomplet) : la page tournait sans fin
+      setPaymentStatus('failed');
+      setIsVerifying(false);
     }
-  }, [payment_intent]);
+  }, [router.isReady, payment_intent]);
 
   const verifyPayment = async (paymentIntentId: string) => {
     try {
