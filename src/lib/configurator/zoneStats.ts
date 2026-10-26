@@ -38,6 +38,7 @@ export interface ZoneStats {
   compartments: number;
   doors: number;
   drawers: number;
+  niches: number;
   glassShelves: number;
   lights: number;
   cableHoles: number;
@@ -49,6 +50,7 @@ export function computeZoneStats(root: Zone): ZoneStats {
     compartments: 0,
     doors: 0,
     drawers: 0,
+    niches: 0,
     glassShelves: 0,
     lights: 0,
     cableHoles: 0,
@@ -67,6 +69,7 @@ export function computeZoneStats(root: Zone): ZoneStats {
       if (!zone.isOpenSpace) stats.compartments += 1;
       stats.doors += countDoors(zone.content);
       if (isDrawerContent(zone.content)) stats.drawers += 1;
+      if (zone.content === 'niche') stats.niches += 1;
       if (zone.content === 'glass_shelf') stats.glassShelves += zone.glassShelfCount || 1;
       if (zone.hasLight) stats.lights += 1;
       if (zone.hasCableHole) stats.cableHoles += 1;

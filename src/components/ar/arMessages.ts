@@ -10,15 +10,25 @@ export const AR_MESSAGES = {
   unavailable:
     "La réalité augmentée n'est pas disponible sur ce téléphone : elle demande l'application « Services Google Play pour la RA ».",
   failed: "Le modèle 3D n'a pas pu être préparé.",
-  offline: 'Le serveur ne répond pas : vérifiez la connexion puis réessayez.',
+  connection: "La connexion a été coupée pendant l'envoi du modèle 3D : réessayez.",
   expired: "Ce lien a expiré. Affichez un nouveau QR code depuis le configurateur, à l'étape Finitions.",
 } as const;
 
 // Message à montrer pour un échec de préparation : la raison donnée par le serveur quand elle parle à l'utilisateur
-// (trop de dépôts), sinon une phrase générale
+// (trop de dépôts, serveur des modèles injoignable), sinon une phrase générale
 export function arErrorMessage(error: unknown): string {
-  if (error instanceof ApiClientError && error.statusCode === 429 && error.message) return error.message;
-  // Serveur injoignable : fetch échoue avec une TypeError (« Failed to fetch », « NetworkError… », « Load failed » sur Safari)
-  if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) return AR_MESSAGES.offline;
+  if (error instanceof ApiClientError && (error.statusCode === 429 || error.statusCode === 502) && error.message) {
+    return error.message;
+  }
+  // fetch échoue avec une TypeError quand la requête ne part pas (« Failed to fetch », « NetworkError… »,
+  // « Load failed » sur Safari)
+  if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) return AR_MESSAGES.connection;
   return AR_MESSAGES.failed;
+}
+
+// En développement seulement : la cause exacte, à recopier pour comprendre une panne
+export function arErrorDetail(error: unknown): string | null {
+  if (process.env.NODE_ENV === 'production') return null;
+  if (error instanceof Error) return `${error.name} : ${error.message}`.slice(0, 300);
+  return String(error).slice(0, 300);
 }

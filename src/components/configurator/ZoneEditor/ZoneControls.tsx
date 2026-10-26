@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw, SquareDashed } from 'lucide-react';
 import { Zone, ZoneContent, HandleType } from './types';
 import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
@@ -558,6 +558,7 @@ export function DivisionStepper({
 const STORAGE_OPTIONS = [
   { id: 'drawer' as ZoneContent, icon: Archive, label: 'Tiroir', desc: 'Avec poignée' },
   { id: 'push_drawer' as ZoneContent, icon: BoxSelect, label: 'Tiroir Push', desc: 'Sans poignée' },
+  { id: 'niche' as ZoneContent, icon: SquareDashed, label: 'Niche', desc: 'Intérieur coloré' },
 ];
 
 const DOOR_OPTIONS = [
@@ -829,10 +830,10 @@ export default function ZoneControls({
       {show('storage') && (
         isLeaf ? (
           <div>
-            <SectionLabel hint="Un tiroir remplace la porte de ce compartiment.">
-              Tiroirs & rangements
+            <SectionLabel hint="Un tiroir ou une niche remplace la porte de ce compartiment.">
+              Tiroirs, niches & rangements
             </SectionLabel>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {STORAGE_OPTIONS.map(({ id, icon, label, desc }) => (
                 <OptionTile
                   key={id}
@@ -848,6 +849,14 @@ export default function ZoneControls({
                 />
               ))}
             </div>
+
+            {selectedZone.content === 'niche' && (
+              <div className="mt-3">
+                <InfoNote>
+                  Donnez-lui sa couleur à l&apos;étape Matières & couleurs : cliquez sur la niche, puis choisissez une teinte.
+                </InfoNote>
+              </div>
+            )}
 
             {selectedZone.content === 'glass_shelf' && onSetGlassShelfCount && (
               <div className="mt-3 flex items-center justify-between border border-black/10 bg-white p-3" style={{ borderRadius: '4px' }}>

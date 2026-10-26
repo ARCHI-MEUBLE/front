@@ -30,6 +30,7 @@ const CONTENT_LABELS: Record<string, string> = {
   push_door_right: 'Porte',
   mirror_door: 'Porte vitrée',
   mirror_door_right: 'Porte vitrée',
+  niche: 'Niche',
 };
 
 export default function ZoneColorPicker({
@@ -71,6 +72,7 @@ export default function ZoneColorPicker({
   }, [materialsMap, initialMaterialKey]);
 
   const contentLabel = zone.content ? CONTENT_LABELS[zone.content] || 'Élément' : 'Élément';
+  const target = zone.content === 'niche' ? 'cette niche' : 'cette façade';
   const hasCustomColor = !!zone.zoneColor?.hex;
   const currentColor = zone.zoneColor?.hex || defaultColor;
   // Une couleur propre à la façade passe devant celle de la partie du meuble, texture comprise
@@ -134,7 +136,7 @@ export default function ZoneColorPicker({
           />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-black/65">
-              {hasCustomColor ? 'Couleur de cette façade' : 'Couleur actuelle · par défaut'}
+              {hasCustomColor ? `Couleur de ${target}` : 'Couleur actuelle · par défaut'}
             </p>
             <p className="text-sm font-medium text-black truncate">
               {hasCustomColor ? displayColorName(customColorName) || 'Personnalisée' : displayColorName(defaultColorName) || 'Par défaut'}
@@ -193,7 +195,7 @@ export default function ZoneColorPicker({
       {/* Footer hint */}
       <div className="px-4 py-2 bg-am-mist/15 border-t border-black/10">
         <p className="text-xs text-black/65">
-          Cliquez sur une couleur pour l&apos;appliquer à cette façade
+          Cliquez sur une couleur pour l&apos;appliquer à {target}
         </p>
       </div>
     </div>

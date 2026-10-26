@@ -38,7 +38,15 @@ import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
-import AuthModal from '@/components/auth/AuthModal';
+import ShareButton from '@/components/configurator/ShareButton';
+import ProjectRequestDialog from '@/components/configurator/ProjectRequestDialog';
+import {
+  SHARE_QUERY_PARAM,
+  configDataToRestore,
+  configurationShareUrl,
+  createConfigurationShare,
+  fetchConfigurationShare,
+} from '@/lib/configurator/share';
 import { apiClient, type FurnitureModel, type SampleType, type SampleColor, type FurnitureColors } from '@/lib/apiClient';
 import { useCustomer } from '@/context/CustomerContext';
 import { ArrowLeft, ArrowRight, ChevronLeft, Box, DoorClosed, DoorOpen, EyeOff, RotateCcw, Sparkles, Undo2, Redo2, Sofa, BedDouble, Square, Lightbulb, LightbulbOff } from 'lucide-react';
@@ -74,6 +82,7 @@ import {
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
@@ -298,7 +307,7 @@ export default function ConfiguratorPage() {
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
   // Affichage seulement (non enregistré) : sans les tiroirs, on voit mieux les séparations
-  const [hideDrawers, setHideDrawers] = useState(false);
+  const [hideFacades, setHideFacades] = useState(false);
   // Pièce de la vue 3D : préférence d'affichage du visiteur, gardée dans son navigateur (pas dans la config)
   const [roomScene, setRoomScene] = useState<RoomScene>('neutral');
   // Salon, Chambre : lampes allumées (ambiance du soir) ou éteintes (lumière du jour)
@@ -671,7 +680,7 @@ export default function ConfiguratorPage() {
   const isSelectedZoneColorizable = useMemo(() => {
     if (!selectedZone) return false;
 
-    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right'];
+    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right', 'niche'];
 
     if (selectedZone.type === 'leaf' && colorableContents.includes(selectedZone.content || '')) {
       return true;
@@ -751,8 +760,7 @@ export default function ConfiguratorPage() {
   }, [show3DView]);
 
   const stepContentRef = useRef<HTMLDivElement>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const pendingSaveRef = useRef(false);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -872,13 +880,14 @@ export default function ConfiguratorPage() {
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
 
-  // Un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
-  const drawerCountRef = useRef(zoneStats.drawers);
+  // Une porte ou un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
+  const facadeCount = zoneStats.drawers + zoneStats.doors;
+  const facadeCountRef = useRef(facadeCount);
   useEffect(() => {
-    if (zoneStats.drawers > drawerCountRef.current) setHideDrawers(false);
-    drawerCountRef.current = zoneStats.drawers;
-  }, [zoneStats.drawers]);
-  const canHideDrawers = show3DView && zoneStats.drawers > 0;
+    if (facadeCount > facadeCountRef.current) setHideFacades(false);
+    facadeCountRef.current = facadeCount;
+  }, [facadeCount]);
+  const canHideFacades = show3DView && facadeCount > 0;
 
   // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
   // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
@@ -1028,6 +1037,8 @@ export default function ConfiguratorPage() {
     ];
   const selectedFacadeDefaultName =
     colorsForMaterial.find((option) => option.id === selectedFacadeDefault.colorId)?.name ?? null;
+  // Une niche, elle, prend par défaut le fond du meuble en plus sombre
+  const selectedIsNiche = selectedZone?.content === 'niche';
 
   // Récapitulatif : couleur des façades seulement si elle diffère de la structure
   const facadeSameAsStructure =
@@ -1372,20 +1383,7 @@ export default function ConfiguratorPage() {
 
           if (configDataObj) {
             configToRestore = {
-              width: configDataObj.dimensions?.width,
-              height: configDataObj.dimensions?.height,
-              depth: configDataObj.dimensions?.depth,
-              socle: configDataObj.styling?.socle || 'none',
-              rootZone: configDataObj.advancedZones,
-              finish: configDataObj.styling?.finish,
-              color: configDataObj.styling?.color,
-              colorImage: configDataObj.styling?.colorImage,
-              selectedColorId: configDataObj.styling?.selectedColorId,
-              useMultiColor: configDataObj.useMultiColor,
-              componentColors: configDataObj.componentColors,
-              doorType: configDataObj.features?.doorType,
-              doorSide: configDataObj.features?.doorSide,
-              deletedPanelIds: configDataObj.deletedPanelIds,
+              ...configDataToRestore(configDataObj),
               prompt: configDataToUse.prompt || configDataObj.prompt,
               name: configDataToUse.name || configDataObj.name
             };
@@ -1396,6 +1394,18 @@ export default function ConfiguratorPage() {
               setEditingConfigName(configToRestore.name);
             }
           }
+        }
+      }
+
+      // Lien partagé (?partage=…) : le meuble enregistré au moment du partage. Lu dans l'adresse plutôt que dans
+      // router.query, pour que le retrait du paramètre une fois le meuble affiché ne recharge pas le modèle.
+      const shareCode = new URLSearchParams(window.location.search).get(SHARE_QUERY_PARAM);
+      if (shareCode && !configToRestore && !isAdminCreateModel && !isAdminEditModel) {
+        try {
+          const share = await fetchConfigurationShare(shareCode);
+          configToRestore = { ...configDataToRestore(share.config_data), prompt: share.prompt };
+        } catch (shareErr) {
+          toast.error(shareErr instanceof Error ? shareErr.message : 'Ce lien de configuration est introuvable');
         }
       }
 
@@ -1424,20 +1434,7 @@ export default function ConfiguratorPage() {
           try {
             const dataObj = typeof modelData.config_data === 'string' ? JSON.parse(modelData.config_data) : modelData.config_data;
             configToRestore = {
-              width: dataObj.dimensions?.width,
-              height: dataObj.dimensions?.height,
-              depth: dataObj.dimensions?.depth,
-              socle: dataObj.styling?.socle || 'none',
-              rootZone: dataObj.advancedZones,
-              finish: dataObj.styling?.finish,
-              color: dataObj.styling?.color,
-              colorImage: dataObj.styling?.colorImage,
-              selectedColorId: dataObj.styling?.selectedColorId,
-              useMultiColor: dataObj.useMultiColor,
-              componentColors: dataObj.componentColors,
-              doorType: dataObj.features?.doorType,
-              doorSide: dataObj.features?.doorSide,
-              deletedPanelIds: dataObj.deletedPanelIds,
+              ...configDataToRestore(dataObj),
               prompt: modelData.prompt,
               name: modelData.name
             };
@@ -1658,6 +1655,15 @@ export default function ConfiguratorPage() {
     if (!router.isReady) return;
     if (id) loadModel();
   }, [id, loadModel, router.isReady]);
+
+  // Meuble partagé affiché : ?partage quitte l'adresse. Un rechargement propose alors de reprendre les modifications
+  // faites depuis (sauvegarde locale) au lieu de rouvrir le meuble tel qu'il a été partagé.
+  useEffect(() => {
+    if (!initialConfigApplied || typeof router.query[SHARE_QUERY_PARAM] !== 'string') return;
+    const query = { ...router.query };
+    delete query[SHARE_QUERY_PARAM];
+    router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+  }, [initialConfigApplied, router]);
 
   const resetConfiguration = useCallback(() => {
     if (!initialConfig) {
@@ -2483,19 +2489,72 @@ export default function ConfiguratorPage() {
     }
   };
 
-  const saveConfiguration = async () => {
-    if (hasZoneIssues) {
-      toast.error(`Ce meuble dépasse une limite de fabrication : ${constraintIssues[0].message}`);
-      focusZoneIssue();
+  // Meuble hors limites de fabrication : on le signale et on montre la zone en cause
+  const reportZoneIssues = () => {
+    if (!hasZoneIssues) return false;
+    toast.error(`Ce meuble dépasse une limite de fabrication : ${constraintIssues[0].message}`);
+    focusZoneIssue();
+    return true;
+  };
+
+  // Le meuble affiché dans le format enregistré en base, et son code de fabrication : ce que gardent « Valider » et le
+  // lien de partage
+  const buildConfigPayload = () => {
+    const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
+    const match = templatePrompt?.match(regex);
+    const meubleType = match?.[1] || 'M1';
+
+    let fullPrompt = `${meubleType}(${width},${depth},${height})EbF`;
+    if (socle === 'metal') fullPrompt += 'S';
+    else if (socle === 'wood') fullPrompt += 'S2';
+    fullPrompt += buildPromptFromZoneTree(rootZone);
+
+    const configData = {
+      dimensions: { width, depth, height },
+      styling: {
+        materialKey: selectedMaterialKey,
+        materialLabel: selectedMaterialLabel,
+        finish,
+        color,
+        colorLabel,
+        colorId: selectedColorId,
+        colorImage: selectedColorImage,
+        selectedColorId,
+        socle,
+      },
+      features: { doorsOpen, doorType, doorSide, mountingStyle },
+      advancedZones: rootZone,
+      useMultiColor,
+      componentColors,
+      deletedPanelIds: Array.from(deletedPanelIds),
+    };
+
+    return { fullPrompt, configData };
+  };
+
+  // Lien court vers le meuble affiché (bouton Partager, demande de projet). Le backend rend le même code pour un
+  // meuble identique : partager deux fois de suite ne crée pas deux liens.
+  const shareCurrentConfiguration = async () => {
+    const { fullPrompt, configData } = buildConfigPayload();
+    const code = await createConfigurationShare(String(id), fullPrompt, configData);
+    return { code, link: configurationShareUrl(window.location.origin, String(id), code) };
+  };
+
+  // Bouton final. Un client envoie sa demande par e-mail, sans compte. L'admin, ou un client qui modifie une
+  // configuration déjà enregistrée dans son compte, enregistre comme avant.
+  const validateConfiguration = () => {
+    if (isAdmin || (isEditMode && editingConfigId)) {
+      saveConfiguration();
       return;
     }
+    if (reportZoneIssues()) return;
+    setShowRequestDialog(true);
+  };
+
+  const saveConfiguration = async () => {
+    if (reportZoneIssues()) return;
 
     const isAdminEditingConfig = isEditMode && editingConfigId;
-
-    if (!isAdmin && !isAdminEditingConfig && (!isAuthenticated || !customer)) {
-      setShowAuthModal(true);
-      return;
-    }
 
     let configNameInput = editingConfigName;
 
@@ -2511,34 +2570,7 @@ export default function ConfiguratorPage() {
     }
 
     try {
-      const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
-      const match = templatePrompt?.match(regex);
-      const meubleType = match?.[1] || 'M1';
-
-      let fullPrompt = `${meubleType}(${width},${depth},${height})EbF`;
-      if (socle === 'metal') fullPrompt += 'S';
-      else if (socle === 'wood') fullPrompt += 'S2';
-      fullPrompt += buildPromptFromZoneTree(rootZone);
-
-      const configData = {
-        dimensions: { width, depth, height },
-        styling: {
-          materialKey: selectedMaterialKey,
-          materialLabel: selectedMaterialLabel,
-          finish,
-          color,
-          colorLabel,
-          colorId: selectedColorId,
-          colorImage: selectedColorImage,
-          selectedColorId,
-          socle,
-        },
-        features: { doorsOpen, doorType, doorSide, mountingStyle },
-        advancedZones: rootZone,
-        useMultiColor,
-        componentColors,
-        deletedPanelIds: Array.from(deletedPanelIds),
-      };
+      const { fullPrompt, configData } = buildConfigPayload();
 
       const payload = {
         id: editingConfigId ?? undefined,
@@ -2593,13 +2625,6 @@ export default function ConfiguratorPage() {
       console.error('Erreur saveConfiguration:', err);
     }
   };
-
-  useEffect(() => {
-    if (isAuthenticated && customer && pendingSaveRef.current) {
-      pendingSaveRef.current = false;
-      setTimeout(() => saveConfiguration(), 300);
-    }
-  }, [isAuthenticated, customer, showAuthModal]);
 
   const handleAdminEdit = useCallback(() => {
     const { mode, ...rest } = router.query;
@@ -2886,6 +2911,12 @@ export default function ConfiguratorPage() {
                   {customer.first_name} {customer.last_name}
                 </span>
               )}
+              {!isAdminCreateModel && !isAdminEditModel && (
+                <ShareButton
+                  getLink={async () => (await shareCurrentConfiguration()).link}
+                  disabled={!initialConfigApplied}
+                />
+              )}
               <Link
                 href="/"
                 className="text-base font-semibold tracking-[-0.05em] text-black lg:text-lg"
@@ -2931,7 +2962,7 @@ export default function ConfiguratorPage() {
                     isBuffet={furnitureStructure?.isBuffet}
                     doorsOpen={doorsOpen}
                     showDecorations={showDecorations}
-                    hideDrawers={hideDrawers}
+                    hideFacades={hideFacades}
                     roomScene={roomScene}
                     roomLightsOn={roomLightsOn}
                     onToggleDoors={isViewMode ? undefined : handleToggleDoors}
@@ -3052,14 +3083,14 @@ export default function ConfiguratorPage() {
                   >
                     {doorsOpen ? <DoorClosed className="h-4 w-4" /> : <DoorOpen className="h-4 w-4" />}
                   </button>
-                  {canHideDrawers && (
+                  {canHideFacades && (
                     <button
                       type="button"
-                      onClick={() => setHideDrawers(!hideDrawers)}
-                      aria-pressed={hideDrawers}
-                      aria-label={hideDrawers ? 'Afficher les tiroirs' : 'Cacher les tiroirs'}
+                      onClick={() => setHideFacades(!hideFacades)}
+                      aria-pressed={hideFacades}
+                      aria-label={hideFacades ? 'Afficher les tiroirs et portes' : 'Cacher les tiroirs et portes'}
                       className={`flex h-10 w-10 items-center justify-center border shadow-sm ${
-                        hideDrawers ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
+                        hideFacades ? 'border-am-navy bg-am-navy text-white' : 'border-black/10 bg-white text-black'
                       }`}
                       style={{ borderRadius: '2px' }}
                     >
@@ -3160,21 +3191,21 @@ export default function ConfiguratorPage() {
                     <span>{doorsOpen ? 'Fermer les portes' : 'Ouvrir les portes'}</span>
                   </button>
 
-                  {canHideDrawers && (
+                  {canHideFacades && (
                     <button
                       type="button"
-                      onClick={() => setHideDrawers(!hideDrawers)}
-                      aria-pressed={hideDrawers}
+                      onClick={() => setHideFacades(!hideFacades)}
+                      aria-pressed={hideFacades}
                       className={`flex h-10 items-center gap-2 border px-4 text-sm font-medium shadow-sm transition-all ${
-                        hideDrawers
+                        hideFacades
                           ? 'border-am-navy bg-am-navy text-white'
                           : 'border-black/10 bg-white text-black/65 hover:border-am-navy hover:text-black'
                       }`}
                       style={{ borderRadius: '2px' }}
-                      title="Masquer les tiroirs pour mieux voir les séparations"
+                      title="Masquer les tiroirs et les portes pour mieux voir les séparations"
                     >
                       <EyeOff className="h-4 w-4" />
-                      <span>{hideDrawers ? 'Afficher les tiroirs' : 'Cacher les tiroirs'}</span>
+                      <span>{hideFacades ? 'Afficher les tiroirs et portes' : 'Cacher les tiroirs et portes'}</span>
                     </button>
                   )}
                 </div>
@@ -3366,23 +3397,39 @@ export default function ConfiguratorPage() {
                         />
 
                         {isSelectedZoneColorizable && selectedZone ? (
-                          <StepSection title="Une porte ou un tiroir en particulier" aside="Compartiment sélectionné">
+                          <StepSection
+                            title={selectedIsNiche ? 'Une niche en particulier' : 'Une porte ou un tiroir en particulier'}
+                            aside="Compartiment sélectionné"
+                          >
                             <ZoneColorPicker
                               inline
                               zone={selectedZone}
                               materialsMap={materialsMap}
                               selectedMaterialKey={selectedMaterialLabel}
-                              defaultColor={selectedFacadeDefault.hex || color}
-                              defaultImageUrl={selectedFacadeDefault.imageUrl ?? null}
-                              defaultColorName={selectedFacadeDefaultName}
+                              defaultColor={
+                                selectedIsNiche
+                                  ? nicheDefaultColor(displayedComponentColors.back.hex || color)
+                                  : selectedFacadeDefault.hex || color
+                              }
+                              defaultImageUrl={selectedIsNiche ? null : selectedFacadeDefault.imageUrl ?? null}
+                              defaultColorName={selectedIsNiche ? null : selectedFacadeDefaultName}
                               onColorChange={setZoneColor}
                               onClose={() => setSelectedZoneIds([])}
                             />
                           </StepSection>
                         ) : (
-                          zoneStats.doors + zoneStats.drawers > 0 && (
+                          zoneStats.doors + zoneStats.drawers + zoneStats.niches > 0 && (
                             <p className="text-[11px] leading-relaxed text-black/65">
-                              Astuce : cliquez sur une porte ou un tiroir du meuble pour lui donner une couleur différente.
+                              Astuce : cliquez sur{' '}
+                              {[
+                                zoneStats.doors > 0 && 'une porte',
+                                zoneStats.drawers > 0 && 'un tiroir',
+                                zoneStats.niches > 0 && 'une niche',
+                              ]
+                                .filter(Boolean)
+                                .join(', ')
+                                .replace(/, ([^,]*)$/, ' ou $1')}{' '}
+                              du meuble pour lui donner une couleur différente.
                             </p>
                           )
                         )}
@@ -3463,8 +3510,7 @@ export default function ConfiguratorPage() {
                 <div className="hidden flex-shrink-0 border-t border-black/10 bg-am-paper px-6 py-4 lg:block">
                   <PriceDisplay
                     price={price}
-                    onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : saveConfiguration}
-                    isAuthenticated={isAuthenticated}
+                    onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : validateConfiguration}
                     isAdmin={isAdmin}
                     isAdminCreateModel={isAdminCreateModel}
                     isAdminEditModel={isAdminEditModel}
@@ -3508,13 +3554,13 @@ export default function ConfiguratorPage() {
               {(!isAdminCreateModel && !isAdminEditModel) ? (
                 <button
                   type="button"
-                  onClick={saveConfiguration}
+                  onClick={validateConfiguration}
                   className="flex h-11 flex-1 max-w-[240px] items-center justify-center gap-2 bg-am-wine text-sm font-medium text-white transition-colors hover:bg-am-wine/90"
                   style={{ borderRadius: '2px' }}
                 >
                   <Box className="h-4 w-4" />
                   <span>
-                    {(isEditMode && editingConfigId) ? 'Enregistrer' : (isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider' : 'Enregistrer'))}
+                    {(isEditMode && editingConfigId) ? 'Enregistrer' : (isAdmin ? 'Terminer' : 'Valider')}
                   </span>
                 </button>
               ) : (
@@ -3567,13 +3613,11 @@ export default function ConfiguratorPage() {
         </DialogContent>
       </Dialog>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          setShowAuthModal(false);
-          pendingSaveRef.current = true;
-        }}
+      <ProjectRequestDialog
+        open={showRequestDialog}
+        onOpenChange={setShowRequestDialog}
+        getShare={shareCurrentConfiguration}
+        price={price}
       />
 
       {showModelCreatedModal && (

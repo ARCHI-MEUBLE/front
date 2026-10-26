@@ -4,7 +4,7 @@ import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
 import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import { AR_MESSAGES, arErrorMessage } from '@/components/ar/arMessages';
+import { AR_MESSAGES, arErrorDetail, arErrorMessage } from '@/components/ar/arMessages';
 import { useArDevice } from '@/components/ar/useArViewer';
 import { apiClient } from '@/lib/apiClient';
 import { arModelFileFromUrl, arModelPath } from '@/lib/ar/arModelFile';
@@ -24,7 +24,10 @@ interface ArViewSectionProps {
   disabledReason?: string | null;
 }
 
-type QrState = { status: 'loading' } | { status: 'ready'; image: string; link: string } | { status: 'error'; message: string };
+type QrState =
+  | { status: 'loading' }
+  | { status: 'ready'; image: string; link: string }
+  | { status: 'error'; message: string; detail: string | null };
 // Vue AR prête pour une version du meuble : USDZ dans le navigateur (iPhone) ou GLB déposé sur le backend (Android, QR)
 type Prepared = { key: string; usdzUrl: string } | { key: string; file: string };
 type SnapshotRequest = { id: number; key: string; purpose: 'device' | 'qr' };
@@ -48,7 +51,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
 
   const [snapshot, setSnapshot] = useState<SnapshotRequest | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(() => preparedCache);
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
+  const [failed, setFailed] = useState<{ key: string; message: string; detail: string | null } | null>(null);
   const [attempt, setAttempt] = useState(0);
   // Android : Chrome est revenu sur la page faute de Scene Viewer (ARCore absent)
   const [unavailable, setUnavailable] = useState(false);
@@ -116,7 +119,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
           .then((file) => showQrCode(file, qrId))
           .catch((error) => {
             console.warn('QR code de la réalité augmentée impossible :', error instanceof Error ? error.message : error);
-            if (qrId === qrRequest.current) setQr({ status: 'error', message: arErrorMessage(error) });
+            if (qrId === qrRequest.current) setQr({ status: 'error', message: arErrorMessage(error), detail: arErrorDetail(error) });
           });
         return;
       }
@@ -124,7 +127,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       const stale = () => request.key !== latestKey.current;
       const fail = (error: unknown) => {
         console.warn('Vue en réalité augmentée impossible :', error instanceof Error ? error.message : error);
-        if (!stale()) setFailed({ key: request.key, message: arErrorMessage(error) });
+        if (!stale()) setFailed({ key: request.key, message: arErrorMessage(error), detail: arErrorDetail(error) });
       };
       if (device === 'quick-look') {
         furnitureToUsdzUrl(root)
@@ -150,7 +153,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     setCopied(false);
     if (uploadedCache?.key === configKey) {
       showQrCode(uploadedCache.file, qrId).catch(
-        (error) => qrId === qrRequest.current && setQr({ status: 'error', message: arErrorMessage(error) })
+        (error) => qrId === qrRequest.current && setQr({ status: 'error', message: arErrorMessage(error), detail: arErrorDetail(error) })
       );
       return;
     }
@@ -182,6 +185,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
 
   let button: { label: string; onClick?: () => void; disabled?: boolean; busy?: boolean };
   let note: string | null = null;
+  let detail: string | null = null;
 
   if (device === null) {
     button = { label: AR_MESSAGES.launch, disabled: true };
@@ -206,6 +210,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       },
     };
     note = failed.message;
+    detail = failed.detail;
   } else {
     button = { label: AR_MESSAGES.preparing, busy: true };
   }
@@ -223,6 +228,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
           {note}
         </p>
       )}
+      {detail && <p className="break-all font-mono text-[10px] leading-relaxed text-am-wine">Détail (développement) : {detail}</p>}
 
       {snapshot && <FurnitureSnapshot key={snapshot.id} furniture={furniture} onReady={handleSnapshotReady} />}
 
@@ -241,7 +247,20 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
                 // eslint-disable-next-line @next/next/no-img-element -- image générée dans la page (data:), rien à optimiser
                 <img src={qr.image} alt="QR code vers la vue en réalité augmentée" width={240} height={240} />
               ) : qr?.status === 'error' ? (
-                <p className="text-center text-sm text-black/65">{qr.message}</p>
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <p className="text-sm text-black/65">{qr.message}</p>
+                  {qr.detail && (
+                    <p className="break-all font-mono text-[10px] leading-relaxed text-am-wine">Détail (développement) : {qr.detail}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={openQrCode}
+                    className="border border-am-navy px-4 py-2 text-xs font-medium text-am-navy transition-colors hover:bg-am-navy hover:text-white"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {AR_MESSAGES.retry}
+                  </button>
+                </div>
               ) : (
                 <span
                   aria-label={AR_MESSAGES.preparing}

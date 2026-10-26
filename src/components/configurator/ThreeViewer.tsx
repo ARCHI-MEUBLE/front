@@ -36,7 +36,7 @@ export interface ThreeViewerProps {
   doorsOpen?: boolean;
   showDecorations?: boolean;
   // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
-  hideDrawers?: boolean;
+  hideFacades?: boolean;
   // Pièce autour du meuble (neutre par défaut)
   roomScene?: RoomScene;
   // Salon, Chambre : lampes allumées, ambiance du soir

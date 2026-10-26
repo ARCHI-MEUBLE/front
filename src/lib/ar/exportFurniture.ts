@@ -33,6 +33,25 @@ export function prepareFurnitureForExport(source: THREE.Object3D): THREE.Group {
   const root = new THREE.Group();
   root.name = 'Meuble';
 
+  // Chaque planche charge sa propre copie de la texture de sa couleur : les exporteurs l'inscriraient une fois par
+  // planche (des Mo pour un meuble très divisé). On fait pointer les planches d'une même image vers une seule texture.
+  const sharedTextures = new Map<string, THREE.Texture>();
+  const shareTexture = (material: THREE.Material): THREE.Material => {
+    const map = (material as THREE.MeshStandardMaterial).map;
+    const src = (map?.image as HTMLImageElement | undefined)?.src;
+    if (!map || !src) return material;
+    const shared = sharedTextures.get(src);
+    if (!shared) {
+      sharedTextures.set(src, map);
+      return material;
+    }
+    if (shared === map) return material;
+    const copy = (material as THREE.MeshStandardMaterial).clone();
+    copy.map = shared;
+    return copy;
+  };
+  const prepareMaterial = (material: THREE.Material) => shareTexture(exportMaterial(material));
+
   source.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh || (mesh as THREE.InstancedMesh).isInstancedMesh || !isVisibleInTree(mesh)) return;
@@ -44,7 +63,7 @@ export function prepareFurnitureForExport(source: THREE.Object3D): THREE.Group {
 
     const copy = new THREE.Mesh(
       mesh.geometry,
-      Array.isArray(mesh.material) ? mesh.material.map(exportMaterial) : exportMaterial(mesh.material)
+      Array.isArray(mesh.material) ? mesh.material.map(prepareMaterial) : prepareMaterial(mesh.material)
     );
     copy.name = mesh.name;
     // Position par rapport au meuble, quelle que soit la place du meuble dans sa scène
@@ -92,6 +111,16 @@ async function retryWithoutTextures<T>(root: THREE.Group, run: (scene: THREE.Gro
 
 export async function furnitureToGlb(root: THREE.Group): Promise<ArrayBuffer> {
   const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
+  // Textures des couleurs (bois, laques) en JPEG plutôt qu'en PNG : plusieurs fois plus léger. Le fichier est déposé en
+  // passant par une fonction Vercel, qui refuse les requêtes de plus de 4,5 Mo.
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      const map = (material as THREE.MeshStandardMaterial).map;
+      if (map && !material.transparent) map.userData.mimeType = 'image/jpeg';
+    }
+  });
   return retryWithoutTextures(root, async (scene) => {
     const result = await new GLTFExporter().parseAsync(scene, { binary: true, onlyVisible: true, maxTextureSize: 1024 });
     if (!(result instanceof ArrayBuffer)) throw new Error('Export GLB inattendu');
