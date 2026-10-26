@@ -17,10 +17,10 @@ function leaf(id: string, extra: Partial<Zone> = {}): Zone {
 }
 
 describe('dimensions', () => {
-  it('caps the height at 2.4 m and the width at one panel length', () => {
-    expect(DIMENSION_LIMITS.height.max).toBe(2400);
-    expect(clampDimension('height', 2400)).toBe(2400);
-    expect(clampDimension('height', 2600)).toBe(2400);
+  it('caps the height at 2.2 m and the width at one panel length', () => {
+    expect(DIMENSION_LIMITS.height.max).toBe(2200);
+    expect(clampDimension('height', 2200)).toBe(2200);
+    expect(clampDimension('height', 2400)).toBe(2200);
     expect(clampDimension('width', 6000)).toBe(2800);
     expect(clampDimension('depth', 50)).toBe(200);
   });
