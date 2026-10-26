@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { ModelCardData } from "@/components/models/ModelCard";
@@ -6,6 +6,8 @@ import { CategoryCarousel } from "@/components/models/CategoryCarousel";
 import { ProductCarousel } from "@/components/models/ProductCarousel";
 import { groupModelsByCategory, mod, useVisibleCount } from "@/components/models/modelsCarousel";
 import { Category } from "@/lib/apiClient";
+
+const PANEL_THROTTLE = 200;
 
 export function ModelsCollectionSection({
   models,
@@ -34,12 +36,33 @@ export function ModelsCollectionSection({
 
   // Catégorie imposée par l'URL (?category=…) : recalage pendant le rendu (et non dans un effet) pour ne jamais
   // afficher d'abord la première catégorie ; on reste sur le même « tour » pour éviter un saut d'animation
+  // Panneau des modèles : suit la catégorie au plus toutes les PANEL_THROTTLE ms (le premier pas tout de suite, puis la
+  // dernière catégorie atteinte). La liste reste instantanée, mais une molette rapide n'empile pas les transitions.
+  const [panelNav, setPanelNav] = useState(nav);
+  const lastPanelUpdate = useRef(0);
+
   if (activeIndex >= 0 && activeIndex !== currentIndex) {
-    setNav({
+    const synced = {
       virtualIndex: nav.virtualIndex + activeIndex - currentIndex,
       direction: activeIndex > currentIndex ? 1 : -1,
-    });
+    };
+    setNav(synced);
+    // Saut imposé par l'URL : le panneau s'aligne directement, sans transition depuis la mauvaise catégorie
+    setPanelNav(synced);
   }
+
+  useEffect(() => {
+    if (nav.virtualIndex === panelNav.virtualIndex) return;
+    const wait = Math.max(0, PANEL_THROTTLE - (performance.now() - lastPanelUpdate.current));
+    const timer = setTimeout(() => {
+      lastPanelUpdate.current = performance.now();
+      setPanelNav((shown) => ({
+        virtualIndex: nav.virtualIndex,
+        direction: Math.sign(nav.virtualIndex - shown.virtualIndex) || 1,
+      }));
+    }, wait);
+    return () => clearTimeout(timer);
+  }, [nav.virtualIndex, panelNav.virtualIndex]);
 
   const stepCategory = (delta: number) => {
     if (groups.length < 2) return;
@@ -66,8 +89,8 @@ export function ModelsCollectionSection({
       </div>
 
       {isLoading ? (
-        <div className="grid items-center gap-10 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
-          <div className="mx-auto flex w-[230px] flex-col gap-[56px] lg:w-[260px]">
+        <div className="grid items-center gap-10 lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-12">
+          <div className="mx-auto flex w-[250px] flex-col gap-[56px] lg:w-[290px]">
             <div className="h-5 w-32 animate-pulse rounded bg-am-wine/15" />
             <div className="h-7 w-48 animate-pulse rounded bg-am-wine/30" />
             <div className="h-5 w-28 animate-pulse rounded bg-am-wine/15" />
@@ -97,12 +120,12 @@ export function ModelsCollectionSection({
       ) : (
         // reducedMotion="user" : les déplacements deviennent instantanés si le système demande moins d'animations
         <MotionConfig reducedMotion="user">
-          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
+          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-12">
             <CategoryCarousel groups={groups} virtualIndex={nav.virtualIndex} onStep={stepCategory} />
             <ProductCarousel
               groups={groups}
-              virtualIndex={nav.virtualIndex}
-              direction={nav.direction}
+              virtualIndex={panelNav.virtualIndex}
+              direction={panelNav.direction}
               visible={visible}
             />
           </div>

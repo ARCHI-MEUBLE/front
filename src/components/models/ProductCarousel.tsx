@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ModelCardData } from "@/components/models/ModelCard";
 import { ModelCarouselCard } from "@/components/models/ModelCarouselCard";
-import { carouselSlots, mod, type CategoryGroup } from "@/components/models/modelsCarousel";
+import { carouselSlots, mod, useGestureStep, type CategoryGroup } from "@/components/models/modelsCarousel";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 // Sert uniquement à réserver la hauteur d'une carte d'aperçu absente (rendue invisible)
@@ -15,16 +15,37 @@ const PLACEHOLDER_MODEL: ModelCardData = {
   categoryLabel: "",
 };
 
+// Même chevron en trait fin que la navigation des catégories, tourné à l'horizontale
 function Arrow({ direction }: { direction: "left" | "right" }) {
   return (
-    <svg viewBox="0 0 28 56" aria-hidden="true" className="h-10 w-5 sm:h-14 sm:w-7">
-      <path
-        d={direction === "left" ? "M28 0 L0 28 L28 56 L28 42 L14 28 L28 14 Z" : "M0 0 L28 28 L0 56 L0 42 L14 28 L0 14 Z"}
-        fill="currentColor"
+    <svg viewBox="0 0 13 24" aria-hidden="true" className="h-8 w-[17px]">
+      <polyline
+        points={direction === "left" ? "11.5,2 2,12 11.5,22" : "1.5,2 11,12 1.5,22"}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
 }
+
+// Changement de catégorie : le bloc glisse dans le sens de la navigation et ses rangées arrivent en cascade, avec un
+// léger flou, en commençant par celle qui vient du côté de l'arrivée
+const BLOCK_VARIANTS = {
+  enter: (d: number) => ({ y: d * 90 }),
+  center: (d: number) => ({
+    y: 0,
+    transition: { duration: 0.42, ease: EASE, staggerChildren: 0.05, staggerDirection: d > 0 ? -1 : 1 },
+  }),
+  exit: (d: number) => ({ y: d * -90, transition: { duration: 0.24, ease: EASE } }),
+};
+const ROW_VARIANTS = {
+  enter: { opacity: 0, scale: 0.97, filter: "blur(6px)" },
+  center: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { duration: 0.36, ease: EASE } },
+  exit: { opacity: 0, scale: 0.98, filter: "blur(6px)", transition: { duration: 0.22, ease: EASE } },
+};
 
 // Aperçu atténué d'une catégorie voisine (au-dessus : précédente, au-dessous : suivante), purement décoratif.
 // Les emplacements vides gardent leur place pour que la hauteur ne change pas d'une catégorie à l'autre.
@@ -74,7 +95,7 @@ function MainRow({ group, offset, visible }: { group: CategoryGroup; offset: num
               className="px-1 sm:px-1.5"
               initial={false}
               animate={{ x: `${slot * 100}%` }}
-              transition={{ duration: 0.5, ease: EASE }}
+              transition={{ duration: 0.36, ease: EASE }}
               aria-hidden={inView ? undefined : true}
             >
               <ModelCarouselCard model={group.models[index]} focusable={inView} />
@@ -112,6 +133,7 @@ export function ProductCarousel({
   const shown = Math.min(visible, modelCount);
   const canScroll = modelCount > shown;
   const scrollBy = (delta: number) => setScroll({ slug: current.slug, offset: offset + delta });
+  const gestureRef = useGestureStep<HTMLElement>("x", scrollBy, canScroll);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (!canScroll) return;
@@ -123,14 +145,16 @@ export function ProductCarousel({
 
   const firstShown = mod(offset, Math.max(modelCount, 1)) + 1;
   const arrowClass =
-    "flex h-14 w-8 flex-none items-center justify-center self-center rounded text-am-navy transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy disabled:opacity-25 sm:h-16 sm:w-10";
+    "flex h-16 w-9 flex-none items-center justify-center self-center rounded text-am-navy transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy disabled:opacity-25 sm:w-12";
 
   return (
+    // touch-pan-y : la page défile toujours au doigt à la verticale, le glissé horizontal fait défiler les modèles
     <section
+      ref={gestureRef}
       aria-roledescription="carrousel"
       aria-label={`Modèles : ${current.label}`}
       onKeyDown={handleKeyDown}
-      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-x-1 sm:gap-x-4"
+      className="grid min-w-0 touch-pan-y grid-cols-[auto_minmax(0,1fr)_auto] gap-x-1 sm:gap-x-4"
     >
       <button
         type="button"
@@ -147,20 +171,25 @@ export function ProductCarousel({
           <motion.div
             key={virtualIndex}
             custom={direction}
-            variants={{
-              enter: (d: number) => ({ y: d * 48, opacity: 0 }),
-              center: { y: 0, opacity: 1 },
-              exit: (d: number) => ({ y: d * -48, opacity: 0 }),
-            }}
+            variants={BLOCK_VARIANTS}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.4, ease: EASE }}
             className="flex w-full flex-col gap-4 sm:gap-6"
           >
-            {prev && <PreviewRow group={prev} visible={visible} />}
-            <MainRow group={current} offset={offset} visible={visible} />
-            {next && <PreviewRow group={next} visible={visible} />}
+            {prev && (
+              <motion.div variants={ROW_VARIANTS}>
+                <PreviewRow group={prev} visible={visible} />
+              </motion.div>
+            )}
+            <motion.div variants={ROW_VARIANTS}>
+              <MainRow group={current} offset={offset} visible={visible} />
+            </motion.div>
+            {next && (
+              <motion.div variants={ROW_VARIANTS}>
+                <PreviewRow group={next} visible={visible} />
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

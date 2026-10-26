@@ -2,7 +2,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiClient, FurnitureModel, Category } from "@/lib/apiClient";
 import { ModelsHero } from "@/components/models/ModelsHero";
 import { ModelsCollectionSection } from "@/components/models/ModelsCollectionSection";
@@ -29,11 +29,21 @@ export default function ModelsPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
 
+  // Dernière catégorie écrite dans l'URL par la page elle-même : son retour via router.query ne doit rien changer,
+  // sinon une URL en retard sur la navigation ramènerait le carrousel en arrière
+  const writtenCategoryRef = useRef<string | null>(null);
+  const urlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    if (router.isReady && router.query.category) {
-      setActiveCategory(router.query.category as string);
+    const category = router.query.category;
+    if (router.isReady && typeof category === "string" && category !== writtenCategoryRef.current) {
+      setActiveCategory(category);
     }
   }, [router.isReady, router.query.category]);
+
+  useEffect(() => () => {
+    if (urlTimerRef.current) clearTimeout(urlTimerRef.current);
+  }, []);
 
   const loadModels = useCallback(async () => {
     try {
@@ -76,9 +86,15 @@ export default function ModelsPage() {
     return { ...model, categoryLabel: category ? category.name : model.categorySlug };
   });
 
+  // L'état change tout de suite ; l'URL n'est réécrite qu'une fois la navigation posée (molette ou glissé enchaînent
+  // plusieurs catégories par seconde, et un router.replace à chaque pas saccade le carrousel)
   const handleCategoryChange = (slug: string) => {
     setActiveCategory(slug);
-    router.replace(slug === "all" ? "/models" : `/models?category=${slug}`, undefined, { shallow: true });
+    writtenCategoryRef.current = slug;
+    if (urlTimerRef.current) clearTimeout(urlTimerRef.current);
+    urlTimerRef.current = setTimeout(() => {
+      router.replace(slug === "all" ? "/models" : `/models?category=${slug}`, undefined, { shallow: true });
+    }, 250);
   };
 
   return (

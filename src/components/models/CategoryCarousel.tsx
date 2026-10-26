@@ -1,11 +1,14 @@
 import type { KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { mod, type CategoryGroup } from "@/components/models/modelsCarousel";
+import { mod, useGestureStep, type CategoryGroup } from "@/components/models/modelsCarousel";
 
 // Écart vertical entre deux catégories, en px ; les filets séparateurs sont placés à mi-chemin
 const PITCH = 84;
 // Taille des catégories voisines par rapport à l'active (qui reprend la taille du titre de section)
 const NEIGHBOUR_SCALE = 0.66;
+// Effet « roulette » : la catégorie active ressort vers la droite, les autres s'inclinent comme sur un tambour
+const ACTIVE_SHIFT = 32;
+const TILT = 20;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 function Chevron({ direction }: { direction: "up" | "down" }) {
@@ -40,6 +43,7 @@ export function CategoryCarousel({
   const canStep = count > 1;
   // Les positions ±2 sont montées invisibles pour que la catégorie entrante arrive en glissant
   const slots = count >= 3 ? [-2, -1, 0, 1, 2] : count === 2 ? [0, 1] : [0];
+  const gestureRef = useGestureStep<HTMLElement>("y", onStep, canStep);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (!canStep) return;
@@ -50,7 +54,7 @@ export function CategoryCarousel({
   };
 
   return (
-    <nav aria-label="Catégories de meubles" onKeyDown={handleKeyDown} className="flex flex-col items-center gap-2">
+    <nav ref={gestureRef} aria-label="Catégories de meubles" onKeyDown={handleKeyDown} className="flex flex-col items-center gap-2">
       <button
         type="button"
         onClick={() => onStep(-1)}
@@ -61,7 +65,12 @@ export function CategoryCarousel({
         <Chevron direction="up" />
       </button>
 
-      <ul className="relative m-0 grid h-[252px] w-[230px] list-none place-items-center p-0 lg:w-[260px]">
+      {/* touch-none : un glissé vertical sur la liste change de catégorie au lieu de faire défiler la page */}
+      <ul
+        className="relative m-0 grid h-[252px] w-[250px] touch-none list-none place-items-center p-0 lg:w-[290px]"
+        // Point de fuite au niveau des libellés (alignés à gauche) : sans ça l'inclinaison les cisaille en faux italique
+        style={{ perspective: 600, perspectiveOrigin: "22% 50%" }}
+      >
         {/* Repères fixes : filets autour de la catégorie active et barre bordeaux à gauche ; seuls les libellés glissent */}
         {canStep && (
           <>
@@ -69,7 +78,16 @@ export function CategoryCarousel({
             <span aria-hidden="true" className="absolute inset-x-0 h-px bg-black/10" style={{ top: `calc(50% + ${PITCH / 2}px)` }} />
           </>
         )}
-        <span aria-hidden="true" className="absolute top-1/2 -left-7 h-12 w-1 -translate-y-1/2 rounded-full bg-am-wine" />
+        {/* Clée sur l'index : la barre se redessine à chaque changement de catégorie pour marquer l'arrivée */}
+        <span aria-hidden="true" className="absolute top-1/2 -left-7 flex h-12 w-1 -translate-y-1/2 items-center">
+          <motion.span
+            key={virtualIndex}
+            className="h-full w-full rounded-full bg-am-wine"
+            initial={{ scaleY: 0, opacity: 0 }}
+            animate={{ scaleY: 1, opacity: 1 }}
+            transition={{ duration: 0.35, ease: EASE, delay: 0.05 }}
+          />
+        </span>
         <AnimatePresence initial={false}>
           {slots.map((slot) => {
             const key = virtualIndex + slot;
@@ -82,10 +100,16 @@ export function CategoryCarousel({
                 style={{ gridArea: "1 / 1" }}
                 // Les positions ±2, invisibles, débordent sur les flèches : sans pointer-events-none elles captent leurs clics
                 className={`h-14 w-full origin-left ${isHidden ? "pointer-events-none" : ""}`}
-                initial={{ y: slot * PITCH, opacity: 0, scale: NEIGHBOUR_SCALE }}
-                animate={{ y: slot * PITCH, opacity: isHidden ? 0 : 1, scale: isActive ? 1 : NEIGHBOUR_SCALE }}
+                initial={{ y: slot * PITCH, x: 0, rotateX: -slot * TILT, opacity: 0, scale: NEIGHBOUR_SCALE }}
+                animate={{
+                  y: slot * PITCH,
+                  x: isActive ? ACTIVE_SHIFT : 0,
+                  rotateX: -slot * TILT,
+                  opacity: isHidden ? 0 : 1,
+                  scale: isActive ? 1 : NEIGHBOUR_SCALE,
+                }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.45, ease: EASE }}
+                transition={{ duration: 0.32, ease: EASE }}
                 aria-hidden={isHidden || undefined}
               >
                 <button
@@ -96,7 +120,7 @@ export function CategoryCarousel({
                   aria-label={isActive ? `${group.label}, catégorie affichée` : `Afficher : ${group.label}`}
                   // Typographie du titre de section (text-subheading) ; la taille réduite des voisines vient de l'échelle
                   // animée du <li> (origine à gauche), ce qui garde l'alignement et évite un saut de police
-                  className={`flex h-full w-full items-center rounded px-2 text-left text-subheading whitespace-nowrap transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-wine ${
+                  className={`flex h-full w-full items-center rounded px-2 text-left text-subheading whitespace-nowrap transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-wine ${
                     isActive ? "cursor-default text-am-wine" : "cursor-pointer text-am-wine/45 hover:text-am-wine/70"
                   }`}
                 >
