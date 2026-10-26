@@ -26,6 +26,7 @@ export type Zone = {
   glassShelfCount?: number; // Nombre d'étagères en verre (1-5, défaut: 1)
   glassShelfPositions?: number[]; // Positions des étagères en % depuis le bas (0-100)
   isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
+  noBack?: boolean; // Fond retiré sur ce seul compartiment
 };
 
 export interface ZoneContentMeta {

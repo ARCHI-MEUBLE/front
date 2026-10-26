@@ -42,6 +42,7 @@ interface ZoneEditorProps {
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
   onToggleDressing?: (zoneId: string) => void;
+  onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   onDeleteSection?: (zoneId: string) => void;
@@ -54,6 +55,7 @@ interface ZoneEditorProps {
     toggleLight: (zoneId: string) => void;
     toggleCableHole: (zoneId: string) => void;
     toggleDressing: (zoneId: string) => void;
+    applyNoBack: (zoneId: string) => void;
     groupZones: (zoneIds: string[], forceContent?: ZoneContent) => void;
     selectedZoneInfo: { zone: Zone; parent: Zone | null } | null;
   }) => void;
@@ -78,6 +80,7 @@ export default function ZoneEditor({
   onToggleLight,
   onToggleCableHole,
   onToggleDressing,
+  onApplyNoBack,
   onGroupZones,
   onSetHandleType,
   onSetZoneContent,
@@ -350,6 +353,27 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onToggleCableHole]
   );
 
+  // Pose un fond vide : retire aussi la façade, un fond vide n'a rien à porter
+  const applyNoBack = useCallback(
+    (zoneId: string) => {
+      if (onApplyNoBack) {
+        onApplyNoBack(zoneId);
+      } else {
+        const updateZone = (z: Zone): Zone => {
+          if (z.id === zoneId && z.type === 'leaf') {
+            return { ...z, noBack: true, content: 'empty' };
+          }
+          if (z.children) {
+            return { ...z, children: z.children.map(updateZone) };
+          }
+          return z;
+        };
+        onRootZoneChange(updateZone(rootZone));
+      }
+    },
+    [rootZone, onRootZoneChange, onApplyNoBack]
+  );
+
   // Basculer la penderie
   const toggleDressing = useCallback(
     (zoneId: string) => {
@@ -550,11 +574,12 @@ export default function ZoneEditor({
         toggleLight,
         toggleCableHole,
         toggleDressing,
+        applyNoBack,
         groupZones,
         selectedZoneInfo,
       });
     }
-  }, [exposeActions, splitZone, setZoneContent, setDoorContent, resetZone, toggleLight, toggleCableHole, toggleDressing, groupZones, selectedZoneInfo]);
+  }, [exposeActions, splitZone, setZoneContent, setDoorContent, resetZone, toggleLight, toggleCableHole, toggleDressing, applyNoBack, groupZones, selectedZoneInfo]);
 
   return (
     <div className="space-y-3">
@@ -735,6 +760,7 @@ export default function ZoneEditor({
             onToggleLight={onToggleLight || toggleLight}
             onToggleCableHole={onToggleCableHole || toggleCableHole}
             onToggleDressing={onToggleDressing || toggleDressing}
+            onApplyNoBack={onApplyNoBack || applyNoBack}
             onGroupZones={groupZones}
             onSetHandleType={onSetHandleType || setHandleType}
             onSetGlassShelfCount={setGlassShelfCount}

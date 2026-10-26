@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw, PanelBottomClose } from 'lucide-react';
 import { Zone, ZoneContent, HandleType } from './types';
 import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
@@ -29,6 +29,7 @@ interface ZoneControlsProps {
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
   onToggleDressing?: (zoneId: string) => void;
+  onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   onSetGlassShelfCount?: (zoneId: string, count: number) => void;
@@ -587,6 +588,7 @@ export default function ZoneControls({
   onToggleLight,
   onToggleCableHole,
   onToggleDressing,
+  onApplyNoBack,
   onGroupZones,
   onSetHandleType,
   onSetGlassShelfCount,
@@ -763,7 +765,7 @@ export default function ZoneControls({
               icon={Minus}
               label="Aucune"
               desc={isLeaf ? 'Compartiment ouvert' : 'Pas de porte'}
-              active={currentFacade === 'empty'}
+              active={currentFacade === 'empty' && !selectedZone.noBack}
               onClick={() => {
                 setDoorSideDialog({ isOpen: false, doorType: null });
                 applyFacade('empty');
@@ -787,6 +789,18 @@ export default function ZoneControls({
                 />
               );
             })}
+            {isLeaf && onApplyNoBack && (
+              <OptionTile
+                icon={PanelBottomClose}
+                label="Fond vide"
+                desc="Pas de fond"
+                active={!!selectedZone.noBack}
+                onClick={() => {
+                  setDoorSideDialog({ isOpen: false, doorType: null });
+                  onApplyNoBack(selectedZone.id);
+                }}
+              />
+            )}
           </div>
 
           {doorSideDialog.isOpen && (

@@ -113,21 +113,31 @@ export function Furniture({
         }));
     }, []);
     const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
-    const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
+    const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
         const { width: w, depth: d, sideHeight, yOffset, thickness } = layout;
         const h = (height || 730) / 1000;
-        const backPanelThickness = 0.004;
+        // Le fond n'est pas flush contre l'arrière réelle du meuble : il glisse dans une rainure
+        // des plaques latérales, en retrait de cette distance (même valeur que RAINURE_FOND_MM
+        // dans procedure_real.py). backPanelRenderThickness est l'épaisseur à laquelle le fond
+        // est dessiné ici (simplifiée : 4mm, pas la vraie épaisseur de 19mm du panneau extérieur
+        // — simplification déjà en place avant ce changement, pas quelque chose à corriger ici).
+        const backPanelGroove = 0.020;
+        const backPanelRenderThickness = 0.004;
+        // Position Z du centre du fond, et épaisseur vue par les étagères/cloisons pour
+        // s'arrêter juste devant sa face avant (rainure + épaisseur rendue).
+        const backPanelZ = -d / 2 + backPanelGroove + backPanelRenderThickness / 2;
+        const backPanelThickness = backPanelGroove + backPanelRenderThickness;
         const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
         const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
         const doorRecess = 0;
-        return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
+        return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess };
     }, [layout, height, mountingStyle]);
 
     // Une division verticale à la racine est un caisson (double planche : chaque caisson a sa
     // propre paroi, comme en Python) — elle consomme donc 2x l'épaisseur, pas 1x comme une
     // cloison normale à l'intérieur d'un compartiment.
-    const isCaissonSplit = (zone: Zone) => zone.id === 'root' && zone.type === 'vertical' && zone.children?.length === 2;
+    const isCaissonSplit = (zone: Zone) => zone.id === 'root' && zone.type === 'vertical';
     const separatorThickness = (zone: Zone) => isCaissonSplit(zone) ? thickness * 2 : thickness;
 
     // ── Pointeur : survol, sélection et ouverture des façades ──────────────────
@@ -608,6 +618,8 @@ export function Furniture({
         const maxCellX = Math.max(...allCells.map(c => c.x + c.width / 2));
 
         allCells.forEach((cell, i) => {
+            if (cell.zone.noBack) return;
+
             let segX = cell.x;
             let segY = cell.y;
             let segWidth = cell.width;
@@ -767,7 +779,7 @@ export function Furniture({
 
         console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
 
-        if (backSegments.length === 0) {
+        if (backSegments.length === 0 && !allCells.every(cell => cell.zone.noBack)) {
             backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
         }
 
@@ -836,8 +848,12 @@ export function Furniture({
 
                 const hitboxBehindDoor = hasDoorInFront || !!zone.doorContent;
                 const hitboxRecess = hitboxBehindDoor ? 0.005 : 0;
-                const hitboxDepth = d - hitboxRecess + 0.002;
-                const hitboxZ = -hitboxRecess / 2;
+                const frontEdge = (d - hitboxRecess + 0.002) / 2 - hitboxRecess / 2;
+                const rearEdge = onSelectPanel
+                    ? Math.max(-(d - hitboxRecess + 0.002) / 2 - hitboxRecess / 2, backPanelZ + 0.004)
+                    : -(d - hitboxRecess + 0.002) / 2 - hitboxRecess / 2;
+                const hitboxDepth = frontEdge - rearEdge;
+                const hitboxZ = (frontEdge + rearEdge) / 2;
                 // Les compartiments du bord englobent aussi les panneaux extérieurs : cliquer sur le côté, le
                 // dessus ou le dessous du meuble sélectionne le compartiment voisin au lieu de ne rien faire
                 // (quand les planches sont cliquables, leur propre zone de clic, un peu plus grande, passe devant)
@@ -1418,7 +1434,7 @@ export function Furniture({
                 return (
                     <StructuralPanel
                         key={`back-fill-${segment.id}`}
-                        position={[fillX, fillY, -d/2 + 0.002]}
+                        position={[fillX, fillY, backPanelZ]}
                         size={[fillWidth, fillHeight, 0.004]}
                         hexColor={finalBackColor}
                         imageUrl={finalBackImageUrl}
@@ -1562,7 +1578,7 @@ export function Furniture({
                         !deletedPanelIds.has(segment.id) && (
                             <StructuralPanel
                                 key={`visual-${segment.id}`}
-                                position={[segment.x, segment.y, -d/2 + 0.002]}
+                                position={[segment.x, segment.y, backPanelZ]}
                                 size={[segment.width, segment.height, 0.004]}
                                 hexColor={finalBackColor}
                                 imageUrl={finalBackImageUrl}
@@ -1574,7 +1590,7 @@ export function Furniture({
                         <PanelSegmentHitbox
                             key={segment.id}
                             panelId={segment.id}
-                            position={[segment.x, segment.y, -d/2 + 0.002]}
+                            position={[segment.x, segment.y, backPanelZ]}
                             size={[segment.width, segment.height, 0.004]}
                             isSelected={selectedPanelIds.has(segment.id)}
                             onSelect={handlePanelSelect}
@@ -1588,13 +1604,13 @@ export function Furniture({
                         totalWidth={w - 0.01}
                         totalHeight={sideHeight - 0.01}
                         yOffset={sideHeight/2 + yOffset}
-                        zOffset={-d/2 + 0.002}
+                        zOffset={backPanelZ}
                         openSpaces={openSpaceInfo}
                         hexColor={finalBackColor}
                         imageUrl={finalBackImageUrl}
                     />
                     {selectedPanelIds.has('panel-back') && (
-                        <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
+                        <mesh position={[0, sideHeight/2 + yOffset, backPanelZ + 0.001]}>
                             <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
                             <meshBasicMaterial color="#3B3E58" wireframe transparent opacity={0.5} toneMapped={false} />
                         </mesh>
