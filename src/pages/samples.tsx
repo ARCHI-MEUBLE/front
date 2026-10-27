@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiClient, type SampleColor, type SampleType } from "@/lib/apiClient";
-import { useRouter } from "next/router";
 import { useCustomer } from "@/context/CustomerContext";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
@@ -30,8 +29,7 @@ const MATERIAL_DESCRIPTIONS: Record<string, string> = {
 const KIT_SIZE = 5;
 
 export default function SamplesPage() {
-  const router = useRouter();
-  const { isAuthenticated } = useCustomer();
+  const { isAuthenticated, requireIdentity } = useCustomer();
   const [materials, setMaterials] = useState<MaterialsMap>({});
   const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
@@ -84,10 +82,7 @@ export default function SamplesPage() {
   );
 
   const handleToggle = async (colorId: number) => {
-    if (!isAuthenticated) {
-      router.push("/auth/login?redirect=/samples");
-      return;
-    }
+    if (!isAuthenticated && !(await requireIdentity())) return;
     setAddingId(colorId);
     try {
       const response = await fetch("/api/cart/samples", {

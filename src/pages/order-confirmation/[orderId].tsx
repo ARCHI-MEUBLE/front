@@ -3,8 +3,8 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Head from "next/head";
 import dynamic from "next/dynamic";
-import { CheckCircle, Package, Home, Layers, ShoppingBag, Box } from "lucide-react";
-import { UserNavigation } from "@/components/UserNavigation";
+import { CheckCircle, Home, Layers, ShoppingBag, Box } from "lucide-react";
+import { Header } from "@/components/Header";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { useCustomer } from "@/context/CustomerContext";
 import { displayColorName, displayMaterialName } from "@/lib/displayNames";
@@ -97,14 +97,18 @@ interface Order {
 export default function OrderConfirmationPage() {
   const router = useRouter();
   const { orderId } = router.query;
-  const { customer } = useCustomer();
+  const { customer, isLoading: authLoading, requireIdentity } = useCustomer();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
+    // La commande n'est visible qu'après confirmation de l'email qui l'a passée (lien ouvert depuis un autre appareil)
     if (!customer) {
-      router.push("/auth/login");
+      void requireIdentity().then((confirmed) => {
+        if (!confirmed) router.push("/");
+      });
       return;
     }
 
@@ -144,7 +148,7 @@ export default function OrderConfirmationPage() {
     };
 
     loadOrder();
-  }, [customer, orderId, router]);
+  }, [customer, authLoading, orderId, router, requireIdentity]);
 
   if (loading) {
     return (
@@ -152,7 +156,7 @@ export default function OrderConfirmationPage() {
         <Head>
           <title>Confirmation de commande - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
+        <Header />
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-am-navy mx-auto"></div>
@@ -169,16 +173,16 @@ export default function OrderConfirmationPage() {
         <Head>
           <title>Erreur - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
+        <Header />
         <div className="min-h-screen bg-am-paper px-4 py-12">
           <div className="mx-auto max-w-2xl">
             <div className="border border-red-300 bg-red-50 p-4 text-center">
               <p className="text-red-700">{error || "Commande introuvable"}</p>
               <Link
-                href="/account?section=orders"
+                href="/"
                 className="mt-4 inline-block text-sm text-red-800 underline"
               >
-                Voir mes commandes
+                Retour à l&apos;accueil
               </Link>
             </div>
           </div>
@@ -259,7 +263,7 @@ export default function OrderConfirmationPage() {
       <Head>
         <title>Commande confirmée - ArchiMeuble</title>
       </Head>
-      <UserNavigation />
+      <Header />
 
       <div className="min-h-screen bg-am-paper px-4 py-8">
         <div className="mx-auto max-w-4xl">
@@ -530,20 +534,13 @@ export default function OrderConfirmationPage() {
               ))}
               <li className="flex gap-2">
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700 font-medium">{getNextSteps().length + 2}</span>
-                <span>Suivez l&apos;avancement dans &quot;Mes commandes&quot;</span>
+                <span>Vous êtes informé par email à chaque étape de votre commande</span>
               </li>
             </ol>
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/account?section=orders"
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-am-navy text-white px-6 py-3 text-sm font-medium hover:bg-am-navy/90"
-            >
-              <Package className="h-4 w-4" />
-              Voir mes commandes
-            </Link>
             <Link
               href="/"
               className="flex-1 inline-flex items-center justify-center gap-2 border border-black/20 px-6 py-3 text-sm font-medium text-black/75 hover:bg-am-mist/30"
