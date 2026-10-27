@@ -3745,7 +3745,7 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/account?section=configurations');
+                        router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/models');
                       }}
                       className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
@@ -3766,12 +3766,12 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        router.push(isAdmin ? adminUrl('/dashboard') : '/account?section=configurations');
+                        router.push(isAdmin ? adminUrl('/dashboard') : '/models');
                       }}
                       className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}
                     >
-                      {isAdmin ? 'Retour au Dashboard' : 'Mes configurations'}
+                      {isAdmin ? 'Retour au Dashboard' : 'Voir les modèles'}
                     </button>
                     <button
                       type="button"
