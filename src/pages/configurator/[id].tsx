@@ -98,36 +98,65 @@ const CAISSON_WIDTH_THRESHOLD_MM = 1000;
 
 // Si l'utilisateur repasse sous le seuil dans ce délai (ms) sans avoir touché au caisson
 // auto-créé, celui-ci est retiré automatiquement. Passé ce délai, il devient définitif.
-const CAISSON_AUTO_REMOVE_GRACE_MS = 20000;
+const CAISSON_AUTO_REMOVE_GRACE_MS = 15000;
 
-// Construit récursivement des caissons de ≤ CAISSON_WIDTH_THRESHOLD_MM chacun — si une moitié
-// est encore trop large après la coupe, elle est recoupée à son tour (même logique que
-// decouper_en_caissons dans procedure_real.py). `isCaisson` marque les divisions créées ici,
-// pour que ThreeCanvas sache lesquelles doubler sans deviner via l'id ou le nombre d'enfants.
-function buildCaissonTree(id: string, widthMm: number): Zone {
-  if (widthMm <= CAISSON_WIDTH_THRESHOLD_MM) {
-    return { id, type: 'leaf', content: 'empty' };
-  }
+// Nombre de caissons actuel de `zone` (1 si c'est encore une simple feuille).
+function caissonCount(zone: Zone): number {
+  return zone.type === 'vertical' ? (zone.children?.length ?? 1) : 1;
+}
+
+function equalCaissonRatios(count: number): number[] {
+  const equalRatio = 100 / count;
+  const ratios = Array(count).fill(Math.round(equalRatio));
+  ratios[ratios.length - 1] += 100 - ratios.reduce((a: number, b: number) => a + b, 0);
+  return ratios;
+}
+
+// Fait passer `zone` de N à N+1 caissons vides et égaux — rien d'autre ne change. Appelée en
+// boucle (voir l'effet plus bas) tant que la largeur dépasse CAISSON_WIDTH_THRESHOLD_MM × N,
+// que ce soit un petit glissement de curseur ou un grand saut de largeur d'un coup.
+function ajouterCaisson(zone: Zone): Zone {
+  const count = caissonCount(zone) + 1;
+  const children: Zone[] = Array.from({ length: count }, (_, i) => ({
+    id: `root-${i}`,
+    type: 'leaf',
+    content: 'empty',
+  }));
   return {
-    id,
+    id: 'root',
     type: 'vertical',
-    splitRatio: 50,
-    children: [
-      buildCaissonTree(`${id}-0`, widthMm / 2),
-      buildCaissonTree(`${id}-1`, widthMm / 2),
-    ],
+    splitRatio: count === 2 ? 50 : undefined,
+    splitRatios: count > 2 ? equalCaissonRatios(count) : undefined,
+    children,
   };
 }
 
-// Vrai si `zone` est exactement ce que buildCaissonTree produirait — c'est-à-dire si rien n'a
-// encore été configuré dedans (condition pour le retrait automatique pendant le délai de grâce).
-function isUntouchedCaissonTree(zone: Zone): boolean {
-  if (zone.type === 'leaf') {
-    return zone.content === 'empty' && !zone.children;
+// Symétrique : N vers N-1 ; repasse à une simple feuille vide si on retombe à 1 caisson.
+function enleverCaisson(zone: Zone): Zone {
+  const count = caissonCount(zone) - 1;
+  if (count <= 1) {
+    return { id: 'root', type: 'leaf', content: 'empty' };
   }
-  return zone.type === 'vertical'
-    && zone.children?.length === 2
-    && zone.children.every(isUntouchedCaissonTree);
+  const children: Zone[] = Array.from({ length: count }, (_, i) => ({
+    id: `root-${i}`,
+    type: 'leaf',
+    content: 'empty',
+  }));
+  return {
+    id: 'root',
+    type: 'vertical',
+    splitRatio: count === 2 ? 50 : undefined,
+    splitRatios: count > 2 ? equalCaissonRatios(count) : undefined,
+    children,
+  };
+}
+
+// Vrai si `zone` n'a encore jamais été configurée (toujours des colonnes vides, quel que soit
+// leur nombre) — condition pour laisser la gestion automatique agir dessus.
+function isUntouchedCaissonTree(zone: Zone): boolean {
+  if (zone.type === 'leaf') return zone.content === 'empty' && !zone.children;
+  return zone.type === 'vertical' && !!zone.children?.length
+    && zone.children.every((c) => c.type === 'leaf' && c.content === 'empty' && !c.children);
 }
 
 // Une seule façade par endroit : prévient quand une porte ou un tiroir superposé a été retiré
@@ -357,38 +386,75 @@ export default function ConfiguratorPage() {
     content: 'empty',
   }, { maxHistory: 30 });
 
-  // Au-delà de cette largeur (mm), un meuble encore vierge (jamais configuré) est
-  // automatiquement scindé en 2 caissons côte à côte — même règle et même seuil que
-  // CAISSON_LARGEUR_MAX_MM dans procedure_real.py.
-  // Pendant CAISSON_AUTO_REMOVE_GRACE_MS après cette création automatique, si l'utilisateur
-  // repasse sous le seuil sans avoir touché au caisson (toujours 2 colonnes vides), il est
-  // retiré automatiquement. Passé ce délai, il devient définitif.
+  // Avec N caissons (S = N-1 séparations), on en ajoute un dès que la largeur dépasse
+  // CAISSON_WIDTH_THRESHOLD_MM × N (même seuil que CAISSON_LARGEUR_MAX_MM dans
+  // procedure_real.py) — un cran à la fois, via ajouterCaisson/enleverCaisson, en boucle pour
+  // couvrir aussi bien un petit glissement de curseur qu'un grand saut de largeur d'un coup.
+  //
+  // AJOUT et RETRAIT n'ont pas la même règle : tant que la structure ne contient toujours que
+  // des colonnes vides (isUntouchedCaissonTree — qu'elle ait été posée par l'automatique ou à la
+  // main dans le menu Diviser), on continue d'AJOUTER un caisson dès que c'est nécessaire — même
+  // sur une cloison posée manuellement (ex. à 800mm, en dessous du seuil) — pour ne jamais
+  // laisser un caisson dépasser le seuil. Le RETRAIT, lui, reste limité au délai de grâce
+  // suivant le dernier ajustement AUTOMATIQUE : on ne retire jamais une cloison posée
+  // manuellement, seulement ce qu'on vient nous-mêmes de faire. justAutoChangedRef distingue
+  // "rootZone vient de changer parce qu'on l'a fait nous-mêmes" d'un changement manuel (menu
+  // Diviser, contenu ajouté...), qui désarme le retrait automatique sans toucher à l'ajout.
   const autoCaissonPendingRef = useRef(false);
+  const justAutoChangedRef = useRef(false);
+  const prevRootZoneRef = useRef<Zone | null>(null);
   const caissonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // "rootZone a-t-il changé depuis le rendu précédent" (pas juste "l'effet s'exécute" — il
+    // s'exécute aussi pour un simple changement de largeur, où rootZone n'a pas bougé). Et si
+    // oui, est-ce nous qui l'avons changé, ou une action manuelle ?
+    const rootZoneChangedExternally = prevRootZoneRef.current !== null
+      && rootZone !== prevRootZoneRef.current
+      && !justAutoChangedRef.current;
+    justAutoChangedRef.current = false;
+    prevRootZoneRef.current = rootZone;
+
     const isBlankLeaf = rootZone.type === 'leaf' && rootZone.content === 'empty' && !rootZone.children;
-    const isUntouchedAutoCaisson = isUntouchedCaissonTree(rootZone) && rootZone.type === 'vertical';
-
-    if (width > CAISSON_WIDTH_THRESHOLD_MM && isBlankLeaf) {
-      setRootZone(buildCaissonTree('root', width));
+    if (isBlankLeaf) {
+      // Plus aucune ambiguïté possible : rien n'est configuré, le meuble est reparti de zéro
+      // (verrouillé ou pas avant) — on peut donc regérer automatiquement, retrait compris.
       autoCaissonPendingRef.current = true;
-      if (caissonTimerRef.current) clearTimeout(caissonTimerRef.current);
-      caissonTimerRef.current = setTimeout(() => {
-        autoCaissonPendingRef.current = false;
-        caissonTimerRef.current = null;
-      }, CAISSON_AUTO_REMOVE_GRACE_MS);
-      return;
-    }
-
-    if (width <= CAISSON_WIDTH_THRESHOLD_MM && autoCaissonPendingRef.current && isUntouchedAutoCaisson) {
-      setRootZone({ id: 'root', type: 'leaf', content: 'empty' });
+    } else if (rootZoneChangedExternally) {
+      // Ce changement de structure ne vient pas de nous : action manuelle. On ne retire plus
+      // rien tant qu'on n'aura pas nous-mêmes retouché la structure depuis.
       autoCaissonPendingRef.current = false;
-      if (caissonTimerRef.current) {
-        clearTimeout(caissonTimerRef.current);
-        caissonTimerRef.current = null;
+    }
+    if (!isUntouchedCaissonTree(rootZone)) return;
+
+    let zone = rootZone;
+    let count = caissonCount(zone);
+    let changed = false;
+
+    while (width > CAISSON_WIDTH_THRESHOLD_MM * count) {
+      zone = ajouterCaisson(zone);
+      count = caissonCount(zone);
+      changed = true;
+    }
+    if (autoCaissonPendingRef.current) {
+      while (count > 1 && width <= CAISSON_WIDTH_THRESHOLD_MM * (count - 1)) {
+        zone = enleverCaisson(zone);
+        count = caissonCount(zone);
+        changed = true;
       }
     }
+
+    if (!changed) return;
+
+    justAutoChangedRef.current = true;
+    setRootZone(zone);
+    autoCaissonPendingRef.current = true;
+
+    if (caissonTimerRef.current) clearTimeout(caissonTimerRef.current);
+    caissonTimerRef.current = setTimeout(() => {
+      autoCaissonPendingRef.current = false;
+      caissonTimerRef.current = null;
+    }, CAISSON_AUTO_REMOVE_GRACE_MS);
   }, [width, rootZone, setRootZone]);
 
   useEffect(() => () => {

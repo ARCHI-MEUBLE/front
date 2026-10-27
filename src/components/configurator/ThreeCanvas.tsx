@@ -118,21 +118,33 @@ export function Furniture({
         }));
     }, []);
     const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
-    const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
+    const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
         const { width: w, depth: d, sideHeight, yOffset, thickness } = layout;
         const h = (height || 730) / 1000;
-        const backPanelThickness = 0.004;
-        const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
-        const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
+        // Le fond n'est pas flush contre l'arrière réelle du meuble : il glisse dans une rainure
+        // des plaques latérales, en retrait de cette distance (même valeur que RAINURE_FOND_MM
+        // dans procedure_real.py). backPanelRenderThickness est l'épaisseur à laquelle le fond
+        // est dessiné ici (simplifiée : 4mm, pas la vraie épaisseur de 19mm du panneau extérieur
+        // — simplification déjà en place avant ce changement, pas quelque chose à corriger ici).
+        const backPanelGroove = 0.020;
+        const backPanelRenderThickness = 0.004;
+        // Position Z du centre du fond, et épaisseur vue par les étagères/cloisons pour
+        // s'arrêter juste devant sa face avant (rainure + épaisseur rendue).
+        const backPanelZ = -d / 2 + backPanelGroove + backPanelRenderThickness / 2;
+        const backPanelThickness = backPanelGroove + backPanelRenderThickness;
+        const compartmentGap = mountingStyle === 'encastre' ? 0 : 0.003;
+        // La porte a elle-même un décalage avant fixe de 0.023 (mesh à z=0.014, profondeur 0.018) : il
+        // faut le compenser pour que ce retrait soit le retrait réel, pas juste décaler le groupe.
+        const mountingOffset = mountingStyle === 'encastre' ? -0.004 - 0.023 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
         const doorRecess = 0;
-        return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, compartmentGap, mountingOffset, doorOverlap, doorRecess };
+        return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess };
     }, [layout, height, mountingStyle]);
 
     // Une division verticale à la racine est un caisson (double planche : chaque caisson a sa
     // propre paroi, comme en Python) — elle consomme donc 2x l'épaisseur, pas 1x comme une
     // cloison normale à l'intérieur d'un compartiment.
-    const isCaissonSplit = (zone: Zone) => zone.id === 'root' && zone.type === 'vertical' && zone.children?.length === 2;
+    const isCaissonSplit = (zone: Zone) => zone.id === 'root' && zone.type === 'vertical';
     const separatorThickness = (zone: Zone) => isCaissonSplit(zone) ? thickness * 2 : thickness;
 
     // ── Pointeur : survol, sélection et ouverture des façades ──────────────────
@@ -613,6 +625,8 @@ export function Furniture({
         const maxCellX = Math.max(...allCells.map(c => c.x + c.width / 2));
 
         allCells.forEach((cell, i) => {
+            if (cell.zone.noBack) return;
+
             let segX = cell.x;
             let segY = cell.y;
             let segWidth = cell.width;
@@ -631,21 +645,25 @@ export function Furniture({
             const touchesFurnitureBottom = cellBottom <= furnitureBottomInner + 0.05;
             const touchesFurnitureTop = cellTop >= furnitureTopInner - 0.05;
 
+            // En retrait de la vraie arête pour que le surlignage de sélection, un peu plus grand
+            // que la plaque, ne dépasse jamais des panneaux latéraux/haut/bas
+            const edgeInset = 0.005;
+
             if (isLeftmost) {
-                segWidth += thickness;
-                segX -= thickness / 2;
+                segWidth += thickness - edgeInset;
+                segX -= (thickness - edgeInset) / 2;
             }
             if (isRightmost) {
-                segWidth += thickness;
-                segX += thickness / 2;
+                segWidth += thickness - edgeInset;
+                segX += (thickness - edgeInset) / 2;
             }
             if (isTopmost || touchesFurnitureTop) {
-                segHeight += thickness;
-                segY += thickness / 2;
+                segHeight += thickness - edgeInset;
+                segY += (thickness - edgeInset) / 2;
             }
             if (isBottommost || touchesFurnitureBottom) {
                 const gapToBottom = cellBottom - yOffset;
-                const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+                const extensionBottom = Math.max(thickness, gapToBottom + 0.001) - edgeInset;
                 segHeight += extensionBottom;
                 segY -= extensionBottom / 2;
             }
@@ -772,7 +790,7 @@ export function Furniture({
 
         console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
 
-        if (backSegments.length === 0) {
+        if (backSegments.length === 0 && !allCells.every(cell => cell.zone.noBack)) {
             backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
         }
 
@@ -841,8 +859,12 @@ export function Furniture({
 
                 const hitboxBehindDoor = hasDoorInFront || !!zone.doorContent;
                 const hitboxRecess = hitboxBehindDoor ? 0.005 : 0;
-                const hitboxDepth = d - hitboxRecess + 0.002;
-                const hitboxZ = -hitboxRecess / 2;
+                const frontEdge = (d - hitboxRecess + 0.002) / 2 - hitboxRecess / 2;
+                const rearEdge = onSelectPanel
+                    ? Math.max(-(d - hitboxRecess + 0.002) / 2 - hitboxRecess / 2, backPanelZ + 0.004)
+                    : -(d - hitboxRecess + 0.002) / 2 - hitboxRecess / 2;
+                const hitboxDepth = frontEdge - rearEdge;
+                const hitboxZ = (frontEdge + rearEdge) / 2;
                 // Les compartiments du bord englobent aussi les panneaux extérieurs : cliquer sur le côté, le
                 // dessus ou le dessous du meuble sélectionne le compartiment voisin au lieu de ne rien faire
                 // (quand les planches sont cliquables, leur propre zone de clic, un peu plus grande, passe devant)
@@ -892,6 +914,10 @@ export function Furniture({
                             position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
+                            boxWidth={Math.min(width, doorZoneWidth - compartmentGap)}
+                            boxCenterX={-doorXOffset}
+                            boxBottomY={-height / 2 - doorYOffset}
+                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004}
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
@@ -909,6 +935,10 @@ export function Furniture({
                             position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
+                            boxWidth={Math.min(width, doorZoneWidth - compartmentGap)}
+                            boxCenterX={-doorXOffset}
+                            boxBottomY={-height / 2 - doorYOffset}
+                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004}
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
@@ -1163,9 +1193,10 @@ export function Furniture({
                         const childIsAtBottom = isLast ? isAtBottom : false;
                         // Un enfant qui n'est pas au bord touche une cloison interne créée par CETTE
                         // division : elle n'est pas doublée (une coupe horizontale n'est jamais un
-                        // caisson), donc chaque porte voisine n'en recouvre que la moitié.
-                        const childTopGap = isFirst ? topGap : thickness / 2;
-                        const childBottomGap = isLast ? bottomGap : thickness / 2;
+                        // caisson), donc chaque porte voisine n'en recouvre que la moitié — sauf en
+                        // encastré, où aucune façade ne recouvre une planche, interne ou non.
+                        const childTopGap = isFirst ? topGap : (mountingStyle === 'encastre' ? 0 : thickness / 2);
+                        const childBottomGap = isLast ? bottomGap : (mountingStyle === 'encastre' ? 0 : thickness / 2);
                         parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight, childTopGap, childBottomGap, leftGap, rightGap);
                         currentPos += childHeight;
                         if (i < zone.children!.length - 1) currentPos += thickness;
@@ -1179,8 +1210,10 @@ export function Furniture({
                         const childIsAtRight = isLast ? isAtRight : false;
                         // Idem, mais sepThickness/2 : pour un caisson (séparateur doublé), ça vaut
                         // une épaisseur pleine — chaque caisson recouvre son propre panneau en entier.
-                        const childLeftGap = isFirst ? leftGap : sepThickness / 2;
-                        const childRightGap = isLast ? rightGap : sepThickness / 2;
+                        // En encastré, aucune façade ne recouvre une planche (interne ou non) : pas de
+                        // recouvrement du tout, quelle que soit l'épaisseur du séparateur.
+                        const childLeftGap = isFirst ? leftGap : (mountingStyle === 'encastre' ? 0 : sepThickness / 2);
+                        const childRightGap = isLast ? rightGap : (mountingStyle === 'encastre' ? 0 : sepThickness / 2);
                         parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight, topGap, bottomGap, childLeftGap, childRightGap);
                         currentPos += childWidth;
                         if (i < zone.children!.length - 1) currentPos += sepThickness;
@@ -1415,30 +1448,38 @@ export function Furniture({
                 />;
             })}
 
-            {/* Bande de fond derrière chaque étagère/cloison, couplée à son ID (disparaît si on la supprime). */}
+            {/* Bande de fond derrière chaque étagère/cloison, couplée à son ID (disparaît si on la supprime).
+                Même logique d'extension que les plaques du fond par compartiment (panelSegments.backSegments
+                ci-dessus) : même edgeInset, même traitement du bas, pour que les deux s'arrêtent au même bord. */}
             {panelSegments.separatorSegments.map((segment) => {
                 if (deletedPanelIds.has(segment.id)) return null;
                 let fillX = segment.x;
                 let fillY = segment.y;
                 let fillWidth = segment.width;
                 let fillHeight = segment.height;
+                const edgeInset = 0.005;
                 if (segment.orientation === 'horizontal') {
                     const touchesLeft = (segment.x - segment.width / 2) <= (-w / 2 + thickness + 0.01);
                     const touchesRight = (segment.x + segment.width / 2) >= (w / 2 - thickness - 0.01);
-                    if (touchesLeft) { fillWidth += thickness; fillX -= thickness / 2; }
-                    if (touchesRight) { fillWidth += thickness; fillX += thickness / 2; }
+                    if (touchesLeft) { fillWidth += thickness - edgeInset; fillX -= (thickness - edgeInset) / 2; }
+                    if (touchesRight) { fillWidth += thickness - edgeInset; fillX += (thickness - edgeInset) / 2; }
                 } else {
                     const furnitureBottomInner = yOffset + thickness;
                     const furnitureTopInner = yOffset + sideHeight - thickness;
-                    const touchesBottom = (segment.y - segment.height / 2) <= (furnitureBottomInner + 0.01);
-                    const touchesTop = (segment.y + segment.height / 2) >= (furnitureTopInner - 0.01);
-                    if (touchesBottom) { fillHeight += thickness; fillY -= thickness / 2; }
-                    if (touchesTop) { fillHeight += thickness; fillY += thickness / 2; }
+                    const touchesBottom = (segment.y - segment.height / 2) <= (furnitureBottomInner + 0.05);
+                    const touchesTop = (segment.y + segment.height / 2) >= (furnitureTopInner - 0.05);
+                    if (touchesTop) { fillHeight += thickness - edgeInset; fillY += (thickness - edgeInset) / 2; }
+                    if (touchesBottom) {
+                        const gapToBottom = (segment.y - segment.height / 2) - yOffset;
+                        const extensionBottom = Math.max(thickness, gapToBottom + 0.001) - edgeInset;
+                        fillHeight += extensionBottom;
+                        fillY -= extensionBottom / 2;
+                    }
                 }
                 return (
                     <StructuralPanel
                         key={`back-fill-${segment.id}`}
-                        position={[fillX, fillY, -d/2 + 0.002]}
+                        position={[fillX, fillY, backPanelZ]}
                         size={[fillWidth, fillHeight, 0.004]}
                         hexColor={finalBackColor}
                         imageUrl={finalBackImageUrl}
@@ -1583,7 +1624,7 @@ export function Furniture({
                         !deletedPanelIds.has(segment.id) && (
                             <StructuralPanel
                                 key={`visual-${segment.id}`}
-                                position={[segment.x, segment.y, -d/2 + 0.002]}
+                                position={[segment.x, segment.y, backPanelZ]}
                                 size={[segment.width, segment.height, 0.004]}
                                 hexColor={finalBackColor}
                                 imageUrl={finalBackImageUrl}
@@ -1595,7 +1636,7 @@ export function Furniture({
                         <PanelSegmentHitbox
                             key={segment.id}
                             panelId={segment.id}
-                            position={[segment.x, segment.y, -d/2 + 0.002]}
+                            position={[segment.x, segment.y, backPanelZ]}
                             size={[segment.width, segment.height, 0.004]}
                             isSelected={selectedPanelIds.has(segment.id)}
                             onSelect={handlePanelSelect}
@@ -1609,13 +1650,13 @@ export function Furniture({
                         totalWidth={w - 0.01}
                         totalHeight={sideHeight - 0.01}
                         yOffset={sideHeight/2 + yOffset}
-                        zOffset={-d/2 + 0.002}
+                        zOffset={backPanelZ}
                         openSpaces={openSpaceInfo}
                         hexColor={finalBackColor}
                         imageUrl={finalBackImageUrl}
                     />
                     {selectedPanelIds.has('panel-back') && (
-                        <mesh position={[0, sideHeight/2 + yOffset, -d/2 + 0.003]}>
+                        <mesh position={[0, sideHeight/2 + yOffset, backPanelZ + 0.001]}>
                             <boxGeometry args={[w - 0.005, sideHeight - 0.005, 0.006]} />
                             <meshBasicMaterial color="#3B3E58" wireframe transparent opacity={0.5} toneMapped={false} />
                         </mesh>
