@@ -129,7 +129,7 @@ describe('openSceneViewer', () => {
     expect(quick).toHaveBeenLastCalledWith(null);
     vi.advanceTimersByTime(QUICK_CLOSE_MS - 1000);
     setVisibility('visible');
-    expect(quick).toHaveBeenLastCalledWith('closed');
+    expect(quick).toHaveBeenLastCalledWith('closed-quickly');
 
     const used = vi.fn();
     openSceneViewer(GLB, 'Votre meuble', used);

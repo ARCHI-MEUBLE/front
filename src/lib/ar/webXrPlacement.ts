@@ -35,6 +35,16 @@ const FLOOR_TIMEOUT_MS = 6000;
 const ESTIMATED_DISTANCE = 2;
 const ESTIMATED_PHONE_HEIGHT = 1.4;
 
+// Codes de gl.getError() pour le diagnostic
+const GL_ERRORS: Record<number, string> = {
+  0x500: 'INVALID_ENUM',
+  0x501: 'INVALID_VALUE',
+  0x502: 'INVALID_OPERATION',
+  0x505: 'OUT_OF_MEMORY',
+  0x506: 'INVALID_FRAMEBUFFER_OPERATION',
+  0x9242: 'CONTEXT_LOST_WEBGL',
+};
+
 // Premier point d'impact sur une surface tournée vers le haut, dans matrix
 function floorHit(poses: (XRPose | undefined)[], matrix: THREE.Matrix4): boolean {
   return poses.some((pose) => pose !== undefined && isFloorLike(matrix.fromArray(pose.transform.matrix)));
@@ -89,28 +99,18 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
     if (next !== phase) onPhase((phase = next));
   };
 
-  await renderer.xr.setSession(session);
-  const viewerSpace = await session.requestReferenceSpace('viewer');
-  const centerHits = await session.requestHitTestSource?.({ space: viewerSpace });
-  const touchHits = await session.requestHitTestSourceForTransientInput?.({ profile: 'generic-touchscreen' });
-  if (!centerHits) throw new Error('hit-test indisponible');
+  // Sources de hit-test : demandées une fois la session confiée à Three.js, plus bas
+  let centerHits: XRHitTestSource | undefined;
+  let touchHits: XRHitTestSource | undefined;
 
-  new GLTFLoader()
-    .loadAsync(glbUrl)
-    .then((gltf) => {
-      model = gltf.scene;
-      model.traverse((object) => {
-        if ((object as THREE.Mesh).isMesh) object.castShadow = true;
-      });
-      model.traverse((object) => {
-        if ((object as THREE.Mesh).isMesh) meshes++;
-      });
-      furniture.add(model);
-    })
-    .catch((error) => {
-      onError(error);
-      void session.end().catch(() => undefined);
-    });
+  // Diagnostic : cube rouge au pied du meuble, dessiné par-dessus tout (sans lumière ni profondeur). Cube visible sans le
+  // meuble : le fichier du meuble est en cause ; rien de visible : ce que dessine la page n'arrive pas à l'écran
+  if (onDebug) {
+    const marker = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
+    marker.position.y = 0.15;
+    marker.renderOrder = 1;
+    furniture.add(marker);
+  }
 
   // Un toucher pose le meuble ; ensuite, un doigt qui glisse le déplace (selectstart → selectend)
   session.addEventListener('selectstart', () => {
@@ -142,26 +142,45 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
   const gl = renderer.getContext();
   const gpuInfo = gl.getExtension('WEBGL_debug_renderer_info');
   const gpu = String(gl.getParameter(gpuInfo ? gpuInfo.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+  const browser = /SamsungBrowser\/\d+|Chrome\/\d+|Firefox\/\d+/.exec(navigator.userAgent)?.[0] ?? '?';
+  // Couche où Three.js dessine : XRWebGLLayer, ou couche de projection si le navigateur propose l'API WebXR Layers
+  const layerInfo = () => {
+    const layer = renderer.xr.getBaseLayer() as XRWebGLLayer | XRProjectionLayer | null;
+    if (!layer) return 'couche aucune';
+    return 'framebufferWidth' in layer
+      ? `XRWebGLLayer ${layer.framebufferWidth}×${layer.framebufferHeight}`
+      : `couche projection ${layer.textureWidth}×${layer.textureHeight}`;
+  };
+  const glError = () => {
+    const code = gl.getError();
+    return code === gl.NO_ERROR ? 'aucune' : (GL_ERRORS[code] ?? `0x${code.toString(16)}`);
+  };
+  // Appelé juste après le rendu : renderer.info décrit l'image qui vient d'être dessinée
   const debug = (time: number, onFloor: boolean) => {
     if (!onDebug || time - lastDebug < 500) return;
     lastDebug = time;
     xrCamera.getWorldPosition(cameraPosition);
     const p = furniture.position;
     const fmt = (v: THREE.Vector3) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
+    const { calls, triangles } = renderer.info.render;
     onDebug(
-      `images ${frames} · pièces ${meshes} · visible ${furniture.visible ? 'oui' : 'non'} · sol ${onFloor ? 'oui' : 'non'} · anneau ${reticle.visible ? 'oui' : 'non'}
-` +
-        `meuble ${fmt(p)} · téléphone ${fmt(cameraPosition)} · distance ${p.distanceTo(cameraPosition).toFixed(2)} m
-` +
-        `XR ${renderer.xr.isPresenting ? 'oui' : 'non'} · ${session.environmentBlendMode ?? '?'} · overlay ${session.domOverlayState?.type ?? 'non'} · ${gpu}`
+      `images ${frames} · pièces ${meshes} · visible ${furniture.visible ? 'oui' : 'non'} · sol ${onFloor ? 'oui' : 'non'} · anneau ${reticle.visible ? 'oui' : 'non'}\n` +
+        `meuble ${fmt(p)} · téléphone ${fmt(cameraPosition)} · distance ${p.distanceTo(cameraPosition).toFixed(2)} m\n` +
+        `dessin ${calls} appels, ${triangles} triangles · erreur GL ${glError()} · contexte ${gl.isContextLost() ? 'perdu' : 'ok'}\n` +
+        `XR ${renderer.xr.isPresenting ? 'oui' : 'non'} · ${session.environmentBlendMode ?? '?'} · overlay ${session.domOverlayState?.type ?? 'non'} · ${layerInfo()}\n` +
+        `${gpu} · ${browser}`
     );
   };
 
+  // Posée avant setSession : Three.js arrête sa boucle de page au démarrage de la session. Posée après, cette boucle
+  // tournait en plus de celle de la session et dessinait dans la couche XR en dehors des images de la caméra.
   renderer.setAnimationLoop((time, frame) => {
+    if (!frame) return;
     frames++;
     const space = renderer.xr.getReferenceSpace();
-    if (frame && space) {
-      const onFloor = floorHit(frame.getHitTestResults(centerHits).map((hit) => hit.getPose(space)), hitMatrix);
+    let onFloor = false;
+    if (space && centerHits) {
+      onFloor = floorHit(frame.getHitTestResults(centerHits).map((hit) => hit.getPose(space)), hitMatrix);
       if (onFloor) estimated = false;
 
       if (!placed) {
@@ -194,21 +213,53 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
       }
 
       setPhase(!model ? 'loading' : placed ? 'placed' : onFloor ? 'placing' : estimated ? 'estimated' : 'searching');
-      debug(time, onFloor);
     }
     renderer.render(scene, camera);
+    debug(time, onFloor);
   });
 
-  session.addEventListener('end', () => {
+  const dispose = () => {
     renderer.setAnimationLoop(null);
-    centerHits.cancel();
+    centerHits?.cancel();
     touchHits?.cancel();
     environment.dispose();
     pmrem.dispose();
     renderer.dispose();
     renderer.domElement.remove();
+  };
+
+  try {
+    await renderer.xr.setSession(session);
+  } catch (error) {
+    dispose();
+    throw error;
+  }
+  session.addEventListener('end', () => {
+    dispose();
     onEnd();
   });
+
+  const viewerSpace = await session.requestReferenceSpace('viewer');
+  centerHits = await session.requestHitTestSource?.({ space: viewerSpace });
+  touchHits = await session.requestHitTestSourceForTransientInput?.({ profile: 'generic-touchscreen' });
+  if (!centerHits) throw new Error('hit-test indisponible');
+
+  new GLTFLoader()
+    .loadAsync(glbUrl)
+    .then((gltf) => {
+      model = gltf.scene;
+      model.traverse((object) => {
+        if ((object as THREE.Mesh).isMesh) object.castShadow = true;
+      });
+      model.traverse((object) => {
+        if ((object as THREE.Mesh).isMesh) meshes++;
+      });
+      furniture.add(model);
+    })
+    .catch((error) => {
+      onError(error);
+      void session.end().catch(() => undefined);
+    });
 
   return {
     rotate: (radians) => {

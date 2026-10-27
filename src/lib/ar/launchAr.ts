@@ -113,7 +113,7 @@ export function openQuickLook(usdzUrl: string) {
 // - not-opened : la page est restée affichée (vue web d'une application qui ignore le lien, ouverture refusée) ;
 // - closed-quickly : Scene Viewer s'est ouvert puis refermé aussitôt (appli Google sans accès à l'appareil photo,
 //   Services Google Play pour la RA absents ou périmés, modèle illisible).
-export type SceneViewerIssue = 'unavailable' | 'not-opened' | 'closed-quickly';
+export type SceneViewerIssue = 'needs-https' | 'unavailable' | 'not-opened' | 'closed-quickly';
 
 // ar_preferred : la caméra, ou la vue 3D si le téléphone n'a pas ARCore. 3d_only : le meuble en 3D, sans caméra.
 export type SceneViewerMode = 'ar_preferred' | '3d_only';
@@ -122,12 +122,10 @@ export type SceneViewerMode = 'ar_preferred' | '3d_only';
 const NO_AR_HASH = '#ar-indisponible';
 // Scene Viewer ouvert, la page passe en arrière-plan. Toujours affichée après ce délai : rien ne s'est ouvert
 const NOT_OPENED_DELAY_MS = 4000;
-// Retour sur la page moins longtemps après le départ : Scene Viewer s'est refermé de lui-même
-export const QUICK_CLOSE_MS = 3000;
 // Le retour de secours suit de près le clic (Firefox attend la réponse à sa question) ; plus tard, ce n'est plus lui
 const FALLBACK_WATCH_MS = 60000;
 // Retour sur la page moins de 4 s après l'ouverture : personne n'a eu le temps de poser le meuble, Scene Viewer s'est fermé seul
-const QUICK_CLOSE_MS = 4000;
+export const QUICK_CLOSE_MS = 4000;
 
 let stopWatchingLaunch: (() => void) | null = null;
 
@@ -152,7 +150,7 @@ export function openSceneViewer(
   const fallback = new URL(window.location.href);
   fallback.hash = NO_AR_HASH;
   const params = new URLSearchParams({
-    file: new URL(glbPath, window.location.href).toString(),
+    file: fileUrl.toString(),
     mode,
     resizable: 'false',
     // Comme <model-viewer> : l'occlusion par la profondeur estimée fait clignoter les bords du meuble contre le mur
