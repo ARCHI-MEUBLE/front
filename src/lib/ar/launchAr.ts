@@ -108,8 +108,13 @@ export function openQuickLook(usdzUrl: string) {
 
 // Ce qui a empêché Scene Viewer de s'ouvrir :
 // - unavailable : le navigateur est revenu sur la page, faute d'application Google pour l'ouvrir ;
-// - not-opened : la page est restée affichée (vue web d'une application qui ignore le lien, ouverture refusée).
-export type SceneViewerIssue = 'unavailable' | 'not-opened';
+// - not-opened : la page est restée affichée (vue web d'une application qui ignore le lien, ouverture refusée) ;
+// - closed-quickly : Scene Viewer s'est ouvert puis refermé aussitôt (appli Google sans accès à l'appareil photo,
+//   Services Google Play pour la RA absents ou périmés, modèle illisible).
+export type SceneViewerIssue = 'unavailable' | 'not-opened' | 'closed-quickly';
+
+// ar_preferred : la caméra, ou la vue 3D si le téléphone n'a pas ARCore. 3d_only : le meuble en 3D, sans caméra.
+export type SceneViewerMode = 'ar_preferred' | '3d_only';
 
 // Marqueur posé par le navigateur quand Scene Viewer ne peut pas s'ouvrir : il revient alors sur la page
 const NO_AR_HASH = '#ar-indisponible';
@@ -117,13 +122,20 @@ const NO_AR_HASH = '#ar-indisponible';
 const NOT_OPENED_DELAY_MS = 4000;
 // Le retour de secours suit de près le clic (Firefox attend la réponse à sa question) ; plus tard, ce n'est plus lui
 const FALLBACK_WATCH_MS = 60000;
+// Retour sur la page moins de 4 s après l'ouverture : personne n'a eu le temps de poser le meuble, Scene Viewer s'est fermé seul
+const QUICK_CLOSE_MS = 4000;
 
 let stopWatchingLaunch: (() => void) | null = null;
 
 // À appeler directement dans le clic : les navigateurs bloquent l'ouverture d'une application sans action de
 // l'utilisateur. Scene Viewer passe par l'application Google (installée sur presque tous les Android), comme
 // <model-viewer> : sans ARCore, il montre le meuble en 3D au lieu d'échouer. onIssue(null) : Scene Viewer s'est ouvert.
-export function openSceneViewer(glbPath: string, title: string, onIssue: (issue: SceneViewerIssue | null) => void) {
+export function openSceneViewer(
+  glbPath: string,
+  title: string,
+  onIssue: (issue: SceneViewerIssue | null) => void,
+  mode: SceneViewerMode = 'ar_preferred'
+) {
   // Un seul lancement suivi à la fois : sinon un retour de secours tardif reviendrait plusieurs fois en arrière
   stopWatchingLaunch?.();
 
@@ -131,7 +143,7 @@ export function openSceneViewer(glbPath: string, title: string, onIssue: (issue:
   fallback.hash = NO_AR_HASH;
   const params = new URLSearchParams({
     file: new URL(glbPath, window.location.href).toString(),
-    mode: 'ar_preferred',
+    mode,
     resizable: 'false',
     // Comme <model-viewer> : l'occlusion par la profondeur estimée fait clignoter les bords du meuble contre le mur
     disable_occlusion: 'true',
@@ -144,10 +156,18 @@ export function openSceneViewer(glbPath: string, title: string, onIssue: (issue:
     window.history.back();
     onIssue('unavailable');
   };
+  let hiddenAt: number | null = null;
   const onVisibilityChange = () => {
-    if (document.visibilityState !== 'hidden') return;
-    window.clearTimeout(notOpenedTimer);
-    onIssue(null);
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+      window.clearTimeout(notOpenedTimer);
+      onIssue(null);
+      return;
+    }
+    if (hiddenAt === null) return;
+    const quickClose = Date.now() - hiddenAt < QUICK_CLOSE_MS;
+    stop();
+    if (quickClose) onIssue('closed-quickly');
   };
   const notOpenedTimer = window.setTimeout(() => {
     if (document.visibilityState === 'visible') onIssue('not-opened');

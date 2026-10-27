@@ -52,7 +52,7 @@ export function ModelsCollectionSection({
     <section
       aria-labelledby="collection-title"
       className={HOME_SECTION_NO_TOP}
-      style={{ paddingTop: "clamp(64px,8vw,112px)" }}
+      style={{ paddingTop: "clamp(32px,4vw,56px)" }}
     >
       <div className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 py-4 lg:mb-14">
         <h2 id="collection-title" className="m-0 text-subheading text-black">

@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import EmailCodeModal from '@/components/auth/EmailCodeModal';
 
 interface Customer {
   id: number;
@@ -13,47 +14,42 @@ interface Customer {
   civility?: 'M' | 'Mme';
 }
 
-interface RegisterResult {
-  success: boolean;
-  message: string;
-  requiresVerification?: boolean;
-  email?: string;
-}
+export type LoginCodeRequest = { sent: true } | { needsName: true };
 
 interface CustomerContextType {
   customer: Customer | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<RegisterResult>;
-  logout: () => Promise<void>;
   checkSession: () => Promise<void>;
-  updateProfile: (data: Partial<Customer>) => Promise<void>;
-  forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
-  resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string }>;
-  verifyEmail: (email: string, code: string) => Promise<void>;
-  resendVerificationCode: (email: string) => Promise<{ success: boolean; message: string }>;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
-  country?: string;
+  requestLoginCode: (email: string, firstName?: string, lastName?: string) => Promise<LoginCodeRequest>;
+  verifyLoginCode: (email: string, code: string) => Promise<void>;
+  /** Plus de compte client : une action qui doit savoir qui commande ouvre la confirmation par code email. Résout true une fois l'email confirmé, false si le visiteur ferme la fenêtre. */
+  requireIdentity: () => Promise<boolean>;
 }
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined);
 
 const API_BASE_URL = '/backend/api';
 
+async function postJson(path: string, body: unknown) {
+  const res = await fetch(`${API_BASE_URL}/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const contentType = res.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    throw new Error('Erreur serveur. Veuillez réessayer.');
+  }
+  return { res, data: await res.json() };
+}
+
 export function CustomerProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const pendingIdentity = useRef<((confirmed: boolean) => void) | null>(null);
 
   useEffect(() => {
     checkSession();
@@ -64,7 +60,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API_BASE_URL}/customers/session.php`, {
         credentials: 'include', // Important pour les sessions
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated && data.customer) {
@@ -78,163 +74,40 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE_URL}/customers/login.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Échec de la connexion');
+  const requestLoginCode = async (email: string, firstName?: string, lastName?: string): Promise<LoginCodeRequest> => {
+    const { res, data } = await postJson('customers/email-code.php', { email, first_name: firstName, last_name: lastName });
+    if (data.needsName) {
+      return { needsName: true };
     }
+    if (!res.ok) {
+      throw new Error(data.error || "Impossible d'envoyer le code");
+    }
+    return { sent: true };
+  };
 
-    const data = await res.json();
+  const verifyLoginCode = async (email: string, code: string) => {
+    const { res, data } = await postJson('customers/email-verify.php', { email, code });
+    if (!res.ok) {
+      throw new Error(data.error || 'Code invalide');
+    }
     setCustomer(data.customer);
   };
 
-  const register = async (data: RegisterData): Promise<RegisterResult> => {
-    const res = await fetch(`${API_BASE_URL}/customers/register.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
+  const settleIdentity = (confirmed: boolean) => {
+    setIsModalOpen(false);
+    pendingIdentity.current?.(confirmed);
+    pendingIdentity.current = null;
+  };
+
+  const requireIdentity = useCallback((): Promise<boolean> => {
+    if (customer) return Promise.resolve(true);
+    // Une seule fenêtre à la fois : une demande précédente restée ouverte est considérée comme abandonnée
+    pendingIdentity.current?.(false);
+    setIsModalOpen(true);
+    return new Promise<boolean>((resolve) => {
+      pendingIdentity.current = resolve;
     });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Échec de l\'inscription');
-    }
-
-    // Si vérification requise, ne pas connecter l'utilisateur
-    if (result.requiresVerification) {
-      return {
-        success: true,
-        message: result.message,
-        requiresVerification: true,
-        email: result.email,
-      };
-    }
-
-    // Ancien flux (si vérification désactivée)
-    if (result.customer) {
-      setCustomer(result.customer);
-    }
-
-    return {
-      success: true,
-      message: result.message,
-      requiresVerification: false,
-    };
-  };
-
-  const verifyEmail = async (email: string, code: string) => {
-    const res = await fetch(`${API_BASE_URL}/customers/verify-email.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, code }),
-    });
-
-    // Vérifier si la réponse est du JSON valide
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Erreur serveur. Veuillez réessayer.');
-    }
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Code invalide');
-    }
-
-    // Connexion automatique après vérification
-    if (result.customer) {
-      setCustomer(result.customer);
-    }
-  };
-
-  const resendVerificationCode = async (email: string) => {
-    const res = await fetch(`${API_BASE_URL}/customers/resend-code.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email }),
-    });
-
-    // Vérifier si la réponse est du JSON valide
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Erreur serveur. Veuillez réessayer.');
-    }
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Une erreur est survenue');
-    }
-    return data;
-  };
-
-  const forgotPassword = async (email: string) => {
-    const res = await fetch(`${API_BASE_URL}/customers/forgot-password.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Une erreur est survenue');
-    }
-    return data;
-  };
-
-  const resetPassword = async (token: string, password: string) => {
-    const res = await fetch(`${API_BASE_URL}/customers/reset-password.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Une erreur est survenue');
-    }
-    return data;
-  };
-
-  const logout = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/customers/session.php`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      setCustomer(null);
-    }
-  };
-
-  const updateProfile = async (data: Partial<Customer>) => {
-    const res = await fetch(`${API_BASE_URL}/customers/profile.php`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Échec de la mise à jour');
-    }
-
-    const result = await res.json();
-    setCustomer(result.customer);
-  };
+  }, [customer]);
 
   return (
     <CustomerContext.Provider
@@ -242,18 +115,20 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         customer,
         isAuthenticated: !!customer,
         isLoading,
-        login,
-        register,
-        logout,
         checkSession,
-        updateProfile,
-        forgotPassword,
-        resetPassword,
-        verifyEmail,
-        resendVerificationCode,
+        requestLoginCode,
+        verifyLoginCode,
+        requireIdentity,
       }}
     >
       {children}
+      <EmailCodeModal
+        isOpen={isModalOpen}
+        requestCode={requestLoginCode}
+        verifyCode={verifyLoginCode}
+        onClose={() => settleIdentity(false)}
+        onSuccess={() => settleIdentity(true)}
+      />
     </CustomerContext.Provider>
   );
 }

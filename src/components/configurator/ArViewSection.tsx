@@ -4,12 +4,13 @@ import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
 import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import { AR_MESSAGES, arErrorDetail, arErrorMessage, sceneViewerIssueMessage } from '@/components/ar/arMessages';
+import SceneViewerLauncher from '@/components/ar/SceneViewerLauncher';
+import { AR_MESSAGES, arErrorDetail, arErrorMessage } from '@/components/ar/arMessages';
 import { useArDevice } from '@/components/ar/useArViewer';
 import { apiClient } from '@/lib/apiClient';
 import { arModelFileFromUrl, arModelPath } from '@/lib/ar/arModelFile';
 import { furnitureToGlb, furnitureToUsdzUrl, prepareFurnitureForExport } from '@/lib/ar/exportFurniture';
-import { openQuickLook, openSceneViewer, type SceneViewerIssue } from '@/lib/ar/launchAr';
+import { openQuickLook } from '@/lib/ar/launchAr';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Scène hors écran montée le temps d'un export (WebGL : navigateur seulement)
@@ -53,8 +54,6 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   const [prepared, setPrepared] = useState<Prepared | null>(() => preparedCache);
   const [failed, setFailed] = useState<{ key: string; message: string; detail: string | null } | null>(null);
   const [attempt, setAttempt] = useState(0);
-  // Android : Scene Viewer ne s'est pas ouvert (voir openSceneViewer)
-  const [launchIssue, setLaunchIssue] = useState<SceneViewerIssue | null>(null);
   const [qr, setQr] = useState<QrState | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -173,19 +172,15 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       .catch(() => setCopied(false));
   };
 
+  // iPhone : Quick Look. Android passe par SceneViewerLauncher, qui vérifie le téléphone avant de lancer
   const launch = () => {
-    if (!prepared || prepared.key !== configKey) return;
-    if ('usdzUrl' in prepared) {
-      openQuickLook(prepared.usdzUrl);
-    } else {
-      setLaunchIssue(null);
-      openSceneViewer(arModelPath(prepared.file), AR_TITLE, setLaunchIssue);
-    }
+    if (prepared?.key === configKey && 'usdzUrl' in prepared) openQuickLook(prepared.usdzUrl);
   };
 
   let button: { label: string; onClick?: () => void; disabled?: boolean; busy?: boolean };
   let note: string | null = null;
   let detail: string | null = null;
+  let sceneViewerFile: string | null = null;
 
   if (device === null) {
     button = { label: AR_MESSAGES.launch, disabled: true };
@@ -200,7 +195,8 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     note = 'Sur ordinateur, un QR code ouvre le meuble sur votre téléphone.';
   } else if (prepared?.key === configKey) {
     button = { label: AR_MESSAGES.launch, onClick: launch };
-    note = launchIssue ? sceneViewerIssueMessage(launchIssue) : AR_MESSAGES.tip;
+    note = AR_MESSAGES.tip;
+    if ('file' in prepared) sceneViewerFile = prepared.file;
   } else if (failed?.key === configKey) {
     button = {
       label: AR_MESSAGES.retry,
@@ -222,11 +218,17 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       <p className="text-xs leading-relaxed text-black/65">
         Posez le meuble à taille réelle dans votre pièce, avec la caméra de votre téléphone.
       </p>
-      <ArLaunchButton {...button} />
-      {note && (
-        <p className="text-[11px] leading-relaxed text-black/65" role="status">
-          {note}
-        </p>
+      {sceneViewerFile ? (
+        <SceneViewerLauncher glbPath={arModelPath(sceneViewerFile)} title={AR_TITLE} />
+      ) : (
+        <>
+          <ArLaunchButton {...button} />
+          {note && (
+            <p className="text-[11px] leading-relaxed text-black/65" role="status">
+              {note}
+            </p>
+          )}
+        </>
       )}
       {detail && <p className="break-all font-mono text-[10px] leading-relaxed text-am-wine">Détail (développement) : {detail}</p>}
 
