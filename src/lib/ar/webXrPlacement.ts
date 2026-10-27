@@ -20,6 +20,8 @@ interface Options {
   onPhase: (phase: WebXrPhase) => void;
   onError: (error: unknown) => void;
   onEnd: () => void;
+  // Diagnostic (?debug=1 dans l'adresse) : état du moteur deux fois par seconde, à lire sur le téléphone
+  onDebug?: (info: string) => void;
 }
 
 // Une surface tournée vers le haut (sol, ou à défaut un tapis, une marche) : pas un mur
@@ -38,7 +40,7 @@ function floorHit(poses: (XRPose | undefined)[], matrix: THREE.Matrix4): boolean
   return poses.some((pose) => pose !== undefined && isFloorLike(matrix.fromArray(pose.transform.matrix)));
 }
 
-export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onEnd }: Options): Promise<WebXrPlacement> {
+export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onEnd, onDebug }: Options): Promise<WebXrPlacement> {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
@@ -100,6 +102,9 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
       model.traverse((object) => {
         if ((object as THREE.Mesh).isMesh) object.castShadow = true;
       });
+      model.traverse((object) => {
+        if ((object as THREE.Mesh).isMesh) meshes++;
+      });
       furniture.add(model);
     })
     .catch((error) => {
@@ -131,7 +136,29 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
     furniture.rotation.y = Math.atan2(cameraPosition.x - furniture.position.x, cameraPosition.z - furniture.position.z);
   };
 
+  let frames = 0;
+  let lastDebug = 0;
+  let meshes = 0;
+  const gl = renderer.getContext();
+  const gpuInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  const gpu = String(gl.getParameter(gpuInfo ? gpuInfo.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+  const debug = (time: number, onFloor: boolean) => {
+    if (!onDebug || time - lastDebug < 500) return;
+    lastDebug = time;
+    xrCamera.getWorldPosition(cameraPosition);
+    const p = furniture.position;
+    const fmt = (v: THREE.Vector3) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
+    onDebug(
+      `images ${frames} · pièces ${meshes} · visible ${furniture.visible ? 'oui' : 'non'} · sol ${onFloor ? 'oui' : 'non'} · anneau ${reticle.visible ? 'oui' : 'non'}
+` +
+        `meuble ${fmt(p)} · téléphone ${fmt(cameraPosition)} · distance ${p.distanceTo(cameraPosition).toFixed(2)} m
+` +
+        `XR ${renderer.xr.isPresenting ? 'oui' : 'non'} · ${session.environmentBlendMode ?? '?'} · overlay ${session.domOverlayState?.type ?? 'non'} · ${gpu}`
+    );
+  };
+
   renderer.setAnimationLoop((time, frame) => {
+    frames++;
     const space = renderer.xr.getReferenceSpace();
     if (frame && space) {
       const onFloor = floorHit(frame.getHitTestResults(centerHits).map((hit) => hit.getPose(space)), hitMatrix);
@@ -167,6 +194,7 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
       }
 
       setPhase(!model ? 'loading' : placed ? 'placed' : onFloor ? 'placing' : estimated ? 'estimated' : 'searching');
+      debug(time, onFloor);
     }
     renderer.render(scene, camera);
   });
