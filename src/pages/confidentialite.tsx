@@ -75,7 +75,7 @@ export default function Confidentialite() {
                 <p>Vos données sont utilisées pour :</p>
                 <ul className="ml-6 list-disc space-y-2">
                   <li>Traiter et suivre vos commandes</li>
-                  <li>Gérer votre compte client</li>
+                  <li>Confirmer votre adresse email par un code à usage unique (aucun compte ni mot de passe)</li>
                   <li>Vous contacter concernant vos projets de meubles sur mesure</li>
                   <li>Améliorer nos services et notre site internet</li>
                   <li>Respecter nos obligations légales et réglementaires</li>
@@ -176,7 +176,7 @@ export default function Confidentialite() {
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
                   <li>Chiffrement SSL/TLS des communications</li>
-                  <li>Authentification sécurisée des comptes utilisateurs</li>
+                  <li>Confirmation de l&apos;adresse email par un code à usage unique, limité dans le temps et en nombre d&apos;essais</li>
                   <li>Accès limité aux données par notre personnel</li>
                   <li>Sauvegardes régulières et sécurisées</li>
                 </ul>

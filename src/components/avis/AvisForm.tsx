@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { HOME_MONO, HOME_PILL_DARK, HOME_SECTION } from "@/components/home/homeLayout";
 
 const FURNITURE_TYPES = ["Dressing", "Bibliothèque", "Buffet", "Bureau", "Meuble TV", "Autre"];
@@ -11,9 +10,11 @@ export function AvisForm({
   isAuthenticated,
   defaultFirstName,
   defaultCity,
+  onIdentify,
   onSubmit,
 }: {
   isAuthenticated: boolean;
+  onIdentify: () => void;
   defaultFirstName?: string;
   defaultCity?: string;
   onSubmit: (rating: number, authorName: string, text: string) => Promise<void>;
@@ -86,11 +87,11 @@ export function AvisForm({
           {!isAuthenticated ? (
             <div className="flex flex-col items-start gap-5">
               <p className="m-0 text-[17px] text-black">
-                Connectez-vous pour partager votre avis et aider d&apos;autres clients à découvrir ArchiMeuble.
+                Confirmez votre adresse email pour partager votre avis et aider d&apos;autres clients à découvrir ArchiMeuble.
               </p>
-              <Link href="/auth/login?redirect=/avis" className={HOME_PILL_DARK}>
-                Se connecter →
-              </Link>
+              <button type="button" onClick={onIdentify} className={HOME_PILL_DARK}>
+                Confirmer mon email →
+              </button>
             </div>
           ) : done ? (
             <p className="m-0 text-[17px] text-black">
