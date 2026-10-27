@@ -125,7 +125,7 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
       : sceneViewerIssueMessage(issue.kind)
     : xrError;
   const hint = inPage ? AR_MESSAGES.webXrIntro : plan.offerAr ? `${AR_MESSAGES.googleCamera} ${AR_MESSAGES.tip}` : 'Le meuble s’ouvre en 3D, sans caméra.';
-  const showRotation = xrPhase === 'placing' || xrPhase === 'placed';
+  const showRotation = xrPhase === 'placing' || xrPhase === 'estimated' || xrPhase === 'placed';
 
   return (
     <>

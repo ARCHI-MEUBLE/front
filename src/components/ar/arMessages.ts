@@ -79,5 +79,7 @@ export const WEBXR_PHASE_MESSAGES = {
   loading: 'Chargement du meuble…',
   searching: 'Visez le sol et bougez doucement le téléphone pour le détecter.',
   placing: "Touchez l'écran pour poser le meuble ici.",
+  estimated:
+    "Sol non détecté : le meuble est posé environ 2 m devant vous, à hauteur estimée. Touchez l'écran pour le fixer, ou visez le sol sous une meilleure lumière.",
   placed: "Faites glisser le meuble du doigt pour le déplacer, tournez-le à deux doigts. Capture d'écran pour garder la photo.",
 } as const;
