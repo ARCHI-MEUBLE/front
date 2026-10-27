@@ -54,3 +54,14 @@ export function arLaunchPlan({ ar, camera }: ArReadiness): { offerAr: boolean; c
     canRecheck: camera === 'denied',
   };
 }
+
+// Réalité augmentée dans la page (WebXR) : à appeler dans le clic, sinon Chrome refuse. Chrome demande lui-même
+// l'accès à la caméra ; « overlay » reste affiché par-dessus la caméra (consignes, boutons).
+export function requestImmersiveAr(overlay: HTMLElement): Promise<XRSession> {
+  if (!navigator.xr) return Promise.reject(Object.assign(new Error('WebXR indisponible'), { name: 'NotSupportedError' }));
+  return navigator.xr.requestSession('immersive-ar', {
+    requiredFeatures: ['hit-test'],
+    optionalFeatures: ['dom-overlay'],
+    domOverlay: { root: overlay },
+  });
+}
