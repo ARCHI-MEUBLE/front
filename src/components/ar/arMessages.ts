@@ -13,14 +13,24 @@ export const AR_MESSAGES = {
     "La réalité augmentée n'a pas pu s'ouvrir : sur Android, elle passe par l'application Google, absente ou désactivée sur ce téléphone.",
   notOpened:
     "Rien ne s'est ouvert ? Si le navigateur demande d'ouvrir l'application Google, acceptez. Sinon, ouvrez cette page dans Chrome.",
+  closed:
+    "La réalité augmentée s'est refermée tout de suite ? Mettez à jour les applications « Google » et « Services Google Play pour la RA » depuis le Play Store, puis réessayez.",
+  needsHttps:
+    "Sur Android, la réalité augmentée ne s'ouvre que depuis le site en ligne (adresse en https), pas depuis l'adresse locale de l'ordinateur.",
   failed: "Le modèle 3D n'a pas pu être préparé.",
   connection: "La connexion a été coupée pendant l'envoi du modèle 3D : réessayez.",
   expired: "Ce lien a expiré. Affichez un nouveau QR code depuis le configurateur, à l'étape Finitions.",
 } as const;
 
-// Message sous le bouton quand Scene Viewer (Android) ne s'est pas ouvert
-export const sceneViewerIssueMessage = (issue: SceneViewerIssue) =>
-  issue === 'unavailable' ? AR_MESSAGES.unavailable : AR_MESSAGES.notOpened;
+// Message sous le bouton quand Scene Viewer (Android) n'a pas montré le meuble
+const SCENE_VIEWER_ISSUE_MESSAGES: Record<SceneViewerIssue, string> = {
+  'needs-https': AR_MESSAGES.needsHttps,
+  unavailable: AR_MESSAGES.unavailable,
+  'not-opened': AR_MESSAGES.notOpened,
+  closed: AR_MESSAGES.closed,
+};
+
+export const sceneViewerIssueMessage = (issue: SceneViewerIssue) => SCENE_VIEWER_ISSUE_MESSAGES[issue];
 
 // Message à montrer pour un échec de préparation : la raison donnée par le serveur quand elle parle à l'utilisateur
 // (trop de dépôts, serveur des modèles injoignable), sinon une phrase générale

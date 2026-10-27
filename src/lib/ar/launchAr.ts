@@ -106,15 +106,20 @@ export function openQuickLook(usdzUrl: string) {
   anchor.remove();
 }
 
-// Ce qui a empêché Scene Viewer de s'ouvrir :
+// Ce qui a empêché Scene Viewer de montrer le meuble :
+// - needs-https : page ouverte en http (adresse locale de l'ordinateur). Scene Viewer ne télécharge qu'en https :
+//   il s'ouvrirait et se refermerait aussitôt, on ne le lance pas ;
 // - unavailable : le navigateur est revenu sur la page, faute d'application Google pour l'ouvrir ;
-// - not-opened : la page est restée affichée (vue web d'une application qui ignore le lien, ouverture refusée).
-export type SceneViewerIssue = 'unavailable' | 'not-opened';
+// - not-opened : la page est restée affichée (vue web d'une application qui ignore le lien, ouverture refusée) ;
+// - closed : Scene Viewer s'est ouvert puis refermé tout de suite (meuble pas chargé, ARCore à mettre à jour).
+export type SceneViewerIssue = 'needs-https' | 'unavailable' | 'not-opened' | 'closed';
 
 // Marqueur posé par le navigateur quand Scene Viewer ne peut pas s'ouvrir : il revient alors sur la page
 const NO_AR_HASH = '#ar-indisponible';
 // Scene Viewer ouvert, la page passe en arrière-plan. Toujours affichée après ce délai : rien ne s'est ouvert
 const NOT_OPENED_DELAY_MS = 4000;
+// Retour sur la page moins longtemps après le départ : Scene Viewer s'est refermé de lui-même
+export const QUICK_CLOSE_MS = 3000;
 // Le retour de secours suit de près le clic (Firefox attend la réponse à sa question) ; plus tard, ce n'est plus lui
 const FALLBACK_WATCH_MS = 60000;
 
@@ -127,10 +132,16 @@ export function openSceneViewer(glbPath: string, title: string, onIssue: (issue:
   // Un seul lancement suivi à la fois : sinon un retour de secours tardif reviendrait plusieurs fois en arrière
   stopWatchingLaunch?.();
 
+  const fileUrl = new URL(glbPath, window.location.href);
+  if (fileUrl.protocol !== 'https:') {
+    onIssue('needs-https');
+    return;
+  }
+
   const fallback = new URL(window.location.href);
   fallback.hash = NO_AR_HASH;
   const params = new URLSearchParams({
-    file: new URL(glbPath, window.location.href).toString(),
+    file: fileUrl.toString(),
     mode: 'ar_preferred',
     resizable: 'false',
     // Comme <model-viewer> : l'occlusion par la profondeur estimée fait clignoter les bords du meuble contre le mur
@@ -144,10 +155,16 @@ export function openSceneViewer(glbPath: string, title: string, onIssue: (issue:
     window.history.back();
     onIssue('unavailable');
   };
+  let hiddenAt: number | null = null;
   const onVisibilityChange = () => {
-    if (document.visibilityState !== 'hidden') return;
-    window.clearTimeout(notOpenedTimer);
-    onIssue(null);
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+      window.clearTimeout(notOpenedTimer);
+      onIssue(null);
+    } else if (hiddenAt !== null && Date.now() - hiddenAt < QUICK_CLOSE_MS) {
+      stop();
+      onIssue('closed');
+    }
   };
   const notOpenedTimer = window.setTimeout(() => {
     if (document.visibilityState === 'visible') onIssue('not-opened');

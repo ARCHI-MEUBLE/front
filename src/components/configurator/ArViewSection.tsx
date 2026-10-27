@@ -216,6 +216,8 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   }
 
   const onLocalHost = typeof window !== 'undefined' && LOCAL_HOSTS.includes(window.location.hostname);
+  // Scene Viewer (Android) ne télécharge le meuble qu'en https
+  const onHttp = typeof window !== 'undefined' && window.location.protocol === 'http:';
 
   return (
     <StepSection title="Voir chez moi" aside="Réalité augmentée">
@@ -293,6 +295,14 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
               <p className="text-[11px] leading-relaxed text-am-wine">
                 Le site est ouvert sur localhost : votre téléphone ne peut pas joindre cette adresse. Ouvrez-le avec
                 l&apos;adresse réseau de l&apos;ordinateur (par exemple http://192.168.x.x:3000) puis réaffichez ce code.
+                Cela suffit pour un iPhone ; Android, lui, n&apos;ouvre la réalité augmentée que depuis le site en ligne
+                (https).
+              </p>
+            )}
+            {qr?.status === 'ready' && !onLocalHost && onHttp && (
+              <p className="text-[11px] leading-relaxed text-am-wine">
+                Adresse en http : la réalité augmentée s&apos;ouvrira sur iPhone, mais Android ne l&apos;ouvre que depuis
+                le site en ligne (https).
               </p>
             )}
           </DialogContent>
