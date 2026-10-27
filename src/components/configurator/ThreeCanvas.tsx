@@ -1454,9 +1454,8 @@ export function Furniture({
                 rootZone={rootZone}
                 layout={layout}
                 selectedZoneIds={selectedZoneIds}
-                neighborZoneIds={onSelectPanel ? [] : neighborZoneIds}
-                // L'outil « retirer des planches » travaille sur les panneaux : pas de survol de zone
-                hoveredZoneId={onSelectPanel ? null : hoveredZoneId}
+                neighborZoneIds={neighborZoneIds}
+                hoveredZoneId={hoveredZoneId}
                 selectionTint={selectionTint}
             />
             {hoveredZoneId && rootZone && (

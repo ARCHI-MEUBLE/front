@@ -638,7 +638,10 @@ export default function ZoneControls({
   const glassShelfCount = selectedZone.glassShelfCount || 1;
 
   const applyFacade = (content: ZoneContent) => {
-    if (isLeaf) {
+    // Plusieurs compartiments : la porte se pose sur l'ensemble, qui est regroupé pour l'occasion
+    if (isMultiSelection) {
+      onGroupZones?.(selectedZoneIds, content);
+    } else if (isLeaf) {
       onSetContent(selectedZone.id, content);
     } else {
       onSetDoorContent?.(selectedZone.id, content);
@@ -658,6 +661,62 @@ export default function ZoneControls({
     applyFacade(side === 'left' ? 'push_door' : 'push_door_right');
     setDoorSideDialog({ isOpen: false, doorType: null });
   };
+
+  // Mêmes portes pour un compartiment seul, un groupe ou plusieurs compartiments sélectionnés ;
+  // seule la largeur couverte change les limites de fabrication
+  const doorOptionTiles = (width: number) =>
+    DOOR_OPTIONS.map((option) => {
+      const { id, icon, label, desc } = option;
+      const hasSideChoice = 'needsSideChoice' in option && option.needsSideChoice;
+      const isActive =
+        !isMultiSelection && (hasSideChoice ? currentFacade === id || currentFacade === `${id}_right` : currentFacade === id);
+      return (
+        <OptionTile
+          key={id}
+          icon={icon}
+          label={label}
+          desc={desc}
+          active={isActive}
+          disabledReason={facadeReason(id, width)}
+          onClick={() => handleDoorOptionClick(option)}
+        />
+      );
+    });
+
+  const renderDoorSideDialog = () =>
+    doorSideDialog.isOpen && (
+      <div className="mt-3 border border-black/10 bg-white p-4" style={{ borderRadius: '2px' }}>
+        <p className="mb-1 text-sm font-medium text-black">Côté d&apos;ouverture</p>
+        <p className="mb-3 text-xs text-black/65">Choisissez le côté d&apos;ouverture de la porte Push</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handleDoorSideChoice('left')}
+            className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
+            style={{ borderRadius: '2px' }}
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span className="text-xs font-medium">Gauche</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDoorSideChoice('right')}
+            className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
+            style={{ borderRadius: '2px' }}
+          >
+            <ChevronRight className="h-5 w-5" />
+            <span className="text-xs font-medium">Droite</span>
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
+          className="mt-3 w-full text-center text-xs text-black/65 hover:text-black"
+        >
+          Annuler
+        </button>
+      </div>
+    );
 
   const defaultShelfPositions = (count: number) =>
     Array.from({ length: count }, (_, i) => Math.round(((i + 1) / (count + 1)) * 100));
@@ -713,24 +772,8 @@ export default function ZoneControls({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <OptionTile
-              icon={DoorClosed}
-              label="Porte simple"
-              desc="Un seul vantail"
-              active={false}
-              disabledReason={selectionWidthMm ? facadeReason('door', selectionWidthMm) : undefined}
-              onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
-            />
-            <OptionTile
-              icon={DoorClosed}
-              label="Double porte"
-              desc="Deux vantaux"
-              active={false}
-              disabledReason={selectionWidthMm ? facadeReason('door_double', selectionWidthMm) : undefined}
-              onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">{doorOptionTiles(selectionWidthMm ?? 0)}</div>
+          {renderDoorSideDialog()}
 
           <p className="mt-3 text-center text-[11px] text-black/65">
             La porte recouvrira l&apos;intégralité de la zone sélectionnée.
@@ -770,59 +813,10 @@ export default function ZoneControls({
                 applyFacade('empty');
               }}
             />
-            {DOOR_OPTIONS.map((option) => {
-              const { id, icon, label, desc } = option;
-              const hasSideChoice = 'needsSideChoice' in option && option.needsSideChoice;
-              const isActive = hasSideChoice
-                ? currentFacade === id || currentFacade === `${id}_right`
-                : currentFacade === id;
-              return (
-                <OptionTile
-                  key={id}
-                  icon={icon}
-                  label={label}
-                  desc={desc}
-                  active={isActive}
-                  disabledReason={facadeReason(id)}
-                  onClick={() => handleDoorOptionClick(option)}
-                />
-              );
-            })}
+            {doorOptionTiles(zoneWidth)}
           </div>
 
-          {doorSideDialog.isOpen && (
-            <div className="mt-3 border border-black/10 bg-white p-4" style={{ borderRadius: '2px' }}>
-              <p className="mb-1 text-sm font-medium text-black">Côté d&apos;ouverture</p>
-              <p className="mb-3 text-xs text-black/65">Choisissez le côté d&apos;ouverture de la porte Push</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDoorSideChoice('left')}
-                  className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
-                  style={{ borderRadius: '2px' }}
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                  <span className="text-xs font-medium">Gauche</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDoorSideChoice('right')}
-                  className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
-                  style={{ borderRadius: '2px' }}
-                >
-                  <ChevronRight className="h-5 w-5" />
-                  <span className="text-xs font-medium">Droite</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
-                className="mt-3 w-full text-center text-xs text-black/65 hover:text-black"
-              >
-                Annuler
-              </button>
-            </div>
-          )}
+          {renderDoorSideDialog()}
         </div>
       )}
 
