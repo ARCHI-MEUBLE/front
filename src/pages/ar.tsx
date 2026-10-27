@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import { AR_MESSAGES } from '@/components/ar/arMessages';
+import { AR_MESSAGES, sceneViewerIssueMessage } from '@/components/ar/arMessages';
 import { useArDevice, useArModel, useArModelAvailability } from '@/components/ar/useArViewer';
 import { arModelPath, isArModelFile } from '@/lib/ar/arModelFile';
 
@@ -68,9 +68,9 @@ export default function ArPage() {
         ) : (
           <ArLaunchButton label={AR_MESSAGES.preparing} busy />
         )}
-        {ar.unavailable && (
+        {ar.issue && (
           <p className="text-xs leading-relaxed text-am-wine" role="status">
-            {AR_MESSAGES.unavailable}
+            {sceneViewerIssueMessage(ar.issue)}
           </p>
         )}
       </>

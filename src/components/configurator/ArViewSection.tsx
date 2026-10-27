@@ -4,12 +4,12 @@ import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
 import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import { AR_MESSAGES, arErrorDetail, arErrorMessage } from '@/components/ar/arMessages';
+import { AR_MESSAGES, arErrorDetail, arErrorMessage, sceneViewerIssueMessage } from '@/components/ar/arMessages';
 import { useArDevice } from '@/components/ar/useArViewer';
 import { apiClient } from '@/lib/apiClient';
 import { arModelFileFromUrl, arModelPath } from '@/lib/ar/arModelFile';
 import { furnitureToGlb, furnitureToUsdzUrl, prepareFurnitureForExport } from '@/lib/ar/exportFurniture';
-import { openQuickLook, openSceneViewer } from '@/lib/ar/launchAr';
+import { openQuickLook, openSceneViewer, type SceneViewerIssue } from '@/lib/ar/launchAr';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Scène hors écran montée le temps d'un export (WebGL : navigateur seulement)
@@ -53,8 +53,8 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   const [prepared, setPrepared] = useState<Prepared | null>(() => preparedCache);
   const [failed, setFailed] = useState<{ key: string; message: string; detail: string | null } | null>(null);
   const [attempt, setAttempt] = useState(0);
-  // Android : Chrome est revenu sur la page faute de Scene Viewer (ARCore absent)
-  const [unavailable, setUnavailable] = useState(false);
+  // Android : Scene Viewer ne s'est pas ouvert (voir openSceneViewer)
+  const [launchIssue, setLaunchIssue] = useState<SceneViewerIssue | null>(null);
   const [qr, setQr] = useState<QrState | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -178,8 +178,8 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     if ('usdzUrl' in prepared) {
       openQuickLook(prepared.usdzUrl);
     } else {
-      setUnavailable(false);
-      openSceneViewer(arModelPath(prepared.file), AR_TITLE, () => setUnavailable(true));
+      setLaunchIssue(null);
+      openSceneViewer(arModelPath(prepared.file), AR_TITLE, setLaunchIssue);
     }
   };
 
@@ -200,7 +200,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     note = 'Sur ordinateur, un QR code ouvre le meuble sur votre téléphone.';
   } else if (prepared?.key === configKey) {
     button = { label: AR_MESSAGES.launch, onClick: launch };
-    note = unavailable ? AR_MESSAGES.unavailable : AR_MESSAGES.tip;
+    note = launchIssue ? sceneViewerIssueMessage(launchIssue) : AR_MESSAGES.tip;
   } else if (failed?.key === configKey) {
     button = {
       label: AR_MESSAGES.retry,
