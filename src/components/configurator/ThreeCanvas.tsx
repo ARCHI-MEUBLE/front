@@ -127,8 +127,10 @@ export function Furniture({
         // s'arrêter juste devant sa face avant (rainure + épaisseur rendue).
         const backPanelZ = -d / 2 + backPanelGroove + backPanelRenderThickness / 2;
         const backPanelThickness = backPanelGroove + backPanelRenderThickness;
-        const compartmentGap = mountingStyle === 'encastre' ? 0.006 : 0.003;
-        const mountingOffset = mountingStyle === 'encastre' ? -0.022 : 0;
+        const compartmentGap = mountingStyle === 'encastre' ? 0 : 0.003;
+        // La porte a elle-même un décalage avant fixe de 0.023 (mesh à z=0.014, profondeur 0.018) : il
+        // faut le compenser pour que ce retrait soit le retrait réel, pas juste décaler le groupe.
+        const mountingOffset = mountingStyle === 'encastre' ? -0.004 - 0.023 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
         const doorRecess = 0;
         return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess };
@@ -638,21 +640,25 @@ export function Furniture({
             const touchesFurnitureBottom = cellBottom <= furnitureBottomInner + 0.05;
             const touchesFurnitureTop = cellTop >= furnitureTopInner - 0.05;
 
+            // En retrait de la vraie arête pour que le surlignage de sélection, un peu plus grand
+            // que la plaque, ne dépasse jamais des panneaux latéraux/haut/bas
+            const edgeInset = 0.005;
+
             if (isLeftmost) {
-                segWidth += thickness;
-                segX -= thickness / 2;
+                segWidth += thickness - edgeInset;
+                segX -= (thickness - edgeInset) / 2;
             }
             if (isRightmost) {
-                segWidth += thickness;
-                segX += thickness / 2;
+                segWidth += thickness - edgeInset;
+                segX += (thickness - edgeInset) / 2;
             }
             if (isTopmost || touchesFurnitureTop) {
-                segHeight += thickness;
-                segY += thickness / 2;
+                segHeight += thickness - edgeInset;
+                segY += (thickness - edgeInset) / 2;
             }
             if (isBottommost || touchesFurnitureBottom) {
                 const gapToBottom = cellBottom - yOffset;
-                const extensionBottom = Math.max(thickness, gapToBottom + 0.001);
+                const extensionBottom = Math.max(thickness, gapToBottom + 0.001) - edgeInset;
                 segHeight += extensionBottom;
                 segY -= extensionBottom / 2;
             }
@@ -903,6 +909,10 @@ export function Furniture({
                             position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
+                            boxWidth={Math.min(width, doorZoneWidth - compartmentGap)}
+                            boxCenterX={-doorXOffset}
+                            boxBottomY={-height / 2 - doorYOffset}
+                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004}
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
@@ -920,6 +930,10 @@ export function Furniture({
                             position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
+                            boxWidth={Math.min(width, doorZoneWidth - compartmentGap)}
+                            boxCenterX={-doorXOffset}
+                            boxBottomY={-height / 2 - doorYOffset}
+                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004}
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
@@ -1159,9 +1173,10 @@ export function Furniture({
                         const childIsAtBottom = isLast ? isAtBottom : false;
                         // Un enfant qui n'est pas au bord touche une cloison interne créée par CETTE
                         // division : elle n'est pas doublée (une coupe horizontale n'est jamais un
-                        // caisson), donc chaque porte voisine n'en recouvre que la moitié.
-                        const childTopGap = isFirst ? topGap : thickness / 2;
-                        const childBottomGap = isLast ? bottomGap : thickness / 2;
+                        // caisson), donc chaque porte voisine n'en recouvre que la moitié — sauf en
+                        // encastré, où aucune façade ne recouvre une planche, interne ou non.
+                        const childTopGap = isFirst ? topGap : (mountingStyle === 'encastre' ? 0 : thickness / 2);
+                        const childBottomGap = isLast ? bottomGap : (mountingStyle === 'encastre' ? 0 : thickness / 2);
                         parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight, childTopGap, childBottomGap, leftGap, rightGap);
                         currentPos += childHeight;
                         if (i < zone.children!.length - 1) currentPos += thickness;
@@ -1175,8 +1190,10 @@ export function Furniture({
                         const childIsAtRight = isLast ? isAtRight : false;
                         // Idem, mais sepThickness/2 : pour un caisson (séparateur doublé), ça vaut
                         // une épaisseur pleine — chaque caisson recouvre son propre panneau en entier.
-                        const childLeftGap = isFirst ? leftGap : sepThickness / 2;
-                        const childRightGap = isLast ? rightGap : sepThickness / 2;
+                        // En encastré, aucune façade ne recouvre une planche (interne ou non) : pas de
+                        // recouvrement du tout, quelle que soit l'épaisseur du séparateur.
+                        const childLeftGap = isFirst ? leftGap : (mountingStyle === 'encastre' ? 0 : sepThickness / 2);
+                        const childRightGap = isLast ? rightGap : (mountingStyle === 'encastre' ? 0 : sepThickness / 2);
                         parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight, topGap, bottomGap, childLeftGap, childRightGap);
                         currentPos += childWidth;
                         if (i < zone.children!.length - 1) currentPos += sepThickness;
@@ -1411,25 +1428,33 @@ export function Furniture({
                 />;
             })}
 
-            {/* Bande de fond derrière chaque étagère/cloison, couplée à son ID (disparaît si on la supprime). */}
+            {/* Bande de fond derrière chaque étagère/cloison, couplée à son ID (disparaît si on la supprime).
+                Même logique d'extension que les plaques du fond par compartiment (panelSegments.backSegments
+                ci-dessus) : même edgeInset, même traitement du bas, pour que les deux s'arrêtent au même bord. */}
             {panelSegments.separatorSegments.map((segment) => {
                 if (deletedPanelIds.has(segment.id)) return null;
                 let fillX = segment.x;
                 let fillY = segment.y;
                 let fillWidth = segment.width;
                 let fillHeight = segment.height;
+                const edgeInset = 0.005;
                 if (segment.orientation === 'horizontal') {
                     const touchesLeft = (segment.x - segment.width / 2) <= (-w / 2 + thickness + 0.01);
                     const touchesRight = (segment.x + segment.width / 2) >= (w / 2 - thickness - 0.01);
-                    if (touchesLeft) { fillWidth += thickness; fillX -= thickness / 2; }
-                    if (touchesRight) { fillWidth += thickness; fillX += thickness / 2; }
+                    if (touchesLeft) { fillWidth += thickness - edgeInset; fillX -= (thickness - edgeInset) / 2; }
+                    if (touchesRight) { fillWidth += thickness - edgeInset; fillX += (thickness - edgeInset) / 2; }
                 } else {
                     const furnitureBottomInner = yOffset + thickness;
                     const furnitureTopInner = yOffset + sideHeight - thickness;
-                    const touchesBottom = (segment.y - segment.height / 2) <= (furnitureBottomInner + 0.01);
-                    const touchesTop = (segment.y + segment.height / 2) >= (furnitureTopInner - 0.01);
-                    if (touchesBottom) { fillHeight += thickness; fillY -= thickness / 2; }
-                    if (touchesTop) { fillHeight += thickness; fillY += thickness / 2; }
+                    const touchesBottom = (segment.y - segment.height / 2) <= (furnitureBottomInner + 0.05);
+                    const touchesTop = (segment.y + segment.height / 2) >= (furnitureTopInner - 0.05);
+                    if (touchesTop) { fillHeight += thickness - edgeInset; fillY += (thickness - edgeInset) / 2; }
+                    if (touchesBottom) {
+                        const gapToBottom = (segment.y - segment.height / 2) - yOffset;
+                        const extensionBottom = Math.max(thickness, gapToBottom + 0.001) - edgeInset;
+                        fillHeight += extensionBottom;
+                        fillY -= extensionBottom / 2;
+                    }
                 }
                 return (
                     <StructuralPanel
