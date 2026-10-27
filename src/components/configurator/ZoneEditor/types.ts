@@ -1,4 +1,4 @@
-export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer';
+export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer' | 'niche';
 
 export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
@@ -22,7 +22,7 @@ export type Zone = {
   hasCableHole?: boolean;
   hasDressing?: boolean;
   handleType?: HandleType; // Type de poignée pour portes/tiroirs
-  zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
+  zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte/niche)
   glassShelfCount?: number; // Nombre d'étagères en verre (1-5, défaut: 1)
   glassShelfPositions?: number[]; // Positions des étagères en % depuis le bas (0-100)
   isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
@@ -114,6 +114,12 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     shortLabel: 'Push Tiroir',
     icon: 'PTD',
     description: 'Tiroir sans poignée, ouverture par pression',
+  },
+  niche: {
+    label: 'Niche',
+    shortLabel: 'Niche',
+    icon: 'N',
+    description: 'Compartiment ouvert à l\'intérieur coloré',
   },
 };
 

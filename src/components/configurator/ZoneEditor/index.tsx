@@ -3,6 +3,7 @@ import ZoneCanvas from './ZoneCanvas';
 import ZoneControls, { SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
 import { Zone, ZoneContent, HandleType } from './types';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { selectionSizeMm } from '@/lib/configurator/zoneSelection';
 import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
 import { setDivisionCount, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 import { removeSection } from '@/lib/configurator/zoneRemoval';
@@ -240,11 +241,9 @@ export default function ZoneEditor({
   // Largeur couverte par plusieurs compartiments voisins (porte commune)
   const multiSelectionWidthMm = useMemo(() => {
     if (selectedZoneIds.length < 2) return undefined;
-    const parent = findZoneWithParent(rootZone, selectedZoneIds[0])?.parent;
-    if (!parent) return undefined;
-    if (parent.type !== 'vertical') return Math.round(calculateZoneWidth(selectedZoneIds[0]));
-    return Math.round(selectedZoneIds.reduce((sum, id) => sum + calculateZoneWidth(id), 0));
-  }, [selectedZoneIds, rootZone, findZoneWithParent, calculateZoneWidth]);
+    const size = selectionSizeMm(rootZone, selectedZoneIds, width, height);
+    return size ? Math.round(size.width) : undefined;
+  }, [selectedZoneIds, rootZone, width, height]);
 
   // Diviser une zone
   const splitZone = useCallback(

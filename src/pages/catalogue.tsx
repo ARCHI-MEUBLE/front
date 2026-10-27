@@ -4,7 +4,6 @@ import { toast } from "react-hot-toast";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCustomer } from "@/context/CustomerContext";
-import { useRouter } from "next/router";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { CatalogueHero } from "@/components/catalogue/CatalogueHero";
 import { CatalogueToolbar } from "@/components/catalogue/CatalogueToolbar";
@@ -16,8 +15,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 const ITEMS_PER_PAGE = 12;
 
 export default function Catalogue() {
-  const router = useRouter();
-  const { isAuthenticated } = useCustomer();
+  const { isAuthenticated, requireIdentity } = useCustomer();
   const [items, setItems] = useState<CatalogueItemData[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
@@ -112,11 +110,7 @@ export default function Catalogue() {
 
   const handleAddToCart = useCallback(
     async (item: CatalogueItemData) => {
-      if (!isAuthenticated) {
-        toast.error("Veuillez vous connecter pour ajouter au panier");
-        router.push("/auth/login?redirect=/catalogue");
-        return;
-      }
+      if (!isAuthenticated && !(await requireIdentity())) return;
       try {
         const variations = item.variations || [];
         const defaultIndex = variations.findIndex((v) => v.is_default === 1);
@@ -143,7 +137,7 @@ export default function Catalogue() {
         toast.error("Erreur réseau");
       }
     },
-    [isAuthenticated, router, selectedVariation]
+    [isAuthenticated, requireIdentity, selectedVariation]
   );
 
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);

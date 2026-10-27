@@ -5,7 +5,6 @@ import {
   getArPlatform,
   isPhoneOrTablet,
   openQuickLook,
-  openSceneViewer,
   type ArPlatform,
 } from '@/lib/ar/launchAr';
 
@@ -44,18 +43,14 @@ export function useArModelAvailability(file: string | null): 'checking' | 'avail
   return result?.file === file ? result.status : 'checking';
 }
 
-// Nom affiché par Scene Viewer au-dessus du meuble
-const AR_TITLE = 'Votre meuble';
-
-// Prépare un GLB du générateur pour la réalité augmentée de l'appareil. launch() doit être appelé directement dans
-// un clic : le téléphone n'ouvre sa vue AR que sur une action de l'utilisateur, d'où la préparation à l'avance.
+// Prépare un GLB du générateur pour la réalité augmentée de l'appareil. launch() ouvre Quick Look (iPhone) et doit être
+// appelé directement dans un clic : iOS n'ouvre sa vue AR que sur une action de l'utilisateur, d'où la préparation à
+// l'avance. Android passe par SceneViewerLauncher, qui vérifie le téléphone avant de lancer.
 export function useArModel(device: ArDevice | null, file: string | null) {
   // iPhone : USDZ converti depuis le GLB, attaché au fichier dont il vient
   const [usdz, setUsdz] = useState<{ file: string; url: string } | null>(null);
   const [failedFile, setFailedFile] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  // Android : Chrome est revenu sur la page faute de Scene Viewer (ARCore absent)
-  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     if (device !== 'quick-look' || !file) return;
@@ -85,12 +80,7 @@ export function useArModel(device: ArDevice | null, file: string | null) {
 
   const launch = useCallback(() => {
     if (!file) return;
-    if (device === 'quick-look' && usdz?.file === file) {
-      openQuickLook(usdz.url);
-    } else if (device === 'scene-viewer') {
-      setUnavailable(false);
-      openSceneViewer(arModelPath(file), AR_TITLE, () => setUnavailable(true));
-    }
+    if (device === 'quick-look' && usdz?.file === file) openQuickLook(usdz.url);
   }, [device, file, usdz]);
 
   const retry = useCallback(() => {
@@ -98,5 +88,5 @@ export function useArModel(device: ArDevice | null, file: string | null) {
     setAttempt((value) => value + 1);
   }, []);
 
-  return { status, launch, retry, unavailable };
+  return { status, launch, retry };
 }

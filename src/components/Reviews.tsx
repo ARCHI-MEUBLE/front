@@ -28,7 +28,7 @@ const FALLBACK: AvisReviewData[] = TESTIMONIALS.map((t, i) => ({
 }));
 
 export function Reviews() {
-  const { customer, isAuthenticated } = useCustomer();
+  const { customer, isAuthenticated, requireIdentity } = useCustomer();
   const [reviews, setReviews] = useState<AvisReviewData[]>([]);
 
   useEffect(() => {
@@ -98,6 +98,7 @@ export function Reviews() {
       <AvisMarquee reviews={reviews} />
       <AvisForm
         isAuthenticated={isAuthenticated}
+        onIdentify={() => void requireIdentity()}
         defaultFirstName={customer ? `${customer.first_name} ${customer.last_name.charAt(0)}.` : undefined}
         defaultCity={customer?.city}
         onSubmit={addReview}

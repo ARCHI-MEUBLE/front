@@ -12,6 +12,7 @@ import { PanelSegmentHitbox, StructuralPanel, Handle, DoorHinge } from './scene/
 import { AnimatedDoor, AnimatedMirrorDoor, AnimatedPushDoor } from './scene/AnimatedDoors';
 import { AnimatedPushDrawer, AnimatedDrawer } from './scene/AnimatedDrawers';
 import { BackPanelWithOpenings } from './scene/BackPanel';
+import { NicheLining } from './scene/Niche';
 import { JapaneseMinimalist, ScandinavianLandscape, BauhausGeometric, WallClock } from './scene/wall-art';
 import { Room, type RoomScene } from './scene/Room';
 import { RoomLightsContext } from './scene/roomLights';
@@ -25,6 +26,7 @@ import { createDoubleClickDetector, isRealClick } from './scene/pointer';
 import { DividerHandles, type DividerChange } from './scene/DividerHandles';
 import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box } from '@/lib/configurator/zoneBounds';
 import { getZoneFacade } from '@/lib/configurator/zoneStats';
+import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
 export type { ThreeCanvasHandle };
@@ -41,6 +43,8 @@ interface ThreeViewerProps {
     selectedZoneIds?: string[];
     // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé (choix des couleurs)
     selectionTint?: boolean;
+    // Compartiments voisins de la sélection que l'on peut lui ajouter d'un clic (étape Portes)
+    neighborZoneIds?: string[];
     onSelectZone?: (id: string | null) => void;
     selectedPanelIds?: Set<string>;
     onSelectPanel?: (panelId: string | null) => void;
@@ -48,8 +52,8 @@ interface ThreeViewerProps {
     isBuffet?: boolean;
     doorsOpen?: boolean;
     showDecorations?: boolean;
-    // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
-    hideDrawers?: boolean;
+    // true : les tiroirs et les portes ne sont pas dessinés, on voit mieux les planches derrière
+    hideFacades?: boolean;
     // Pièce autour du meuble (neutre par défaut)
     roomScene?: RoomScene;
     // Salon, Chambre : lampes allumées, ambiance du soir
@@ -73,13 +77,14 @@ interface DividerEvents {
 // Exporté pour la réalité augmentée : components/ar/FurnitureSnapshot.tsx le rend hors écran, portes fermées
 export function Furniture({
                        width, height, depth, color, imageUrl, hasSocle, socle, rootZone, isBuffet,
-                       doorsOpen, showDecorations, hideDrawers = false, onToggleDoors, componentColors,
+                       doorsOpen, showDecorations, hideFacades = false, onToggleDoors, componentColors,
                        doorType = 'none',
                        doorSide = 'left',
                        useMultiColor = false,
                        mountingStyle = 'applique',
                        selectedZoneIds = [],
                        selectionTint = true,
+                       neighborZoneIds = [],
                        onSelectZone,
                        selectedPanelIds = new Set(),
                        onSelectPanel,
@@ -900,7 +905,7 @@ export function Furniture({
                             </group>
                         );
                     }
-                } else if (zone.content === 'drawer' && !hideDrawers) {
+                } else if (zone.content === 'drawer' && !hideFacades) {
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
@@ -921,7 +926,7 @@ export function Furniture({
                             />
                         </group>
                     );
-                } else if (zone.content === 'push_drawer' && !hideDrawers) {
+                } else if (zone.content === 'push_drawer' && !hideFacades) {
                     const drawerHexColor = zone.zoneColor?.hex || finalDrawerColor;
                     const drawerImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDrawerImageUrl;
                     items.push(
@@ -941,6 +946,21 @@ export function Furniture({
                             />
                         </group>
                     );
+                } else if (zone.content === 'niche') {
+                    // Sans couleur choisie, l'intérieur reprend le fond du meuble en plus sombre
+                    const nicheHexColor = zone.zoneColor?.hex || nicheDefaultColor(finalBackColor);
+                    const nicheImageUrl = zone.zoneColor?.hex ? zone.zoneColor.imageUrl : null;
+                    items.push(
+                        <NicheLining
+                            key={`${zone.id}-niche`}
+                            position={[x, y, z + backPanelThickness / 2]}
+                            width={width}
+                            height={height}
+                            depth={d - backPanelThickness}
+                            hexColor={nicheHexColor}
+                            imageUrl={nicheImageUrl}
+                        />
+                    );
                 }
 
                 if (zone.hasDressing || zone.content === 'dressing') {
@@ -954,7 +974,7 @@ export function Furniture({
 
                 const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') ? zone.content : null);
 
-                if (doorToRender) {
+                if (doorToRender && !hideFacades) {
                     console.log('[FIX-v1] porte (feuille):', JSON.stringify({
                         id: zone.id, doorToRender, x: +x.toFixed(4), y: +y.toFixed(4), width: +width.toFixed(4), height: +height.toFixed(4),
                         doorZoneWidth: +doorZoneWidth.toFixed(4), doorXOffset: +doorXOffset.toFixed(4), doorYOffset: +doorYOffset.toFixed(4),
@@ -1069,7 +1089,7 @@ export function Furniture({
             }
 
             const groupDoor = zone.doorContent || (zone.children && zone.children.length > 0 ? zone.content : null);
-            if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty') {
+            if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty' && !hideFacades) {
                 const doorToRender = groupDoor;
                 console.log('[FIX-v1] porte (groupe):', JSON.stringify({
                     id: zone.id, doorToRender, x: +x.toFixed(4), y: +y.toFixed(4), width: +width.toFixed(4), height: +height.toFixed(4),
@@ -1210,7 +1230,7 @@ export function Furniture({
         finalStructureColor, finalShelfColor, finalDrawerColor, finalDoorColor, finalBackColor, finalBaseColor,
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
-        openCompartments, showDecorations, hideDrawers, zoneHandlers,
+        openCompartments, showDecorations, hideFacades, zoneHandlers,
         selectedPanelIds, onSelectPanel
     ]);
 
@@ -1475,6 +1495,7 @@ export function Furniture({
                 rootZone={rootZone}
                 layout={layout}
                 selectedZoneIds={selectedZoneIds}
+                neighborZoneIds={neighborZoneIds}
                 hoveredZoneId={hoveredZoneId}
                 selectionTint={selectionTint}
             />

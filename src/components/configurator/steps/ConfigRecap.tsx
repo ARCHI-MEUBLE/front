@@ -52,6 +52,7 @@ export default function ConfigRecap({
   const equipment = [
     stats.doors > 0 && plural(stats.doors, 'porte'),
     stats.drawers > 0 && plural(stats.drawers, 'tiroir'),
+    stats.niches > 0 && plural(stats.niches, 'niche'),
     stats.glassShelves > 0 && plural(stats.glassShelves, 'étagère en verre', 'étagères en verre'),
     stats.lights > 0 && `${stats.lights} × éclairage LED`,
     stats.cableHoles > 0 && plural(stats.cableHoles, 'passe-câble'),

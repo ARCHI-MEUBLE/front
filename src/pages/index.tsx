@@ -26,9 +26,9 @@ export default function HomePage() {
         <HeroSection />
         <ProductsMarquee />
         <WhyChooseUs />
+        <ServiceAreaSection />
         <QuoteRequestCTA />
         <TestimonialsSection />
-        <ServiceAreaSection />
         <ContactUniqueSection />
         <FaqSection />
         <FinalCtaSection />

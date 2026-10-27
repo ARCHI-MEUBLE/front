@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useId, useState } from "react";
-import { Menu, X, ShoppingBag, User, ChevronRight, ChevronDown, Layers, Package, DoorClosed, Palette } from "lucide-react";
+import { Menu, X, ShoppingBag, ChevronRight, ChevronDown, Layers, Package, DoorClosed, Palette } from "lucide-react";
 import { useCustomer } from "@/context/CustomerContext";
 import { NavDropdown, isPathActive, type NavDropdownItem } from "@/components/NavDropdown";
 
@@ -156,13 +156,6 @@ export function Header() {
 
           <div className="flex items-center gap-2">
             <Link
-              href={customer ? "/account" : "/auth/login?redirect=/account"}
-              aria-label="Mon compte"
-              className="hidden h-11 w-11 flex-none items-center justify-center rounded-full border border-black/30 bg-white text-black sm:flex"
-            >
-              <User className="h-[18px] w-[18px]" strokeWidth={1.6} />
-            </Link>
-            <Link
               href="/cart"
               aria-label={`Panier, ${cartCount} article${cartCount > 1 ? "s" : ""}`}
               className="relative hidden h-11 w-11 flex-none items-center justify-center rounded-full border border-black/30 bg-white text-black sm:flex"
@@ -173,18 +166,6 @@ export function Header() {
                   {cartCount}
                 </span>
               )}
-            </Link>
-            <Link
-              href="/models"
-              className="hidden min-h-11 items-center justify-center rounded-full border border-black bg-am-wine px-[18px] py-2.5 text-[14px] font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 sm:inline-flex"
-            >
-              Configurer mon meuble
-            </Link>
-            <Link
-              href="/models"
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-black bg-am-wine px-4 text-[13px] font-medium text-white sm:hidden"
-            >
-              Configurer
             </Link>
             <button
               type="button"
@@ -253,24 +234,6 @@ export function Header() {
             <div className="my-6 border-t border-black/15" />
 
             <div className="space-y-1">
-              <Link
-                href={customer ? "/account" : "/auth/login?redirect=/account"}
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-black hover:bg-am-mist/30"
-              >
-                <User className="h-5 w-5" />
-                {customer ? "Mon compte" : "Se connecter"}
-              </Link>
-              {customer && (
-                <Link
-                  href="/account?section=configurations"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-black hover:bg-am-mist/30"
-                >
-                  <Layers className="h-5 w-5" />
-                  Mes configurations
-                </Link>
-              )}
               <Link
                 href="/cart"
                 onClick={() => setIsMenuOpen(false)}
