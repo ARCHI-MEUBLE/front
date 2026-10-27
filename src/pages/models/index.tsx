@@ -39,7 +39,15 @@ export default function ModelsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await apiClient.models.getAll();
+      // Catégories chargées avec les modèles : le carrousel n'apparaît qu'une fois l'ordre des catégories connu,
+      // sinon il s'afficherait d'abord sur une autre catégorie puis glisserait vers celle de l'URL
+      const [data] = await Promise.all([
+        apiClient.models.getAll(),
+        apiClient.categories
+          .getAll(true)
+          .then(setCategories)
+          .catch((err) => console.error("Erreur lors du chargement des catégories:", err)),
+      ]);
       const productModels: ModelCardData[] = data.map((model: FurnitureModel) => {
         const categorySlug = model.category || inferCategorySlug(model.name);
         return {
@@ -61,16 +69,6 @@ export default function ModelsPage() {
 
   useEffect(() => {
     void loadModels();
-
-    const loadCategories = async () => {
-      try {
-        const data = await apiClient.categories.getAll(true);
-        setCategories(data);
-      } catch (err) {
-        console.error("Erreur lors du chargement des catégories:", err);
-      }
-    };
-    void loadCategories();
   }, [loadModels]);
 
   const labelledModels: ModelCardData[] = models.map((model) => {

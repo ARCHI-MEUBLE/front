@@ -12,6 +12,7 @@ describe('computeZoneStats', () => {
       compartments: 1,
       doors: 0,
       drawers: 0,
+      niches: 0,
       glassShelves: 0,
       lights: 0,
       cableHoles: 0,
@@ -42,6 +43,7 @@ describe('computeZoneStats', () => {
       compartments: 5,
       doors: 3,
       drawers: 2,
+      niches: 0,
       glassShelves: 3,
       lights: 1,
       cableHoles: 1,
@@ -59,6 +61,18 @@ describe('computeZoneStats', () => {
     const stats = computeZoneStats(root);
     expect(stats.doors).toBe(2);
     expect(stats.compartments).toBe(2);
+  });
+
+  it('counts niches as compartments, not as doors or drawers', () => {
+    const root: Zone = {
+      id: 'root',
+      type: 'vertical',
+      children: [leaf('a', { content: 'niche', zoneColor: { colorId: 3, hex: '#223344' } }), leaf('b'), leaf('c', { content: 'niche' })],
+    };
+    const stats = computeZoneStats(root);
+    expect(stats.niches).toBe(2);
+    expect(stats.compartments).toBe(3);
+    expect(stats.doors + stats.drawers).toBe(0);
   });
 
   it('ignores open spaces when counting compartments', () => {

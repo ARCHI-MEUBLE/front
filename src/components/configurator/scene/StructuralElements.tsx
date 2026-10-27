@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import * as THREE from 'three';
 import { TexturedMaterial } from './TexturedMaterial';
 import { isRealClick } from './pointer';
@@ -19,15 +20,20 @@ export function PanelSegmentHitbox({
                                 onSelect,
                                 isDeleted = false
                             }: PanelSegmentHitboxProps) {
+    // Survol : la planche se teinte, on voit qu'un clic la choisit
+    const [hovered, setHovered] = useState(false);
+
     return (
         <group position={position}>
             <mesh
                 visible={false}
                 onPointerOver={(e) => {
                     e.stopPropagation();
+                    setHovered(true);
                     document.body.style.cursor = 'pointer';
                 }}
                 onPointerOut={() => {
+                    setHovered(false);
                     document.body.style.cursor = 'default';
                 }}
                 onClick={(e) => {
@@ -41,6 +47,13 @@ export function PanelSegmentHitbox({
                 <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.004]} />
                 <meshBasicMaterial transparent opacity={0} />
             </mesh>
+
+            {hovered && !isSelected && (
+                <mesh>
+                    <boxGeometry args={[size[0] + 0.003, size[1] + 0.003, size[2] + 0.003]} />
+                    <meshBasicMaterial transparent opacity={0.4} color="#3B3E58" depthWrite={false} toneMapped={false} />
+                </mesh>
+            )}
 
             {isSelected && (
                 <>

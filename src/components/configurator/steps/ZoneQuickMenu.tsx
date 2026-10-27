@@ -1,8 +1,15 @@
-import { ChevronLeft, ChevronRight, CornerLeftUp, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CornerLeftUp, RotateCcw, Trash2, X } from 'lucide-react';
 
 interface ZoneQuickMenuProps {
   title: string;
   size?: { width: number; height: number } | null;
+  // Ligne sous le titre quand il n'y a pas de cotes (planche sélectionnée)
+  subtitle?: string;
+  // Libellé et info-bulle du bouton de suppression (par défaut : la section)
+  deleteLabel?: string;
+  deleteHint?: string;
+  // Remet un panneau retiré
+  onRestore?: () => void;
   // Zone voisine (même niveau) précédente / suivante : absent s'il n'y en a pas
   onPrev?: () => void;
   onNext?: () => void;
@@ -21,6 +28,10 @@ const iconButton =
 export default function ZoneQuickMenu({
   title,
   size,
+  subtitle,
+  deleteLabel = 'Supprimer',
+  deleteHint = 'Supprimer cette section : la section voisine prend sa place',
+  onRestore,
   onPrev,
   onNext,
   onParent,
@@ -50,6 +61,7 @@ export default function ZoneQuickMenu({
               {Math.round(size.width)} × {Math.round(size.height)} mm
             </span>
           )}
+          {!size && subtitle && <span className="block text-[10px] text-black/65">{subtitle}</span>}
         </div>
 
         {onNext && (
@@ -84,11 +96,28 @@ export default function ZoneQuickMenu({
               onClick={onDelete}
               className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-black/65 transition-colors hover:bg-red-50 hover:text-red-600"
               style={{ borderRadius: '2px' }}
-              aria-label="Supprimer la section"
-              title="Supprimer cette section : la section voisine prend sa place"
+              aria-label={deleteLabel}
+              title={deleteHint}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden @min-[22.5rem]:inline">Supprimer</span>
+              <span className="hidden @min-[22.5rem]:inline">{deleteLabel}</span>
+            </button>
+          </>
+        )}
+
+        {onRestore && (
+          <>
+            <span className="mx-1 h-6 w-px bg-black/10" />
+            <button
+              type="button"
+              onClick={onRestore}
+              className="flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-[11px] font-medium text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
+              style={{ borderRadius: '2px' }}
+              aria-label="Remettre la planche"
+              title="Remettre ce panneau sur le meuble"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden @min-[22.5rem]:inline">Remettre la planche</span>
             </button>
           </>
         )}

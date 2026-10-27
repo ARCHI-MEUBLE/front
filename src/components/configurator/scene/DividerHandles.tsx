@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { Html } from '@react-three/drei';
+import { ScreenHtml } from './ScreenHtml';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Zone } from '@/components/configurator/ZoneEditor/types';
@@ -226,7 +226,7 @@ export function DividerHandles({
           : '';
 
         return (
-          <Html
+          <ScreenHtml
             key={key}
             position={divider.center}
             center
@@ -279,7 +279,7 @@ export function DividerHandles({
                 </span>
               )}
             </div>
-          </Html>
+          </ScreenHtml>
         );
       })}
     </>

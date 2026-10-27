@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { useRoomLights, WARM_LIGHT } from './roomLights';
 
 export function Book({ position, color, rotation = [0, 0, 0], height = 0.22, thickness = 0.028, bookDepth = 0.14 }: any) {
     return (
@@ -302,6 +303,12 @@ export function Vase({ position, color, scale = 1, seed = "1", fitHeight }: any)
 }
 
 export function Lamp({ position }: any) {
+    // Dans le salon ou la chambre, la lampe suit l'interrupteur de la pièce. Les lumières restent montées
+    // (intensité 0 si éteint) : en ajouter ou en retirer recompilerait tous les matériaux de la scène.
+    const lit = useRoomLights();
+    const bulbIntensity = lit === null ? 0.5 : lit ? 3 : 0;
+    const lightIntensity = lit === null ? 0.4 : lit ? 1.6 : 0;
+
     return (
         <group position={position}>
             <mesh position={[0, 0.01, 0]} castShadow>
@@ -314,13 +321,13 @@ export function Lamp({ position }: any) {
             </mesh>
             <mesh position={[0, 0.4, 0]} castShadow>
                 <cylinderGeometry args={[0.12, 0.18, 0.2, 24, 1, true]} />
-                <meshStandardMaterial color="#F5F5F5" side={THREE.DoubleSide} />
+                <meshStandardMaterial color="#F5F5F5" side={THREE.DoubleSide} emissive={WARM_LIGHT} emissiveIntensity={lit ? 0.7 : 0} />
             </mesh>
             <mesh position={[0, 0.38, 0]}>
                 <sphereGeometry args={[0.025, 16, 16]} />
-                <meshStandardMaterial color="#FFF5E1" emissive="#FFF5E1" emissiveIntensity={0.5} />
+                <meshStandardMaterial color="#FFF5E1" emissive="#FFF5E1" emissiveIntensity={bulbIntensity} />
             </mesh>
-            <pointLight position={[0, 0.38, 0]} intensity={0.4} color="#FFF5E1" />
+            <pointLight position={[0, 0.38, 0]} intensity={lightIntensity} distance={lit ? 3 : 0} color={lit ? WARM_LIGHT : '#FFF5E1'} />
         </group>
     );
 }

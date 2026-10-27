@@ -16,7 +16,8 @@ export function SamplesMaterialList({
     <div className="flex flex-col gap-6">
       <div className="flex items-baseline gap-4">
         <span className={HOME_MONO}>01</span>
-        <h2 id="ech-step1" className="m-0 text-heading text-black">
+        {/* Cible des boutons « Composer mon kit » et « Commander un échantillon » : scroll-mt laisse la place à l'en-tête collant (68 px) */}
+        <h2 id="ech-step1" className="m-0 scroll-mt-24 text-heading text-black">
           Choisissez votre matériau
         </h2>
       </div>
