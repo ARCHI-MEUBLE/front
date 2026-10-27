@@ -24,6 +24,20 @@ const OVERLAY_BUTTON = 'flex h-11 w-11 flex-none items-center justify-center rou
 // Les boutons de l'overlay ne doivent pas poser ni déplacer le meuble : WebXR les prendrait sinon pour un toucher
 const blockXrSelect = (node: HTMLDivElement | null) => node?.addEventListener('beforexrselect', (event) => event.preventDefault());
 
+// Pendant la session, Chrome dessine la page par-dessus la caméra et le meuble : le fond beige de html et body les
+// cacherait. On les rend transparents et on masque le reste de la page, l'overlay (hors de #__next) restant visible.
+function clearPageBehindCamera(): () => void {
+  const page = document.getElementById('__next');
+  const saved = [document.documentElement.style.background, document.body.style.background, page?.style.visibility ?? ''];
+  document.documentElement.style.background = 'transparent';
+  document.body.style.background = 'transparent';
+  if (page) page.style.visibility = 'hidden';
+  return () => {
+    [document.documentElement.style.background, document.body.style.background] = [saved[0], saved[1]];
+    if (page) page.style.visibility = saved[2];
+  };
+}
+
 const touchAngle = (event: TouchEvent) => {
   const [a, b] = [event.touches[0], event.touches[1]];
   return Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX);
@@ -41,8 +55,20 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
   const overlayRef = useRef<HTMLDivElement>(null);
   const placementRef = useRef<WebXrPlacement | null>(null);
   const lastAngle = useRef<number | null>(null);
+  const restorePage = useRef<(() => void) | null>(null);
 
-  useEffect(() => () => placementRef.current?.end(), []);
+  const showPage = () => {
+    restorePage.current?.();
+    restorePage.current = null;
+  };
+
+  useEffect(
+    () => () => {
+      placementRef.current?.end();
+      showPage();
+    },
+    []
+  );
 
   const runChecks = async () => {
     setChecking(true);
@@ -67,6 +93,7 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
     setXrError(null);
     // L'overlay doit exister avant la demande de session, qui le reçoit
     flushSync(() => setXrPhase('starting'));
+    restorePage.current = clearPageBehindCamera();
     let session: XRSession | null = null;
     try {
       session = await requestImmersiveAr(overlayRef.current as HTMLDivElement);
@@ -78,11 +105,13 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
         onError: () => setXrError(AR_MESSAGES.webXrModel),
         onEnd: () => {
           placementRef.current = null;
+          showPage();
           setXrPhase(null);
         },
       });
     } catch (error) {
       void session?.end().catch(() => undefined);
+      showPage();
       setXrPhase(null);
       setXrError(error instanceof Error && error.name === 'NotAllowedError' ? AR_MESSAGES.webXrDenied : AR_MESSAGES.webXrFailed);
     }
