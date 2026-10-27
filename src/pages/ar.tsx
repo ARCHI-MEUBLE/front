@@ -5,7 +5,8 @@ import { useRouter } from 'next/router';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import { AR_MESSAGES, sceneViewerIssueMessage } from '@/components/ar/arMessages';
+import SceneViewerLauncher from '@/components/ar/SceneViewerLauncher';
+import { AR_MESSAGES } from '@/components/ar/arMessages';
 import { useArDevice, useArModel, useArModelAvailability } from '@/components/ar/useArViewer';
 import { arModelPath, isArModelFile } from '@/lib/ar/arModelFile';
 
@@ -60,21 +61,15 @@ export default function ArPage() {
         </p>
       </>
     );
+  } else if (device === 'scene-viewer') {
+    content = <SceneViewerLauncher glbPath={arModelPath(file)} title="Votre meuble" />;
   } else {
-    content = (
-      <>
-        {ar.status === 'ready' ? (
-          <ArLaunchButton label={AR_MESSAGES.launch} onClick={ar.launch} />
-        ) : (
-          <ArLaunchButton label={AR_MESSAGES.preparing} busy />
-        )}
-        {ar.issue && (
-          <p className="text-xs leading-relaxed text-am-wine" role="status">
-            {sceneViewerIssueMessage(ar.issue)}
-          </p>
-        )}
-      </>
-    );
+    content =
+      ar.status === 'ready' ? (
+        <ArLaunchButton label={AR_MESSAGES.launch} onClick={ar.launch} />
+      ) : (
+        <ArLaunchButton label={AR_MESSAGES.preparing} busy />
+      );
   }
 
   return (
