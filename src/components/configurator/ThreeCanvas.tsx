@@ -40,6 +40,8 @@ interface ThreeViewerProps {
     selectedZoneIds?: string[];
     // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé (choix des couleurs)
     selectionTint?: boolean;
+    // Compartiments voisins de la sélection que l'on peut lui ajouter d'un clic (étape Portes)
+    neighborZoneIds?: string[];
     onSelectZone?: (id: string | null) => void;
     selectedPanelIds?: Set<string>;
     onSelectPanel?: (panelId: string | null) => void;
@@ -72,6 +74,7 @@ function Furniture({
                        mountingStyle = 'applique',
                        selectedZoneIds = [],
                        selectionTint = true,
+                       neighborZoneIds = [],
                        onSelectZone,
                        selectedPanelIds = new Set(),
                        onSelectPanel,
@@ -1805,6 +1808,7 @@ function Furniture({
                 rootZone={rootZone}
                 layout={layout}
                 selectedZoneIds={selectedZoneIds}
+                neighborZoneIds={onSelectPanel ? [] : neighborZoneIds}
                 // L'outil « retirer des planches » travaille sur les panneaux : pas de survol de zone
                 hoveredZoneId={onSelectPanel ? null : hoveredZoneId}
                 selectionTint={selectionTint}

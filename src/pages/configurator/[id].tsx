@@ -72,7 +72,8 @@ import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
-import { groupSiblingZones, setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { setZoneFacade } from '@/lib/configurator/zoneFacades';
+import { extendSelection, groupSelection, selectableNeighborIds } from '@/lib/configurator/zoneSelection';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
 
@@ -385,63 +386,6 @@ export default function ConfiguratorPage() {
     setSelectedZoneIds([]);
   }, []);
 
-  const handleZoneSelect = useCallback(
-    (zoneId: string | null) => {
-      setSelectedPanelIds(new Set());
-      
-      if (!zoneId) {
-        setSelectedZoneIds([]);
-        return;
-      }
-
-      if (selectedZoneIds.length === 0) {
-        setSelectedZoneIds([zoneId]);
-        return;
-      }
-
-      if (selectedZoneIds.includes(zoneId)) {
-        if (zoneId === 'root' && selectedZoneIds.length === 1) return;
-        
-        setSelectedZoneIds([]);
-        return;
-      }
-
-      const firstId = selectedZoneIds[0];
-      const secondId = zoneId;
-
-      const findZoneWithParent = (current: Zone, targetId: string, parent: Zone | null = null): { zone: Zone; parent: Zone | null } | null => {
-        if (current.id === targetId) return { zone: current, parent };
-        if (!current.children) return null;
-        for (const child of current.children) {
-          const result = findZoneWithParent(child, targetId, current);
-          if (result) return result;
-        }
-        return null;
-      };
-
-      const firstInfo = findZoneWithParent(rootZone, firstId);
-      const secondInfo = findZoneWithParent(rootZone, secondId);
-
-      if (firstInfo && secondInfo && firstInfo.parent === secondInfo.parent && firstInfo.parent !== null) {
-        const parent = firstInfo.parent;
-        const children = parent.children || [];
-        const firstIndex = children.findIndex(c => c.id === firstId);
-        const secondIndex = children.findIndex(c => c.id === secondId);
-
-        if (firstIndex !== -1 && secondIndex !== -1) {
-          const start = Math.min(firstIndex, secondIndex);
-          const end = Math.max(firstIndex, secondIndex);
-          const rangeIds = children.slice(start, end + 1).map(c => c.id);
-          setSelectedZoneIds(rangeIds);
-          return;
-        }
-      }
-
-      setSelectedZoneIds([zoneId]);
-    },
-    [selectedZoneIds, rootZone]
-  );
-  
   const hasZoneSpecificDoors = useMemo(() => {
     const checkZone = (zone: Zone): boolean => {
       if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double')) {
@@ -517,13 +461,9 @@ export default function ConfiguratorPage() {
   const groupZones = useCallback((zoneIds: string[], forceContent?: ZoneContent) => {
     if (zoneIds.length <= 1) return;
 
-    const result = groupSiblingZones(rootZone, zoneIds, forceContent);
-    if (result.error === 'not-siblings') {
-      toast.error("Les zones doivent faire partie du même groupe.");
-      return;
-    }
-    if (result.error === 'not-adjacent') {
-      toast.error("Les zones doivent être côte à côte pour être groupées.");
+    const result = groupSelection(rootZone, zoneIds, forceContent);
+    if (result.error) {
+      toast.error("Ces compartiments ne peuvent pas recevoir une porte commune.");
       return;
     }
 
@@ -729,37 +669,27 @@ export default function ConfiguratorPage() {
     }
   }, [rootZone, selectedZone, selectedZoneIds, viewLocked]);
 
-  // Maj / Ctrl / Cmd maintenu pendant un clic : regroupe des compartiments voisins (étape Portes)
-  const multiSelectKeyRef = useRef(false);
-  useEffect(() => {
-    const track = (e: KeyboardEvent) => {
-      multiSelectKeyRef.current = e.shiftKey || e.ctrlKey || e.metaKey;
-    };
-    const reset = () => {
-      multiSelectKeyRef.current = false;
-    };
-    window.addEventListener('keydown', track);
-    window.addEventListener('keyup', track);
-    window.addEventListener('blur', reset);
-    return () => {
-      window.removeEventListener('keydown', track);
-      window.removeEventListener('keyup', track);
-      window.removeEventListener('blur', reset);
-    };
-  }, []);
-
-  // Sur clic : une seule zone à la fois, sauf à l'étape Portes avec Maj enfoncé, où deux
-  // compartiments voisins peuvent être regroupés sous une même porte
+  // Sur clic : une seule zone à la fois, sauf à l'étape Portes où cliquer un compartiment voisin
+  // (de côté, au-dessus ou en dessous, dans le même caisson) l'ajoute à la sélection pour lui poser une porte commune
   const handleZoneClick = useCallback((zoneId: string | null) => {
-    if (activeStep === STEP.DOORS && multiSelectKeyRef.current) {
-      handleZoneSelect(zoneId);
-      if (zoneId) setZoneTouched(true);
-      return;
-    }
     setSelectedPanelIds(new Set());
+    if (zoneId && activeStep === STEP.DOORS) {
+      const extended = extendSelection(rootZone, selectedZoneIds, zoneId);
+      if (extended) {
+        setSelectedZoneIds(extended.ids);
+        setZoneTouched(true);
+        return;
+      }
+    }
     setSelectedZoneIds(zoneId ? [zoneId] : []);
     if (zoneId) setZoneTouched(true);
-  }, [activeStep, handleZoneSelect]);
+  }, [activeStep, rootZone, selectedZoneIds]);
+
+  // Voisins que l'on peut ajouter à la sélection : signalés dans la vue 3D
+  const neighborZoneIds = useMemo(
+    () => (activeStep === STEP.DOORS && !isViewMode ? selectableNeighborIds(rootZone, selectedZoneIds) : []),
+    [activeStep, isViewMode, rootZone, selectedZoneIds]
+  );
 
   // Étape Division : le volet ouvert fixe le type d'élément sélectionnable (meuble, caisson, étagère, compartiment)
   const [divisionLevel, setDivisionLevel] = useState<DivisionLevel | null>(1);
@@ -2799,6 +2729,7 @@ export default function ConfiguratorPage() {
                     rootZone={rootZone}
                     selectedZoneIds={highlightedZoneIds}
                     selectionTint={activeStep !== STEP.MATERIALS}
+                    neighborZoneIds={neighborZoneIds}
                     onSelectZone={isViewMode ? undefined : handleZoneClick}
                     isBuffet={furnitureStructure?.isBuffet}
                     doorsOpen={doorsOpen}
