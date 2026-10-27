@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react
 import { createPortal, flushSync } from 'react-dom';
 import { Check, CircleHelp, RotateCcw, RotateCw, X } from 'lucide-react';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
+import Model3dDialog from '@/components/ar/Model3dDialog';
 import { AR_CHECK_LABELS, AR_MESSAGES, WEBXR_PHASE_MESSAGES, sceneViewerIssueMessage } from '@/components/ar/arMessages';
 import { arLaunchPlan, checkArReadiness, requestImmersiveAr, type ArReadiness } from '@/lib/ar/arReadiness';
-import { openSceneViewer, type SceneViewerIssue, type SceneViewerMode } from '@/lib/ar/launchAr';
+import { openSceneViewer, type SceneViewerIssue } from '@/lib/ar/launchAr';
 import type { WebXrPhase, WebXrPlacement } from '@/lib/ar/webXrPlacement';
 
 // Gardé hors du composant : la section des Finitions est démontée quand on change d'étape, inutile de revérifier
@@ -45,13 +46,17 @@ const touchAngle = (event: TouchEvent) => {
 
 // Android : vérifie le téléphone, puis lance la réalité augmentée dans la page (WebXR, Chrome avec ARCore), sans
 // dépendre de l'application Google. Sans WebXR (Firefox, Samsung Internet), passe par Scene Viewer, l'application
-// Google, comme avant ; elle reste proposée en lien, avec la vue 3D sans caméra.
+// Google ; elle reste proposée en lien. La vue 3D sans caméra s'ouvre dans la page (Model3dDialog).
 export default function AndroidArLauncher({ glbPath, title }: { glbPath: string; title: string }) {
   const [readiness, setReadiness] = useState<ArReadiness | null>(() => cachedReadiness);
   const [checking, setChecking] = useState(false);
-  const [issue, setIssue] = useState<{ kind: SceneViewerIssue; mode: SceneViewerMode } | null>(null);
+  const [issue, setIssue] = useState<SceneViewerIssue | null>(null);
+  const [show3d, setShow3d] = useState(false);
   const [xrPhase, setXrPhase] = useState<WebXrPhase | 'starting' | null>(null);
   const [xrError, setXrError] = useState<string | null>(null);
+  const [xrDebug, setXrDebug] = useState<string | null>(null);
+  // Diagnostic affiché par-dessus la caméra : bouton sous le bouton principal, ou ?debug=1 dans l'adresse
+  const [debugMode, setDebugMode] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug'));
   const overlayRef = useRef<HTMLDivElement>(null);
   const placementRef = useRef<WebXrPlacement | null>(null);
   const lastAngle = useRef<number | null>(null);
@@ -82,15 +87,18 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
     }
   };
 
-  const launchSceneViewer = (mode: SceneViewerMode) => {
+  const launchSceneViewer = () => {
     setIssue(null);
     setXrError(null);
-    openSceneViewer(glbPath, title, (kind) => setIssue(kind ? { kind, mode } : null), mode);
+    openSceneViewer(glbPath, title, setIssue);
   };
+
+  const close3d = useCallback(() => setShow3d(false), []);
 
   const launchInPage = async () => {
     setIssue(null);
     setXrError(null);
+    setXrDebug(null);
     // L'overlay doit exister avant la demande de session, qui le reçoit
     flushSync(() => setXrPhase('starting'));
     restorePage.current = clearPageBehindCamera();
@@ -103,6 +111,7 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
         glbUrl: glbPath,
         onPhase: setXrPhase,
         onError: () => setXrError(AR_MESSAGES.webXrModel),
+        onDebug: debugMode ? setXrDebug : undefined,
         onEnd: () => {
           placementRef.current = null;
           showPage();
@@ -147,12 +156,7 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
       label: AR_CHECK_LABELS.camera[readiness.camera],
     },
   ] as const;
-  // Même la vue 3D s'est refermée : c'est l'application Google elle-même qui bloque
-  const issueMessage = issue
-    ? issue.kind === 'closed-quickly' && issue.mode === '3d_only'
-      ? "Le meuble ne s'est pas ouvert, même en 3D : mettez à jour l'application Google dans le Play Store, puis réessayez."
-      : sceneViewerIssueMessage(issue.kind)
-    : xrError;
+  const issueMessage = issue ? sceneViewerIssueMessage(issue) : xrError;
   const hint = inPage ? AR_MESSAGES.webXrIntro : plan.offerAr ? `${AR_MESSAGES.googleCamera} ${AR_MESSAGES.tip}` : 'Le meuble s’ouvre en 3D, sans caméra.';
   const showRotation = xrPhase === 'placing' || xrPhase === 'estimated' || xrPhase === 'placed';
 
@@ -170,20 +174,33 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
       <ArLaunchButton
         label={plan.offerAr ? AR_MESSAGES.launchAr : AR_MESSAGES.launch3d}
         busy={xrPhase !== null}
-        onClick={() => (inPage ? void launchInPage() : launchSceneViewer(plan.offerAr ? 'ar_preferred' : '3d_only'))}
+        onClick={() => (inPage ? void launchInPage() : plan.offerAr ? launchSceneViewer() : setShow3d(true))}
       />
+      {inPage && (
+        <button
+          type="button"
+          aria-pressed={debugMode}
+          onClick={() => setDebugMode((on) => !on)}
+          className={`w-full border px-5 py-2 font-mono text-xs transition-colors ${
+            debugMode ? 'border-am-navy bg-am-navy text-white' : 'border-black/20 bg-white text-black/70 hover:border-am-navy hover:text-am-navy'
+          }`}
+          style={{ borderRadius: '2px' }}
+        >
+          Diagnostic : {debugMode ? 'activé' : 'désactivé'}
+        </button>
+      )}
       <p className={`text-xs leading-relaxed ${issueMessage ? 'text-am-wine' : 'text-black/65'}`} role="status">
         {issueMessage ?? hint}
       </p>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {inPage && (
-          <button type="button" onClick={() => launchSceneViewer('ar_preferred')} className="text-xs text-am-navy underline hover:no-underline">
+          <button type="button" onClick={launchSceneViewer} className="text-xs text-am-navy underline hover:no-underline">
             {AR_MESSAGES.openWithGoogle}
           </button>
         )}
         {plan.offerAr && (
-          <button type="button" onClick={() => launchSceneViewer('3d_only')} className="text-xs text-am-navy underline hover:no-underline">
+          <button type="button" onClick={() => setShow3d(true)} className="text-xs text-am-navy underline hover:no-underline">
             {AR_MESSAGES.launch3dLink}
           </button>
         )}
@@ -199,6 +216,8 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
         )}
       </div>
 
+      {show3d && <Model3dDialog glbPath={glbPath} title={title} onClose={close3d} />}
+
       {xrPhase &&
         createPortal(
           <div
@@ -211,6 +230,7 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
             <div ref={blockXrSelect} className="flex items-start gap-3">
               <p className="flex-1 bg-black/55 px-3 py-2 text-sm leading-relaxed text-white" style={{ borderRadius: '2px' }} role="status">
                 {WEBXR_PHASE_MESSAGES[xrPhase]}
+                {xrDebug && <span className="mt-1 block whitespace-pre-wrap font-mono text-[10px] leading-snug text-white/80">{xrDebug}</span>}
               </p>
               <button type="button" aria-label="Quitter la réalité augmentée" onClick={() => placementRef.current?.end()} className={OVERLAY_BUTTON}>
                 <X aria-hidden="true" className="h-5 w-5" />
