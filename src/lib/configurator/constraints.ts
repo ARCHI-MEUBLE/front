@@ -80,7 +80,7 @@ export function splitAvailability(
   return { maxParts, reason: maxParts < 2 ? `Trop petit pour ${unit}.` : `Au plus ${maxParts} : ${unit}.` };
 }
 
-// Une porte, un tiroir ou une étagère en verre peut-il occuper une zone de cette taille ?
+// Une porte ou un tiroir peut-il occuper une zone de cette taille ?
 export function facadeAvailability(content: ZoneContent, zoneWidthMm: number, depthMm: number): Availability {
   if (content === 'door_double') {
     const leaf = zoneWidthMm / 2;
@@ -98,9 +98,6 @@ export function facadeAvailability(content: ZoneContent, zoneWidthMm: number, de
     if (zoneWidthMm < DRAWER_LIMITS.minWidth - 0.5) return { allowed: false, reason: `Min ${cm(DRAWER_LIMITS.minWidth)}` };
     if (depthMm < DRAWER_LIMITS.minDepth - 0.5) return { allowed: false, reason: `Profondeur min ${cm(DRAWER_LIMITS.minDepth)}` };
     return ALLOWED;
-  }
-  if (content === 'glass_shelf' && zoneWidthMm > MAX_SHELF_SPAN_MM + 0.5) {
-    return { allowed: false, reason: `Portée max ${length(MAX_SHELF_SPAN_MM)}` };
   }
   return ALLOWED;
 }
@@ -134,7 +131,6 @@ const FACADE_LABELS: Partial<Record<ZoneContent, string>> = {
   mirror_door_right: 'Porte vitrée',
   drawer: 'Tiroir',
   push_drawer: 'Tiroir Push',
-  glass_shelf: 'Étagère en verre',
 };
 
 export function findConstraintIssues(root: Zone, dims: { width: number; height: number; depth: number }): ConstraintIssue[] {

@@ -12,7 +12,7 @@ describe('computeZoneStats', () => {
       compartments: 1,
       doors: 0,
       drawers: 0,
-      glassShelves: 0,
+      niches: 0,
       lights: 0,
       cableHoles: 0,
       dressings: 0,
@@ -31,7 +31,7 @@ describe('computeZoneStats', () => {
           children: [
             leaf('b-0', { content: 'drawer' }),
             leaf('b-1', { content: 'push_drawer', hasCableHole: true }),
-            leaf('b-2', { content: 'glass_shelf', glassShelfCount: 3, hasDressing: true }),
+            leaf('b-2', { content: 'shelf', hasDressing: true }),
           ],
         },
         leaf('c', { content: 'mirror_door' }),
@@ -42,7 +42,7 @@ describe('computeZoneStats', () => {
       compartments: 5,
       doors: 3,
       drawers: 2,
-      glassShelves: 3,
+      niches: 0,
       lights: 1,
       cableHoles: 1,
       dressings: 1,
@@ -77,9 +77,9 @@ describe('getZoneFacade', () => {
     expect(getZoneFacade(leaf('a', { content: 'drawer' }))).toBe('drawer');
   });
 
-  it('returns undefined for empty zones and glass shelves', () => {
+  it('returns undefined for empty zones and shelves', () => {
     expect(getZoneFacade(leaf('a'))).toBeUndefined();
-    expect(getZoneFacade(leaf('a', { content: 'glass_shelf' }))).toBeUndefined();
+    expect(getZoneFacade(leaf('a', { content: 'shelf' }))).toBeUndefined();
   });
 
   it('returns the doorContent of a group', () => {

@@ -392,44 +392,6 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onSetHandleType]
   );
 
-  // Définir le nombre d'étagères en verre
-  const setGlassShelfCount = useCallback(
-    (zoneId: string, count: number) => {
-      const updateZone = (z: Zone): Zone => {
-        if (z.id === zoneId && z.type === 'leaf') {
-          // Réinitialiser les positions quand le nombre change
-          const defaultPositions = Array.from({ length: count }, (_, i) =>
-            Math.round(((i + 1) / (count + 1)) * 100)
-          );
-          return { ...z, glassShelfCount: count, glassShelfPositions: defaultPositions };
-        }
-        if (z.children) {
-          return { ...z, children: z.children.map(updateZone) };
-        }
-        return z;
-      };
-      onRootZoneChange(updateZone(rootZone));
-    },
-    [rootZone, onRootZoneChange]
-  );
-
-  // Définir les positions des étagères en verre
-  const setGlassShelfPositions = useCallback(
-    (zoneId: string, positions: number[]) => {
-      const updateZone = (z: Zone): Zone => {
-        if (z.id === zoneId && z.type === 'leaf') {
-          return { ...z, glassShelfPositions: positions };
-        }
-        if (z.children) {
-          return { ...z, children: z.children.map(updateZone) };
-        }
-        return z;
-      };
-      onRootZoneChange(updateZone(rootZone));
-    },
-    [rootZone, onRootZoneChange]
-  );
-
   // Réinitialiser une zone
   const resetZone = useCallback(
     (zoneId: string) => {
@@ -737,8 +699,6 @@ export default function ZoneEditor({
             onToggleDressing={onToggleDressing || toggleDressing}
             onGroupZones={groupZones}
             onSetHandleType={onSetHandleType || setHandleType}
-            onSetGlassShelfCount={setGlassShelfCount}
-            onSetGlassShelfPositions={setGlassShelfPositions}
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}
             depthMm={depth}

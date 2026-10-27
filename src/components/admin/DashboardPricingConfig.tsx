@@ -412,7 +412,7 @@ export function DashboardPricingConfig() {
                       {Object.entries(getParamsByCategory('shelves')).map(([type, params]) => (
                         <TableRow key={type}>
                           <TableCell className="font-medium capitalize">
-                            {type === 'glass' ? 'Étagère verre' : type === 'standard' ? 'Étagère standard' : type.replace(/_/g, ' ')}
+                            {type === 'standard' ? 'Étagère standard' : type.replace(/_/g, ' ')}
                           </TableCell>
                           <TableCell className="text-right">
                             {params.price_per_m2 && formatValue(params.price_per_m2.param_value, params.price_per_m2.unit)}
@@ -434,16 +434,11 @@ export function DashboardPricingConfig() {
                     <h5 className="text-sm font-semibold mb-2">Formules de calcul</h5>
                     <div className="space-y-2">
                       <div className="font-mono text-xs bg-background p-2 rounded">
-                        Verre : Prix par étagère = prix_m² × surface (longueur × largeur)
-                      </div>
-                      <div className="font-mono text-xs bg-background p-2 rounded">
                         Standard : Prix par étagère = prix_m² × profondeur × largeur
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground mt-3 space-y-2">
                       <p><strong>Important :</strong> Chaque étagère est calculée individuellement selon ses propres dimensions.</p>
-
-                      <p><strong>Exemple Verre :</strong> 1 étagère 1000mm × 300mm à 250€/m² → 250€ × 0.3m² = <strong>75€</strong></p>
 
                       <p><strong>Exemple Standard :</strong> 1 étagère 800mm × 250mm en MDF (80€/m²) → 80€ × 0.2m² = <strong>16€</strong></p>
 
@@ -1032,23 +1027,6 @@ export function DashboardPricingConfig() {
                 <p className="text-muted-foreground">
                   Exemple: Tiroir 500mm × 400mm avec base 35€ et coefficient 0.0001
                   <br />→ 35€ + (0.0001 × 500 × 400) = 35€ + 20€ = <strong>55€</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* Étagères en verre */}
-            <div className="rounded-lg border p-4">
-              <h4 className="font-semibold flex items-center gap-2 mb-3">
-                <IconChevronRight className="h-4 w-4 text-primary" />
-                Étagères en verre
-              </h4>
-              <div className="pl-6 space-y-2 text-sm">
-                <p className="font-mono text-xs bg-muted p-2 rounded">
-                  Prix = prix_verre_m² × (longueur × largeur)
-                </p>
-                <p className="text-muted-foreground">
-                  Surface en m². Exemple: Étagère 1000mm × 300mm avec verre à 250€/m²
-                  <br />→ 250€ × (1 × 0.3) = <strong>75€</strong>
                 </p>
               </div>
             </div>

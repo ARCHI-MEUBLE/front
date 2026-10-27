@@ -28,13 +28,13 @@ describe('setZoneFacade', () => {
     const root: Zone = {
       id: 'root',
       type: 'vertical',
-      children: [leaf('a', { content: 'door_double' }), leaf('b', { content: 'drawer' }), leaf('c', { content: 'glass_shelf' })],
+      children: [leaf('a', { content: 'door_double' }), leaf('b', { content: 'drawer' }), leaf('c', { content: 'niche' })],
     };
     const { root: next, removed } = setZoneFacade(root, 'root', 'door');
     expect(next.doorContent).toBe('door');
     expect(find(next, 'a')?.content).toBe('empty');
     expect(find(next, 'b')?.content).toBe('empty');
-    expect(find(next, 'c')?.content).toBe('glass_shelf');
+    expect(find(next, 'c')?.content).toBe('niche');
     expect(removed).toBe(2);
     expect(computeZoneStats(next).doors).toBe(1);
   });
@@ -52,9 +52,9 @@ describe('setZoneFacade', () => {
     expect(computeZoneStats(next).doors).toBe(2);
   });
 
-  it('keeps the parent group door when a compartment behind it gets a glass shelf', () => {
+  it('keeps the parent group door when a compartment behind it gets a niche', () => {
     const root: Zone = { id: 'root', type: 'vertical', doorContent: 'door', children: [leaf('a'), leaf('b')] };
-    const { root: next, removed } = setZoneFacade(root, 'a', 'glass_shelf');
+    const { root: next, removed } = setZoneFacade(root, 'a', 'niche');
     expect(next.doorContent).toBe('door');
     expect(removed).toBe(0);
   });

@@ -1,4 +1,4 @@
-export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'glass_shelf' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer';
+export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer' | 'niche';
 
 export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
@@ -22,9 +22,7 @@ export type Zone = {
   hasCableHole?: boolean;
   hasDressing?: boolean;
   handleType?: HandleType; // Type de poignée pour portes/tiroirs
-  zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte)
-  glassShelfCount?: number; // Nombre d'étagères en verre (1-5, défaut: 1)
-  glassShelfPositions?: number[]; // Positions des étagères en % depuis le bas (0-100)
+  zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte/niche)
   isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
 };
 
@@ -77,12 +75,6 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     shortLabel: 'Étagère',
     icon: 'E',
     description: 'Ajoute une étagère fixe',
-  },
-  glass_shelf: {
-    label: 'Étagère en verre',
-    shortLabel: 'Verre',
-    icon: 'V',
-    description: 'Étagère transparente moderne',
   },
   mirror_door: {
     label: 'Porte vitrée gauche',

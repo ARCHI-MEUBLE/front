@@ -49,7 +49,7 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   door_double: 'Double Porte',
   mirror_door: 'Porte Vitrée',
   push_door: 'Porte Push-to-Open',
-  glass_shelf: 'Étagère verre',
+  niche: 'Niche',
   shelf: 'Étagère',
   light: 'Éclairage LED',
   cable_hole: 'Passe-câble',

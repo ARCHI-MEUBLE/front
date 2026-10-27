@@ -1181,10 +1181,6 @@ export default function ConfiguratorPage() {
         };
       }
 
-      const isGlassShelf = str.includes('v');
-      const glassShelfMatch = str.match(/v(\d+)/);
-      const glassShelfCount = glassShelfMatch ? parseInt(glassShelfMatch[1]) : (isGlassShelf ? 1 : undefined);
-
       return {
         id: idPrefix,
         type: 'leaf',
@@ -1197,7 +1193,6 @@ export default function ConfiguratorPage() {
           str.includes('Po') ? 'push_door' :
           str.includes('Pd') ? 'door_right' :
           (str.includes('P') || str.includes('Pg')) ? 'door' :
-          isGlassShelf ? 'glass_shelf' :
           str.includes('p') ? 'pegboard' :
           'empty'
         ) as ZoneContent,
@@ -1206,7 +1201,6 @@ export default function ConfiguratorPage() {
           if (!m) return undefined;
           return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
         })(),
-        glassShelfCount,
       };
     };
 
@@ -1659,10 +1653,6 @@ export default function ConfiguratorPage() {
         case 'drawer': leafChar = 'T'; break;
         case 'push_drawer': leafChar = 'To'; break;
         case 'dressing': leafChar = 'D'; break;
-        case 'glass_shelf':
-          const shelfCount = zone.glassShelfCount || 1;
-          leafChar = shelfCount > 1 ? `v${shelfCount}` : 'v';
-          break;
         case 'shelf': leafChar = ''; break;
         default: leafChar = '';
       }
@@ -1888,7 +1878,7 @@ export default function ConfiguratorPage() {
       if (door && pricingParams?.doors) {
         const getDoorPrice = (doorType: string, w: number, h: number) => {
           const isDoor = [
-            'door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right', 'glass_door', 'push_door', 'push_door_right'
+            'door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right', 'push_door', 'push_door_right'
           ].includes(doorType);
 
           if (!isDoor) return 0;
@@ -1898,7 +1888,7 @@ export default function ConfiguratorPage() {
             typeKey = doorType;
           } else if (doorType === 'door_double') {
             typeKey = 'double';
-          } else if (doorType === 'mirror_door' || doorType === 'mirror_door_right' || doorType === 'glass_door') {
+          } else if (doorType === 'mirror_door' || doorType === 'mirror_door_right') {
             typeKey = 'glass';
           } else if (doorType === 'push_door' || doorType === 'push_door_right') {
             typeKey = 'push';
@@ -1966,24 +1956,6 @@ export default function ConfiguratorPage() {
           } else {
             extra += zone.content === 'drawer' ? 35 : 45;
           }
-        } else if (zone.content === 'glass_shelf' && pricingParams?.shelves?.glass) {
-          const pricePerM2 = Number(pricingParams.shelves.glass.price_per_m2) || 250;
-          const shelfSurfaceM2 = (zoneWidth * config.depth) / 1000000;
-          const shelfCount = zone.glassShelfCount || 1;
-          const shelfPrice = pricePerM2 * shelfSurfaceM2 * shelfCount;
-
-          console.log('💎 [ETAGERE VERRE] Calcul détaillée:', {
-            dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
-            surface: `${shelfSurfaceM2.toFixed(3)} m²`,
-            nombre: shelfCount,
-            prixUnitaire: `${(pricePerM2 * shelfSurfaceM2).toFixed(2)}€`,
-            total: `${shelfPrice.toFixed(2)}€`
-          });
-
-          extra += shelfPrice;
-        } else if (zone.content === 'glass_shelf') {
-          const shelfCount = zone.glassShelfCount || 1;
-          extra += 25 * shelfCount;
         } else if (zone.content === 'dressing') {
           if (pricingParams?.wardrobe?.rod) {
             const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
