@@ -28,7 +28,8 @@ interface OutlineProps {
   color: string;
   // Voile coloré sur la zone (0 : aucun)
   tint: number;
-  emphasis: 'selected' | 'hover';
+  // « neighbor » : compartiment voisin de la sélection, que l'on peut y ajouter d'un clic
+  emphasis: 'selected' | 'hover' | 'neighbor';
 }
 
 // Contour épais et voile léger d'une zone. Le contour reste visible, plus discret, à travers un tiroir
@@ -39,6 +40,8 @@ function ZoneOutline({ box, color, tint, emphasis }: OutlineProps) {
   const sz = box.size[2] + 0.006;
   const edges = useMemo(() => boxEdges([sx, sy, sz]), [sx, sy, sz]);
   const selected = emphasis === 'selected';
+  // Pointillés : l'ajout possible se distingue d'un compartiment déjà choisi (trait plein)
+  const dash = emphasis === 'neighbor' ? { dashed: true, dashSize: 0.04, gapSize: 0.03 } : {};
 
   return (
     <group position={box.center}>
@@ -58,6 +61,7 @@ function ZoneOutline({ box, color, tint, emphasis }: OutlineProps) {
         toneMapped={false}
         renderOrder={21}
         raycast={() => null}
+        {...dash}
       />
       <Line
         points={edges}
@@ -79,12 +83,13 @@ interface ZoneHighlightsProps {
   rootZone: Zone | null;
   layout: FurnitureLayout;
   selectedZoneIds: string[];
+  neighborZoneIds?: string[];
   hoveredZoneId: string | null;
   // Faux : la zone choisie n'est soulignée que par son contour (choix des couleurs : le voile les fausserait)
   selectionTint: boolean;
 }
 
-export function ZoneHighlights({ rootZone, layout, selectedZoneIds, hoveredZoneId, selectionTint }: ZoneHighlightsProps) {
+export function ZoneHighlights({ rootZone, layout, selectedZoneIds, neighborZoneIds = [], hoveredZoneId, selectionTint }: ZoneHighlightsProps) {
   if (!rootZone) return null;
 
   const outlines: React.ReactNode[] = [];
@@ -96,7 +101,7 @@ export function ZoneHighlights({ rootZone, layout, selectedZoneIds, hoveredZoneI
 
     const isGroup = zone.type !== 'leaf' && !!zone.children?.length;
     // Un groupe couvre beaucoup de place : son contour suffit, le voile reste très léger
-    const baseTint = emphasis === 'selected' ? (selectionTint ? 0.28 : 0) : 0.12;
+    const baseTint = emphasis === 'selected' ? (selectionTint ? 0.28 : 0) : emphasis === 'neighbor' ? 0.08 : 0.12;
     outlines.push(
       <ZoneOutline
         key={`${emphasis}-${zoneId}`}
@@ -109,6 +114,7 @@ export function ZoneHighlights({ rootZone, layout, selectedZoneIds, hoveredZoneI
   };
 
   selectedZoneIds.forEach((id) => add(id, 'selected'));
+  neighborZoneIds.filter((id) => id !== hoveredZoneId).forEach((id) => add(id, 'neighbor'));
   if (hoveredZoneId && !selectedZoneIds.includes(hoveredZoneId)) add(hoveredZoneId, 'hover');
 
   return <group>{outlines}</group>;

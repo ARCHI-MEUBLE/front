@@ -31,6 +31,8 @@ export interface ThreeViewerProps {
   selectedZoneIds?: string[];
   // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé
   selectionTint?: boolean;
+  // Compartiments voisins de la sélection que l'on peut lui ajouter d'un clic (étape Portes)
+  neighborZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;
