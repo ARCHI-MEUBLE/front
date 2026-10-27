@@ -45,7 +45,7 @@ export function useArModelAvailability(file: string | null): 'checking' | 'avail
 
 // Prépare un GLB du générateur pour la réalité augmentée de l'appareil. launch() ouvre Quick Look (iPhone) et doit être
 // appelé directement dans un clic : iOS n'ouvre sa vue AR que sur une action de l'utilisateur, d'où la préparation à
-// l'avance. Android passe par SceneViewerLauncher, qui vérifie le téléphone avant de lancer.
+// l'avance. Android passe par AndroidArLauncher (WebXR dans la page, sinon Scene Viewer).
 export function useArModel(device: ArDevice | null, file: string | null) {
   // iPhone : USDZ converti depuis le GLB, attaché au fichier dont il vient
   const [usdz, setUsdz] = useState<{ file: string; url: string } | null>(null);

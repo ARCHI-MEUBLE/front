@@ -4,7 +4,7 @@ import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
 import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import SceneViewerLauncher from '@/components/ar/SceneViewerLauncher';
+import AndroidArLauncher from '@/components/ar/AndroidArLauncher';
 import { AR_MESSAGES, arErrorDetail, arErrorMessage } from '@/components/ar/arMessages';
 import { useArDevice } from '@/components/ar/useArViewer';
 import { apiClient } from '@/lib/apiClient';
@@ -172,7 +172,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       .catch(() => setCopied(false));
   };
 
-  // iPhone : Quick Look. Android passe par SceneViewerLauncher, qui vérifie le téléphone avant de lancer
+  // iPhone : Quick Look. Android passe par AndroidArLauncher, qui vérifie le téléphone avant de lancer
   const launch = () => {
     if (prepared?.key === configKey && 'usdzUrl' in prepared) openQuickLook(prepared.usdzUrl);
   };
@@ -219,7 +219,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
         Posez le meuble à taille réelle dans votre pièce, avec la caméra de votre téléphone.
       </p>
       {sceneViewerFile ? (
-        <SceneViewerLauncher glbPath={arModelPath(sceneViewerFile)} title={AR_TITLE} />
+        <AndroidArLauncher glbPath={arModelPath(sceneViewerFile)} title={AR_TITLE} />
       ) : (
         <>
           <ArLaunchButton {...button} />

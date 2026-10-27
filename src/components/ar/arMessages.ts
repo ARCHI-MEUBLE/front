@@ -24,6 +24,12 @@ export const AR_MESSAGES = {
   recheck: 'Vérifier à nouveau',
   googleCamera: "L'application Google va s'ouvrir et vous demander à son tour l'accès à l'appareil photo : acceptez.",
   failed: "Le modèle 3D n'a pas pu être préparé.",
+  webXrIntro: "Chrome va vous demander l'accès à l'appareil photo : acceptez, puis visez le sol.",
+  webXrDenied:
+    "L'accès à l'appareil photo a été refusé : autorisez-le pour ce site (cadenas à gauche de l'adresse > Autorisations > Appareil photo), puis relancez.",
+  webXrFailed: "La réalité augmentée n'a pas pu démarrer dans la page. Essayez avec l'application Google ou en 3D, ci-dessous.",
+  webXrModel: "Le meuble n'a pas pu être chargé en réalité augmentée : relancez, ou affichez-le en 3D.",
+  openWithGoogle: "Ouvrir avec l'application Google",
   connection: "La connexion a été coupée pendant l'envoi du modèle 3D : réessayez.",
   expired: "Ce lien a expiré. Affichez un nouveau QR code depuis le configurateur, à l'étape Finitions.",
 } as const;
@@ -66,3 +72,12 @@ export function arErrorDetail(error: unknown): string | null {
   if (error instanceof Error) return `${error.name} : ${error.message}`.slice(0, 300);
   return String(error).slice(0, 300);
 }
+
+// Consigne affichée par-dessus la caméra pendant la réalité augmentée dans la page
+export const WEBXR_PHASE_MESSAGES = {
+  starting: 'Ouverture de la caméra…',
+  loading: 'Chargement du meuble…',
+  searching: 'Visez le sol et bougez doucement le téléphone pour le détecter.',
+  placing: "Touchez l'écran pour poser le meuble ici.",
+  placed: "Faites glisser le meuble du doigt pour le déplacer, tournez-le à deux doigts. Capture d'écran pour garder la photo.",
+} as const;
