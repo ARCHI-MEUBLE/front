@@ -106,6 +106,12 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     icon: 'PTD',
     description: 'Tiroir sans poignée, ouverture par pression',
   },
+  niche: {
+    label: 'Niche',
+    shortLabel: 'Niche',
+    icon: 'N',
+    description: 'Compartiment ouvert à l\'intérieur coloré',
+  },
 };
 
 // Types pour les panneaux/faces sélectionnables du meuble
