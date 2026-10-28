@@ -4,6 +4,8 @@ import { toast } from "react-hot-toast";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCustomer } from "@/context/CustomerContext";
+import { useCartCount } from "@/hooks/useCartCount";
+import { notifyCartChanged } from "@/lib/cartCount";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { CatalogueHero } from "@/components/catalogue/CatalogueHero";
 import { CatalogueToolbar } from "@/components/catalogue/CatalogueToolbar";
@@ -29,7 +31,7 @@ export default function Catalogue() {
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [cartCount, setCartCount] = useState(0);
+  const cartCount = useCartCount();
   const [selectedVariation, setSelectedVariation] = useState<Record<number, number>>({});
 
   useEffect(() => {
@@ -61,21 +63,6 @@ export default function Catalogue() {
     };
     fetchCategoriesAndCounts();
   }, [reloadKey]);
-
-  useEffect(() => {
-    const loadCart = async () => {
-      try {
-        const res = await fetch("/backend/api/cart/index.php", { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setCartCount(data.items?.length || 0);
-        }
-      } catch {
-        // panier indisponible
-      }
-    };
-    loadCart();
-  }, []);
 
   useEffect(() => {
     const loadItems = async () => {
@@ -129,7 +116,7 @@ export default function Catalogue() {
         const data = await res.json();
         if (data.success) {
           toast.success(`${item.name} ajouté au panier`);
-          setCartCount((count) => count + 1);
+          notifyCartChanged();
         } else {
           toast.error(data.error || "Erreur lors de l'ajout");
         }

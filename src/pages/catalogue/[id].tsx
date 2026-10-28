@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCustomer } from "@/context/CustomerContext";
+import { notifyCartChanged } from "@/lib/cartCount";
 import { HOME_SECTION_NO_TOP, HOME_SECTION } from "@/components/home/homeLayout";
 import { ProductBreadcrumb } from "@/components/catalogue/ProductBreadcrumb";
 import { ProductInfo } from "@/components/catalogue/ProductInfo";
@@ -91,6 +92,7 @@ export default function ProductDetail() {
       if (data.success) {
         toast.success("Ajouté au panier !");
         setAddedToCart(true);
+        notifyCartChanged();
       } else {
         toast.error(data.error || "Erreur lors de l'ajout");
       }
