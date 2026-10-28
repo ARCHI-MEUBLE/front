@@ -11,6 +11,7 @@ export const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
 };
 
 export const DEFAULT_COLOR_HEX = '#D8C7A1';
+export const DEFAULT_COLOR_NAME = 'Chêne naturel';
 
 export const HANDLE_TYPE_CODE: Record<string, string> = {
   'vertical_bar': '1',

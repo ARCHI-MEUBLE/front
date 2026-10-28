@@ -76,6 +76,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   DEFAULT_COLOR_HEX,
+  DEFAULT_COLOR_NAME,
   HANDLE_TYPE_CODE,
   normalizeMaterialKey,
 } from '@/lib/configurator/materials';
@@ -83,6 +84,7 @@ import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
 import { nicheDefaultColor } from '@/lib/configurator/niche';
+import { displayColorName } from '@/lib/displayNames';
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { extendSelection, groupSelection, selectableNeighborIds } from '@/lib/configurator/zoneSelection';
@@ -1172,7 +1174,9 @@ export default function ConfiguratorPage() {
       return;
     }
     if (selectedColorId !== null && colorsForMaterial.some((o) => o.id === selectedColorId)) return;
-    const fallback = colorsForMaterial.find((o) => o.name?.toLowerCase() === colorLabel.toLowerCase());
+    // Garde la teinte en cours si la matière la propose, sinon le chêne naturel, sinon la première
+    const fallback = colorsForMaterial.find((o) => o.name?.toLowerCase() === colorLabel.toLowerCase())
+      || colorsForMaterial.find((o) => displayColorName(o.name) === DEFAULT_COLOR_NAME);
     const nextColor = fallback || colorsForMaterial[0];
     setSelectedColorId(nextColor.id);
   }, [colorsForMaterial, selectedColorId, colorLabel, initialConfigApplied]);
