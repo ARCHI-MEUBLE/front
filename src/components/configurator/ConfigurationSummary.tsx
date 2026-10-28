@@ -2,6 +2,7 @@ import ZoneEditor, { Zone } from '@/components/configurator/ZoneEditor';
 import { Button } from '@/components/ui/button';
 import { IconEdit } from '@tabler/icons-react';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
+import { formatPriceRange } from '@/lib/pricing';
 
 function analyzeConfiguration(zone: Zone) {
   const handleTypes = new Set<string>();
@@ -63,8 +64,8 @@ const HANDLE_LABELS: Record<string, string> = {
 };
 
 export function ConfigurationSummary({
-  width, height, depth, finish, color, socle, rootZone, price, modelName,
-  isAdmin, onEdit, priceDisplaySettings, mountingStyle, colorLabel, isOwner, onEditOwn
+  width, height, depth, finish, color, socle, rootZone, priceEstimate, modelName,
+  isAdmin, onEdit, mountingStyle, colorLabel, isOwner, onEditOwn
 }: any) {
   const analysis = analyzeConfiguration(rootZone);
 
@@ -205,13 +206,7 @@ export function ConfigurationSummary({
         <div className="flex items-center justify-between py-4 border-t border-black/10">
           <span className="text-sm text-black/65">Estimation</span>
           <div className="text-right">
-            {priceDisplaySettings?.mode === 1 && priceDisplaySettings?.range > 0 ? (
-              <span className="text-2xl font-medium tracking-[-0.03em]">
-                {Math.max(0, price - priceDisplaySettings.range)} - {price + priceDisplaySettings.range} €
-              </span>
-            ) : (
-              <span className="text-2xl font-medium tracking-[-0.03em]">{price} €</span>
-            )}
+            <span className="text-2xl font-medium tracking-[-0.03em]">{priceEstimate ? formatPriceRange(priceEstimate) : '…'}</span>
           </div>
         </div>
 

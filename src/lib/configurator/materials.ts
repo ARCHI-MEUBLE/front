@@ -4,12 +4,6 @@ export const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
   plaque_bois: 'Plaqué bois',
 };
 
-export const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
-  agglomere: 0,
-  mdf_melamine: 70,
-  plaque_bois: 140,
-};
-
 export const DEFAULT_COLOR_HEX = '#D8C7A1';
 
 export const HANDLE_TYPE_CODE: Record<string, string> = {

@@ -1,57 +1,41 @@
-import { useMemo } from 'react';
 import { Box } from 'lucide-react';
+import { formatPrice } from '@/lib/format';
+import { formatPriceRange, type PriceEstimate } from '@/lib/pricing';
 
 interface PriceDisplayProps {
-  price: number;
+  estimate: PriceEstimate | null;
   onAddToCart: () => void;
   loading?: boolean;
   isAuthenticated?: boolean;
   isAdmin?: boolean;
   isAdminCreateModel?: boolean;
   isAdminEditModel?: boolean;
-  displayMode?: number;
-  deviationRange?: number;
 }
 
 export default function PriceDisplay({
-  price,
+  estimate,
   onAddToCart,
   loading = false,
   isAuthenticated = false,
   isAdmin = false,
   isAdminCreateModel = false,
   isAdminEditModel = false,
-  displayMode = 0,
-  deviationRange = 0,
 }: PriceDisplayProps) {
-  const formatPrice = (p: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(p);
-  };
-
-  const priceContent = useMemo(() => {
-    if (displayMode === 1 && deviationRange > 0) {
-      const minPrice = Math.max(0, price - deviationRange);
-      const maxPrice = price + deviationRange;
-      return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
-    }
-    return formatPrice(price);
-  }, [price, displayMode, deviationRange]);
-
   return (
     <div className="flex items-center justify-between gap-4">
-      {/* Prix */}
+      {/* Prix : fourchette prix ± écart type, calculée par le backend */}
       <div>
         <span className="eyebrow-lg text-black/65">
           Prix estimé
         </span>
         <div className="text-3xl font-medium tracking-[-0.03em] text-black">
-          {priceContent}
+          {estimate ? formatPriceRange(estimate) : '…'}
         </div>
+        {estimate && (
+          <p className="mt-0.5 text-xs text-black/65">
+            Estimation centrale {formatPrice(estimate.price)} · écart type ± {formatPrice(estimate.sigma)}
+          </p>
+        )}
       </div>
 
       {/* Bouton principal */}
