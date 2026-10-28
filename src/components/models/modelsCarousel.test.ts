@@ -25,7 +25,7 @@ const category = (slug: string, display_order: number): Category => ({
 });
 
 describe("mod", () => {
-  it("reste positif pour les index négatifs", () => {
+  it("reste positif pour les index négatifs (roulette des catégories qui boucle)", () => {
     expect(mod(-1, 4)).toBe(3);
     expect(mod(-5, 4)).toBe(3);
     expect(mod(9, 4)).toBe(1);
@@ -53,18 +53,19 @@ describe("groupModelsByCategory", () => {
 });
 
 describe("carouselSlots", () => {
-  it("monte une carte hors champ de chaque côté quand le défilement est possible", () => {
-    expect(carouselSlots(0, 3, 5)).toEqual([
-      { key: -1, slot: -1, index: 4 },
-      { key: 0, slot: 0, index: 0 },
-      { key: 1, slot: 1, index: 1 },
-      { key: 2, slot: 2, index: 2 },
-      { key: 3, slot: 3, index: 3 },
+  it("monte une carte hors champ de chaque côté quand il y a des modèles avant et après", () => {
+    expect(carouselSlots(1, 3, 6)).toEqual([
+      { key: 0, slot: -1, index: 0 },
+      { key: 1, slot: 0, index: 1 },
+      { key: 2, slot: 1, index: 2 },
+      { key: 3, slot: 2, index: 3 },
+      { key: 4, slot: 3, index: 4 },
     ]);
   });
 
-  it("boucle après le dernier modèle", () => {
-    expect(carouselSlots(4, 3, 5).filter((s) => s.slot >= 0 && s.slot < 3).map((s) => s.index)).toEqual([4, 0, 1]);
+  it("ne monte rien avant le premier modèle ni après le dernier (carrousel fini)", () => {
+    expect(carouselSlots(0, 3, 5).map((s) => s.index)).toEqual([0, 1, 2, 3]);
+    expect(carouselSlots(2, 3, 5).map((s) => s.index)).toEqual([1, 2, 3, 4]);
   });
 
   it("n'affiche que les modèles disponibles, sans doublon, quand il y en a peu", () => {
