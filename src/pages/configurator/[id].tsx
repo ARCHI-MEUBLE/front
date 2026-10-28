@@ -38,6 +38,7 @@ import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
+import { fetchPriceEstimate, formatPriceRange, type PriceEstimate } from '@/lib/pricing';
 import ShareButton from '@/components/configurator/ShareButton';
 import ProjectRequestDialog from '@/components/configurator/ProjectRequestDialog';
 import {
@@ -324,15 +325,14 @@ export default function ConfiguratorPage() {
   const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
   const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
   const [materialsLoading, setMaterialsLoading] = useState(false);
-  const [price, setPrice] = useState(899);
+  const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
+  const price = priceEstimate?.price ?? 0;
 
   useEffect(() => {
     if (isCreateModelDialogOpen && price > 0) {
       setModelForm(prev => ({ ...prev, price: Math.round(price) }));
     }
   }, [isCreateModelDialogOpen, price]);
-
-  const [pricingParams, setPricingParams] = useState<any>(null);
 
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
@@ -1045,13 +1045,31 @@ export default function ConfiguratorPage() {
     ? null
     : colorsForMaterial.find((option) => option.id === componentColors.doors.colorId)?.name || 'Personnalisée';
 
-  const priceDisplaySettings = useMemo(() => {
-    const displayConfig = pricingParams?.display?.price;
-    return {
-      mode: Number(displayConfig?.display_mode) || 0,
-      range: Number(displayConfig?.deviation_range) || 0
+  // Prix : estimé par le backend, qui refait le même calcul à l'enregistrement. Un quart de seconde après le dernier
+  // changement ; la requête précédente est annulée pour qu'une réponse lente n'écrase pas une plus récente.
+  useEffect(() => {
+    if (!initialConfigApplied) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchPriceEstimate(
+        {
+          dimensions: { width, height, depth },
+          styling: { materialKey: selectedMaterialKey, finish, socle },
+          features: { doorType },
+          advancedZones: rootZone,
+        },
+        controller.signal,
+      )
+        .then(setPriceEstimate)
+        .catch((error) => {
+          if (!controller.signal.aborted) console.warn('Estimation du prix impossible :', error instanceof Error ? error.message : error);
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
     };
-  }, [pricingParams]);
+  }, [initialConfigApplied, width, height, depth, selectedMaterialKey, finish, socle, doorType, rootZone]);
 
   useEffect(() => {
     if (!id || loading || isViewMode || !initialConfigApplied || showRestoreDialog) return;
@@ -1126,48 +1144,6 @@ export default function ConfiguratorPage() {
   }, [materialsMap, finish]);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadPricing = async () => {
-      try {
-        const paramsResponse = await fetch('/backend/api/pricing-config/index.php');
-        const paramsData = await paramsResponse.json();
-
-        if (!cancelled && paramsData.success && paramsData.data) {
-          const params: any = {
-            materials: {},
-            drawers: {},
-            shelves: {},
-            lighting: {},
-            cables: {},
-            bases: {},
-            hinges: {},
-            doors: {},
-            columns: {},
-            casing: {},
-            wardrobe: {},
-            handles: {},
-          };
-
-          paramsData.data.forEach((param: any) => {
-            if (!params[param.category]) params[param.category] = {};
-            if (!params[param.category][param.item_type]) {
-              params[param.category][param.item_type] = {};
-            }
-            params[param.category][param.item_type][param.param_name] = param.param_value;
-          });
-
-          setPricingParams(params);
-          console.log('✅ Paramètres de pricing chargés:', params);
-        }
-      } catch (error) {
-        console.warn('Impossible de récupérer les paramètres de pricing, utilisation des valeurs par défaut', error);
-      }
-    };
-    loadPricing();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
     if (!colorsForMaterial.length || !initialConfigApplied) {
       return;
     }
@@ -1176,20 +1152,6 @@ export default function ConfiguratorPage() {
     const nextColor = fallback || colorsForMaterial[0];
     setSelectedColorId(nextColor.id);
   }, [colorsForMaterial, selectedColorId, colorLabel, initialConfigApplied]);
-
-  const samplePricesMap = useMemo(() => {
-    const map: Record<number, number> = {};
-    Object.values(materialsMap).forEach(types => {
-      types.forEach(type => {
-        type.colors?.forEach(color => {
-          if (color.id !== null && color.id !== undefined) {
-            map[color.id] = color.price_per_m2 || 0;
-          }
-        });
-      });
-    });
-    return map;
-  }, [materialsMap]);
 
   useEffect(() => {
     if (!initialConfigApplied || !colorsForMaterial.length) return;
@@ -1289,10 +1251,6 @@ export default function ConfiguratorPage() {
         };
       }
 
-      const isGlassShelf = str.includes('v');
-      const glassShelfMatch = str.match(/v(\d+)/);
-      const glassShelfCount = glassShelfMatch ? parseInt(glassShelfMatch[1]) : (isGlassShelf ? 1 : undefined);
-
       return {
         id: idPrefix,
         type: 'leaf',
@@ -1305,7 +1263,6 @@ export default function ConfiguratorPage() {
           str.includes('Po') ? 'push_door' :
           str.includes('Pd') ? 'door_right' :
           (str.includes('P') || str.includes('Pg')) ? 'door' :
-          isGlassShelf ? 'glass_shelf' :
           str.includes('p') ? 'pegboard' :
           'empty'
         ) as ZoneContent,
@@ -1314,7 +1271,6 @@ export default function ConfiguratorPage() {
           if (!m) return undefined;
           return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
         })(),
-        glassShelfCount,
       };
     };
 
@@ -1762,10 +1718,6 @@ export default function ConfiguratorPage() {
         case 'drawer': leafChar = 'T'; break;
         case 'push_drawer': leafChar = 'To'; break;
         case 'dressing': leafChar = 'D'; break;
-        case 'glass_shelf':
-          const shelfCount = zone.glassShelfCount || 1;
-          leafChar = shelfCount > 1 ? `v${shelfCount}` : 'v';
-          break;
         case 'shelf': leafChar = ''; break;
         default: leafChar = '';
       }
@@ -1846,384 +1798,6 @@ export default function ConfiguratorPage() {
 
     return zoneCode;
   }, [deletedPanelIds]);
-
-  const calculatePrice = useCallback((config: {
-    width: number;
-    height: number;
-    depth: number;
-    finish: string;
-    socle: string;
-    rootZone: Zone;
-    doorType?: 'none' | 'single' | 'double';
-    selectedSample?: SampleColor | null;
-    selectedColorId?: number | null;
-    useMultiColor?: boolean;
-    componentColors?: ComponentColors;
-  }): number => {
-    let p = 0;
-
-    const normalizedFinish = config.finish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '_');
-    
-
-    let samplePriceUnie = 0;
-    if (config.selectedSample && config.selectedSample.price_per_m2 !== undefined) {
-      samplePriceUnie = Number(config.selectedSample.price_per_m2);
-    } else if (config.selectedColorId && samplePricesMap[config.selectedColorId] !== undefined) {
-      samplePriceUnie = Number(samplePricesMap[config.selectedColorId]);
-    }
-
-    console.log(`[PRICING] Calcul en cours: ${config.finish} (${normalizedFinish})`, {
-      samplePriceUnie,
-      selectedColorId: config.selectedColorId,
-      hasSample: !!config.selectedSample,
-      useMultiColor: config.useMultiColor
-    });
-
-    let samplePriceStructure = 0;
-    let samplePriceBack = 0;
-    let samplePriceDoors = 0;
-    let samplePriceDrawers = 0;
-
-    if (pricingParams?.casing?.full) {
-      const w = config.width / 1000;
-      const h = config.height / 1000;
-      const d = config.depth / 1000;
-
-      const backSurface = w * h;
-      const sidesSurface = (d * h) * 2;
-      const topBottomSurface = (w * d) * 2;
-      const casingSurface = sidesSurface + topBottomSurface;
-
-      const casingCoefficient = Number(pricingParams.casing.full.coefficient) || 1.2;
-
-      if (config.useMultiColor && config.componentColors) {
-        const structColorId = config.componentColors.structure.colorId;
-        const backColorId = config.componentColors.back.colorId;
-        const doorsColorId = config.componentColors.doors?.colorId;
-        const drawersColorId = config.componentColors.drawers?.colorId;
-        samplePriceStructure = structColorId ? (Number(samplePricesMap[structColorId]) || 0) : 0;
-        samplePriceBack = backColorId ? (Number(samplePricesMap[backColorId]) || 0) : 0;
-        samplePriceDoors = doorsColorId ? (Number(samplePricesMap[doorsColorId]) || 0) : samplePriceStructure;
-        samplePriceDrawers = drawersColorId ? (Number(samplePricesMap[drawersColorId]) || 0) : samplePriceStructure;
-      } else {
-        samplePriceStructure = samplePriceUnie;
-        samplePriceBack = samplePriceUnie;
-        samplePriceDoors = samplePriceUnie;
-        samplePriceDrawers = samplePriceUnie;
-      }
-
-      const priceCasing = samplePriceStructure * casingSurface * casingCoefficient;
-      const priceBack = samplePriceBack * backSurface * casingCoefficient;
-
-      p = priceCasing + priceBack;
-
-      console.log('💰 [STRUCTURE] Calcul détaillé:', {
-        mode: config.useMultiColor ? 'multi' : 'single',
-        surfaceCasing: `${casingSurface.toFixed(3)} m²`,
-        surfaceBack: `${backSurface.toFixed(3)} m²`,
-        prixM2Structure: `${samplePriceStructure}€/m²`,
-        prixM2Back: `${samplePriceBack}€/m²`,
-        coefficient: casingCoefficient,
-        total: `${p.toFixed(2)}€`
-      });
-    } else {
-      const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
-      p = volumeM3 * 1500;
-      samplePriceStructure = samplePriceUnie;
-      samplePriceBack = samplePriceUnie;
-      samplePriceDoors = samplePriceUnie;
-      samplePriceDrawers = samplePriceUnie;
-      console.log('⚠️ Fallback prix structure (Volume):', p);
-    }
-
-
-    if (pricingParams?.bases) {
-      if (config.socle === 'none') {
-        const nonePrice = Number(pricingParams.bases.none?.fixed_price) || 0;
-        p += nonePrice;
-        if (nonePrice > 0) console.log('👞 [SOCLE] Aucun:', nonePrice + '€');
-      } else if (config.socle === 'metal') {
-        const pricePerFoot = Number(pricingParams.bases.metal?.price_per_foot) || 20;
-        const footInterval = Number(pricingParams.bases.metal?.foot_interval) || 2000;
-        const totalFeet = Math.ceil(config.width / footInterval) * 2;
-        const metalPrice = pricePerFoot * totalFeet;
-        p += metalPrice;
-        console.log('👞 [SOCLE] Métal:', {
-          pieds: totalFeet,
-          prixParPied: pricePerFoot,
-          total: metalPrice + '€'
-        });
-      } else if (config.socle === 'wood') {
-        const woodParams = pricingParams.bases.wood;
-        if (woodParams?.price_per_m3 && woodParams?.height) {
-          const h = Number(woodParams.height);
-          const volumeM3 = (config.width * config.depth * h) / 1_000_000_000;
-          const woodPrice = Number(woodParams.price_per_m3) * volumeM3;
-
-          p += woodPrice;
-          console.log('👞 [SOCLE] Bois:', {
-            volume: volumeM3.toFixed(4) + ' m³',
-            prixM3: woodParams.price_per_m3 + '€/m³',
-            total: woodPrice.toFixed(2) + '€'
-          });
-        } else if (woodParams?.coefficient) {
-          const woodPrice = Number(woodParams.coefficient) * config.width * config.depth;
-          p += woodPrice;
-          console.log('👞 [SOCLE] Bois (Coef):', woodPrice.toFixed(2) + '€');
-        } else {
-          p += 60;
-        }
-      }
-    } else {
-      const soclePrices: Record<string, number> = { none: 0, metal: 40, wood: 60 };
-      p += Number(soclePrices[config.socle] || 0);
-    }
-
-    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number, currentPath: string = ''): number => {
-      let extra = 0;
-
-      const isDrawer = (z: Zone) => z.content === 'drawer' || z.content === 'push_drawer';
-      const shouldHideHorizontalSeparators = (z: Zone) => {
-        return z.type === 'horizontal' && z.children && z.children.length >= 2 && z.children.every(isDrawer);
-      };
-
-      const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
-      if (door && pricingParams?.doors) {
-        const getDoorPrice = (doorType: string, w: number, h: number) => {
-          const isDoor = [
-            'door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right', 'glass_door', 'push_door', 'push_door_right'
-          ].includes(doorType);
-
-          if (!isDoor) return 0;
-
-          let typeKey = 'simple';
-          if (pricingParams.doors[doorType]) {
-            typeKey = doorType;
-          } else if (doorType === 'door_double') {
-            typeKey = 'double';
-          } else if (doorType === 'mirror_door' || doorType === 'mirror_door_right' || doorType === 'glass_door') {
-            typeKey = 'glass';
-          } else if (doorType === 'push_door' || doorType === 'push_door_right') {
-            typeKey = 'push';
-          } else {
-            typeKey = 'simple';
-          }
-
-          const doorConfig = pricingParams.doors[typeKey];
-          if (!doorConfig) return 0;
-
-          const coefficient = Number(doorConfig.coefficient) || 0.00004;
-          const hingeCount = Number(doorConfig.hinge_count) || 2;
-          const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
-          const surfaceDoorM2 = (w * h) / 1_000_000;
-
-          const doorPrice = (coefficient * w * h) + (hingePrice * hingeCount) + (samplePriceDoors * surfaceDoorM2);
-
-          console.log(`🚪 [PORTE] Calcul (${doorType} -> ${typeKey}):`, {
-            dimensions: `${w.toFixed(0)}x${h.toFixed(0)}mm`,
-            surface: `${surfaceDoorM2.toFixed(4)}m²`,
-            prixEchantillon: `${samplePriceDoors}€/m²`,
-            formule: `(${coefficient} × ${w.toFixed(0)} × ${h.toFixed(0)}) + (${hingePrice} × ${hingeCount}) + (${samplePriceDoors} × ${surfaceDoorM2.toFixed(4)})`,
-            total: `${doorPrice.toFixed(2)}€`
-          });
-
-          return doorPrice;
-        };
-
-        extra += getDoorPrice(door, zoneWidth, zoneHeight);
-      } else if (door) {
-        switch (door) {
-          case 'door':
-          case 'door_right': extra += 40; break;
-          case 'push_door': extra += 50; break;
-          case 'door_double': extra += 80; break;
-          case 'mirror_door': extra += 95; break;
-        }
-      }
-
-      if (door && zone.handleType && pricingParams?.handles) {
-        const handleConfig = pricingParams.handles[zone.handleType];
-        if (handleConfig) {
-          extra += Number(handleConfig.price_per_unit) || 0;
-        }
-      }
-
-      if (zone.type === 'leaf') {
-        if (pricingParams?.drawers && (zone.content === 'drawer' || zone.content === 'push_drawer')) {
-          const drawerType = zone.content === 'push_drawer' ? 'push' : 'standard';
-          const drawerConfig = pricingParams.drawers[drawerType];
-          if (drawerConfig) {
-            const basePrice = Number(drawerConfig.base_price) || 35;
-            const coefficient = Number(drawerConfig.coefficient) || 0.0001;
-            const surfaceFacadeM2 = (zoneWidth * zoneHeight) / 1_000_000;
-            const drawerPrice = basePrice + (coefficient * zoneWidth * config.depth) + (samplePriceDrawers * surfaceFacadeM2);
-            extra += drawerPrice;
-
-            console.log(`📥 [TIROIR] Calcul détaillé (${drawerType}):`, {
-              dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
-              facade: `${zoneWidth.toFixed(0)}x${zoneHeight.toFixed(0)}mm = ${surfaceFacadeM2.toFixed(4)}m²`,
-              prixEchantillon: `${samplePriceDrawers}€/m²`,
-              formule: `${basePrice} + (${coefficient} × ${zoneWidth.toFixed(0)} × ${config.depth.toFixed(0)}) + (${samplePriceDrawers} × ${surfaceFacadeM2.toFixed(4)})`,
-              total: `${drawerPrice.toFixed(2)}€`
-            });
-          } else {
-            extra += zone.content === 'drawer' ? 35 : 45;
-          }
-        } else if (zone.content === 'glass_shelf' && pricingParams?.shelves?.glass) {
-          const pricePerM2 = Number(pricingParams.shelves.glass.price_per_m2) || 250;
-          const shelfSurfaceM2 = (zoneWidth * config.depth) / 1000000;
-          const shelfCount = zone.glassShelfCount || 1;
-          const shelfPrice = pricePerM2 * shelfSurfaceM2 * shelfCount;
-
-          console.log('💎 [ETAGERE VERRE] Calcul détaillée:', {
-            dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
-            surface: `${shelfSurfaceM2.toFixed(3)} m²`,
-            nombre: shelfCount,
-            prixUnitaire: `${(pricePerM2 * shelfSurfaceM2).toFixed(2)}€`,
-            total: `${shelfPrice.toFixed(2)}€`
-          });
-
-          extra += shelfPrice;
-        } else if (zone.content === 'glass_shelf') {
-          const shelfCount = zone.glassShelfCount || 1;
-          extra += 25 * shelfCount;
-        } else if (zone.content === 'dressing') {
-          if (pricingParams?.wardrobe?.rod) {
-            const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
-            const widthInMeters = zoneWidth / 1000;
-            extra += pricePerMeter * widthInMeters;
-          } else {
-            extra += 20;
-          }
-        }
-
-        if (zone.hasDressing && zone.content !== 'dressing') {
-          if (pricingParams?.wardrobe?.rod) {
-            const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
-            const widthInMeters = zoneWidth / 1000;
-            extra += pricePerMeter * widthInMeters;
-          } else {
-            extra += 20;
-          }
-        }
-
-        if (zone.hasCableHole) {
-          if (pricingParams?.cables?.pass_cable) {
-            extra += Number(pricingParams.cables.pass_cable.fixed_price) || 10;
-          } else {
-            extra += 10;
-          }
-        }
-
-        if (zone.hasLight) {
-          if (pricingParams?.lighting?.led) {
-            const pricePerMeter = Number(pricingParams.lighting.led.price_per_linear_meter) || 15;
-            const widthInMeters = zoneWidth / 1000;
-            extra += pricePerMeter * widthInMeters;
-          } else {
-            extra += (zoneWidth / 1000) * 15;
-          }
-        }
-      } else if (zone.children) {
-        zone.children.forEach((child, index) => {
-          let childWidth = zoneWidth;
-          let childHeight = zoneHeight;
-
-          let ratio: number;
-          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
-            ratio = zone.splitRatios[index] / 100;
-          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
-            ratio = (index === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
-          } else {
-            ratio = 1 / zone.children!.length;
-          }
-
-          let nextPath = currentPath;
-
-          if (zone.type === 'horizontal') {
-            childHeight = zoneHeight * ratio;
-            const childIdx = zone.children!.length - 1 - index;
-            nextPath = `${currentPath}r${childIdx}-`;
-
-            if (index < zone.children!.length - 1) {
-              const sepId = `separator-h-${currentPath}h${index}-0`;
-              const isAutomaticInvisible = shouldHideHorizontalSeparators(zone);
-              const isDeleted = deletedPanelIds.has(sepId);
-
-              if (!isDeleted && !isAutomaticInvisible) {
-                const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
-                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-                const shelfPrice = pricePerM2 * surfaceShelfM2;
-                extra += shelfPrice;
-                console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
-              } else {
-                console.log(`📏 [ETAGERE BOIS] Ignorée car ${isDeleted ? 'supprimée' : 'automatiquement invisible (tiroirs)'}`);
-              }
-            }
-          } else if (zone.type === 'vertical') {
-            childWidth = zoneWidth * ratio;
-            nextPath = `${currentPath}c${index}-`;
-
-            if (index < zone.children!.length - 1) {
-              const sepId = `separator-v-${currentPath}v${index}-0`;
-              if (!deletedPanelIds.has(sepId)) {
-                const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
-                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-                const verticalPrice = pricePerM2 * surfaceVerticalM2;
-                extra += verticalPrice;
-                console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
-              } else {
-                console.log(`📏 [MONTANT VERTICAL] Ignoré car supprimé`);
-              }
-            }
-          }
-
-          extra += countExtraPrice(child, childWidth, childHeight, nextPath);
-        });
-      }
-
-      return extra;
-    };
-    p += countExtraPrice(config.rootZone, config.width, config.height);
-
-    if (pricingParams?.doors && config.doorType && config.doorType !== 'none') {
-      const doorTypeKey = config.doorType === 'double' ? 'double' : 'simple';
-      const doorConfig = pricingParams.doors[doorTypeKey];
-      if (doorConfig) {
-        const coefficient = Number(doorConfig.coefficient) || 0.00004;
-        const hingeCount = Number(doorConfig.hinge_count) || 2;
-        const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
-        const surfaceGlobalDoorM2 = (config.width * config.height) / 1_000_000;
-
-        let globalDoorSamplePrice = samplePriceUnie;
-        if (config.useMultiColor && config.componentColors?.doors?.colorId) {
-          globalDoorSamplePrice = Number(samplePricesMap[config.componentColors.doors.colorId]) || samplePriceUnie;
-        }
-
-        const globalDoorPrice = (coefficient * config.width * config.height) + (hingePrice * hingeCount) + (globalDoorSamplePrice * surfaceGlobalDoorM2);
-        p += globalDoorPrice;
-        console.log(`🚪 Prix porte globale (${config.doorType}):`, {
-          dimensions: `${config.width}x${config.height}mm`,
-          surface: `${surfaceGlobalDoorM2.toFixed(4)}m²`,
-          prixEchantillon: `${globalDoorSamplePrice}€/m²`,
-          formule: `(${coefficient} × ${config.width} × ${config.height}) + (${hingePrice} × ${hingeCount}) + (${globalDoorSamplePrice} × ${surfaceGlobalDoorM2.toFixed(4)})`,
-          total: `${globalDoorPrice.toFixed(2)}€`
-        });
-      } else {
-        const fallbackPrice = config.doorType === 'single' ? 40 : 80;
-        p += fallbackPrice;
-        console.log(`🚪 Prix porte globale (Fallback ${config.doorType}):`, fallbackPrice + '€');
-      }
-    }
-
-    if (isNaN(p)) {
-      console.warn('⚠️ Le calcul du prix a retourné NaN, retour à 0');
-      p = 0;
-    }
-
-    console.log('💰 PRIX TOTAL CALCULÉ:', Math.round(p) + '€');
-    return Math.round(p);
-  }, [pricingParams, samplePricesMap]);
 
   const generateModel = useCallback(async (prompt: string) => {
     setGenerating(true);
@@ -2306,19 +1880,11 @@ export default function ConfiguratorPage() {
 
     console.log('🚀 Génération du modèle avec le prompt:', prompt);
 
-    setPrice(calculatePrice({ 
-      width, height, depth, finish, socle, rootZone, doorType, 
-      selectedSample: selectedColorOption,
-      selectedColorId,
-      useMultiColor,
-      componentColors
-    }));
-
     if (hasZoneIssues) return;
 
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
+  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
 
   const handleToggleDoors = useCallback(() => {
     setDoorsOpen(prev => !prev);
@@ -3265,11 +2831,10 @@ export default function ConfiguratorPage() {
                 colorLabel={colorLabel}
                 socle={socle}
                 rootZone={rootZone}
-                price={price}
+                priceEstimate={priceEstimate}
                 modelName={model?.name}
                 isAdmin={isAdmin}
                 onEdit={handleAdminEdit}
-                priceDisplaySettings={priceDisplaySettings}
                 mountingStyle={mountingStyle}
                 isOwner={isConfigOwner}
                 onEditOwn={handleOwnerEdit}
@@ -3506,13 +3071,11 @@ export default function ConfiguratorPage() {
 
                 <div className="hidden flex-shrink-0 border-t border-black/10 bg-am-paper px-6 py-4 lg:block">
                   <PriceDisplay
-                    price={price}
+                    estimate={priceEstimate}
                     onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : validateConfiguration}
                     isAdmin={isAdmin}
                     isAdminCreateModel={isAdminCreateModel}
                     isAdminEditModel={isAdminEditModel}
-                    displayMode={priceDisplaySettings.mode}
-                    deviationRange={priceDisplaySettings.range}
                   />
                 </div>
               </>
@@ -3524,28 +3087,9 @@ export default function ConfiguratorPage() {
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-am-paper px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0">
-                <span className="eyebrow text-black/65">Prix</span>
+                <span className="eyebrow text-black/65">Prix estimé</span>
                 <div className="text-xl font-medium tracking-[-0.03em] text-black">
-                  {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
-                    `${new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(Math.max(0, price - priceDisplaySettings.range))} - ${new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(price + priceDisplaySettings.range)}`
-                  ) : (
-                    new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(price)
-                  )}
+                  {priceEstimate ? formatPriceRange(priceEstimate) : '…'}
                 </div>
               </div>
               {(!isAdminCreateModel && !isAdminEditModel) ? (
