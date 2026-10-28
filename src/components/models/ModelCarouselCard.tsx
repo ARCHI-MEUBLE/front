@@ -1,11 +1,17 @@
+import { memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Pencil, SlidersHorizontal } from "lucide-react";
 import type { ModelCardData } from "@/components/models/ModelCard";
 
+// Images du site (public/images) : redimensionnées et converties par l'optimiseur de Next, au lieu de télécharger des
+// originaux de plusieurs Mo pour une carte de ~250 px. Les autres (uploads servis par le backend) restent telles quelles.
+const isOptimizable = (src: string) => src.startsWith("/images/");
+
 // Carte des carrousels de la page modèles : fond gris clair, image contenue, nom en pied.
 // En aperçu (rangées du dessus et du dessous) elle n'est ni cliquable ni focusable : seule la rangée centrale se navigue.
-export function ModelCarouselCard({
+// Mémorisée : un pas du carrousel ne redessine que les cartes dont les props changent.
+export const ModelCarouselCard = memo(function ModelCarouselCard({
   model,
   preview = false,
   focusable = true,
@@ -34,9 +40,13 @@ export function ModelCarouselCard({
             src={model.imagePath}
             alt={preview ? "" : model.name}
             fill
-            unoptimized
+            unoptimized={!isOptimizable(model.imagePath)}
             className="object-contain transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-            sizes="(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 25vw"
+            sizes={
+              preview
+                ? "(max-width: 640px) 60vw, (max-width: 1024px) 30vw, 16vw"
+                : "(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 22vw"
+            }
           />
         ) : (
           <div className="flex h-full items-center justify-center rounded-sm border border-dashed border-black/10">
@@ -71,4 +81,4 @@ export function ModelCarouselCard({
       {content}
     </Link>
   );
-}
+});
