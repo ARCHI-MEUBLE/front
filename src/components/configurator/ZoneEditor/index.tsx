@@ -436,6 +436,23 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange]
   );
 
+  // Définir le décalage de la niche (mm, signé ; undefined/0 = affleurante)
+  const setNicheOffset = useCallback(
+    (zoneId: string, offsetMm: number | undefined) => {
+      const updateZone = (z: Zone): Zone => {
+        if (z.id === zoneId && z.type === 'leaf') {
+          return { ...z, nicheOffset: offsetMm };
+        }
+        if (z.children) {
+          return { ...z, children: z.children.map(updateZone) };
+        }
+        return z;
+      };
+      onRootZoneChange(updateZone(rootZone));
+    },
+    [rootZone, onRootZoneChange]
+  );
+
   // Définir les positions des étagères en verre
   const setGlassShelfPositions = useCallback(
     (zoneId: string, positions: number[]) => {
@@ -764,6 +781,7 @@ export default function ZoneEditor({
             onSetHandleType={onSetHandleType || setHandleType}
             onSetGlassShelfCount={setGlassShelfCount}
             onSetGlassShelfPositions={setGlassShelfPositions}
+            onSetNicheOffset={setNicheOffset}
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}
             depthMm={depth}

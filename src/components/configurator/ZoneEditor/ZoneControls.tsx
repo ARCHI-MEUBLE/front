@@ -34,6 +34,7 @@ interface ZoneControlsProps {
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   onSetGlassShelfCount?: (zoneId: string, count: number) => void;
   onSetGlassShelfPositions?: (zoneId: string, positions: number[]) => void;
+  onSetNicheOffset?: (zoneId: string, offsetMm: number | undefined) => void;
   zoneHeightMm?: number; // Hauteur de la zone en mm
   zoneWidthMm?: number; // Largeur de la zone en mm
   depthMm?: number; // Profondeur du meuble en mm
@@ -594,6 +595,7 @@ export default function ZoneControls({
   onSetHandleType,
   onSetGlassShelfCount,
   onSetGlassShelfPositions,
+  onSetNicheOffset,
   zoneHeightMm,
   zoneWidthMm,
   depthMm,
@@ -859,10 +861,42 @@ export default function ZoneControls({
             </div>
 
             {selectedZone.content === 'niche' && (
-              <div className="mt-3">
+              <div className="mt-3 space-y-3">
                 <InfoNote>
                   Donnez-lui sa couleur à l&apos;étape Matières & couleurs : cliquez sur la niche, puis choisissez une teinte.
                 </InfoNote>
+
+                {onSetNicheOffset && (() => {
+                  const maxOffsetMm = Math.max(10, Math.round((depth * 0.3) / 10) * 10);
+                  const offsetMm = selectedZone.nicheOffset ?? 0;
+                  const clampedOffsetMm = Math.min(maxOffsetMm, Math.max(-maxOffsetMm, offsetMm));
+                  const niveauLabel =
+                    clampedOffsetMm < 0 ? 'Niche encastrée' : clampedOffsetMm > 0 ? 'Niche débordante' : 'Niche affleurante';
+                  return (
+                    <div className="border border-black/10 bg-white p-3" style={{ borderRadius: '4px' }}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-black">{niveauLabel}</span>
+                        <span className="font-mono text-sm text-black/65">
+                          {clampedOffsetMm > 0 ? '+' : ''}{clampedOffsetMm} mm
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-maxOffsetMm}
+                        max={maxOffsetMm}
+                        step={5}
+                        value={clampedOffsetMm}
+                        onChange={(e) => onSetNicheOffset(selectedZone.id, Number(e.target.value) || undefined)}
+                        className="mt-2 w-full"
+                      />
+                      <div className="mt-1 flex items-center justify-between text-xs text-black/50">
+                        <span>Encastrée</span>
+                        <span>Affleurante</span>
+                        <span>Débordante</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

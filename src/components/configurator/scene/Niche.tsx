@@ -1,17 +1,17 @@
 import { TexturedMaterial } from './TexturedMaterial';
 
-// Épaisseur du revêtement : assez fine pour ne pas se lire comme une planche en plus
-const LINING = 0.003;
-
 // Intérieur d'une niche : le fond et les quatre côtés du compartiment, habillés d'une couleur propre.
-// `position` est le centre du compartiment, `depth` la profondeur libre devant le panneau arrière.
+// `position` est le centre du compartiment, `depth` la profondeur libre devant le panneau arrière,
+// `liningThickness` l'épaisseur des plaques posées contre les parois (pour l'instant la même que les
+// autres plaques du meuble).
 export function NicheLining({
                                 width,
                                 height,
                                 depth,
                                 position,
                                 hexColor,
-                                imageUrl
+                                imageUrl,
+                                liningThickness
                             }: {
     width: number;
     height: number;
@@ -19,7 +19,9 @@ export function NicheLining({
     position: [number, number, number];
     hexColor: string;
     imageUrl?: string | null;
+    liningThickness: number;
 }) {
+    const LINING = liningThickness;
     const sideDepth = depth - LINING;
     const sideZ = LINING / 2;
     const material = <TexturedMaterial hexColor={hexColor} imageUrl={imageUrl} />;

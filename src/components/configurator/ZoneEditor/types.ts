@@ -27,6 +27,7 @@ export type Zone = {
   glassShelfPositions?: number[]; // Positions des étagères en % depuis le bas (0-100)
   isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
   noBack?: boolean; // Fond retiré sur ce seul compartiment
+  nicheOffset?: number; // Décalage signé (mm) du bord avant de la niche par rapport à la position "affleurante" (au nu de la façade, par défaut). Négatif = encastrée, positif = débordante.
 };
 
 export interface ZoneContentMeta {

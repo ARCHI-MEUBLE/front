@@ -950,15 +950,28 @@ export function Furniture({
                     // Sans couleur choisie, l'intérieur reprend le fond du meuble en plus sombre
                     const nicheHexColor = zone.zoneColor?.hex || nicheDefaultColor(finalBackColor);
                     const nicheImageUrl = zone.zoneColor?.hex ? zone.zoneColor.imageUrl : null;
+                    // Pour l'instant la même épaisseur que les autres plaques du meuble
+                    const nicheLiningThickness = thickness;
+                    // Position par défaut = affleurante (au nu de la façade). nicheOffset (mm, signé)
+                    // décale le bord avant par rapport à cette position par défaut, en laissant le
+                    // fond fixe (collé au fond réel du meuble) : négatif = encastrée (creusée),
+                    // positif = débordante (dépasse la façade), borné à ±30% de la profondeur du
+                    // meuble (voir ZoneControls.tsx, même borne côté slider).
+                    const flushNicheDepth = d - backPanelThickness;
+                    const maxOffset = d * 0.3;
+                    const offset = Math.min(maxOffset, Math.max(-maxOffset, (zone.nicheOffset ?? 0) / 1000));
+                    const nicheDepth = Math.max(0.02, flushNicheDepth + offset);
+                    const nicheCenterZ = z + backPanelThickness / 2 + offset / 2;
                     items.push(
                         <NicheLining
                             key={`${zone.id}-niche`}
-                            position={[x, y, z + backPanelThickness / 2]}
+                            position={[x, y, nicheCenterZ]}
                             width={width}
                             height={height}
-                            depth={d - backPanelThickness}
+                            depth={nicheDepth}
                             hexColor={nicheHexColor}
                             imageUrl={nicheImageUrl}
+                            liningThickness={nicheLiningThickness}
                         />
                     );
                 }

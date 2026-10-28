@@ -1766,6 +1766,11 @@ export default function ConfiguratorPage() {
           const shelfCount = zone.glassShelfCount || 1;
           leafChar = shelfCount > 1 ? `v${shelfCount}` : 'v';
           break;
+        case 'niche':
+          // n(décalage signé en mm) : 0/absent = affleurante (par défaut, au nu de la façade),
+          // négatif = encastrée, positif = débordante — voir le bloc char=="n" dans procedure_real.py
+          leafChar = zone.nicheOffset ? `n(${Math.round(zone.nicheOffset)})` : 'n';
+          break;
         case 'shelf': leafChar = ''; break;
         default: leafChar = '';
       }
