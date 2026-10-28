@@ -50,6 +50,27 @@ function floorHit(poses: (XRPose | undefined)[], matrix: THREE.Matrix4): boolean
   return poses.some((pose) => pose !== undefined && isFloorLike(matrix.fromArray(pose.transform.matrix)));
 }
 
+// Chrome Android (156 au moins) expose renderState.layers même sans la fonction « layers » demandée à l'ouverture de
+// la session : Three.js 0.170 dessine alors dans une couche de projection que Chrome n'affiche pas sur la caméra
+// (diagnostic : cube dans le champ, appels de dessin sans erreur GL, rien à l'écran). Three.js ne lit cette propriété
+// que dans setSession : on la masque le temps de l'appel pour qu'il prenne la couche XRWebGLLayer classique.
+export async function setSessionWithoutLayers(renderer: THREE.WebGLRenderer, session: XRSession): Promise<void> {
+  const readRenderState = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(session), 'renderState')?.get;
+  if (!readRenderState) return renderer.xr.setSession(session);
+  Object.defineProperty(session, 'renderState', {
+    configurable: true,
+    get: () =>
+      new Proxy(readRenderState.call(session) as XRRenderState, {
+        get: (state, key) => (key === 'layers' ? undefined : Reflect.get(state, key, state)),
+      }),
+  });
+  try {
+    await renderer.xr.setSession(session);
+  } finally {
+    Reflect.deleteProperty(session, 'renderState');
+  }
+}
+
 export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onEnd, onDebug }: Options): Promise<WebXrPlacement> {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -256,7 +277,7 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
   };
 
   try {
-    await renderer.xr.setSession(session);
+    await setSessionWithoutLayers(renderer, session);
   } catch (error) {
     dispose();
     throw error;
