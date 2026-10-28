@@ -15,6 +15,8 @@ export const AR_MESSAGES = {
     "Rien ne s'est ouvert ? Si le navigateur demande d'ouvrir l'application Google, acceptez. Sinon, ouvrez cette page dans Chrome.",
   closedQuickly:
     "La réalité augmentée s'est refermée aussitôt. Le plus souvent, l'application Google n'a pas accès à l'appareil photo : Paramètres > Applications > Google > Autorisations > Appareil photo > Autoriser. Mettez aussi à jour « Services Google Play pour la RA » dans le Play Store, puis relancez. En attendant, le meuble s'ouvre en 3D sans caméra.",
+  needsHttps:
+    "Sur Android, la réalité augmentée ne s'ouvre que depuis le site en ligne (adresse en https), pas depuis l'adresse locale de l'ordinateur.",
   check: 'Vérifier mon téléphone',
   checking: 'Vérification du téléphone…',
   checkIntro: "Avant d'ouvrir la caméra, on vérifie que votre téléphone est prêt : il vous demandera l'accès à l'appareil photo.",
@@ -35,8 +37,14 @@ export const AR_MESSAGES = {
 } as const;
 
 // Message sous le bouton quand Scene Viewer (Android) ne s'est pas ouvert
-export const sceneViewerIssueMessage = (issue: SceneViewerIssue) =>
-  issue === 'unavailable' ? AR_MESSAGES.unavailable : issue === 'closed-quickly' ? AR_MESSAGES.closedQuickly : AR_MESSAGES.notOpened;
+const SCENE_VIEWER_ISSUE_MESSAGES: Record<SceneViewerIssue, string> = {
+  'needs-https': AR_MESSAGES.needsHttps,
+  unavailable: AR_MESSAGES.unavailable,
+  'not-opened': AR_MESSAGES.notOpened,
+  'closed-quickly': AR_MESSAGES.closedQuickly,
+};
+
+export const sceneViewerIssueMessage = (issue: SceneViewerIssue) => SCENE_VIEWER_ISSUE_MESSAGES[issue];
 
 // Ligne de la liste de vérification, avant le lancement sur Android
 export const AR_CHECK_LABELS = {

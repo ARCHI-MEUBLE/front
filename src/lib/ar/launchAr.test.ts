@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { arPlatformFor, type BrowserTraits } from './launchAr';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { QUICK_CLOSE_MS, arPlatformFor, openSceneViewer, type BrowserTraits } from './launchAr';
 
 const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
 const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)';
@@ -65,5 +65,90 @@ describe('arPlatformFor', () => {
     expect(arPlatformFor(desktop('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.0.0 Safari/537.36'))).toBeNull();
     expect(arPlatformFor(desktop('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0'))).toBeNull();
     expect(arPlatformFor({ ...desktop(`${MAC} Version/18.5 Safari/605.1.15`, 'MacIntel'), supportsArLinks: true })).toBeNull();
+  });
+});
+
+describe('openSceneViewer', () => {
+  const GLB = 'https://www.archimeuble.com/api/ar-model/ar_0123abcd.glb';
+  let visibility: DocumentVisibilityState;
+  let clicked: string[];
+
+  const setVisibility = (state: DocumentVisibilityState) => {
+    visibility = state;
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    visibility = 'visible';
+    clicked = [];
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this.href);
+    });
+    vi.spyOn(window.history, 'back').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    // Termine le suivi du dernier lancement avant le test suivant
+    vi.advanceTimersByTime(60000);
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    window.location.hash = '';
+  });
+
+  it('opens Scene Viewer through the Google app, in AR when possible and in 3D otherwise', () => {
+    openSceneViewer(GLB, 'Votre meuble', () => {});
+    expect(clicked).toHaveLength(1);
+    const [link] = clicked;
+    expect(link).toMatch(/^intent:\/\/arvr\.google\.com\/scene-viewer\/1\.2\?/);
+    expect(link).toContain('package=com.google.android.googlequicksearchbox');
+    expect(link).toContain('mode=ar_preferred');
+    expect(link).toContain(`file=${encodeURIComponent(GLB)}`);
+    expect(link).toContain('S.browser_fallback_url=');
+  });
+
+  it('does not launch a model served over http, which Scene Viewer cannot download', () => {
+    const onIssue = vi.fn();
+    openSceneViewer('http://192.168.1.20:3000/api/ar-model/ar_0123abcd.glb', 'Votre meuble', onIssue);
+    expect(clicked).toHaveLength(0);
+    expect(onIssue).toHaveBeenCalledWith('needs-https');
+  });
+
+  it('reports that nothing opened when the page stays on screen', () => {
+    const onIssue = vi.fn();
+    openSceneViewer(GLB, 'Votre meuble', onIssue);
+    vi.advanceTimersByTime(4000);
+    expect(onIssue).toHaveBeenLastCalledWith('not-opened');
+  });
+
+  it('reports a viewer that closes right after opening, not one the visitor used', () => {
+    const quick = vi.fn();
+    openSceneViewer(GLB, 'Votre meuble', quick);
+    setVisibility('hidden');
+    expect(quick).toHaveBeenLastCalledWith(null);
+    vi.advanceTimersByTime(QUICK_CLOSE_MS - 1000);
+    setVisibility('visible');
+    expect(quick).toHaveBeenLastCalledWith('closed-quickly');
+
+    const used = vi.fn();
+    openSceneViewer(GLB, 'Votre meuble', used);
+    setVisibility('hidden');
+    vi.advanceTimersByTime(20000);
+    setVisibility('visible');
+    expect(used).toHaveBeenCalledTimes(1);
+    expect(used).toHaveBeenLastCalledWith(null);
+  });
+
+  it('goes back only once when the browser falls back after several launches', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    openSceneViewer(GLB, 'Votre meuble', first);
+    openSceneViewer(GLB, 'Votre meuble', second);
+    window.location.hash = '#ar-indisponible';
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledWith('unavailable');
   });
 });
