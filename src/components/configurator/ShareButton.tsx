@@ -6,18 +6,20 @@ interface ShareButtonProps {
   // Enregistre le meuble affiché et renvoie le lien court qui le rouvre
   getLink: () => Promise<string>;
   disabled?: boolean;
+  // Code (prompt) du meuble affiché, montré en petit dans la fenêtre de partage (admin)
+  getPrompt?: () => string;
 }
 
 type ShareState =
   | { status: 'loading' }
-  | { status: 'ready'; link: string; image: string }
+  | { status: 'ready'; link: string; image: string; prompt?: string }
   | { status: 'error'; message: string };
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
 // Passer d'un appareil à l'autre sans compte : un lien court et son QR code rouvrent ce meuble tel qu'il est
 // maintenant. Le meuble partagé n'est plus modifié ensuite : un nouveau partage donne un nouveau lien.
-export default function ShareButton({ getLink, disabled = false }: ShareButtonProps) {
+export default function ShareButton({ getLink, disabled = false, getPrompt }: ShareButtonProps) {
   const [share, setShare] = useState<ShareState | null>(null);
   const [copied, setCopied] = useState(false);
   const request = useRef(0);
@@ -30,7 +32,7 @@ export default function ShareButton({ getLink, disabled = false }: ShareButtonPr
       const link = await getLink();
       const { toDataURL } = await import('qrcode');
       const image = await toDataURL(link, { margin: 1, width: 480, errorCorrectionLevel: 'M' });
-      if (id === request.current) setShare({ status: 'ready', link, image });
+      if (id === request.current) setShare({ status: 'ready', link, image, prompt: getPrompt?.() });
     } catch (error) {
       if (id === request.current) {
         setShare({ status: 'error', message: error instanceof Error ? error.message : 'Le lien n’a pas pu être créé.' });
@@ -127,6 +129,11 @@ export default function ShareButton({ getLink, disabled = false }: ShareButtonPr
                   {copied ? 'Lien copié' : 'Copier le lien'}
                 </button>
               </div>
+              {share.prompt && (
+                <p className="break-all font-mono text-[11px] text-black/55">
+                  Prompt actuel : <span className="text-black/80">{share.prompt}</span>
+                </p>
+              )}
               {canShareNatively && (
                 <button
                   type="button"
