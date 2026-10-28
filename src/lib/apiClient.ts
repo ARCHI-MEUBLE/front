@@ -158,84 +158,6 @@ async function apiRequest<T>(
 }
 
 /**
- * API Client - Authentification utilisateur
- */
-export const authApi = {
-  /**
-   * Connexion utilisateur
-   */
-  async login(email: string, password: string): Promise<{ success: boolean; user: User }> {
-    return request<{ success: boolean; user: User }>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-  },
-
-  /**
-   * Inscription utilisateur
-   */
-  async register(
-    email: string,
-    password: string,
-    name?: string
-  ): Promise<{ success: boolean; user: User }> {
-    return request<{ success: boolean; user: User }>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, name }),
-    });
-  },
-
-  /**
-   * Vérifier la session utilisateur
-   */
-  async getSession(): Promise<{ user: User }> {
-    return request<{ user: User }>('/api/auth/session');
-  },
-
-  /**
-   * Déconnexion utilisateur
-   */
-  async logout(): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>('/api/auth/logout', {
-      method: 'DELETE',
-    });
-  },
-
-  /**
-   * Changer le mot de passe
-   */
-  async changePassword(
-    currentPassword: string,
-    newPassword: string
-  ): Promise<{ success: boolean }> {
-    return request<{ success: boolean }>('/api/auth/password', {
-      method: 'PUT',
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-  },
-
-  /**
-   * Demande de réinitialisation de mot de passe
-   */
-  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
-    return request<{ success: boolean; message: string }>('/api/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
-  },
-
-  /**
-   * Réinitialisation du mot de passe
-   */
-  async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
-    return request<{ success: boolean; message: string }>('/api/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({ token, password }),
-    });
-  },
-};
-
-/**
  * API Client - Authentification admin
  */
 export const adminAuthApi = {
@@ -662,14 +584,24 @@ export const arModelsApi = {
   /**
    * Dépose le GLB exporté par le configurateur (vue en réalité augmentée) et renvoie son adresse (/models/ar_….glb).
    * Scene Viewer (Android) et le QR code de l'ordinateur ont besoin d'un fichier que le téléphone télécharge lui-même.
+   * Passe par la route Next /api/ar-model, qui relaie au backend : appeler le backend directement échoue dès que la page
+   * n'est pas ouverte sur une origine qu'il autorise (adresse réseau de l'ordinateur, téléphone).
    */
   async upload(glb: ArrayBuffer): Promise<string> {
-    const response = await fetch(`${API_BASE_URL}/api/ar-model`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'model/gltf-binary' },
-      body: glb,
-    });
+    const send = () =>
+      fetch('/api/ar-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'model/gltf-binary' },
+        body: glb,
+      });
+    let response: Response;
+    try {
+      response = await send();
+    } catch {
+      // Coupure réseau passagère (la requête n'est pas partie) : un second essai avant d'abandonner
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      response = await send();
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok || typeof data.glb_url !== 'string') {
       throw new ApiClientError(data.error || `Erreur HTTP ${response.status}`, response.status, data);
@@ -682,7 +614,6 @@ export const arModelsApi = {
  * Export de l'API client complet
  */
 export const apiClient = {
-  auth: authApi,
   adminAuth: adminAuthApi,
   categories: categoriesApi,
   models: modelsApi,

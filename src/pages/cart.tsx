@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useCustomer } from '@/context/CustomerContext';
-import { UserNavigation } from '@/components/UserNavigation';
+import { Header } from '@/components/Header';
 import { Trash2, Edit, ShoppingBag, Package, Truck, Shield, ArrowRight, Minus, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
@@ -136,8 +136,9 @@ export default function Cart() {
   useEffect(() => {
     if (authLoading) return;
 
+    // Sans email confirmé, aucun panier n'est rattaché au visiteur : on affiche directement le panier vide
     if (!isAuthenticated) {
-      router.push('/auth/login?redirect=/cart');
+      setIsLoading(false);
       return;
     }
 
@@ -306,7 +307,7 @@ export default function Cart() {
         <Head>
           <title>Mon Panier - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
+        <Header />
         <div className="min-h-screen bg-am-paper">
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
@@ -333,7 +334,7 @@ export default function Cart() {
       <Head>
         <title>Mon Panier - ArchiMeuble</title>
       </Head>
-      <UserNavigation />
+      <Header />
 
       <div className="min-h-screen bg-am-paper">
         {/* Hero Header */}

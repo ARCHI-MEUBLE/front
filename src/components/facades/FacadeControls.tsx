@@ -2,7 +2,6 @@ import React, { useId, useState, useEffect } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
-import AuthModal from '@/components/auth/AuthModal';
 import { formatDecimal, formatPrice } from '@/lib/format';
 import { displayColorName } from '@/lib/displayNames';
 
@@ -23,11 +22,10 @@ export default function FacadeControls({
   onAddDrilling,
   onRemoveDrilling,
 }: FacadeControlsProps) {
-  const { isAuthenticated } = useCustomer();
+  const { isAuthenticated, requireIdentity } = useCustomer();
   const [currentStep, setCurrentStep] = useState<Step>('dimensions');
   const [quantity, setQuantity] = useState(1);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [pricingSettings, setPricingSettings] = useState({
     material_price_per_m2: 150,
     hinge_base_price: 34.20,
@@ -117,10 +115,7 @@ export default function FacadeControls({
   };
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      setShowLoginPrompt(true);
-      return;
-    }
+    if (!isAuthenticated && !(await requireIdentity())) return;
 
     const unitPrice = calculateTotalPrice();
 
@@ -271,15 +266,6 @@ export default function FacadeControls({
           </span>
         </div>
       </div>
-
-      {/* Modal de connexion */}
-      <AuthModal
-        isOpen={showLoginPrompt}
-        onClose={() => setShowLoginPrompt(false)}
-        onSuccess={() => {
-          setShowLoginPrompt(false);
-        }}
-      />
 
       {/* Modal de confirmation */}
       {showConfirmation && (

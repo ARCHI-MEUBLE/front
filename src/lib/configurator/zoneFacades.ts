@@ -49,8 +49,9 @@ export function setZoneFacade(root: Zone, zoneId: string, content: ZoneContent):
 
   const visit = (zone: Zone): { zone: Zone; found: boolean } => {
     if (zone.id === zoneId) {
-      // Un compartiment porte sa façade dans `content` : on nettoie un éventuel ancien `doorContent`
-      if (zone.type === 'leaf') return { zone: { ...withoutDoorContent(zone), content }, found: true };
+      // Un compartiment porte sa façade dans `content` : on nettoie un éventuel ancien `doorContent`,
+      // et on remet un fond puisque choisir une façade quitte l'état « fond vide »
+      if (zone.type === 'leaf') return { zone: { ...withoutDoorContent(zone), content, noBack: false }, found: true };
 
       const group = withoutDoorContent(zone);
       if (!placing) return { zone: group, found: true };

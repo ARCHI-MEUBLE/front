@@ -7,7 +7,7 @@
 
 
 import { useMemo, useState } from 'react';
-import { Archive, Box, DoorClosed, Frame, PanelBottom, Rows3, type LucideIcon } from 'lucide-react';
+import { Archive, Box, ChevronDown, DoorClosed, Frame, PanelBottom, Rows3, type LucideIcon } from 'lucide-react';
 import type { SampleType, SampleColor } from '@/lib/apiClient';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import ColorCheckBadge from './ColorCheckBadge';
@@ -123,8 +123,8 @@ export default function MaterialSelector({
   onApplyToAll,
   hiddenComponents = [],
 }: MaterialSelectorProps) {
-  // Partie dont la palette est ouverte (sur ordinateur)
-  const [activeComponent, setActiveComponent] = useState<ColorComponent>('structure');
+  // Réglage par partie replié par défaut : la plupart des clients veulent une seule couleur pour tout le meuble
+  const [showParts, setShowParts] = useState(false);
 
   // Ordonner les matériaux dynamiquement - tous les matériaux de l'API sont affichés
   const orderedMaterialLabels = useMemo(() => {
@@ -162,19 +162,19 @@ export default function MaterialSelector({
     displayColorName((allColors.find((c) => c.id === entry.colorId) ?? palette.find((c) => isSameColor(entry, c)))?.name) || 'Couleur par défaut';
 
   const components = COMPONENT_DEFINITIONS.filter(({ key }) => !hiddenComponents.includes(key));
-  const active = components.some((c) => c.key === activeComponent) ? activeComponent : 'structure';
-  const activeDefinition = COMPONENT_DEFINITIONS.find((c) => c.key === active)!;
-  const activeColor = palette.find((c) => isSameColor(componentColors[active], c));
+  // Couleur commune du meuble : celle de la structure, si toutes les parties visibles la partagent
+  const structureColor = palette.find((c) => isSameColor(componentColors.structure, c));
+  const wholeColor = structureColor && components.every(({ key }) => isSameColor(componentColors[key], structureColor)) ? structureColor : undefined;
+  const partsOpen = showParts || !wholeColor;
 
   // Pastille de couleur : la couleur choisie est entourée de bleu et porte une coche, sans être assombrie.
   // Le nom s'affiche dessous quand la place le permet (sur téléphone, la palette est trop serrée)
-  const swatchButton = (component: ColorComponent, color: SampleColor, showName = false) => {
-    const isSelected = isSameColor(componentColors[component], color);
+  const swatchButton = (color: SampleColor, isSelected: boolean, onSelect: () => void, showName = false) => {
     return (
       <button
         key={color.id}
         type="button"
-        onClick={() => onComponentColorChange(component, color)}
+        onClick={onSelect}
         aria-pressed={isSelected}
         aria-label={displayColorName(color.name) || 'Couleur'}
         title={displayColorName(color.name) || 'Sans nom'}
@@ -235,90 +235,64 @@ export default function MaterialSelector({
 
       {palette.length > 0 && (
         <>
-          {/* ── Ordinateur : grille des parties du meuble + palette de la partie choisie ── */}
-          <div className="hidden space-y-4 lg:block">
+          {/* Une couleur pour tout le meuble, en un clic */}
+          <div className="space-y-3">
             <div>
-              <span className="eyebrow-lg text-black/65">Couleurs</span>
-              <p className="mt-1 text-xs text-black/65">Choisissez une partie du meuble, puis sa couleur.</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {components.map(({ key, label, Icon }) => {
-                const isActive = active === key;
-                const entry = componentColors[key];
-                return (
-                  // La partie en cours de réglage est cerclée de bleu, comme la palette qui lui correspond dessous
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActiveComponent(key)}
-                    aria-pressed={isActive}
-                    className={`flex items-center gap-2 border p-2 text-left text-black transition-all ${
-                      isActive
-                        ? 'border-am-navy bg-am-mist/30 ring-1 ring-am-navy'
-                        : 'border-black/10 bg-white hover:border-am-navy'
-                    }`}
-                    style={{ borderRadius: '2px' }}
-                  >
-                    <MiniSwatch hex={entry?.hex} imageUrl={entry?.imageUrl} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1">
-                        <Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
-                        <span className="truncate text-xs font-medium">{label}</span>
-                      </div>
-                      <p className="truncate text-[10px] text-black/65">{colorName(entry)}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="border border-am-navy bg-white p-4" style={{ borderRadius: '2px' }}>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <activeDefinition.Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-                  <div>
-                    <h4 className="text-sm font-medium text-black">{activeDefinition.label}</h4>
-                    <p className="text-xs text-black/65">
-                      {activeDefinition.desc} · <span className="font-medium text-black">{colorName(componentColors[active])}</span>
-                    </p>
-                  </div>
-                </div>
-                {activeColor && (
-                  <button
-                    type="button"
-                    onClick={() => onApplyToAll(activeColor)}
-                    className="text-right text-xs text-am-navy underline hover:no-underline"
-                  >
-                    Appliquer « {displayColorName(activeColor.name)} » à tout le meuble
-                  </button>
+              <span className="eyebrow-lg text-black/65">Couleur du meuble</span>
+              <p className="mt-1 text-xs text-black/65">
+                {wholeColor ? (
+                  <>
+                    Tout le meuble en <span className="font-medium text-black">{displayColorName(wholeColor.name)}</span>
+                  </>
+                ) : (
+                  'Couleurs personnalisées par partie : choisissez une couleur pour tout remettre à l’identique.'
                 )}
-              </div>
-              <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 md:grid-cols-5">
-                {palette.map((color) => swatchButton(active, color, true))}
-              </div>
+              </p>
+            </div>
+            <div className="grid grid-cols-4 gap-x-3 gap-y-4 sm:grid-cols-5">
+              {palette.map((color) => swatchButton(color, !!wholeColor && isSameColor(componentColors.structure, color), () => onApplyToAll(color), true))}
             </div>
           </div>
 
-          {/* ── Téléphone : toutes les couleurs à la suite, une palette par partie du meuble ── */}
-          <div className="space-y-5 lg:hidden">
-            <span className="eyebrow-lg text-black/65">Couleurs</span>
-            {components.map(({ key, label, desc }) => (
-              <div key={key} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <MiniSwatch hex={componentColors[key]?.hex} imageUrl={componentColors[key]?.imageUrl} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-black">{label}</p>
-                    <p className="truncate text-[11px] text-black/65">
-                      {colorName(componentColors[key])} · {desc}
-                    </p>
+          {/* Réglage fin : une ligne de pastilles par partie, visibles toutes ensemble */}
+          <div className="border border-black/10 bg-white" style={{ borderRadius: '2px' }}>
+            <button
+              type="button"
+              onClick={() => setShowParts((open) => !open)}
+              aria-expanded={partsOpen}
+              className="flex w-full items-center justify-between gap-3 p-3 text-left"
+            >
+              <span>
+                <span className="block text-sm font-medium text-black">Personnaliser une partie</span>
+                <span className="block text-xs text-black/65">Portes, tiroirs ou étagères d’une autre couleur</span>
+              </span>
+              <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform ${partsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+            {partsOpen && (
+              <div className="space-y-5 border-t border-black/10 p-3">
+                {components.map(({ key, label, desc, Icon }) => (
+                  <div key={key} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MiniSwatch hex={componentColors[key]?.hex} imageUrl={componentColors[key]?.imageUrl} />
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1 text-sm font-medium text-black">
+                          <Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                          {label}
+                        </p>
+                        <p className="truncate text-[11px] text-black/65">
+                          {colorName(componentColors[key])} · {desc}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-9">
+                      {palette.map((color) =>
+                        swatchButton(color, isSameColor(componentColors[key], color), () => onComponentColorChange(key, color))
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-9">
-                  {palette.map((color) => swatchButton(key, color))}
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
           <button
