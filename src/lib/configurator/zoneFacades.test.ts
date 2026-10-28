@@ -24,6 +24,14 @@ describe('setZoneFacade', () => {
     expect(removed).toBe(0);
   });
 
+  it('keeps a niche when a group door is laid over it, and does not count it as a facade', () => {
+    const root: Zone = { id: 'root', type: 'vertical', children: [leaf('a', { content: 'niche' }), leaf('b', { content: 'drawer' })] };
+    const { root: next, removed } = setZoneFacade(root, 'root', 'door');
+    expect(find(next, 'a')?.content).toBe('niche');
+    expect(find(next, 'b')?.content).toBe('empty');
+    expect(removed).toBe(1);
+  });
+
   it('removes the doors and drawers covered by a new group door', () => {
     const root: Zone = {
       id: 'root',

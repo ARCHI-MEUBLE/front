@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
-import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, SquareDashed, type LucideIcon } from 'lucide-react';
+import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, SquareDashed, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { moveDivider } from '@/lib/configurator/zoneResize';
 import { layoutLeafText } from './leafLayout';
@@ -31,6 +31,7 @@ function getLeafVisual(content: ZoneContent | undefined): LeafVisual {
         case 'mirror_door':
         case 'mirror_door_right': return GLASS_VISUAL(Sparkles);
         case 'dressing': return DRAWER_VISUAL(Shirt);
+        case 'niche': return { Icon: SquareDashed, classes: 'border-am-navy/30 bg-am-navy/10 text-am-navy' };
         default: return EMPTY_VISUAL;
     }
 }

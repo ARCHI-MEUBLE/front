@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronLeft, ChevronRight, SquareDashed } from 'lucide-react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronLeft, ChevronRight, PanelBottomClose, SquareDashed } from 'lucide-react';
 import { Zone, ZoneContent, HandleType } from './types';
 import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
@@ -29,6 +29,7 @@ interface ZoneControlsProps {
   onToggleLight?: (zoneId: string) => void;
   onToggleCableHole?: (zoneId: string) => void;
   onToggleDressing?: (zoneId: string) => void;
+  onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
   onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   zoneHeightMm?: number; // Hauteur de la zone en mm
@@ -420,6 +421,7 @@ export function DivisionStepper({
 const STORAGE_OPTIONS = [
   { id: 'drawer' as ZoneContent, icon: Archive, label: 'Tiroir', desc: 'Avec poignée' },
   { id: 'push_drawer' as ZoneContent, icon: BoxSelect, label: 'Tiroir Push', desc: 'Sans poignée' },
+  { id: 'niche' as ZoneContent, icon: SquareDashed, label: 'Niche', desc: 'Intérieur coloré' },
 ];
 
 const DOOR_OPTIONS = [
@@ -449,6 +451,7 @@ export default function ZoneControls({
   onToggleLight,
   onToggleCableHole,
   onToggleDressing,
+  onApplyNoBack,
   onGroupZones,
   onSetHandleType,
   zoneHeightMm,
@@ -496,7 +499,10 @@ export default function ZoneControls({
   const currentFacade = isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty');
 
   const applyFacade = (content: ZoneContent) => {
-    if (isLeaf) {
+    // Plusieurs compartiments : la porte se pose sur l'ensemble, qui est regroupé pour l'occasion
+    if (isMultiSelection) {
+      onGroupZones?.(selectedZoneIds, content);
+    } else if (isLeaf) {
       onSetContent(selectedZone.id, content);
     } else {
       onSetDoorContent?.(selectedZone.id, content);
@@ -624,24 +630,8 @@ export default function ZoneControls({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <OptionTile
-              icon={DoorClosed}
-              label="Porte simple"
-              desc="Un seul vantail"
-              active={false}
-              disabledReason={selectionWidthMm ? facadeReason('door', selectionWidthMm) : undefined}
-              onClick={() => onGroupZones?.(selectedZoneIds, 'door')}
-            />
-            <OptionTile
-              icon={DoorClosed}
-              label="Double porte"
-              desc="Deux vantaux"
-              active={false}
-              disabledReason={selectionWidthMm ? facadeReason('door_double', selectionWidthMm) : undefined}
-              onClick={() => onGroupZones?.(selectedZoneIds, 'door_double')}
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">{doorOptionTiles(selectionWidthMm ?? 0)}</div>
+          {renderDoorSideDialog()}
 
           <p className="mt-3 text-center text-[11px] text-black/65">
             La porte recouvrira l&apos;intégralité de la zone sélectionnée.
@@ -675,65 +665,28 @@ export default function ZoneControls({
               icon={Minus}
               label="Aucune"
               desc={isLeaf ? 'Compartiment ouvert' : 'Pas de porte'}
-              active={currentFacade === 'empty'}
+              active={currentFacade === 'empty' && !selectedZone.noBack}
               onClick={() => {
                 setDoorSideDialog({ isOpen: false, doorType: null });
                 applyFacade('empty');
               }}
             />
-            {DOOR_OPTIONS.map((option) => {
-              const { id, icon, label, desc } = option;
-              const hasSideChoice = 'needsSideChoice' in option && option.needsSideChoice;
-              const isActive = hasSideChoice
-                ? currentFacade === id || currentFacade === `${id}_right`
-                : currentFacade === id;
-              return (
-                <OptionTile
-                  key={id}
-                  icon={icon}
-                  label={label}
-                  desc={desc}
-                  active={isActive}
-                  disabledReason={facadeReason(id)}
-                  onClick={() => handleDoorOptionClick(option)}
-                />
-              );
-            })}
+            {doorOptionTiles(zoneWidth)}
+            {isLeaf && onApplyNoBack && (
+              <OptionTile
+                icon={PanelBottomClose}
+                label="Fond vide"
+                desc="Pas de fond"
+                active={!!selectedZone.noBack}
+                onClick={() => {
+                  setDoorSideDialog({ isOpen: false, doorType: null });
+                  onApplyNoBack(selectedZone.id);
+                }}
+              />
+            )}
           </div>
 
-          {doorSideDialog.isOpen && (
-            <div className="mt-3 border border-black/10 bg-white p-4" style={{ borderRadius: '2px' }}>
-              <p className="mb-1 text-sm font-medium text-black">Côté d&apos;ouverture</p>
-              <p className="mb-3 text-xs text-black/65">Choisissez le côté d&apos;ouverture de la porte Push</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDoorSideChoice('left')}
-                  className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
-                  style={{ borderRadius: '2px' }}
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                  <span className="text-xs font-medium">Gauche</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDoorSideChoice('right')}
-                  className="flex flex-col items-center justify-center gap-1 border border-black/10 bg-white px-2 py-3 text-black transition-all hover:border-am-navy hover:bg-am-mist/30"
-                  style={{ borderRadius: '2px' }}
-                >
-                  <ChevronRight className="h-5 w-5" />
-                  <span className="text-xs font-medium">Droite</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDoorSideDialog({ isOpen: false, doorType: null })}
-                className="mt-3 w-full text-center text-xs text-black/65 hover:text-black"
-              >
-                Annuler
-              </button>
-            </div>
-          )}
+          {renderDoorSideDialog()}
         </div>
       )}
 
@@ -741,10 +694,10 @@ export default function ZoneControls({
       {show('storage') && (
         isLeaf ? (
           <div>
-            <SectionLabel hint="Un tiroir remplace la porte de ce compartiment.">
-              Tiroirs & rangements
+            <SectionLabel hint="Un tiroir ou une niche remplace la porte de ce compartiment.">
+              Tiroirs, niches & rangements
             </SectionLabel>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {STORAGE_OPTIONS.map(({ id, icon, label, desc }) => (
                 <OptionTile
                   key={id}

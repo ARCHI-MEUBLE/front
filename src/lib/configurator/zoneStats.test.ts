@@ -61,6 +61,18 @@ describe('computeZoneStats', () => {
     expect(stats.compartments).toBe(2);
   });
 
+  it('counts niches as compartments, not as doors or drawers', () => {
+    const root: Zone = {
+      id: 'root',
+      type: 'vertical',
+      children: [leaf('a', { content: 'niche', zoneColor: { colorId: 3, hex: '#223344' } }), leaf('b'), leaf('c', { content: 'niche' })],
+    };
+    const stats = computeZoneStats(root);
+    expect(stats.niches).toBe(2);
+    expect(stats.compartments).toBe(3);
+    expect(stats.doors + stats.drawers).toBe(0);
+  });
+
   it('ignores open spaces when counting compartments', () => {
     const root: Zone = {
       id: 'root',

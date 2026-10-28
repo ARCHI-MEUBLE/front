@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCustomer } from '@/context/CustomerContext';
-import { UserNavigation } from '@/components/UserNavigation';
+import { Header } from '@/components/Header';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import { formatPrice } from '@/lib/format';
 import { Footer } from '@/components/Footer';
@@ -121,7 +121,7 @@ type CheckoutStep = 'shipping' | 'payment';
 
 export default function CheckoutStripe() {
   const router = useRouter();
-  const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
+  const { customer, isAuthenticated, isLoading: authLoading, requireIdentity } = useCustomer();
 
   const [step, setStep] = useState<CheckoutStep>('shipping');
   const [cart, setCart] = useState<CartData | null>({ items: [], total: 0 });
@@ -152,8 +152,11 @@ export default function CheckoutStripe() {
   useEffect(() => {
     if (authLoading) return;
 
+    // Sans compte client : on confirme l'email du visiteur avant de charger son panier ou la commande à payer
     if (!isAuthenticated) {
-      router.push('/auth/login?redirect=/checkout');
+      void requireIdentity().then((confirmed) => {
+        if (!confirmed) router.push('/cart');
+      });
       return;
     }
 
@@ -174,7 +177,7 @@ export default function CheckoutStripe() {
         shipping_country: customer.country || 'France'
       }));
     }
-  }, [isAuthenticated, authLoading, customer, router]);
+  }, [isAuthenticated, authLoading, customer, router, requireIdentity]);
 
   const loadExistingOrder = async (existingOrderId: number) => {
     try {
@@ -209,7 +212,7 @@ export default function CheckoutStripe() {
 
       // Vérifier que la commande n'est pas déjà payée
       if (order.payment_status === 'paid' || (order.payment_strategy === 'deposit' && order.balance_payment_status === 'paid')) {
-        router.push('/account?section=orders');
+        router.push(`/order-confirmation/${existingOrderId}`);
         return;
       }
 
@@ -238,7 +241,7 @@ export default function CheckoutStripe() {
       setStep('payment');
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
-      router.push('/account?section=orders');
+      router.push('/cart');
     } finally {
       setIsLoading(false);
     }
@@ -379,8 +382,7 @@ export default function CheckoutStripe() {
         router.push(`/order-confirmation?order_id=${result.order.id}`);
       } else if (result.order.needs_validation) {
         // Commande avec configurations 3D → nécessite validation admin avant paiement
-        // Rediriger vers la page compte avec message
-        router.push(`/account?section=orders&pending=${result.order.id}`);
+        router.push(`/order-confirmation/${result.order.id}`);
       } else {
         // Commande sans configs 3D (catalogue, façades, échantillons) → paiement direct
         setStep('payment');
@@ -399,7 +401,7 @@ export default function CheckoutStripe() {
         <Head>
           <title>Paiement - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
+        <Header />
         <div className="min-h-screen bg-am-paper">
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
@@ -419,7 +421,7 @@ export default function CheckoutStripe() {
         <Head>
           <title>Paiement - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
+        <Header />
         <div className="min-h-screen bg-am-paper flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl text-ink mb-4">Chargement de votre panier...</h2>
@@ -452,7 +454,7 @@ export default function CheckoutStripe() {
       <Head>
         <title>Paiement - ArchiMeuble</title>
       </Head>
-      <UserNavigation />
+      <Header />
 
       <div className="min-h-screen bg-am-paper">
         {/* Header */}

@@ -15,7 +15,7 @@ import { CatalogueItemDetail } from "@/lib/catalogueItem";
 export default function ProductDetail() {
   const router = useRouter();
   const { id } = router.query;
-  const { isAuthenticated } = useCustomer();
+  const { isAuthenticated, requireIdentity } = useCustomer();
 
   const [item, setItem] = useState<CatalogueItemDetail | null>(null);
   const [related, setRelated] = useState<RelatedProduct[]>([]);
@@ -72,11 +72,7 @@ export default function ProductDetail() {
   }, [id]);
 
   const handleAddToCart = useCallback(async () => {
-    if (!isAuthenticated) {
-      toast.error("Veuillez vous connecter pour ajouter au panier");
-      router.push(`/auth/login?redirect=/catalogue/${id}`);
-      return;
-    }
+    if (!isAuthenticated && !(await requireIdentity())) return;
     if (!item) return;
 
     setAdding(true);
@@ -103,7 +99,7 @@ export default function ProductDetail() {
     } finally {
       setAdding(false);
     }
-  }, [isAuthenticated, item, quantity, selectedVariationIdx, router, id]);
+  }, [isAuthenticated, requireIdentity, item, quantity, selectedVariationIdx]);
 
   if (loading) {
     return (

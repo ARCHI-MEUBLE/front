@@ -31,12 +31,14 @@ export interface ThreeViewerProps {
   selectedZoneIds?: string[];
   // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé
   selectionTint?: boolean;
+  // Compartiments voisins de la sélection que l'on peut lui ajouter d'un clic (étape Portes)
+  neighborZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
   // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
-  hideDrawers?: boolean;
+  hideFacades?: boolean;
   // Pièce autour du meuble (neutre par défaut)
   roomScene?: RoomScene;
   // Salon, Chambre : lampes allumées, ambiance du soir

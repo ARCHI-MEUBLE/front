@@ -1,8 +1,11 @@
+import { useMemo, useState } from "react";
+import { MotionConfig } from "framer-motion";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
-import { ModelCard, ModelCardData } from "@/components/models/ModelCard";
+import { ModelCardData } from "@/components/models/ModelCard";
+import { CategoryCarousel } from "@/components/models/CategoryCarousel";
+import { ProductCarousel } from "@/components/models/ProductCarousel";
+import { groupModelsByCategory, mod, useVisibleCount } from "@/components/models/modelsCarousel";
 import { Category } from "@/lib/apiClient";
-
-type CategoryTab = { slug: string; label: string; count: number };
 
 export function ModelsCollectionSection({
   models,
@@ -21,61 +24,62 @@ export function ModelsCollectionSection({
   activeCategory: string;
   onCategoryChange: (slug: string) => void;
 }) {
-  const tabs: CategoryTab[] = [
-    { slug: "all", label: "Tous", count: models.length },
-    ...categories.map((category) => ({
-      slug: category.slug,
-      label: category.name,
-      count: models.filter((model) => model.categorySlug === category.slug).length,
-    })),
-  ];
+  const groups = useMemo(() => groupModelsByCategory(models, categories), [models, categories]);
+  const visible = useVisibleCount();
 
-  const filteredModels =
-    activeCategory === "all" ? models : models.filter((model) => model.categorySlug === activeCategory);
+  // Index non borné (cyclique) + sens du dernier déplacement, partagés par les deux carrousels pour animer dans le même sens
+  const [nav, setNav] = useState({ virtualIndex: 0, direction: 1 });
+  const currentIndex = groups.length ? mod(nav.virtualIndex, groups.length) : 0;
+  const activeIndex = groups.findIndex((group) => group.slug === activeCategory);
+
+  // Catégorie imposée par l'URL (?category=…) : recalage pendant le rendu (et non dans un effet) pour ne jamais
+  // afficher d'abord la première catégorie ; on reste sur le même « tour » pour éviter un saut d'animation
+  if (activeIndex >= 0 && activeIndex !== currentIndex) {
+    setNav({
+      virtualIndex: nav.virtualIndex + activeIndex - currentIndex,
+      direction: activeIndex > currentIndex ? 1 : -1,
+    });
+  }
+
+  const stepCategory = (delta: number) => {
+    if (groups.length < 2) return;
+    const virtualIndex = nav.virtualIndex + delta;
+    setNav({ virtualIndex, direction: Math.sign(delta) });
+    onCategoryChange(groups[mod(virtualIndex, groups.length)].slug);
+  };
 
   return (
     <section
       aria-labelledby="collection-title"
       className={HOME_SECTION_NO_TOP}
-      style={{ paddingTop: "clamp(64px,8vw,112px)" }}
+      style={{ paddingTop: "clamp(32px,4vw,56px)" }}
     >
-      <div className="sticky top-[68px] z-10 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 bg-am-paper/95 py-4 backdrop-blur-md">
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 py-4 lg:mb-14">
         <h2 id="collection-title" className="m-0 text-subheading text-black">
           Explorez notre collection
         </h2>
-        <div role="tablist" aria-label="Catégories" className="flex flex-wrap gap-2">
-          {tabs.map((tab) => {
-            const isActive = tab.slug === activeCategory;
-            return (
-              <button
-                key={tab.slug}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => onCategoryChange(tab.slug)}
-                className={`flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-2 text-[14px] ${
-                  isActive
-                    ? "border-black bg-am-navy text-white"
-                    : "border-black/15 bg-white text-black"
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span className="font-mono text-[11px] opacity-70">{tab.count}</span>
-              </button>
-            );
-          })}
-        </div>
+        {!isLoading && !error && (
+          <span className="eyebrow text-black/70">
+            {models.length} modèle{models.length > 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-4">
-              <div className="animate-pulse rounded bg-am-mist/25" style={{ aspectRatio: "4/5" }} />
-              <div className="h-5 w-2/3 animate-pulse rounded bg-am-mist/25" />
-              <div className="h-4 w-1/2 animate-pulse rounded bg-am-mist/25" />
-            </div>
-          ))}
+        <div className="grid items-center gap-10 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-40 animate-pulse rounded-lg bg-am-wine/15" />
+            <div className="h-16 w-[230px] animate-pulse rounded-lg bg-am-wine/25" />
+            <div className="h-12 w-40 animate-pulse rounded-lg bg-am-wine/15" />
+          </div>
+          <div className="grid grid-cols-1 gap-3 px-10 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className={`aspect-[4/3.6] animate-pulse rounded-md bg-[#efefef] ${i > 0 ? "hidden sm:block" : ""} ${i > 1 ? "sm:hidden lg:block" : ""}`}
+              />
+            ))}
+          </div>
         </div>
       ) : error ? (
         <div className="py-20 text-center">
@@ -88,14 +92,21 @@ export function ModelsCollectionSection({
             Réessayer
           </button>
         </div>
-      ) : filteredModels.length === 0 ? (
-        <div className="py-20 text-center text-black/70">Aucun modèle dans cette catégorie.</div>
+      ) : groups.length === 0 ? (
+        <div className="py-20 text-center text-black/70">Aucun modèle disponible pour le moment.</div>
       ) : (
-        <div className="grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredModels.map((model, index) => (
-            <ModelCard key={model.id} model={model} index={index} />
-          ))}
-        </div>
+        // reducedMotion="user" : les déplacements deviennent instantanés si le système demande moins d'animations
+        <MotionConfig reducedMotion="user">
+          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-12">
+            <CategoryCarousel groups={groups} virtualIndex={nav.virtualIndex} onStep={stepCategory} />
+            <ProductCarousel
+              groups={groups}
+              virtualIndex={nav.virtualIndex}
+              direction={nav.direction}
+              visible={visible}
+            />
+          </div>
+        </MotionConfig>
       )}
     </section>
   );

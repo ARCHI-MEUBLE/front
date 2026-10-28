@@ -6,7 +6,6 @@ interface PriceDisplayProps {
   estimate: PriceEstimate | null;
   onAddToCart: () => void;
   loading?: boolean;
-  isAuthenticated?: boolean;
   isAdmin?: boolean;
   isAdminCreateModel?: boolean;
   isAdminEditModel?: boolean;
@@ -16,7 +15,6 @@ export default function PriceDisplay({
   estimate,
   onAddToCart,
   loading = false,
-  isAuthenticated = false,
   isAdmin = false,
   isAdminCreateModel = false,
   isAdminEditModel = false,
@@ -56,7 +54,7 @@ export default function PriceDisplay({
             <>
               <Box className="h-4 w-4" />
               <span>
-                {isAdmin ? 'Terminer' : (isAuthenticated ? 'Valider avec un menuisier' : 'Enregistrer mon projet')}
+                {isAdmin ? 'Terminer' : 'Valider avec un menuisier'}
               </span>
             </>
           )}
