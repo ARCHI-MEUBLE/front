@@ -142,6 +142,33 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
   const gl = renderer.getContext();
   const gpuInfo = gl.getExtension('WEBGL_debug_renderer_info');
   const gpu = String(gl.getParameter(gpuInfo ? gpuInfo.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+
+  // Cube rouge sans éclairage posé à 1 m devant le téléphone : s'il ne s'affiche pas, aucun dessin WebGL n'atteint
+  // l'écran, et le meuble n'y est pour rien
+  const testCube = onDebug ? new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshBasicMaterial({ color: 0xff0000 })) : null;
+  if (testCube) {
+    testCube.visible = false;
+    scene.add(testCube);
+  }
+
+  // Couche dans laquelle Three.js dessine : XRWebGLLayer classique, ou couche de projection (WebXR Layers)
+  const layerInfo = () => {
+    const layer = renderer.xr.getBaseLayer();
+    if (!layer) return 'couche ?';
+    return 'framebufferWidth' in layer
+      ? `WebGLLayer ${layer.framebufferWidth}×${layer.framebufferHeight}`
+      : `projection ${layer.textureWidth}×${layer.textureHeight}`;
+  };
+
+  // Dans le champ de la caméra : boîte du meuble (ou position du cube) dans le cône de vue de l'image précédente
+  const frustum = new THREE.Frustum();
+  const viewProjection = new THREE.Matrix4();
+  const box = new THREE.Box3();
+  const onScreen = (object: THREE.Object3D) => {
+    frustum.setFromProjectionMatrix(viewProjection.multiplyMatrices(xrCamera.projectionMatrix, xrCamera.matrixWorldInverse));
+    return frustum.intersectsBox(box.setFromObject(object)) ? 'oui' : 'non';
+  };
+
   const debug = (time: number, onFloor: boolean) => {
     if (!onDebug || time - lastDebug < 500) return;
     lastDebug = time;
@@ -153,12 +180,21 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
 ` +
         `meuble ${fmt(p)} · téléphone ${fmt(cameraPosition)} · distance ${p.distanceTo(cameraPosition).toFixed(2)} m
 ` +
-        `XR ${renderer.xr.isPresenting ? 'oui' : 'non'} · ${session.environmentBlendMode ?? '?'} · overlay ${session.domOverlayState?.type ?? 'non'} · ${gpu}`
+        `à l'écran : meuble ${model && furniture.visible ? onScreen(model) : '-'} · cube ${testCube?.visible ? onScreen(testCube) : '-'}
+` +
+        `XR ${renderer.xr.isPresenting ? 'oui' : 'non'} · ${session.environmentBlendMode ?? '?'} · overlay ${session.domOverlayState?.type ?? 'non'} · ${layerInfo()} · ${gpu}`
     );
   };
 
   renderer.setAnimationLoop((time, frame) => {
     frames++;
+    // La pose de la caméra n'est connue qu'après quelques images rendues
+    if (testCube && !testCube.visible && frames > 10) {
+      xrCamera.getWorldPosition(cameraPosition);
+      xrCamera.getWorldDirection(forward);
+      testCube.position.copy(cameraPosition).addScaledVector(forward, 1);
+      testCube.visible = true;
+    }
     const space = renderer.xr.getReferenceSpace();
     if (frame && space) {
       const onFloor = floorHit(frame.getHitTestResults(centerHits).map((hit) => hit.getPose(space)), hitMatrix);
