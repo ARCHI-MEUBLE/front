@@ -1213,8 +1213,9 @@ export default function ConfiguratorPage() {
         let current = '';
         let depth = 0;
         for (let i = 0; i < inner.length; i++) {
-          if (inner[i] === '(') depth++;
-          if (inner[i] === ')') depth--;
+          // Les virgules des ratios `[25,50,25]` ne séparent pas des enfants
+          if (inner[i] === '(' || inner[i] === '[') depth++;
+          if (inner[i] === ')' || inner[i] === ']') depth--;
           if (inner[i] === ',' && depth === 0) {
             parts.push(current);
             current = '';
