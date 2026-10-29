@@ -1049,42 +1049,22 @@ export function Furniture({
                     }
                 }
 
-                if (zone.content === 'glass_shelf') {
-                    const behindDoorGlass = hasDoorInFront || !!zone.doorContent;
-                    const glassDepth = behindDoorGlass && doorRecess > 0 ? d - doorRecess : d;
-                    const glassZ = behindDoorGlass && doorRecess > 0 ? z - doorRecess / 2 : z;
+                // Pas de décoration posée sur une étagère retirée avec l'outil planches : elle flotterait
+                const cellBottom = y - height / 2;
+                const restsOnRemovedShelf = panelSegments.separatorSegments.some((segment) =>
+                    segment.orientation === 'horizontal' &&
+                    deletedPanelIds.has(segment.id) &&
+                    Math.abs(segment.y + thickness / 2 - cellBottom) < 0.01 &&
+                    Math.abs(segment.x - x) < segment.width / 2
+                );
+                if (showDecorations && !restsOnRemovedShelf) {
                     items.push(
-                        <mesh key={zone.id} position={[x, y, glassZ]} castShadow receiveShadow>
-                            <boxGeometry args={[width, thickness, glassDepth]} />
-                            <meshPhysicalMaterial
-                                color="#ffffff"
-                                transparent
-                                opacity={0.3}
-                                roughness={0.1}
-                                metalness={0.1}
-                                transmission={0.9}
-                                thickness={0.5}
-                            />
-                        </mesh>
+                        // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
+                        // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
+                        <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
+                            <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
+                        </group>
                     );
-                } else {
-                    // Pas de décoration posée sur une étagère retirée avec l'outil planches : elle flotterait
-                    const cellBottom = y - height / 2;
-                    const restsOnRemovedShelf = panelSegments.separatorSegments.some((segment) =>
-                        segment.orientation === 'horizontal' &&
-                        deletedPanelIds.has(segment.id) &&
-                        Math.abs(segment.y + thickness / 2 - cellBottom) < 0.01 &&
-                        Math.abs(segment.x - x) < segment.width / 2
-                    );
-                    if (showDecorations && !restsOnRemovedShelf) {
-                        items.push(
-                            // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
-                            // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
-                            <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
-                                <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
-                            </group>
-                        );
-                    }
                 }
             }
 

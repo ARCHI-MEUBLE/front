@@ -30,7 +30,6 @@ function getLeafVisual(content: ZoneContent | undefined): LeafVisual {
         case 'push_door_right': return DOOR_VISUAL(Hand);
         case 'mirror_door':
         case 'mirror_door_right': return GLASS_VISUAL(Sparkles);
-        case 'glass_shelf': return GLASS_VISUAL(Square);
         case 'dressing': return DRAWER_VISUAL(Shirt);
         case 'niche': return { Icon: SquareDashed, classes: 'border-am-navy/30 bg-am-navy/10 text-am-navy' };
         default: return EMPTY_VISUAL;
