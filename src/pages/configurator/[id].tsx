@@ -2478,7 +2478,6 @@ export default function ConfiguratorPage() {
                 <ShareButton
                   getLink={async () => (await shareCurrentConfiguration()).link}
                   disabled={!initialConfigApplied}
-                  getPrompt={isAdmin ? () => buildConfigPayload().fullPrompt : undefined}
                 />
               )}
               <Link
