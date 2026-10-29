@@ -40,6 +40,13 @@ describe('arPlatformFor', () => {
     const ipad: BrowserTraits = { ...desktop(`${MAC} Version/18.5 Safari/605.1.15`, 'MacIntel'), maxTouchPoints: 5, supportsArLinks: true };
     expect(arPlatformFor(ipad)).toBe('quick-look');
     expect(arPlatformFor({ ...ipad, maxTouchPoints: 0 })).toBeNull();
+    // navigator.platform masqué ou vide : l'identifiant « Macintosh » et l'écran tactile suffisent
+    expect(arPlatformFor({ ...ipad, platform: '' })).toBe('quick-look');
+    expect(arPlatformFor({ ...ipad, platform: 'iPad' })).toBe('quick-look');
+    // Chrome sur iPad en version ordinateur
+    expect(arPlatformFor({ ...ipad, userAgent: `${MAC} CriOS/138.0.7204.156 Safari/604.1`, inWebView: true, supportsArLinks: false })).toBe(
+      'quick-look'
+    );
   });
 
   it('leaves out the Google app and the web views of other apps, where Quick Look does not open', () => {
