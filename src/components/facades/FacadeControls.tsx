@@ -1,5 +1,6 @@
 import React, { useId, useState, useEffect } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
+import { notifyCartChanged } from '@/lib/cartCount';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
 import { formatDecimal, formatPrice } from '@/lib/format';
@@ -136,6 +137,7 @@ export default function FacadeControls({
       }
 
       setShowConfirmation(true);
+      notifyCartChanged();
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur lors de l\'ajout au panier');

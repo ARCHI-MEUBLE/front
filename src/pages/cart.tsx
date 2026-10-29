@@ -8,6 +8,7 @@ import { Trash2, Edit, ShoppingBag, Package, Truck, Shield, ArrowRight, Minus, P
 import toast from 'react-hot-toast';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import { formatPrice } from '@/lib/format';
+import { countCartItems, notifyCartChanged } from '@/lib/cartCount';
 import dynamic from 'next/dynamic';
 
 const Toaster = dynamic(
@@ -122,7 +123,7 @@ interface FacadeCartData {
 
 export default function Cart() {
   const router = useRouter();
-  const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
+  const { customer, isAuthenticated, isLoading: authLoading, requireIdentity } = useCustomer();
 
   const [cart, setCart] = useState<CartData | null>(null);
   const [samplesCart, setSamplesCart] = useState<SamplesCartData | null>(null);
@@ -136,12 +137,13 @@ export default function Cart() {
   useEffect(() => {
     if (authLoading) return;
 
-    // Sans email confirmé, aucun panier n'est rattaché au visiteur : on affiche directement le panier vide
+    // Sans email confirmé, aucun panier n'est rattaché au visiteur : on lui propose de le retrouver avec un code
     if (!isAuthenticated) {
       setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
     loadCart();
   }, [isAuthenticated, authLoading, router]);
 
@@ -300,6 +302,13 @@ export default function Cart() {
     }
   };
 
+  const totalItems = countCartItems({ configurations: cart, samples: samplesCart, catalogue: catalogueCart, facades: facadeCart });
+
+  // Le compteur du header suit les ajouts et retraits faits sur cette page
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) notifyCartChanged(totalItems);
+  }, [isAuthenticated, isLoading, totalItems]);
+
   // Loading state
   if (authLoading || isLoading) {
     return (
@@ -321,7 +330,6 @@ export default function Cart() {
   }
 
   const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0) && (!facadeCart || facadeCart.items.length === 0);
-  const totalItems = (cart?.item_count || 0) + (samplesCart?.count || 0) + (catalogueCart?.items?.reduce((acc, i) => acc + i.quantity, 0) || 0) + (facadeCart?.count || 0);
 
   const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
   const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
@@ -383,19 +391,48 @@ export default function Cart() {
               <div className="mx-auto flex h-20 w-20 items-center justify-center border border-black/10 bg-white">
                 <ShoppingBag className="h-8 w-8 text-black/65" />
               </div>
-              <h2 className="mt-8 text-2xl text-black">
-                Votre panier est vide
-              </h2>
-              <p className="mt-3 text-black/65">
-                Créez votre première configuration de meuble sur mesure
-              </p>
-              <Link
-                href="/models"
-                className="mt-8 inline-flex h-12 items-center justify-center bg-am-navy px-8 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
-              >
-                Découvrir nos modèles
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <h2 className="mt-8 text-2xl text-black">
+                    Votre panier est vide
+                  </h2>
+                  <p className="mt-3 text-black/65">
+                    Échantillons, façades et produits de la boutique s&apos;ajoutent ici. Un meuble sur mesure se valide avec un menuisier depuis le configurateur.
+                  </p>
+                  <Link
+                    href="/catalogue"
+                    className="mt-8 inline-flex h-12 items-center justify-center bg-am-navy px-8 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
+                  >
+                    Découvrir la boutique
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                  <p className="mt-5 text-sm text-black/65">
+                    <Link href="/samples" className="underline underline-offset-4 transition-colors hover:text-black">Commander des échantillons</Link>
+                    {' · '}
+                    <Link href="/facades" className="underline underline-offset-4 transition-colors hover:text-black">Configurer des façades</Link>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="mt-8 text-2xl text-black">
+                    Retrouvez votre panier
+                  </h2>
+                  <p className="mt-3 text-black/65">
+                    Votre panier est enregistré avec votre adresse e-mail. Confirmez-la avec le code que nous vous envoyons pour le retrouver.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void requireIdentity()}
+                    className="mt-8 inline-flex h-12 items-center justify-center bg-am-navy px-8 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
+                  >
+                    Retrouver mon panier
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                  <p className="mt-5 text-sm text-black/65">
+                    <Link href="/catalogue" className="underline underline-offset-4 transition-colors hover:text-black">Découvrir la boutique</Link>
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             /* Cart Content */
