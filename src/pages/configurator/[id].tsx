@@ -1865,23 +1865,8 @@ export default function ConfiguratorPage() {
   }, []);
 
   const handleMaterialChange = (key: string) => {
+    // Les couleurs déjà choisies sont conservées : le meuble peut mélanger plusieurs matières
     setFinish(key);
-    setSelectedColorId(null);
-    setSelectedColorImage(null);
-
-    // Les couleurs appartiennent à une matière : celles choisies pour l'ancienne ne sont plus valables
-    const hasZoneColors = (zone: Zone): boolean => !!zone.zoneColor || !!zone.children?.some(hasZoneColors);
-    const clearZoneColors = (zone: Zone): Zone => {
-      const { zoneColor: _removed, ...rest } = zone;
-      return rest.children ? { ...rest, children: rest.children.map(clearZoneColors) } : rest;
-    };
-    const resetZoneColors = hasZoneColors(rootZone);
-
-    if (useMultiColor || resetZoneColors) {
-      if (useMultiColor) setUseMultiColor(false);
-      if (resetZoneColors) setRootZone(clearZoneColors(rootZone));
-      toast('Couleurs réinitialisées : choisissez-les dans la nouvelle matière.');
-    }
   };
 
   const applySingleColor = (option: SampleColor) => {
