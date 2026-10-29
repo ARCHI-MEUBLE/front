@@ -3,6 +3,7 @@ import { MotionConfig } from "framer-motion";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 import { ModelCardData } from "@/components/models/ModelCard";
 import { CategoryCarousel } from "@/components/models/CategoryCarousel";
+import { MobileCategoryBar, MobileProductList } from "@/components/models/MobileCollection";
 import { ProductCarousel } from "@/components/models/ProductCarousel";
 import { groupModelsByCategory, mod, useVisibleCount } from "@/components/models/modelsCarousel";
 import { Category } from "@/lib/apiClient";
@@ -30,6 +31,9 @@ export function ModelsCollectionSection({
 }) {
   const groups = useMemo(() => groupModelsByCategory(models, categories), [models, categories]);
   const visible = useVisibleCount();
+  // Téléphone (sous 640 px, là où une seule carte tient en largeur) : version dédiée, catégorie horizontale et liste
+  // verticale des modèles. Au-delà, roulette des catégories et carrousel des modèles.
+  const isPhone = visible === 1;
 
   // Index virtuel de la catégorie affichée (non borné : la roulette boucle) + sens du dernier déplacement, partagés par
   // les deux carrousels pour animer dans le même sens
@@ -136,15 +140,22 @@ export function ModelsCollectionSection({
       ) : (
         // reducedMotion="user" : les déplacements deviennent instantanés si le système demande moins d'animations
         <MotionConfig reducedMotion="user">
-          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-12">
-            <CategoryCarousel groups={groups} index={nav.index} onIndexChange={handleIndexChange} />
-            <ProductCarousel
-              groups={groups}
-              index={panelNav.index}
-              direction={panelNav.direction}
-              visible={visible}
-            />
-          </div>
+          {isPhone ? (
+            <div className="flex flex-col gap-6 pb-4">
+              <MobileCategoryBar groups={groups} index={nav.index} onIndexChange={handleIndexChange} />
+              <MobileProductList groups={groups} index={panelNav.index} direction={panelNav.direction} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-12">
+              <CategoryCarousel groups={groups} index={nav.index} onIndexChange={handleIndexChange} />
+              <ProductCarousel
+                groups={groups}
+                index={panelNav.index}
+                direction={panelNav.direction}
+                visible={visible}
+              />
+            </div>
+          )}
         </MotionConfig>
       )}
     </section>

@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { motion, useMotionValueEvent, useTransform, type MotionValue } from "framer-motion";
-import { mod, useSmoothScroller, type CategoryGroup } from "@/components/models/modelsCarousel";
+import type { KeyboardEvent } from "react";
+import { motion, useTransform, type MotionValue } from "framer-motion";
+import { Chevron } from "@/components/models/Chevron";
+import { ProgressDots } from "@/components/models/ProgressDots";
+import { mod, useCenteredIndex, useSmoothScroller, type CategoryGroup } from "@/components/models/modelsCarousel";
 
 // Écart vertical entre deux catégories, en px ; les filets séparateurs sont placés à mi-chemin
 const PITCH = 84;
@@ -10,21 +12,6 @@ const NEIGHBOUR_SCALE = 0.66;
 const ACTIVE_SHIFT = 32;
 const TILT = 20;
 const EASE = [0.16, 1, 0.3, 1] as const;
-
-function Chevron({ direction }: { direction: "up" | "down" }) {
-  return (
-    <svg viewBox="0 0 24 13" aria-hidden="true" className="h-[17px] w-8">
-      <polyline
-        points={direction === "up" ? "2,11.5 12,2 22,11.5" : "2,1.5 12,11 22,1.5"}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 // Un libellé de la roulette. Tout son placement découle en continu de sa distance à la position courante : il suit le
 // geste au pixel près, et grossit / ressort vers la droite en approchant du centre.
@@ -93,34 +80,14 @@ export function CategoryCarousel({
 }) {
   const count = groups.length;
   const canStep = count > 1;
-  const { ref, position, stepBy, jumpTo } = useSmoothScroller<HTMLElement>("y", {
+  const scroller = useSmoothScroller<HTMLElement>("y", {
     initial: index,
     enabled: canStep,
     touchPx: () => PITCH,
   });
-
-  // Catégorie au centre de la roulette (arrondi de la position) : seul ce changement provoque un rendu React
-  const [center, setCenter] = useState(index);
-  const centerRef = useRef(index);
-  const onIndexChangeRef = useRef(onIndexChange);
-  useEffect(() => {
-    onIndexChangeRef.current = onIndexChange;
-  });
-  useMotionValueEvent(position, "change", (value) => {
-    const rounded = Math.round(value);
-    if (rounded === centerRef.current) return;
-    centerRef.current = rounded;
-    setCenter(rounded);
-    onIndexChangeRef.current(rounded);
-  });
-
-  // Catégorie imposée de l'extérieur (URL au chargement, lien) : la roulette s'y place directement
-  useEffect(() => {
-    if (index === centerRef.current) return;
-    centerRef.current = index;
-    jumpTo(index);
-    setCenter(index);
-  }, [index, jumpTo]);
+  const { ref, position, stepBy } = scroller;
+  // Catégorie au centre de la roulette : seul ce changement provoque un rendu React
+  const center = useCenteredIndex(scroller, index, onIndexChange);
 
   const activeIndex = mod(center, count);
   const prev = groups[mod(center - 1, count)];
@@ -152,20 +119,12 @@ export function CategoryCarousel({
         {/* Indicateur de progression, en colonne à gauche de la barre bordeaux : une bulle par catégorie, pleine pour
             celle affichée. En position absolue, il ne change ni la largeur de la colonne ni celle des cartes. */}
         {canStep && (
-          <ol
-            aria-label={`Catégorie ${activeIndex + 1} sur ${count}`}
-            className="absolute top-1/2 -left-14 m-0 flex -translate-y-1/2 list-none flex-col items-center gap-2.5 p-0"
-          >
-            {groups.map((group, i) => (
-              <li
-                key={group.slug}
-                aria-hidden="true"
-                className={`h-2.5 w-2.5 rounded-full border-[1.5px] border-am-wine transition-[background-color,transform] duration-300 ${
-                  i === activeIndex ? "scale-110 bg-am-wine" : "bg-transparent"
-                }`}
-              />
-            ))}
-          </ol>
+          <ProgressDots
+            groups={groups}
+            activeIndex={activeIndex}
+            orientation="vertical"
+            className="absolute top-1/2 -left-14 -translate-y-1/2"
+          />
         )}
         {/* touch-none : un glissé vertical sur la liste fait tourner la roulette au lieu de faire défiler la page */}
         <ul
