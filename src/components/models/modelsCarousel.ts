@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMotionValue, useReducedMotion, useSpring, type MotionValue } from "framer-motion";
+import { useMotionValue, useMotionValueEvent, useReducedMotion, useSpring, type MotionValue } from "framer-motion";
 import type { ModelCardData } from "@/components/models/ModelCard";
 import type { Category } from "@/lib/apiClient";
 
@@ -256,4 +256,34 @@ export function useSmoothScroller<T extends HTMLElement>(
   }, [axis, enabled, target, position, setTarget, stepBy]);
 
   return { ref, position, stepBy, jumpTo };
+}
+
+// Élément au centre d'un carrousel (arrondi de la position) : seul son changement provoque un rendu React, et il est
+// remonté via `onIndexChange` dès que le carrousel passe à mi-chemin. Un `index` imposé de l'extérieur (URL au
+// chargement, lien) replace le carrousel directement, sans animation.
+export function useCenteredIndex(
+  { position, jumpTo }: Pick<SmoothScroller<HTMLElement>, "position" | "jumpTo">,
+  index: number,
+  onIndexChange: (index: number) => void,
+): number {
+  const [center, setCenter] = useState(index);
+  const centerRef = useRef(index);
+  const onIndexChangeRef = useRef(onIndexChange);
+  useEffect(() => {
+    onIndexChangeRef.current = onIndexChange;
+  });
+  useMotionValueEvent(position, "change", (value) => {
+    const rounded = Math.round(value);
+    if (rounded === centerRef.current) return;
+    centerRef.current = rounded;
+    setCenter(rounded);
+    onIndexChangeRef.current(rounded);
+  });
+  useEffect(() => {
+    if (index === centerRef.current) return;
+    centerRef.current = index;
+    jumpTo(index);
+    setCenter(index);
+  }, [index, jumpTo]);
+  return center;
 }

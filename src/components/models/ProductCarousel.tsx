@@ -1,6 +1,7 @@
 import { memo, useEffect, useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion, useMotionValueEvent, useTransform, type MotionValue } from "framer-motion";
 import type { ModelCardData } from "@/components/models/ModelCard";
+import { Chevron } from "@/components/models/Chevron";
 import { ModelCarouselCard } from "@/components/models/ModelCarouselCard";
 import { carouselSlots, mod, useSmoothScroller, type CategoryGroup } from "@/components/models/modelsCarousel";
 
@@ -14,22 +15,6 @@ const PLACEHOLDER_MODEL: ModelCardData = {
   categorySlug: "",
   categoryLabel: "",
 };
-
-// Même chevron en trait fin que la navigation des catégories, tourné à l'horizontale
-function Arrow({ direction }: { direction: "left" | "right" }) {
-  return (
-    <svg viewBox="0 0 13 24" aria-hidden="true" className="h-8 w-[17px]">
-      <polyline
-        points={direction === "left" ? "11.5,2 2,12 11.5,22" : "1.5,2 11,12 1.5,22"}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 // Changement de catégorie : le bloc glisse dans le sens de la navigation et ses rangées arrivent en cascade (fondu et
 // léger zoom), en commençant par celle qui vient du côté de l'arrivée. Pas de flou : animer `filter: blur` sur des
@@ -229,7 +214,7 @@ export const ProductCarousel = memo(function ProductCarousel({
         aria-label="Modèles précédents"
         className={`${arrowClass} hover:-translate-x-0.5`}
       >
-        <Arrow direction="left" />
+        <Chevron direction="left" />
       </button>
 
       <div className="relative min-w-0">
@@ -267,7 +252,7 @@ export const ProductCarousel = memo(function ProductCarousel({
         aria-label="Modèles suivants"
         className={`${arrowClass} hover:translate-x-0.5`}
       >
-        <Arrow direction="right" />
+        <Chevron direction="right" />
       </button>
 
       <p className="sr-only" aria-live="polite" aria-atomic="true">
