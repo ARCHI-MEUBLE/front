@@ -28,8 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const text = await response.text();
     const backendData = JSON.parse(text);
 
-    console.log('🔧 [API] Données du backend:', JSON.stringify(backendData).substring(0, 500));
-
     // Le backend retourne: { success: true, materials: { "Agglomere": [...types...], "MDF + revetement (melamine)": [...types...] } }
     // C'est déjà le bon format, on le retourne tel quel
 

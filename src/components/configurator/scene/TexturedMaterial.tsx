@@ -25,14 +25,12 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
         }
 
         currentImageUrlRef.current = imageUrl;
-        console.log('[TexturedMaterial] Loading texture:', imageUrl);
 
         const loader = new THREE.TextureLoader();
         loader.setCrossOrigin('anonymous');
         loader.load(
             imageUrl,
             (loadedTexture) => {
-                console.log('[TexturedMaterial] Texture loaded successfully:', imageUrl);
                 if (currentImageUrlRef.current !== imageUrl) {
                     loadedTexture.dispose();
                     return;

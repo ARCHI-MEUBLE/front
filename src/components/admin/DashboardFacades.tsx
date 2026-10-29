@@ -324,7 +324,6 @@ function MaterialModal({
     try {
       // Utiliser la même fonction que les échantillons
       const imageUrl = await uploadImage(textureFile);
-      console.log('Upload response:', imageUrl);
 
       setFormData(prev => ({ ...prev, texture_url: imageUrl }));
       toast.success('Texture uploadée');
@@ -354,9 +353,6 @@ function MaterialModal({
 
       // Si mode texture, uploader le fichier s'il n'est pas encore uploadé
       let finalTextureUrl = formData.texture_url;
-      console.log('handleSubmit - renderMode:', renderMode);
-      console.log('handleSubmit - formData.texture_url:', formData.texture_url);
-      console.log('handleSubmit - textureFile:', textureFile?.name);
 
       if (renderMode === 'texture') {
         if (!finalTextureUrl && textureFile) {

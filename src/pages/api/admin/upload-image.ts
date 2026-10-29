@@ -54,13 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('[UPLOAD IMAGE] Parsing form data...');
-
     // Parse le formulaire multipart
-    const { fields, files } = await parseForm(req);
-
-    console.log('[UPLOAD IMAGE] Fields:', Object.keys(fields));
-    console.log('[UPLOAD IMAGE] Files:', Object.keys(files));
+    const { files } = await parseForm(req);
 
     // Récupérer le fichier image
     const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
@@ -71,8 +66,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const filename = imageFile.originalFilename || 'image.jpg';
     const mimetype = imageFile.mimetype || 'image/jpeg';
-
-    console.log('[UPLOAD IMAGE] File:', filename, 'Size:', imageFile.size, 'Type:', mimetype);
 
     // Lire le fichier et créer le body multipart manuellement
     const fileContent = fs.readFileSync(imageFile.filepath);
@@ -97,7 +90,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const responseText = await backendResponse.text();
-    console.log('[UPLOAD IMAGE] Backend response:', responseText.substring(0, 300));
 
     // Parser la réponse JSON
     let data;
