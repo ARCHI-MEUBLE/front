@@ -221,14 +221,12 @@ export default function ConfiguratorPage() {
 
     try {
       setIsUploading(true);
-      console.log('📤 Début de l\'upload de l\'image...', file.name);
       const response = await fetch('/api/admin/upload-model-image', {
         method: 'POST',
         credentials: 'include',
         body: formData,
       });
 
-      console.log('📥 Réponse du serveur (status):', response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur serveur upload:', errorText);
@@ -236,7 +234,6 @@ export default function ConfiguratorPage() {
       }
 
       const data = await response.json();
-      console.log('✅ Données upload reçues:', data);
       if (data.success) {
         setModelForm({ ...modelForm, imageUrl: data.url });
         toast.success('Image mise en ligne !');
@@ -257,24 +254,16 @@ export default function ConfiguratorPage() {
     const checkAdmin = async () => {
       if (fromAdmin === 'true') {
         setIsAdmin(true);
-        console.log('👑 Accès depuis le dashboard admin (fromAdmin=true)');
         return;
       }
 
       try {
-        console.log('🔍 Vérification session admin...');
         const data = await apiClient.adminAuth.getSession();
-        console.log('🔍 Réponse getSession:', data);
         if (data.admin) {
           setIsAdmin(true);
-          console.log('👑 Session administrateur détectée');
-        } else {
-          console.log('❌ Pas de session admin (data.admin = false ou undefined)');
         }
       } catch (e) {
-        if (e instanceof Error && 'statusCode' in e && e.statusCode === 401) {
-          console.info('ℹ️ Aucune session administrateur active');
-        } else {
+        if (!(e instanceof Error && 'statusCode' in e && e.statusCode === 401)) {
           console.error('❌ Erreur lors de la vérification admin:', e);
         }
       }
@@ -1137,10 +1126,8 @@ export default function ConfiguratorPage() {
 
     if (!bestMatch) {
       const firstMaterial = materialKeys[0];
-      console.log('[DEBUG] Matériau actuel non trouvé, sélection du premier disponible:', firstMaterial);
       setFinish(firstMaterial);
     } else if (bestMatch !== finish) {
-      console.log('[DEBUG] Alignement du matériau sur la clé API:', bestMatch);
       setFinish(bestMatch);
     }
   }, [materialsMap, finish]);
@@ -1294,23 +1281,18 @@ export default function ConfiguratorPage() {
       let configToRestore: any = null;
 
       if ((isEditMode || isViewMode) && configIdToEdit) {
-        console.log(`🔄 Mode ${isViewMode ? 'vue' : 'édition'} détecté, chargement de la configuration #${configIdToEdit}`);
-
         const savedConfigKey = `archimeuble:configuration:${configIdToEdit}`;
         const savedConfigStr = (!isViewMode && fromAdmin !== 'true') ? localStorage.getItem(savedConfigKey) : null;
 
         if (savedConfigStr) {
           configDataToUse = JSON.parse(savedConfigStr);
-          console.log('📦 Configuration trouvée dans localStorage:', configDataToUse);
         } else {
-          console.log('📡 Chargement de la configuration via l\'API...');
           try {
             const response = await fetch(`/backend/api/admin/configurations.php?id=${configIdToEdit}`, { credentials: 'include' });
             if (response.ok) {
               const data = await response.json();
               if (data.configuration) {
                 configDataToUse = data.configuration;
-                console.log('📦 Configuration chargée via l\'API admin:', configDataToUse);
               }
             } else {
               const resClient = await fetch(`/backend/api/configurations/list.php?id=${configIdToEdit}`, { credentials: 'include' });
@@ -1318,7 +1300,6 @@ export default function ConfiguratorPage() {
                 const data = await resClient.json();
                 if (data.configuration) {
                   configDataToUse = data.configuration;
-                  console.log('📦 Configuration chargée via l\'API client:', configDataToUse);
                 }
               }
             }
@@ -1332,7 +1313,6 @@ export default function ConfiguratorPage() {
           if (typeof configDataObj === 'string') {
             try {
               configDataObj = JSON.parse(configDataObj);
-              console.log('📦 config_data était une chaîne, parsé en objet:', configDataObj);
             } catch (e) {
               console.warn('❌ Impossible de parser config_data:', e);
             }
@@ -1368,7 +1348,6 @@ export default function ConfiguratorPage() {
 
       let modelData = null;
       if (isAdminEditModel && modelId) {
-        console.log(`🛠️ Mode édition de modèle détecté, chargement du modèle #${modelId}`);
         modelData = await apiClient.models.getById(Number(modelId));
       } else if (id && !isNaN(Number(id))) {
         modelData = await apiClient.models.getById(Number(id));
@@ -1395,7 +1374,6 @@ export default function ConfiguratorPage() {
               prompt: modelData.prompt,
               name: modelData.name
             };
-            console.log('💎 Configuration riche restaurée depuis le modèle catalogue');
             
             if (configToRestore.rootZone) {
               setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
@@ -1560,7 +1538,6 @@ export default function ConfiguratorPage() {
       }
 
       if (configToRestore) {
-        console.log('🔧 Application de la configuration restaurée:', configToRestore);
         if (configToRestore.width) setWidth(configToRestore.width);
         if (configToRestore.height) setHeight(configToRestore.height);
         if (configToRestore.depth) setDepth(configToRestore.depth);
@@ -1577,7 +1554,6 @@ export default function ConfiguratorPage() {
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
         if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
-        console.log('✅ Configuration restaurée avec succès');
         setInitialConfigApplied(true);
       } else {
         let restoreFound = false;
@@ -1628,8 +1604,6 @@ export default function ConfiguratorPage() {
       return;
     }
 
-    console.log('🔄 Réinitialisation à la configuration par défaut...');
-
     setWidth(initialConfig.width);
     setHeight(initialConfig.height);
     setDepth(initialConfig.depth);
@@ -1644,7 +1618,6 @@ export default function ConfiguratorPage() {
 
     try {
       localStorage.removeItem(localStorageKey);
-      console.log('✅ Configuration réinitialisée et sauvegarde supprimée');
     } catch (e) {
       console.warn('❌ Erreur lors de la suppression de localStorage', e);
     }
@@ -1653,7 +1626,6 @@ export default function ConfiguratorPage() {
   const applyPendingRestore = () => {
     if (!pendingRestoreConfig) return;
     const c = pendingRestoreConfig;
-    console.log('🔄 Application de la configuration restaurée depuis localStorage:', c);
     
     setSkipNextAutoGenerate(false); 
     setInitialConfigApplied(false);
@@ -1663,7 +1635,6 @@ export default function ConfiguratorPage() {
     if (c.depth) setDepth(c.depth);
     if (c.socle) setSocle(c.socle);
     if (c.rootZone) {
-      console.log('📦 Restauration de la zone racine:', c.rootZone);
       setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(c.rootZone))));
     }
     if (c.finish) setFinish(c.finish);
@@ -1883,8 +1854,6 @@ export default function ConfiguratorPage() {
       prompt += zonePrompt;
     }
 
-    console.log('🚀 Génération du modèle avec le prompt:', prompt);
-
     if (hasZoneIssues) return;
 
     const timer = setTimeout(() => generateModel(prompt), 300);
@@ -1944,12 +1913,6 @@ export default function ConfiguratorPage() {
       return;
     }
 
-    console.log('🔵 FONCTION saveAsModel APPELEE !');
-    console.log('🔵 isAdmin:', isAdmin);
-    console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
-    console.log('🔵 isAdminEditModel:', isAdminEditModel);
-    console.log('🔵 modelForm:', modelForm);
-
     if (!isAdminCreateModel && !isAdminEditModel) {
       toast.error("Vous devez être en mode administration pour effectuer cette action.");
       return;
@@ -1957,10 +1920,8 @@ export default function ConfiguratorPage() {
 
     try {
       setIsSavingModel(true);
-      console.log('--- DEBUT SAUVEGARDE MODELE ---');
 
       const finalImageUrl = modelForm.imageUrl;
-      console.log('URL Image:', finalImageUrl);
 
       const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
       const match = templatePrompt?.match(regex);
@@ -1974,7 +1935,6 @@ export default function ConfiguratorPage() {
       if (zonePrompt) {
         fullPrompt += zonePrompt;
       }
-      console.log('Prompt généré:', fullPrompt);
 
       const currentConfigData = {
         dimensions: { width, depth, height },
@@ -2004,21 +1964,16 @@ export default function ConfiguratorPage() {
         image_url: finalImageUrl || '/images/accueil image/meubletv.jpg',
         config_data: currentConfigData,
       };
-      
-      console.log('Payload prêt pour envoi:', payload);
 
       const url = isAdminEditModel ? `/backend/api/models.php?id=${modelId}` : '/backend/api/models.php';
       const method = isAdminEditModel ? 'PUT' : 'POST';
 
-      console.log(`Appel API ${method} ${url}...`);
       const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
-
-      console.log('Réponse API (Status):', response.status);
 
       if (response.status === 401 || response.status === 403) {
         toast.error("Session admin expirée ou accès refusé (Status: " + response.status + ")");
@@ -2040,14 +1995,9 @@ export default function ConfiguratorPage() {
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      console.log('Résultat final API:', result);
-
       toast.success(isAdminEditModel ? 'Le modèle a été mis à jour avec succès !' : 'Le modèle a été ajouté au catalogue avec succès !');
       setIsCreateModelDialogOpen(false);
       setShowModelCreatedModal(true);
-      console.log('--- FIN SAUVEGARDE MODELE (SUCCES) ---');
-      
     } catch (err: any) {
       console.error('CRITICAL ERROR saveAsModel:', err);
       toast.error(err.message || 'Erreur lors de l\'enregistrement du modèle');
@@ -2328,7 +2278,6 @@ export default function ConfiguratorPage() {
                 id="name"
                 value={modelForm.name}
                 onChange={(e) => {
-                  console.log('🟢 Changement du nom du modèle:', e.target.value);
                   setModelForm({ ...modelForm, name: e.target.value });
                 }}
                 placeholder="Ex: Dressing Élégance"
@@ -2419,8 +2368,6 @@ export default function ConfiguratorPage() {
             <Button variant="outline" onClick={() => setIsCreateModelDialogOpen(false)}>Annuler</Button>
             <Button
               onClick={() => {
-                console.log('🟡 CLICK SUR BOUTON DIALOG - modelForm.name:', modelForm.name);
-                console.log('🟡 Bouton désactivé?', !modelForm.name);
                 saveAsModel();
               }}
               disabled={!modelForm.name}

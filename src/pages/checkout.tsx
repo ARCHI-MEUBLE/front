@@ -300,7 +300,6 @@ export default function CheckoutStripe() {
       const hasFacades = facadeData && facadeData.items && facadeData.items.length > 0;
 
       if (!hasConfigs && !hasSamples && !hasCatalogue && !hasFacades) {
-        console.log('Panier vide, mais on reste sur la page pour débug');
         // router.push('/cart');
       }
 
@@ -443,10 +442,6 @@ export default function CheckoutStripe() {
   const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   if (!stripeKey && process.env.NODE_ENV === 'development') {
     console.warn('Stripe Public Key is missing (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)');
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Checkout data:', { cart, samplesCart, catalogueCart, facadeCart, grandTotal, orderId });
   }
 
   return (
@@ -713,7 +708,6 @@ export default function CheckoutStripe() {
                       <StripeCheckoutWrapper
                         orderId={orderId}
                         amount={grandTotal}
-                        onSuccess={() => console.log('Payment success!')}
                         onError={(error) => setError(error)}
                       />
                     </div>

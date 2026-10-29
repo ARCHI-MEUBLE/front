@@ -8,8 +8,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('[GENERATE PROXY] Calling backend generate.php with body:', req.body);
-
     const backendResponse = await fetch(`${BACKEND_URL}/backend/api/generate.php`, {
       method: 'POST',
       headers: {
@@ -19,7 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const responseText = await backendResponse.text();
-    console.log('[GENERATE PROXY] Backend response:', responseText.substring(0, 500));
 
     let data;
     try {

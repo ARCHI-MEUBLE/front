@@ -8,7 +8,7 @@ export type CartLists = {
 };
 
 const CART_URLS = {
-  configurations: '/backend/api/cart/index.php',
+  // configurations: '/backend/api/cart/index.php',
   samples: '/api/cart/samples',
   catalogue: '/api/cart/catalogue',
   facades: '/backend/api/cart/facades.php',

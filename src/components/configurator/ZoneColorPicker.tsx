@@ -55,9 +55,7 @@ export default function ZoneColorPicker({
       if (match) materialKey = match;
     }
 
-    console.log('🎨 ZoneColorPicker - materialKey résolu:', materialKey);
     const materialTypes = materialsMap[materialKey] || [];
-    console.log('🎨 ZoneColorPicker - materialTypes trouvés:', materialTypes.length);
     const list: SampleColor[] = [];
     const seen = new Set<number>();
 

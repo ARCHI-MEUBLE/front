@@ -684,11 +684,6 @@ export function Furniture({
             });
         });
 
-        console.log('ThreeCanvas - Back panel IDs:', allCells.map((cell) => {
-            const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
-            return `panel-back-${pathId}`;
-        }));
-
         // Le dessus est toujours une seule pièce pleine largeur, jamais coupé par une cloison.
         {
             topSegments.push({
@@ -700,23 +695,6 @@ export function Furniture({
             });
         }
 
-        const minY = Math.min(...allCells.map(c => c.y - c.height / 2));
-        const bottomTouchingCells = allCells.filter(cell =>
-            cell.y - cell.height / 2 <= minY + 0.05
-        );
-
-        const uniqueBottomColumns = new Map<number, GridCell[]>();
-        bottomTouchingCells.forEach(cell => {
-            const key = Math.round(cell.x * 1000);
-            if (!uniqueBottomColumns.has(key)) {
-                uniqueBottomColumns.set(key, []);
-            }
-            uniqueBottomColumns.get(key)!.push(cell);
-        });
-
-        const sortedBottomColumns = Array.from(uniqueBottomColumns.entries())
-            .sort(([keyA], [keyB]) => keyA - keyB);
-
         // Le dessous est toujours une seule pièce pleine largeur, jamais coupé par une cloison.
         bottomSegments.push({
             id: 'panel-bottom-0',
@@ -724,16 +702,6 @@ export function Furniture({
             y: yOffset + thickness / 2,
             width: w,
             height: thickness
-        });
-
-        console.log('🔵 BOTTOM PANEL DEBUG:', {
-            allCellsCount: allCells.length,
-            allCellsX: allCells.map(c => ({ x: c.x.toFixed(4), y: c.y.toFixed(4), bottom: (c.y - c.height/2).toFixed(4) })),
-            minY: minY.toFixed(4),
-            bottomTouchingCells: bottomTouchingCells.map(c => ({ x: c.x.toFixed(4), key: Math.round(c.x * 1000) })),
-            uniqueKeys: Array.from(uniqueBottomColumns.keys()),
-            sortedBottomColumnsLength: sortedBottomColumns.length,
-            bottomSegments: bottomSegments.map(s => ({ id: s.id, x: s.x.toFixed(4), width: s.width.toFixed(4) }))
         });
 
         // Les côtés sont toujours une seule pièce pleine hauteur, jamais coupés par une étagère.
@@ -751,11 +719,6 @@ export function Furniture({
             width: thickness,
             height: sideHeight
         });
-
-        console.log('ThreeCanvas - Separators:', allSeparators.map((sep) =>
-            `${sep.orientation === 'vertical' ? 'V' : 'H'}[${sep.path}] at ${sep.orientation === 'vertical' ? `x=${sep.x.toFixed(2)}` : `y=${sep.y.toFixed(2)}`}`
-        ));
-
 
         allSeparators.forEach((sep, i) => {
 
@@ -787,8 +750,6 @@ export function Furniture({
                 });
             }
         });
-
-        console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
 
         if (backSegments.length === 0 && !allCells.every(cell => cell.zone.noBack)) {
             backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
@@ -975,11 +936,6 @@ export function Furniture({
                 const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') ? zone.content : null);
 
                 if (doorToRender && !hideFacades) {
-                    console.log('[FIX-v1] porte (feuille):', JSON.stringify({
-                        id: zone.id, doorToRender, x: +x.toFixed(4), y: +y.toFixed(4), width: +width.toFixed(4), height: +height.toFixed(4),
-                        doorZoneWidth: +doorZoneWidth.toFixed(4), doorXOffset: +doorXOffset.toFixed(4), doorYOffset: +doorYOffset.toFixed(4),
-                        totalDoorOverlap: +totalDoorOverlap.toFixed(4), isAtTop, isAtBottom, isAtLeft, isAtRight, topGap: +topGap.toFixed(4), bottomGap: +bottomGap.toFixed(4), leftGap: +leftGap.toFixed(4), rightGap: +rightGap.toFixed(4),
-                    }));
                     const isDouble = doorToRender === 'door_double';
                     const isRight = doorToRender === 'door_right';
                     const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
@@ -1071,11 +1027,6 @@ export function Furniture({
             const groupDoor = zone.doorContent || (zone.children && zone.children.length > 0 ? zone.content : null);
             if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty' && !hideFacades) {
                 const doorToRender = groupDoor;
-                console.log('[FIX-v1] porte (groupe):', JSON.stringify({
-                    id: zone.id, doorToRender, x: +x.toFixed(4), y: +y.toFixed(4), width: +width.toFixed(4), height: +height.toFixed(4),
-                    doorZoneWidth: +doorZoneWidth.toFixed(4), doorXOffset: +doorXOffset.toFixed(4), doorYOffset: +doorYOffset.toFixed(4),
-                    totalDoorOverlap: +totalDoorOverlap.toFixed(4), isAtTop, isAtBottom, isAtLeft, isAtRight, topGap: +topGap.toFixed(4), bottomGap: +bottomGap.toFixed(4), leftGap: +leftGap.toFixed(4), rightGap: +rightGap.toFixed(4),
-                }));
                 const isDouble = doorToRender === 'door_double';
                 const isRight = doorToRender === 'door_right';
                 const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
@@ -1146,7 +1097,6 @@ export function Furniture({
             }
 
             if (zone.children && zone.children.length > 0) {
-                console.log('🎨 parseZone - zone avec enfants:', zone.id, 'type:', zone.type, 'enfants:', zone.children.length);
                 const zoneDoorContent = zone.doorContent || zone.content;
                 const zoneHasDoor = hasDoorInFront || !!(zoneDoorContent && typeof zoneDoorContent === 'string' && zoneDoorContent.includes('door'));
                 let currentPos = 0;
@@ -1159,7 +1109,6 @@ export function Furniture({
                     } else {
                         ratio = 1 / zone.children!.length;
                     }
-                    console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
 
                     // Largeur/hauteur dispo une fois l'épaisseur des séparateurs retirée.
                     const numSeparators = zone.children!.length - 1;
@@ -1351,7 +1300,6 @@ export function Furniture({
 
             {panelSegments.bottomSegments.map((segment) => {
                 const isDeleted = deletedPanelIds.has(segment.id);
-                console.log('🟢 BOTTOM RENDER:', segment.id, 'isDeleted:', isDeleted, 'deletedPanelIds:', Array.from(deletedPanelIds));
                 return !isDeleted && (
                     <StructuralPanel
                         key={`visual-${segment.id}`}

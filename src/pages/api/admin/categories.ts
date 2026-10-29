@@ -28,16 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       options.body = JSON.stringify(req.body);
     }
 
-    console.log(`[CATEGORIES PROXY] ${req.method} ${backendUrl}`);
-    if (req.body) {
-      console.log('[CATEGORIES PROXY] Body:', JSON.stringify(req.body));
-    }
-
     const response = await fetch(backendUrl, options);
-    console.log('[CATEGORIES PROXY] Backend response status:', response.status);
 
     const text = await response.text();
-    console.log('[CATEGORIES PROXY] Backend response:', text.substring(0, 500));
 
     // Vérifier si la réponse est du JSON valide
     let data;
