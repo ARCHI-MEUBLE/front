@@ -88,3 +88,4 @@ public/models/*.dxf
 .env.server_test
 scripts/meubles-test-carrousel.pdf
 scripts/meubles-test-carrousel.md
+scripts/guide-configuration-meuble.md

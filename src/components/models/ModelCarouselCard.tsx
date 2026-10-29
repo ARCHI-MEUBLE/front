@@ -82,3 +82,52 @@ export const ModelCarouselCard = memo(function ModelCarouselCard({
     </Link>
   );
 });
+
+// Vignette compacte de la liste des modèles sur téléphone : image à gauche, nom et lien à droite, sur une hauteur
+// fixe (MOBILE_ROW_HEIGHT) pour que trois vignettes tiennent à l'écran avec la catégorie au-dessus.
+export const MOBILE_ROW_HEIGHT = 112;
+
+export const ModelRowCard = memo(function ModelRowCard({
+  model,
+  focusable = true,
+}: {
+  model: ModelCardData;
+  focusable?: boolean;
+}) {
+  return (
+    <Link
+      href={`/configurator/${model.id}`}
+      aria-label={`Configurer : ${model.name}`}
+      tabIndex={focusable ? undefined : -1}
+      style={{ height: MOBILE_ROW_HEIGHT }}
+      className="group flex items-stretch gap-3 rounded-md bg-[#efefef] p-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy"
+    >
+      <div className="relative aspect-[4/3] h-full flex-none">
+        {model.imagePath ? (
+          <Image
+            src={model.imagePath}
+            alt={model.name}
+            fill
+            unoptimized={!isOptimizable(model.imagePath)}
+            className="object-contain"
+            sizes="40vw"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center rounded-sm border border-dashed border-black/10">
+            <span className="eyebrow text-black/40">Visuel à venir</span>
+          </div>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        <span className="flex items-center gap-1.5 text-[11px] text-black/70">
+          <Pencil aria-hidden="true" className="h-3 w-3" strokeWidth={1.75} />
+          Sur-mesure
+        </span>
+        <h3 className="m-0 truncate text-[15px] font-medium text-black">{model.name}</h3>
+        <span className="self-start text-[12px] text-black/60 underline decoration-black/20 underline-offset-4">
+          Configurer ce modèle
+        </span>
+      </div>
+    </Link>
+  );
+});
