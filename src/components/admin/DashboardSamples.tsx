@@ -365,7 +365,7 @@ function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; o
 
   return (
     <div className="group relative" title={variant.name}>
-      <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform group-hover:scale-105">
+      <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform [.group:hover_&]:scale-105">
         {variant.image_url ? (
           <img src={variant.image_url} alt={variant.name} className="h-full w-full object-cover" />
         ) : (
@@ -374,7 +374,8 @@ function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; o
       </div>
 
       {/* Boutons d'action rapides */}
-      <div className="absolute -right-1 -top-1 hidden gap-1 group-hover:flex">
+      {/* Variantes arbitraires plutôt que group-hover: Tailwind v4 réserve ce dernier à @media (hover: hover), jamais vrai sur certains écrans tactiles */}
+      <div className="absolute -right-1 -top-1 z-10 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 [.group:hover_&]:opacity-100">
         <button
           onClick={() => setEditing(true)}
           className="h-5 w-5 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-sm"
