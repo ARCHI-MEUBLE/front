@@ -123,8 +123,9 @@ function MainRow({
   return (
     // Moins de modèles que d'emplacements : la rangée se resserre au centre, les cartes gardent leur taille
     <div data-carousel-track className="mx-auto overflow-hidden" style={{ width: `${(shown / visible) * 100}%` }}>
-      {/* Marge basse : laisse voir l'ombre des vignettes, sinon coupée par le cadre masqué */}
-      <div className="grid grid-cols-[minmax(0,1fr)] pb-6">
+      {/* Marges : laissent voir l'ombre des vignettes et la carte agrandie au survol, sinon coupées par le cadre masqué.
+          `group/row` : quand une carte est survolée, les autres de la rangée rétrécissent (ModelCarouselCard) */}
+      <div className="group/row grid grid-cols-[minmax(0,1fr)] pt-2 pb-6">
         {slots.map(({ key, index }) => (
           <CardSlot
             key={key}
