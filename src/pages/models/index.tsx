@@ -65,7 +65,9 @@ export default function ModelsPage() {
         apiClient.categories
           .getAll(true)
           .then(setCategories)
-          .catch((err) => console.error("Erreur lors du chargement des catégories:", err)),
+          // Avertissement et non erreur : sans catégories, les modèles restent affichés, regroupés à la fin ; console.error ferait
+          // apparaître l'erreur, pourtant gérée, dans la fenêtre d'erreurs de Next en développement
+          .catch((err) => console.warn("Catégories indisponibles :", err instanceof Error ? err.message : err)),
       ]);
       const productModels: ModelCardData[] = data.map((model: FurnitureModel) => {
         const categorySlug = model.category || inferCategorySlug(model.name);

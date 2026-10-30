@@ -398,7 +398,9 @@ export const modelsApi = {
    * Récupérer tous les modèles
    */
   async getAll(): Promise<FurnitureModel[]> {
-    const response = await request<{ models: FurnitureModel[] }>('/api/models');
+    const response = await request<{ models?: FurnitureModel[]; error?: string }>('/api/models');
+    // Réponse sans liste (backend en panne) : erreur plutôt que undefined
+    if (!Array.isArray(response.models)) throw new Error(response.error || 'Modèles indisponibles');
     return response.models;
   },
 
