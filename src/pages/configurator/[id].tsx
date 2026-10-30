@@ -89,7 +89,8 @@ import { ConfigurationSummary } from '@/components/configurator/ConfigurationSum
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { displayColorName } from '@/lib/displayNames';
-import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
+import { findConstraintIssues, type ConstraintIssue, type IssueKind } from '@/lib/configurator/constraints';
+import { fixConstraintIssues } from '@/lib/configurator/constraintFix';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { extendSelection, groupSelection, selectableNeighborIds } from '@/lib/configurator/zoneSelection';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
@@ -947,9 +948,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   );
   const hasZoneIssues = constraintIssues.length > 0;
 
-  // Ouvre l'étape où se corrige le premier problème, avec la zone concernée sélectionnée
-  const focusZoneIssue = useCallback(() => {
-    const issue = constraintIssues[0];
+  // Ouvre l'étape où se corrige un problème, avec la zone concernée sélectionnée
+  const focusIssue = useCallback((issue: ConstraintIssue | undefined) => {
     if (!issue) return;
     const stepByKind: Record<IssueKind, ConfigStep> = {
       dimensions: STEP.DIMENSIONS,
@@ -959,7 +959,29 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     };
     goToStep(stepByKind[issue.kind]);
     if (issue.zoneId) setSelectedZoneIds([issue.zoneId]);
-  }, [constraintIssues, goToStep]);
+  }, [goToStep]);
+
+  const focusZoneIssue = useCallback(() => focusIssue(constraintIssues[0]), [constraintIssues, focusIssue]);
+
+  // Bouton « Corriger » : rend le meuble fabricable en gardant au mieux ce qui a été dessiné (annulable comme
+  // toute modification) ; ce qui ne peut pas être corrigé seul ouvre l'étape concernée
+  const fixZoneIssues = useCallback(() => {
+    const fix = fixConstraintIssues(rootZone, { width, height, depth });
+    if (fix.root !== rootZone) setRootZone(fix.root);
+    if (fix.dims.width !== width) setWidth(fix.dims.width);
+    if (fix.dims.height !== height) setHeight(fix.dims.height);
+    if (fix.dims.depth !== depth) setDepth(fix.dims.depth);
+
+    if (fix.remaining.length > 0) {
+      toast.error(`À corriger à la main : ${fix.remaining[0].message}`);
+      focusIssue(fix.remaining[0]);
+      return;
+    }
+    const [first, ...others] = fix.changes;
+    toast.success(others.length > 0 ? `Meuble corrigé : ${first} (et ${others.length} autre${others.length > 1 ? 's' : ''} modification${others.length > 1 ? 's' : ''})` : `Meuble corrigé : ${first}`, {
+      duration: 6000,
+    });
+  }, [rootZone, width, height, depth, setRootZone, focusIssue]);
 
   // Menu de la zone sélectionnée : son titre, sa taille, ses voisines et son groupe parent
   const quickMenu = useMemo(() => {
@@ -2865,7 +2887,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                         </div>
                         <button
                           type="button"
-                          onClick={focusZoneIssue}
+                          onClick={fixZoneIssues}
                           className="flex-shrink-0 border border-am-wine px-3 py-1.5 text-[11px] font-medium text-am-wine transition-colors hover:bg-am-wine hover:text-white"
                           style={{ borderRadius: '2px' }}
                         >
