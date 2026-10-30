@@ -199,16 +199,9 @@ export function DashboardModels() {
         credentials: 'include'
       });
       
-      console.log('--- DIAGNOSTIC CATEGORIES DASHBOARD ---');
-      console.log('Status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('Categories data:', data);
         setAvailableCategories(data.categories || []);
-      } else {
-        const text = await response.text();
-        console.log('Error response:', text);
       }
     } catch (error) {
       console.error("Erreur chargement categories:", error);

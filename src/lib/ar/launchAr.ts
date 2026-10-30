@@ -21,9 +21,11 @@ export interface BrowserTraits {
   supportsArLinks: boolean;
 }
 
-// iPadOS se présente comme un Mac : on le reconnaît à son écran tactile
+// iPadOS se présente comme un Mac : on le reconnaît à son écran tactile (aucun Mac n'en a). navigator.platform ne
+// suffit pas : déprécié, il peut valoir autre chose que « MacIntel » (protection contre le pistage de Safari, Chrome
+// ou Firefox sur iPad) ; l'identifiant « Macintosh » prend alors le relais.
 const isIOSDevice = ({ userAgent, platform, maxTouchPoints }: BrowserTraits) =>
-  /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1);
+  /iPad|iPhone|iPod/.test(userAgent) || ((platform === 'MacIntel' || /Macintosh/.test(userAgent)) && maxTouchPoints > 1);
 
 const isAndroidDevice = ({ userAgent }: BrowserTraits) => /android/i.test(userAgent);
 

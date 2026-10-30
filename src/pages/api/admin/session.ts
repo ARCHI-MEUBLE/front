@@ -8,8 +8,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_U
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    console.log('🔵 [Admin Session] Appel backend:', `${API_URL}/backend/api/admin-auth/session.php`);
-
     const response = await fetch(`${API_URL}/backend/api/admin-auth/session.php`, {
       method: req.method || 'GET',
       headers: {
@@ -20,7 +18,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const data = await response.json();
-    console.log('🔵 [Admin Session] Réponse backend (status):', response.status);
 
     // Forward backend cookies to frontend
     const backendCookies = response.headers.getSetCookie?.() || [];

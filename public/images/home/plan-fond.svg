@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMaxYMid slice">
+<defs>
+<pattern id="g1" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#E8E1D4" stroke-width="1"/></pattern>
+<pattern id="g2" width="200" height="200" patternUnits="userSpaceOnUse"><rect width="200" height="200" fill="url(#g1)"/><path d="M200 0H0V200" fill="none" stroke="#E8E1D4" stroke-width="1.6"/></pattern>
+<linearGradient id="fade" x1="0" x2="1"><stop offset="0" stop-color="#F4F0E8"/><stop offset=".45" stop-color="#F4F0E8" stop-opacity=".85"/><stop offset="1" stop-color="#F4F0E8" stop-opacity="0"/></linearGradient>
+</defs>
+<rect width="1920" height="1080" fill="#F4F0E8"/>
+<rect width="1920" height="1080" fill="url(#g2)"/>
+<rect width="1200" height="1080" fill="url(#fade)"/>
+<g fill="none" stroke="#B9A88E" stroke-width="2" vector-effect="non-scaling-stroke">
+<rect x="1100" y="200" width="600" height="760"/>
+<rect x="1112" y="212" width="576" height="736" stroke-width="1"/>
+<path d="M1300 212V948M1500 212V948M1112 360H1300M1112 520H1300M1112 680H1300M1300 300H1500M1300 440H1500M1300 580H1500M1500 400H1688M1500 620H1688"/>
+<rect x="1300" y="720" width="200" height="228" stroke-width="1.4"/>
+<path d="M1400 720V948" stroke-width="1"/>
+<path d="M1388 830V850M1412 830V850" stroke-width="2.4"/>
+<rect x="1500" y="760" width="188" height="188" stroke-width="1.4"/>
+<path d="M1580 854H1608" stroke-width="2.4"/>
+<path d="M1100 960V990M1700 960V990M1080 960H1720" stroke-width="1"/>
+</g>
+<g fill="none" stroke="#B9A88E" stroke-width="1">
+<path d="M1100 150V180M1700 150V180M1300 150V170M1500 150V170M1100 160H1700M1094 166L1106 154M1294 166L1306 154M1494 166L1506 154M1694 166L1706 154M1750 200H1780M1750 960H1780M1765 200V960M1759 206L1771 194M1759 966L1771 954"/>
+</g>
+<g fill="#B9A88E" font-family="ui-monospace,Menlo,monospace" font-size="15" letter-spacing="2">
+<text x="1400" y="140" text-anchor="middle">2400</text>
+<text x="1200" y="140" text-anchor="middle" font-size="12">800</text>
+<text x="1600" y="140" text-anchor="middle" font-size="12">800</text>
+<text x="1800" y="585" transform="rotate(90 1800 585)" text-anchor="middle">2600</text>
+<text x="1100" y="1024" font-size="12">BIBLIOTHÈQUE · CHÊNE MASSIF · ÉCH. 1:20</text>
+</g>
+<g fill="none" stroke="#A4784A" stroke-width="2">
+<circle cx="1300" cy="360" r="9"/><path d="M1286 360H1314M1300 346V374"/>
+<circle cx="1500" cy="620" r="9"/><path d="M1486 620H1514M1500 606V634"/>
+</g>
+</svg>

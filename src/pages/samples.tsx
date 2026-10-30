@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiClient, type SampleColor, type SampleType } from "@/lib/apiClient";
 import { useCustomer } from "@/context/CustomerContext";
+import { notifyCartChanged } from "@/lib/cartCount";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
@@ -94,6 +95,7 @@ export default function SamplesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erreur lors de l'ajout au panier");
       await loadSamplesCart();
+      notifyCartChanged();
       const color = colorsForMaterial.find((c) => c.id === colorId);
       toast.success(`${displayColorName(color?.name) || "Échantillon"} ajouté à votre kit`);
     } catch (error) {

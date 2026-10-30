@@ -89,6 +89,7 @@ type ComponentColor = ComponentColors[ColorComponent];
 interface MaterialSelectorProps {
   materialsMap: Record<string, SampleType[]>;
   selectedMaterialKey: string;
+  // Matière de la couleur choisie (la matière principale suit la structure)
   onMaterialChange: (materialKey: string) => void;
   loading?: boolean;
   // Couleur actuelle de chaque partie du meuble
@@ -139,10 +140,19 @@ export default function MaterialSelector({
     return Object.keys(materialsMap).find((k) => normalizedKey(k) === target) ?? selectedMaterialKey;
   }, [selectedMaterialKey, materialsMap]);
 
-  // Toutes les couleurs de la matière (doublons compris) : sert à retrouver le nom d'une couleur choisie
+  // La matière affichée n'est qu'un onglet de navigation : les couleurs déjà choisies, même d'une autre matière, sont conservées
+  const [browsedMaterial, setBrowsedMaterial] = useState<string | null>(null);
+  const browsedMaterialLabel =
+    browsedMaterial && materialsMap[browsedMaterial] ? browsedMaterial : selectedMaterialLabel;
+
+  // Toutes les couleurs de toutes les matières (doublons compris) : sert à retrouver le nom d'une couleur choisie
+  const everyColor = useMemo<SampleColor[]>(
+    () => Object.values(materialsMap).flatMap((types) => types.flatMap((type) => type.colors || [])),
+    [materialsMap]
+  );
   const allColors = useMemo<SampleColor[]>(
-    () => (materialsMap[selectedMaterialLabel] || []).flatMap((type) => type.colors || []),
-    [materialsMap, selectedMaterialLabel]
+    () => (materialsMap[browsedMaterialLabel] || []).flatMap((type) => type.colors || []),
+    [materialsMap, browsedMaterialLabel]
   );
 
   // Palette affichée : une seule fois chaque couleur visible, triée par nom
@@ -158,12 +168,25 @@ export default function MaterialSelector({
       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
   }, [allColors]);
 
+  // La matière principale (prix, récapitulatif) suit la couleur de la structure ou du meuble entier
+  const syncMainMaterial = () => {
+    if (browsedMaterialLabel !== selectedMaterialLabel) onMaterialChange(browsedMaterialLabel);
+  };
+  const applyToAll = (color: SampleColor) => {
+    syncMainMaterial();
+    onApplyToAll(color);
+  };
+  const changeComponentColor = (key: ColorComponent, color: SampleColor) => {
+    if (key === 'structure') syncMainMaterial();
+    onComponentColorChange(key, color);
+  };
+
   const colorName = (entry: ComponentColor) =>
-    displayColorName((allColors.find((c) => c.id === entry.colorId) ?? palette.find((c) => isSameColor(entry, c)))?.name) || 'Couleur par défaut';
+    displayColorName((everyColor.find((c) => c.id === entry.colorId) ?? everyColor.find((c) => isSameColor(entry, c)))?.name) || 'Couleur par défaut';
 
   const components = COMPONENT_DEFINITIONS.filter(({ key }) => !hiddenComponents.includes(key));
   // Couleur commune du meuble : celle de la structure, si toutes les parties visibles la partagent
-  const structureColor = palette.find((c) => isSameColor(componentColors.structure, c));
+  const structureColor = everyColor.find((c) => isSameColor(componentColors.structure, c));
   const wholeColor = structureColor && components.every(({ key }) => isSameColor(componentColors[key], structureColor)) ? structureColor : undefined;
   const partsOpen = showParts || !wholeColor;
 
@@ -213,12 +236,12 @@ export default function MaterialSelector({
         <span className="eyebrow-lg text-black/65">Matière</span>
         <div className="flex flex-wrap gap-2">
           {orderedMaterialLabels.map((label) => {
-            const isActive = selectedMaterialLabel === label;
+            const isActive = browsedMaterialLabel === label;
             return (
               <button
                 key={label}
                 type="button"
-                onClick={() => onMaterialChange(label)}
+                onClick={() => setBrowsedMaterial(label)}
                 className={`border px-3 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
                   isActive
                     ? 'border-am-navy bg-am-navy text-white'
@@ -250,7 +273,7 @@ export default function MaterialSelector({
               </p>
             </div>
             <div className="grid grid-cols-4 gap-x-3 gap-y-4 sm:grid-cols-5">
-              {palette.map((color) => swatchButton(color, !!wholeColor && isSameColor(componentColors.structure, color), () => onApplyToAll(color), true))}
+              {palette.map((color) => swatchButton(color, !!wholeColor && isSameColor(componentColors.structure, color), () => applyToAll(color), true))}
             </div>
           </div>
 
@@ -286,7 +309,7 @@ export default function MaterialSelector({
                     </div>
                     <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-9">
                       {palette.map((color) =>
-                        swatchButton(color, isSameColor(componentColors[key], color), () => onComponentColorChange(key, color))
+                        swatchButton(color, isSameColor(componentColors[key], color), () => changeComponentColor(key, color))
                       )}
                     </div>
                   </div>

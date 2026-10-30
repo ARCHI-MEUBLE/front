@@ -10,7 +10,6 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_A
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Vérifier l'authentification Next.js
   if (!(await verifyAdminSession(req, res))) {
-    console.log('Authentication failed - no admin session');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -36,9 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       options.body = JSON.stringify(req.body);
     }
 
-    console.log('Calling backend URL:', backendUrl);
     const response = await fetch(backendUrl, options);
-    console.log('Backend response status:', response.status);
 
     if (!response.ok) {
       const text = await response.text();
