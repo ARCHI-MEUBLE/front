@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ModelCardData } from "@/components/models/ModelCard";
@@ -21,17 +21,14 @@ const BAR = {
   button: "px-3 py-1.5 text-[12px] @min-[300px]:px-3.5 @min-[300px]:py-2 @min-[300px]:text-[13px] @min-[400px]:px-4",
 };
 
+const IMAGE_CLASS =
+  "object-cover object-center transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]";
+const CARD_SIZES = "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw";
+
 // Photo d'une vignette, recadrée dans le format commun (mêmes réglages pour les cartes et les aperçus)
 function TileImage({ model, sizes }: { model: ModelCardData; sizes: string }) {
   return model.imagePath ? (
-    <Image
-      src={model.imagePath}
-      alt=""
-      fill
-      unoptimized={!isOptimizable(model.imagePath)}
-      className="object-cover object-center transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-      sizes={sizes}
-    />
+    <Image src={model.imagePath} alt="" fill unoptimized={!isOptimizable(model.imagePath)} className={IMAGE_CLASS} sizes={sizes} />
   ) : (
     <div className="absolute inset-0 flex items-start justify-center pt-[18%]">
       <span className="eyebrow text-black/40">Visuel à venir</span>
@@ -41,19 +38,40 @@ function TileImage({ model, sizes }: { model: ModelCardData; sizes: string }) {
 
 // Vignette d'un modèle : photo plein cadre, et en bas un bandeau bleu nuit arrondi avec le nom et le bouton
 // « Configurer ». Rien d'autre, pour que la photo du meuble porte la vignette.
-function ModelTile({ model, children }: { model: ModelCardData; children: (content: ReactNode, className: string) => ReactNode }) {
+function ModelTile({
+  model,
+  showHoverImage = false,
+  children,
+}: {
+  model: ModelCardData;
+  // Monte l'image au survol (par-dessus la photo, visible au survol de la carte)
+  showHoverImage?: boolean;
+  children: (content: ReactNode, className: string) => ReactNode;
+}) {
   const s = BAR;
   const content = (
     <>
-      <TileImage model={model} sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw" />
+      <TileImage model={model} sizes={CARD_SIZES} />
+      {showHoverImage && model.hoverImagePath && (
+        // Fondu vers l'image au survol ; même cadrage et même zoom que la photo, sous le bandeau
+        <Image
+          src={model.hoverImagePath}
+          alt=""
+          fill
+          unoptimized={!isOptimizable(model.hoverImagePath)}
+          className={`${IMAGE_CLASS} opacity-0 transition-[opacity,transform] group-hover:opacity-100`}
+          sizes={CARD_SIZES}
+        />
+      )}
       <div className={`absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-am-navy ${s.radius} ${s.bar}`}>
         {/* Nom trop long pour la carte : coupé par des points de suspension, complet au survol */}
         <h3 title={model.name} className={`m-0 min-w-0 truncate font-medium tracking-[-0.02em] text-white ${s.title}`}>
           {model.name}
         </h3>
+        {/* S'éclaircit seulement quand la souris est sur le bouton lui-même, pas sur le reste de la carte */}
         <span
           aria-hidden="true"
-          className={`flex-none whitespace-nowrap rounded-full bg-am-mist text-am-navy transition-colors duration-200 group-hover:bg-white ${s.button}`}
+          className={`flex-none whitespace-nowrap rounded-full bg-am-mist text-am-navy transition-colors duration-200 hover:bg-white ${s.button}`}
         >
           Configurer →
         </span>
@@ -67,6 +85,9 @@ function ModelTile({ model, children }: { model: ModelCardData; children: (conte
 }
 
 // Carte des carrousels de la page modèles (ordinateur et tablette), au format commun MODEL_TILE_ASPECT.
+// Au survol : l'image au survol du modèle apparaît en fondu (chargée au premier survol seulement, pour ne pas
+// télécharger d'avance une seconde image par carte), et la carte grossit très légèrement pendant que ses voisines
+// de la rangée (`group/row`, posé par ProductCarousel) rétrécissent très légèrement.
 // Mémorisée : un pas du carrousel ne redessine que les cartes dont les props changent.
 export const ModelCarouselCard = memo(function ModelCarouselCard({
   model,
@@ -75,15 +96,18 @@ export const ModelCarouselCard = memo(function ModelCarouselCard({
   model: ModelCardData;
   focusable?: boolean;
 }) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <ModelTile model={model}>
+    <ModelTile model={model} showHoverImage={hovered}>
       {(content, className) => (
         <Link
           href={`/configurator/${model.id}`}
           aria-label={`Configurer : ${model.name}`}
           tabIndex={focusable ? undefined : -1}
+          onPointerEnter={() => setHovered(true)}
+          onFocus={() => setHovered(true)}
           style={{ aspectRatio: MODEL_TILE_ASPECT }}
-          className={`${className} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
+          className={`${className} transition-[scale] duration-300 ease-out group-has-[a:hover]/row:scale-[0.97] hover:!scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
         >
           {content}
         </Link>
