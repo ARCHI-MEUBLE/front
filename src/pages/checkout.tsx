@@ -4,7 +4,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useCustomer } from '@/context/CustomerContext';
-import { UserNavigation } from '@/components/UserNavigation';
+import { Header } from '@/components/Header';
+import { displayColorName, displayMaterialName } from '@/lib/displayNames';
+import { formatPrice } from '@/lib/format';
 import { Footer } from '@/components/Footer';
 import { MapPin, CreditCard, Package, Truck, Shield, Check, ChevronLeft, AlertTriangle, X } from 'lucide-react';
 
@@ -18,7 +20,7 @@ const FacadeCartPreview = dynamic(
   () => import('@/components/facades/FacadeCartPreview'),
   {
     ssr: false,
-    loading: () => <div className="h-full w-full bg-[#F5F5F4] animate-pulse" />
+    loading: () => <div className="h-full w-full bg-am-mist/15 animate-pulse" />
   }
 );
 
@@ -119,7 +121,7 @@ type CheckoutStep = 'shipping' | 'payment';
 
 export default function CheckoutStripe() {
   const router = useRouter();
-  const { customer, isAuthenticated, isLoading: authLoading } = useCustomer();
+  const { customer, isAuthenticated, isLoading: authLoading, requireIdentity } = useCustomer();
 
   const [step, setStep] = useState<CheckoutStep>('shipping');
   const [cart, setCart] = useState<CartData | null>({ items: [], total: 0 });
@@ -150,8 +152,11 @@ export default function CheckoutStripe() {
   useEffect(() => {
     if (authLoading) return;
 
+    // Sans compte client : on confirme l'email du visiteur avant de charger son panier ou la commande à payer
     if (!isAuthenticated) {
-      router.push('/auth/login?redirect=/checkout');
+      void requireIdentity().then((confirmed) => {
+        if (!confirmed) router.push('/cart');
+      });
       return;
     }
 
@@ -172,7 +177,7 @@ export default function CheckoutStripe() {
         shipping_country: customer.country || 'France'
       }));
     }
-  }, [isAuthenticated, authLoading, customer, router]);
+  }, [isAuthenticated, authLoading, customer, router, requireIdentity]);
 
   const loadExistingOrder = async (existingOrderId: number) => {
     try {
@@ -207,7 +212,7 @@ export default function CheckoutStripe() {
 
       // Vérifier que la commande n'est pas déjà payée
       if (order.payment_status === 'paid' || (order.payment_strategy === 'deposit' && order.balance_payment_status === 'paid')) {
-        router.push('/account?section=orders');
+        router.push(`/order-confirmation/${existingOrderId}`);
         return;
       }
 
@@ -236,7 +241,7 @@ export default function CheckoutStripe() {
       setStep('payment');
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
-      router.push('/account?section=orders');
+      router.push('/cart');
     } finally {
       setIsLoading(false);
     }
@@ -295,7 +300,6 @@ export default function CheckoutStripe() {
       const hasFacades = facadeData && facadeData.items && facadeData.items.length > 0;
 
       if (!hasConfigs && !hasSamples && !hasCatalogue && !hasFacades) {
-        console.log('Panier vide, mais on reste sur la page pour débug');
         // router.push('/cart');
       }
 
@@ -377,8 +381,7 @@ export default function CheckoutStripe() {
         router.push(`/order-confirmation?order_id=${result.order.id}`);
       } else if (result.order.needs_validation) {
         // Commande avec configurations 3D → nécessite validation admin avant paiement
-        // Rediriger vers la page compte avec message
-        router.push(`/account?section=orders&pending=${result.order.id}`);
+        router.push(`/order-confirmation/${result.order.id}`);
       } else {
         // Commande sans configs 3D (catalogue, façades, échantillons) → paiement direct
         setStep('payment');
@@ -397,12 +400,12 @@ export default function CheckoutStripe() {
         <Head>
           <title>Paiement - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
-        <div className="min-h-screen bg-[#FAFAF9]">
+        <Header />
+        <div className="min-h-screen bg-am-paper">
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto h-10 w-10 animate-spin border-2 border-[#E8E6E3] border-t-[#1A1917]" />
-              <p className="mt-6 text-sm text-[#706F6C]">Chargement...</p>
+              <div className="mx-auto h-10 w-10 animate-spin border-2 border-black/10 border-t-am-navy" />
+              <p className="mt-6 text-sm text-black/65">Chargement...</p>
             </div>
           </div>
         </div>
@@ -417,10 +420,10 @@ export default function CheckoutStripe() {
         <Head>
           <title>Paiement - ArchiMeuble</title>
         </Head>
-        <UserNavigation />
-        <div className="min-h-screen bg-surface flex items-center justify-center">
+        <Header />
+        <div className="min-h-screen bg-am-paper flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-2xl font-serif text-ink mb-4">Chargement de votre panier...</h2>
+            <h2 className="text-2xl text-ink mb-4">Chargement de votre panier...</h2>
             <p className="text-stone">Si ce message persiste, votre panier est peut-être vide.</p>
             <Link href="/cart" className="mt-6 inline-block text-ink underline">Retour au panier</Link>
           </div>
@@ -441,47 +444,43 @@ export default function CheckoutStripe() {
     console.warn('Stripe Public Key is missing (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)');
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Checkout data:', { cart, samplesCart, catalogueCart, facadeCart, grandTotal, orderId });
-  }
-
   return (
     <>
       <Head>
         <title>Paiement - ArchiMeuble</title>
       </Head>
-      <UserNavigation />
+      <Header />
 
-      <div className="min-h-screen bg-[#FAFAF9]">
+      <div className="min-h-screen bg-am-paper">
         {/* Header */}
-        <div className="border-b border-[#E8E6E3] bg-white">
+        <div className="border-b border-black/10 bg-am-paper">
           <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+            <h1 className="text-heading text-black">
               Finaliser la commande
             </h1>
 
             {/* Steps indicator */}
             <div className="mt-8 flex items-center gap-4">
-              <div className={`flex items-center gap-3 ${step === 'shipping' ? 'text-[#1A1917]' : 'text-[#706F6C]'}`}>
+              <div className={`flex items-center gap-3 ${step === 'shipping' ? 'text-black' : 'text-black/65'}`}>
                 <div className={`flex h-10 w-10 items-center justify-center border-2 text-sm font-medium transition-colors ${
                   step === 'shipping'
-                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
+                    ? 'border-am-navy bg-am-navy text-white'
                     : step === 'payment'
-                      ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                      : 'border-[#E8E6E3] text-[#706F6C]'
+                      ? 'border-am-navy bg-am-navy text-white'
+                      : 'border-black/10 text-black/65'
                 }`}>
                   {step === 'payment' ? <Check className="h-5 w-5" /> : '1'}
                 </div>
                 <span className="hidden text-sm font-medium sm:block">Livraison</span>
               </div>
 
-              <div className="h-px flex-1 bg-[#E8E6E3]" />
+              <div className="h-px flex-1 bg-black/10" />
 
-              <div className={`flex items-center gap-3 ${step === 'payment' ? 'text-[#1A1917]' : 'text-[#706F6C]'}`}>
+              <div className={`flex items-center gap-3 ${step === 'payment' ? 'text-black' : 'text-black/65'}`}>
                 <div className={`flex h-10 w-10 items-center justify-center border-2 text-sm font-medium transition-colors ${
                   step === 'payment'
-                    ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                    : 'border-[#E8E6E3] text-[#706F6C]'
+                    ? 'border-am-navy bg-am-navy text-white'
+                    : 'border-black/10 text-black/65'
                 }`}>
                   2
                 </div>
@@ -506,17 +505,17 @@ export default function CheckoutStripe() {
               {step === 'shipping' ? (
                 <form onSubmit={handleShippingSubmit} className="space-y-8">
                   {/* Shipping Address */}
-                  <div className="border border-[#E8E6E3] bg-white">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
-                      <MapPin className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                  <div className="border border-black/10 bg-white">
+                    <div className="flex items-center gap-3 border-b border-black/10 p-6">
+                      <MapPin className="h-5 w-5 text-am-navy" />
+                      <h2 className="eyebrow-lg text-black">
                         Adresse de livraison
                       </h2>
                     </div>
 
                     <div className="space-y-5 p-6">
                       <div>
-                        <label className="mb-2 block text-sm text-[#706F6C]">
+                        <label className="mb-2 block text-sm text-black/65">
                           Adresse <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -525,14 +524,14 @@ export default function CheckoutStripe() {
                           required
                           value={formData.shipping_address}
                           onChange={handleChange}
-                          className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                          className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                           placeholder="123 Rue Example"
                         />
                       </div>
 
                       <div className="grid gap-5 sm:grid-cols-2">
                         <div>
-                          <label className="mb-2 block text-sm text-[#706F6C]">
+                          <label className="mb-2 block text-sm text-black/65">
                             Code postal <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -541,13 +540,13 @@ export default function CheckoutStripe() {
                             required
                             value={formData.shipping_postal_code}
                             onChange={handleChange}
-                            className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                            className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                             placeholder="59000"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm text-[#706F6C]">
+                          <label className="mb-2 block text-sm text-black/65">
                             Ville <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -556,14 +555,14 @@ export default function CheckoutStripe() {
                             required
                             value={formData.shipping_city}
                             onChange={handleChange}
-                            className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                            className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                             placeholder="Lille"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-[#706F6C]">
+                        <label className="mb-2 block text-sm text-black/65">
                           Pays <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -572,7 +571,7 @@ export default function CheckoutStripe() {
                           required
                           value={formData.shipping_country}
                           onChange={handleChange}
-                          className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                          className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                           placeholder="France"
                         />
                       </div>
@@ -580,10 +579,10 @@ export default function CheckoutStripe() {
                   </div>
 
                   {/* Billing Address */}
-                  <div className="border border-[#E8E6E3] bg-white">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
-                      <CreditCard className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                  <div className="border border-black/10 bg-white">
+                    <div className="flex items-center gap-3 border-b border-black/10 p-6">
+                      <CreditCard className="h-5 w-5 text-am-navy" />
+                      <h2 className="eyebrow-lg text-black">
                         Adresse de facturation
                       </h2>
                     </div>
@@ -598,16 +597,16 @@ export default function CheckoutStripe() {
                             onChange={handleChange}
                             className="peer sr-only"
                           />
-                          <div className="h-5 w-5 border border-[#E8E6E3] bg-white transition-colors peer-checked:border-[#1A1917] peer-checked:bg-[#1A1917]" />
+                          <div className="h-5 w-5 border border-black/10 bg-white transition-colors peer-checked:border-am-navy peer-checked:bg-am-navy" />
                           <Check className="absolute h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
                         </div>
-                        <span className="text-sm text-[#1A1917]">Identique à l'adresse de livraison</span>
+                        <span className="text-sm text-black">Identique à l&apos;adresse de livraison</span>
                       </label>
 
                       {!formData.billing_same && (
                         <div className="mt-6 space-y-5">
                           <div>
-                            <label className="mb-2 block text-sm text-[#706F6C]">
+                            <label className="mb-2 block text-sm text-black/65">
                               Adresse <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -616,13 +615,13 @@ export default function CheckoutStripe() {
                               required
                               value={formData.billing_address}
                               onChange={handleChange}
-                              className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                              className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                             />
                           </div>
 
                           <div className="grid gap-5 sm:grid-cols-2">
                             <div>
-                              <label className="mb-2 block text-sm text-[#706F6C]">
+                              <label className="mb-2 block text-sm text-black/65">
                                 Code postal <span className="text-red-500">*</span>
                               </label>
                               <input
@@ -631,12 +630,12 @@ export default function CheckoutStripe() {
                                 required
                                 value={formData.billing_postal_code}
                                 onChange={handleChange}
-                                className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                                className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                               />
                             </div>
 
                             <div>
-                              <label className="mb-2 block text-sm text-[#706F6C]">
+                              <label className="mb-2 block text-sm text-black/65">
                                 Ville <span className="text-red-500">*</span>
                               </label>
                               <input
@@ -645,7 +644,7 @@ export default function CheckoutStripe() {
                                 required
                                 value={formData.billing_city}
                                 onChange={handleChange}
-                                className="h-12 w-full border border-[#E8E6E3] bg-white px-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                                className="h-12 w-full border border-black/10 bg-white px-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                               />
                             </div>
                           </div>
@@ -655,13 +654,13 @@ export default function CheckoutStripe() {
                   </div>
 
                   {/* Notes */}
-                  <div className="border border-[#E8E6E3] bg-white">
-                    <div className="flex items-center gap-3 border-b border-[#E8E6E3] p-6">
-                      <Package className="h-5 w-5 text-[#8B7355]" />
-                      <h2 className="text-sm font-medium uppercase tracking-[0.1em] text-[#1A1917]">
+                  <div className="border border-black/10 bg-white">
+                    <div className="flex items-center gap-3 border-b border-black/10 p-6">
+                      <Package className="h-5 w-5 text-am-navy" />
+                      <h2 className="eyebrow-lg text-black">
                         Notes de livraison
                       </h2>
-                      <span className="text-xs text-[#706F6C]">(optionnel)</span>
+                      <span className="text-xs text-black/65">(optionnel)</span>
                     </div>
 
                     <div className="p-6">
@@ -670,7 +669,7 @@ export default function CheckoutStripe() {
                         value={formData.notes}
                         onChange={handleChange}
                         rows={4}
-                        className="w-full resize-none border border-[#E8E6E3] bg-white p-4 text-[#1A1917] placeholder-[#A8A6A3] transition-colors focus:border-[#1A1917] focus:outline-none"
+                        className="w-full resize-none border border-black/10 bg-white p-4 text-black placeholder-black/40 transition-colors focus:border-am-navy focus:outline-none"
                         placeholder="Instructions spéciales pour la livraison..."
                       />
                     </div>
@@ -679,7 +678,7 @@ export default function CheckoutStripe() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex h-14 w-full items-center justify-center bg-[#1A1917] text-sm font-medium tracking-wide text-white transition-colors hover:bg-[#2D2B28] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-14 w-full items-center justify-center bg-am-navy text-sm font-medium tracking-wide text-white transition-colors hover:bg-am-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isSubmitting
                       ? 'Création de la commande...'
@@ -693,7 +692,7 @@ export default function CheckoutStripe() {
                 <div className="space-y-8">
                   {/* Stripe Checkout */}
                   {orderId && (
-                    <div className="border border-[#E8E6E3] bg-white p-6">
+                    <div className="border border-black/10 bg-white p-6">
                       {paymentType !== 'full' && (
                         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                           <p className="text-amber-800 font-medium">
@@ -702,14 +701,13 @@ export default function CheckoutStripe() {
                               : `Paiement du solde restant`}
                           </p>
                           <p className="text-sm text-amber-700 mt-1">
-                            Montant à régler : {cart?.total?.toLocaleString('fr-FR')} €
+                            Montant à régler : {formatPrice(cart?.total)}
                           </p>
                         </div>
                       )}
                       <StripeCheckoutWrapper
                         orderId={orderId}
                         amount={grandTotal}
-                        onSuccess={() => console.log('Payment success!')}
                         onError={(error) => setError(error)}
                       />
                     </div>
@@ -717,7 +715,7 @@ export default function CheckoutStripe() {
 
                   <button
                     onClick={() => setStep('shipping')}
-                    className="inline-flex items-center gap-2 text-sm text-[#706F6C] transition-colors hover:text-[#1A1917]"
+                    className="inline-flex items-center gap-2 text-sm text-black/65 transition-colors hover:text-black"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Retour aux informations de livraison
@@ -728,10 +726,10 @@ export default function CheckoutStripe() {
 
             {/* Order Summary */}
             <div className="mt-10 lg:col-span-5 lg:mt-0 xl:col-span-4">
-              <div className="sticky top-6 border border-[#E8E6E3] bg-white">
+              <div className="sticky top-6 border border-black/10 bg-white">
                 {/* Header */}
-                <div className="border-b border-[#E8E6E3] p-6">
-                  <h2 className="font-serif text-xl text-[#1A1917]">
+                <div className="border-b border-black/10 p-6">
+                  <h2 className="text-xl text-black">
                     Récapitulatif
                   </h2>
                 </div>
@@ -739,23 +737,23 @@ export default function CheckoutStripe() {
                 {/* Items */}
                 <div className="p-6">
                   {/* Configurations */}
-                  {cart.items && cart.items.length > 0 && (
+                  {cart && cart.items && cart.items.length > 0 && (
                     <div className="space-y-4">
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                      <p className="eyebrow-lg text-black/65">
                         Meubles sur mesure
                       </p>
-                      {cart.items.map((item, index) => (
+                      {cart && cart.items.map((item, index) => (
                         <div key={index} className="flex items-start justify-between gap-4">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-[#1A1917]">
+                            <p className="text-sm font-medium text-black">
                               {item.configuration.name || `Configuration #${item.configuration.id}`}
                             </p>
-                            <p className="mt-1 text-xs text-[#706F6C]">
+                            <p className="mt-1 text-xs text-black/65">
                               Quantité : {item.quantity}
                             </p>
                           </div>
-                          <p className="flex-shrink-0 font-mono text-sm text-[#1A1917]">
-                            {(item.configuration.price * item.quantity).toLocaleString('fr-FR')} €
+                          <p className="flex-shrink-0 font-mono text-sm text-black">
+                            {formatPrice(item.configuration.price * item.quantity)}
                           </p>
                         </div>
                       ))}
@@ -764,32 +762,32 @@ export default function CheckoutStripe() {
 
                   {/* Samples */}
                   {samplesCart && samplesCart.items && samplesCart.items.length > 0 && (
-                    <div className={`space-y-4 ${cart.items && cart.items.length > 0 ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                    <div className={`space-y-4 ${cart && cart.items && cart.items.length > 0 ? 'mt-6 border-t border-black/10 pt-6' : ''}`}>
+                      <p className="eyebrow-lg text-black/65">
                         Échantillons ({samplesCart.count})
                       </p>
                       {samplesCart.items.map((sample) => (
                         <div key={sample.id} className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3">
                             <div
-                              className="h-8 w-8 flex-shrink-0 border border-[#E8E6E3]"
+                              className="h-8 w-8 flex-shrink-0 border border-black/10"
                               style={{ backgroundColor: sample.image_url ? undefined : (sample.hex || '#EEE') }}
                             >
                               {sample.image_url && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={sample.image_url}
-                                  alt={sample.color_name}
+                                  alt={displayColorName(sample.color_name)}
                                   className="h-full w-full object-cover"
                                 />
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-sm text-[#1A1917]">{sample.color_name}</p>
-                              <p className="text-xs text-[#706F6C]">{sample.material}</p>
+                              <p className="truncate text-sm text-black">{displayColorName(sample.color_name)}</p>
+                              <p className="text-xs text-black/65">{displayMaterialName(sample.material)}</p>
                             </div>
                           </div>
-                          <span className={`flex-shrink-0 text-xs font-medium ${sample.unit_price > 0 ? 'text-[#1A1917]' : 'text-[#8B7355]'}`}>
+                          <span className={`flex-shrink-0 text-xs font-medium ${sample.unit_price > 0 ? 'text-black' : 'text-am-navy'}`}>
                             {sample.unit_price > 0 ? `${sample.unit_price} €` : 'Offert'}
                           </span>
                         </div>
@@ -799,14 +797,14 @@ export default function CheckoutStripe() {
 
                   {/* Catalogue Items */}
                   {catalogueCart && catalogueCart.items && catalogueCart.items.length > 0 && (
-                    <div className={`space-y-4 ${ (cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                    <div className={`space-y-4 ${ (cart && cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) ? 'mt-6 border-t border-black/10 pt-6' : ''}`}>
+                      <p className="eyebrow-lg text-black/65">
                         Catalogue ({catalogueCart.items.length})
                       </p>
                       {catalogueCart.items.map((item) => (
                         <div key={item.id} className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-8 w-8 flex-shrink-0 border border-[#E8E6E3] bg-[#F5F5F4]">
+                            <div className="h-8 w-8 flex-shrink-0 border border-black/10 bg-am-mist/15">
                               {(item.variation_image || item.item_image) ? (
                                 <img
                                   src={item.variation_image || (item.item_image as string)}
@@ -815,19 +813,19 @@ export default function CheckoutStripe() {
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center">
-                                  <Package className="h-4 w-4 text-[#C4C2BF]" />
+                                  <Package className="h-4 w-4 text-black/30" />
                                 </div>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-sm text-[#1A1917]">{item.name}</p>
-                              <p className="text-xs text-[#706F6C]">
+                              <p className="truncate text-sm text-black">{item.name}</p>
+                              <p className="text-xs text-black/65">
                                 Qté: {item.quantity} {item.variation_name ? `| ${item.variation_name}` : ''}
                               </p>
                             </div>
                           </div>
-                          <p className="flex-shrink-0 font-mono text-xs text-[#1A1917]">
-                            {(item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                          <p className="flex-shrink-0 font-mono text-xs text-black">
+                            {formatPrice(item.unit_price * item.quantity)}
                           </p>
                         </div>
                       ))}
@@ -836,22 +834,22 @@ export default function CheckoutStripe() {
 
                   {/* Façades */}
                   {facadeCart && facadeCart.items && facadeCart.items.length > 0 && (
-                    <div className={`space-y-4 ${ (cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) || (catalogueCart && catalogueCart.items && catalogueCart.items.length > 0) ? 'mt-6 border-t border-[#E8E6E3] pt-6' : ''}`}>
-                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#706F6C]">
+                    <div className={`space-y-4 ${ (cart && cart.items && cart.items.length > 0) || (samplesCart && samplesCart.items && samplesCart.items.length > 0) || (catalogueCart && catalogueCart.items && catalogueCart.items.length > 0) ? 'mt-6 border-t border-black/10 pt-6' : ''}`}>
+                      <p className="eyebrow-lg text-black/65">
                         Façades sur mesure ({facadeCart.count})
                       </p>
                       {facadeCart.items.map((item) => {
                         const materialObj = typeof item.config.material === 'object' ? item.config.material : null;
-                        const materialName = materialObj?.name || item.config.materialName || (typeof item.config.material === 'string' ? item.config.material : 'Matériau');
+                        const materialName = displayColorName(materialObj?.name || item.config.materialName || (typeof item.config.material === 'string' ? item.config.material : '')) || 'Matériau';
                         return (
                           <button
                             key={item.id}
                             type="button"
                             onClick={() => setSelectedFacade(item)}
-                            className="flex w-full items-start gap-3 rounded-lg p-2 -mx-2 text-left transition-colors hover:bg-[#F5F5F4] cursor-pointer"
+                            className="flex w-full items-start gap-3 rounded-lg p-2 -mx-2 text-left transition-colors hover:bg-am-mist/30 cursor-pointer"
                           >
                             {/* Aperçu 3D */}
-                            <div className="h-14 w-14 flex-shrink-0 border border-[#E8E6E3] overflow-hidden bg-[#F5F5F4]">
+                            <div className="h-14 w-14 flex-shrink-0 border border-black/10 overflow-hidden bg-am-mist/15">
                               <FacadeCartPreview
                                 width={item.config.width}
                                 height={item.config.height}
@@ -862,15 +860,15 @@ export default function CheckoutStripe() {
                               />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-[#1A1917]">
+                              <p className="text-sm text-black">
                                 Façade {item.config.width / 10} × {item.config.height / 10} cm
                               </p>
-                              <p className="text-xs text-[#706F6C]">
+                              <p className="text-xs text-black/65">
                                 {materialName} | Qté: {item.quantity}
                               </p>
                             </div>
-                            <p className="flex-shrink-0 font-mono text-xs text-[#1A1917]">
-                              {(item.unit_price * item.quantity).toLocaleString('fr-FR')} €
+                            <p className="flex-shrink-0 font-mono text-xs text-black">
+                              {formatPrice(item.unit_price * item.quantity)}
                             </p>
                           </button>
                         );
@@ -879,56 +877,56 @@ export default function CheckoutStripe() {
                   )}
 
                   {/* Total */}
-                  <div className="mt-6 border-t border-[#E8E6E3] pt-6">
+                  <div className="mt-6 border-t border-black/10 pt-6">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-[#706F6C]">Sous-total</span>
-                      <span className="font-mono text-[#1A1917]">{(cart?.total || 0).toLocaleString('fr-FR')} €</span>
+                      <span className="text-black/65">Sous-total</span>
+                      <span className="font-mono text-black">{formatPrice(cart?.total || 0)}</span>
                     </div>
                     {catalogueTotal > 0 && (
                       <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="text-[#706F6C]">Articles catalogue</span>
-                        <span className="font-mono text-[#1A1917]">{catalogueTotal.toLocaleString('fr-FR')} €</span>
+                        <span className="text-black/65">Articles catalogue</span>
+                        <span className="font-mono text-black">{formatPrice(catalogueTotal)}</span>
                       </div>
                     )}
                     {samplesTotal > 0 && (
                       <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="text-[#706F6C]">Échantillons</span>
-                        <span className="font-mono text-[#1A1917]">{samplesTotal.toLocaleString('fr-FR')} €</span>
+                        <span className="text-black/65">Échantillons</span>
+                        <span className="font-mono text-black">{formatPrice(samplesTotal)}</span>
                       </div>
                     )}
                     {facadeTotal > 0 && (
                       <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="text-[#706F6C]">Façades</span>
-                        <span className="font-mono text-[#1A1917]">{facadeTotal.toLocaleString('fr-FR')} €</span>
+                        <span className="text-black/65">Façades</span>
+                        <span className="font-mono text-black">{formatPrice(facadeTotal)}</span>
                       </div>
                     )}
                     <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="text-[#706F6C]">Livraison</span>
-                      <span className="text-sm font-medium text-[#8B7355]">Offerte</span>
+                      <span className="text-black/65">Livraison</span>
+                      <span className="text-sm font-medium text-am-navy">Offerte</span>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-[#E8E6E3] pt-4">
-                      <span className="text-[#1A1917]">Total</span>
-                      <span className="font-mono text-2xl text-[#1A1917]">{grandTotal.toLocaleString('fr-FR')} €</span>
+                    <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-4">
+                      <span className="text-black">Total</span>
+                      <span className="font-mono text-2xl text-black">{formatPrice(grandTotal)}</span>
                     </div>
-                    <p className="mt-1 text-right text-xs text-[#706F6C]">TVA incluse</p>
+                    <p className="mt-1 text-right text-xs text-black/65">TVA incluse</p>
                   </div>
                 </div>
 
                 {/* Trust Indicators */}
-                <div className="border-t border-[#E8E6E3] p-6">
+                <div className="border-t border-black/10 p-6">
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
-                      <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                      <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                       <div>
-                        <p className="text-sm font-medium text-[#1A1917]">Paiement sécurisé</p>
-                        <p className="text-xs text-[#706F6C]">Vos données sont protégées</p>
+                        <p className="text-sm font-medium text-black">Paiement sécurisé</p>
+                        <p className="text-xs text-black/65">Vos données sont protégées</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#8B7355]" />
+                      <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                       <div>
-                        <p className="text-sm font-medium text-[#1A1917]">Livraison gratuite</p>
-                        <p className="text-xs text-[#706F6C]">Partout en France</p>
+                        <p className="text-sm font-medium text-black">Livraison gratuite</p>
+                        <p className="text-xs text-black/65">Partout en France</p>
                       </div>
                     </div>
                   </div>
@@ -938,7 +936,7 @@ export default function CheckoutStripe() {
               {/* Back to cart */}
               <Link
                 href="/cart"
-                className="mt-4 block text-center text-sm text-[#706F6C] underline underline-offset-4 transition-colors hover:text-[#1A1917]"
+                className="mt-4 block text-center text-sm text-black/65 underline underline-offset-4 transition-colors hover:text-black"
               >
                 Retour au panier
               </Link>
@@ -960,12 +958,12 @@ export default function CheckoutStripe() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#E8E6E3] p-6">
-              <h3 className="font-serif text-xl text-[#1A1917]">Détails de la façade</h3>
+            <div className="flex items-center justify-between border-b border-black/10 p-6">
+              <h3 className="text-xl text-black">Détails de la façade</h3>
               <button
                 type="button"
                 onClick={() => setSelectedFacade(null)}
-                className="flex h-10 w-10 items-center justify-center text-[#706F6C] transition-colors hover:bg-[#F5F5F4] hover:text-[#1A1917]"
+                className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -975,7 +973,7 @@ export default function CheckoutStripe() {
             <div className="p-6">
               {(() => {
                 const materialObj = typeof selectedFacade.config.material === 'object' ? selectedFacade.config.material : null;
-                const materialName = materialObj?.name || selectedFacade.config.materialName || (typeof selectedFacade.config.material === 'string' ? selectedFacade.config.material : 'Matériau');
+                const materialName = displayColorName(materialObj?.name || selectedFacade.config.materialName || (typeof selectedFacade.config.material === 'string' ? selectedFacade.config.material : '')) || 'Matériau';
                 const hinges = selectedFacade.config.hinges;
                 const hingeCount = hinges?.count || selectedFacade.config.hingeCount || 0;
                 const hingeType = hinges?.type || selectedFacade.config.hingeType || '';
@@ -985,7 +983,7 @@ export default function CheckoutStripe() {
                 return (
                   <div className="space-y-6">
                     {/* 3D Preview */}
-                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-[#E8E6E3] overflow-hidden bg-[#F5F5F4]">
+                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-black/10 overflow-hidden bg-am-mist/15">
                       <FacadeCartPreview
                         width={selectedFacade.config.width}
                         height={selectedFacade.config.height}
@@ -999,32 +997,32 @@ export default function CheckoutStripe() {
                     {/* Info Grid */}
                     <div className="grid gap-4">
                       {/* Dimensions */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Dimensions</span>
-                        <span className="text-sm font-medium text-[#1A1917]">
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Dimensions</span>
+                        <span className="text-sm font-medium text-black">
                           {selectedFacade.config.width / 10} × {selectedFacade.config.height / 10} cm · {selectedFacade.config.depth || 19} mm
                         </span>
                       </div>
 
                       {/* Matériau */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Matériau</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Matériau</span>
                         <div className="flex items-center gap-2">
                           {materialObj?.texture_url ? (
-                            <div className="h-5 w-5 border border-[#E8E6E3] overflow-hidden">
+                            <div className="h-5 w-5 border border-black/10 overflow-hidden">
                               <img src={materialObj.texture_url} alt="" className="h-full w-full object-cover" />
                             </div>
                           ) : materialObj?.color_hex ? (
-                            <div className="h-5 w-5 border border-[#E8E6E3]" style={{ backgroundColor: materialObj.color_hex }} />
+                            <div className="h-5 w-5 border border-black/10" style={{ backgroundColor: materialObj.color_hex }} />
                           ) : null}
-                          <span className="text-sm font-medium text-[#1A1917]">{materialName}</span>
+                          <span className="text-sm font-medium text-black">{materialName}</span>
                         </div>
                       </div>
 
                       {/* Type de charnière */}
-                      <div className="py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C] block mb-3">Charnières</span>
-                        <div className="flex items-center gap-3 p-3 bg-[#FAFAF9] rounded-lg">
+                      <div className="py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65 block mb-3">Charnières</span>
+                        <div className="flex items-center gap-3 p-3 bg-am-mist/15 rounded-lg">
                           {/* Icône du type de charnière */}
                           <div className="flex-shrink-0">
                             {hingeType === 'no-hole-no-hinge' && (
@@ -1086,7 +1084,7 @@ export default function CheckoutStripe() {
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-[#1A1917]">
+                            <p className="text-sm font-medium text-black">
                               {hingeType === 'no-hole-no-hinge' && 'Sans trou, sans charnière'}
                               {hingeType === 'hole-with-applied-hinge' && 'Trou + charnière fournie porte en applique'}
                               {hingeType === 'hole-with-twin-hinge' && 'Trou + charnière fournie porte jumelée'}
@@ -1094,11 +1092,11 @@ export default function CheckoutStripe() {
                               {!hingeType && 'Sans trou, sans charnière'}
                             </p>
                             {hingeType && hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
-                              <p className="text-xs text-[#706F6C] mt-1">
+                              <p className="text-xs text-black/65 mt-1">
                                 {hingeCount} charnières · Ouverture {hingeSide === 'left' ? 'gauche' : hingeSide === 'right' ? 'droite' : hingeSide}
                               </p>
                             )}
-                            <p className="text-xs text-[#8B7355] mt-1">
+                            <p className="text-xs text-am-navy mt-1">
                               Prix unit. {!hingeType || hingeType === 'no-hole-no-hinge' ? '0.00' : '34.20'} € TTC
                             </p>
                           </div>
@@ -1107,19 +1105,19 @@ export default function CheckoutStripe() {
 
                       {/* Perçages */}
                       {drillings.length > 0 && (
-                        <div className="py-3 border-b border-[#E8E6E3]">
+                        <div className="py-3 border-b border-black/10">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-[#706F6C]">Perçages</span>
-                            <span className="text-sm font-medium text-[#1A1917]">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
+                            <span className="text-sm text-black/65">Perçages</span>
+                            <span className="text-sm font-medium text-black">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
                           </div>
                           <div className="space-y-1 pl-4">
                             {drillings.map((drill, idx) => (
                               <div key={drill.id} className="flex justify-between text-xs">
-                                <span className="text-[#706F6C]">
+                                <span className="text-black/65">
                                   {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
                                 </span>
                                 {drill.price > 0 && (
-                                  <span className="text-[#1A1917]">+{Number(drill.price).toFixed(2)} €</span>
+                                  <span className="text-black">+{formatPrice(drill.price)}</span>
                                 )}
                               </div>
                             ))}
@@ -1128,22 +1126,22 @@ export default function CheckoutStripe() {
                       )}
 
                       {/* Quantité */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Quantité</span>
-                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacade.quantity}</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Quantité</span>
+                        <span className="text-sm font-medium text-black">{selectedFacade.quantity}</span>
                       </div>
 
                       {/* Prix unitaire */}
-                      <div className="flex justify-between items-center py-3 border-b border-[#E8E6E3]">
-                        <span className="text-sm text-[#706F6C]">Prix unitaire</span>
-                        <span className="text-sm font-medium text-[#1A1917]">{selectedFacade.unit_price.toLocaleString('fr-FR')} €</span>
+                      <div className="flex justify-between items-center py-3 border-b border-black/10">
+                        <span className="text-sm text-black/65">Prix unitaire</span>
+                        <span className="text-sm font-medium text-black">{formatPrice(selectedFacade.unit_price)}</span>
                       </div>
 
                       {/* Total */}
-                      <div className="flex justify-between items-center py-3 bg-[#F5F5F4] px-4 -mx-4">
-                        <span className="text-sm font-medium text-[#1A1917]">Total</span>
-                        <span className="text-lg font-medium text-[#1A1917]">
-                          {(selectedFacade.unit_price * selectedFacade.quantity).toLocaleString('fr-FR')} €
+                      <div className="flex justify-between items-center py-3 bg-am-mist/15 px-4 -mx-4">
+                        <span className="text-sm font-medium text-black">Total</span>
+                        <span className="text-lg font-medium text-black">
+                          {formatPrice(selectedFacade.unit_price * selectedFacade.quantity)}
                         </span>
                       </div>
                     </div>
@@ -1153,11 +1151,11 @@ export default function CheckoutStripe() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-[#E8E6E3] p-6">
+            <div className="border-t border-black/10 p-6">
               <button
                 type="button"
                 onClick={() => setSelectedFacade(null)}
-                className="w-full h-12 bg-[#1A1917] text-white text-sm font-medium transition-colors hover:bg-[#2D2B28]"
+                className="w-full h-12 bg-am-navy text-white text-sm font-medium transition-colors hover:bg-am-navy/90"
               >
                 Fermer
               </button>

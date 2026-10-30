@@ -86,9 +86,9 @@ export default function StripeCheckoutWrapper({
     appearance: {
       theme: 'stripe',
       variables: {
-        colorPrimary: '#d97706', // amber-600
+        colorPrimary: '#3B3E58', // navy de la palette
         colorBackground: '#ffffff',
-        colorText: '#111827',
+        colorText: '#000000',
         colorDanger: '#dc2626',
         fontFamily: 'system-ui, sans-serif',
         borderRadius: '8px',
@@ -99,10 +99,10 @@ export default function StripeCheckoutWrapper({
 
   if (loading) {
     return (
-      <div className="bg-white p-8 rounded-lg border border-gray-200">
+      <div className="bg-white p-8 rounded-lg border border-black/10">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
-          <p className="text-gray-600">Initialisation du paiement sécurisé...</p>
+          <p className="text-black/70">Initialisation du paiement sécurisé...</p>
         </div>
       </div>
     );
@@ -113,9 +113,9 @@ export default function StripeCheckoutWrapper({
       <div className="bg-white p-8 rounded-lg border border-red-200">
         <div className="text-center">
           <div className="text-red-600 text-lg font-semibold mb-2">
-            Erreur d'initialisation
+            Erreur d&apos;initialisation
           </div>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-black/70 mb-4">{error}</p>
           <button
             onClick={createPaymentIntent}
             className="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 transition-colors"

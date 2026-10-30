@@ -3,6 +3,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { HOME_SECTION_NO_TOP } from '@/components/home/homeLayout';
 import FacadeControls from '@/components/facades/FacadeControls';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial } from '@/types/facade';
 import type { FacadeViewerHandle } from '@/components/facades/FacadeViewer';
@@ -11,10 +12,10 @@ import type { FacadeViewerHandle } from '@/components/facades/FacadeViewer';
 const FacadeViewer = dynamic(() => import('@/components/facades/FacadeViewer'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]">
+    <div className="flex h-full w-full items-center justify-center bg-am-mist/25">
       <div className="flex flex-col items-center gap-3">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
-        <p className="text-sm font-medium text-[#706F6C]">Chargement du visualiseur 3D...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-black border-t-transparent" />
+        <p className="text-sm font-medium text-black/70">Chargement du visualiseur 3D...</p>
       </div>
     </div>
   ),
@@ -95,7 +96,7 @@ export default function FacadesPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1A1917] border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-black border-t-transparent" />
       </div>
     );
   }
@@ -110,43 +111,38 @@ export default function FacadesPage() {
         />
       </Head>
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col bg-am-paper">
         <Header />
 
-        {/* Header Section */}
-        <div className="border-b border-[#E8E6E3] bg-white mt-6">
-          <div className="container mx-auto px-4 py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-[#1A1917]">
-                Configurateur de Façades
-              </h1>
-              <p className="mt-2 text-[#706F6C]">
-                Créez vos façades sur mesure avec dimensions, couleurs et perçages personnalisés
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Sur grand écran, l'outil occupe exactement la hauteur sous l'en-tête : le prix et les boutons restent visibles, seul le panneau de réglages défile */}
+        <div className="flex flex-col lg:h-[calc(100dvh-68px)]">
+          <section aria-labelledby="facades-title" className={`${HOME_SECTION_NO_TOP} flex-none py-5 sm:py-6`}>
+            <h1 id="facades-title" className="m-0 text-heading text-black">
+              Configurateur de façades
+            </h1>
+            <p className="m-0 mt-1 text-[15px] text-black/70">
+              Créez vos façades sur mesure avec dimensions, couleurs et perçages personnalisés
+            </p>
+          </section>
 
-        {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Viewer Section - Left */}
-          <div className="flex-1 bg-[#FAFAF9]">
-            <div className="h-full p-6">
-              <div className="h-full rounded-lg border border-[#E8E6E3] bg-white shadow-sm overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col border-t border-black/15 lg:flex-row">
+            {/* Viewer */}
+            <div className="h-[55vh] min-h-[320px] bg-am-mist/25 p-3 sm:p-6 lg:h-auto lg:min-h-0 lg:flex-1">
+              <div className="h-full overflow-hidden rounded-lg border border-black/15 bg-white shadow-sm">
                 <FacadeViewer ref={viewerRef} config={config} showGrid={false} />
               </div>
             </div>
-          </div>
 
-          {/* Controls Section - Right */}
-          <div className="w-[400px] flex-shrink-0">
-            <FacadeControls
-              config={config}
-              materials={materials}
-              onUpdateConfig={handleUpdateConfig}
-              onAddDrilling={handleAddDrilling}
-              onRemoveDrilling={handleRemoveDrilling}
-            />
+            {/* Réglages */}
+            <div className="w-full flex-shrink-0 lg:h-full lg:w-[400px]">
+              <FacadeControls
+                config={config}
+                materials={materials}
+                onUpdateConfig={handleUpdateConfig}
+                onAddDrilling={handleAddDrilling}
+                onRemoveDrilling={handleRemoveDrilling}
+              />
+            </div>
           </div>
         </div>
 

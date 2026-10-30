@@ -33,17 +33,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers.Cookie = req.headers.cookie;
     }
 
-    console.log('[CATALOGUE PROXY] Calling backend:', backendUrl);
-
     const response = await fetch(backendUrl, {
       method: req.method,
       headers,
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
     });
 
-    console.log('[CATALOGUE PROXY] Backend response status:', response.status);
     const text = await response.text();
-    console.log('[CATALOGUE PROXY] Backend response:', text.substring(0, 500));
 
     // Vérifier si la réponse est du JSON valide
     let data;

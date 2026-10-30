@@ -44,8 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Erreur parsing JSON. Réponse reçue:', text.substring(0, 500));
       return res.status(500).json({ 
         success: false, 
-        error: 'Erreur serveur backend - Réponse invalide',
-        details: text.substring(0, 200)
+        error: 'Erreur serveur backend - Réponse invalide'
       });
     }
 

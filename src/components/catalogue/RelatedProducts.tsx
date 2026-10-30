@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatPrice } from "@/lib/format";
 
 export type RelatedProduct = {
   id: number;
@@ -16,7 +17,7 @@ export function RelatedProducts({ items }: { items: RelatedProduct[] }) {
     <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
       {items.map((item) => (
         <Link key={item.id} href={`/catalogue/${item.id}`} className="flex flex-col gap-3">
-          <div className="relative overflow-hidden rounded bg-[#ECE9E1]" style={{ aspectRatio: "1/1" }}>
+          <div className="relative overflow-hidden rounded bg-am-mist/25" style={{ aspectRatio: "1/1" }}>
             {item.image_url && (
               <Image
                 src={item.image_url}
@@ -28,12 +29,12 @@ export function RelatedProducts({ items }: { items: RelatedProduct[] }) {
               />
             )}
           </div>
-          <span className="font-[Geist_Mono] text-[11px] uppercase tracking-[0.04em] text-[#5F5B53]">
+          <span className="eyebrow text-black/70">
             {item.category}
           </span>
-          <span className="flex items-baseline justify-between gap-3 text-[17px] font-medium tracking-[-0.02em] text-[#161513]">
+          <span className="flex items-baseline justify-between gap-3 text-[17px] font-medium tracking-[-0.02em] text-black">
             <span>{item.name}</span>
-            <span>{Number(item.unit_price).toFixed(0)} €</span>
+            <span>{formatPrice(item.unit_price)}</span>
           </span>
         </Link>
       ))}

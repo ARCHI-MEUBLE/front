@@ -58,9 +58,6 @@ export default function PaymentLinkModal({
         credentials: 'include',
       });
       const data = await response.json();
-      console.log('--- DIAGNOSTIC PAYMENT LINKS ---');
-      console.log('Status:', response.status);
-      console.log('Data:', data);
 
       if (response.ok && data.success) {
         setExistingLinks(data.links || []);
@@ -93,7 +90,6 @@ export default function PaymentLinkModal({
   const amount = typeof totalAmount === 'number' ? totalAmount : parseFloat(totalAmount) || 0;
 
   const getTargetAmount = () => {
-    console.log('Calculating target amount:', { paymentType, depositAmount, remainingAmount, amount });
     if (paymentType === 'deposit') return depositAmount;
     if (paymentType === 'balance') return remainingAmount;
     return amount;
@@ -102,14 +98,6 @@ export default function PaymentLinkModal({
   const handleGenerate = async () => {
     setIsGenerating(true);
     const targetAmount = getTargetAmount();
-    console.log('[DEBUG] Generating payment link with:', {
-      orderId,
-      expiryDays,
-      paymentType,
-      targetAmount,
-      orderNumber,
-      totalAmount
-    });
 
     try {
       const response = await fetch('/backend/api/admin/generate-payment-link.php', {
@@ -220,7 +208,7 @@ export default function PaymentLinkModal({
                     Paiement
                   </span>
                 </div>
-                <h2 className="font-serif text-2xl text-[#1A1917]">
+                <h2 className="text-2xl text-[#1A1917]">
                   Liens de paiement
                 </h2>
                 <p className="text-sm text-[#706F6C] mt-1">
@@ -344,7 +332,7 @@ export default function PaymentLinkModal({
                         </div>
                         {depositPaymentStatus !== 'paid' && (
                           <p className="mt-2 text-xs text-[#706F6C] italic">
-                            L'acompte doit être réglé avant de pouvoir générer le lien pour le solde.
+                            L&apos;acompte doit être réglé avant de pouvoir générer le lien pour le solde.
                           </p>
                         )}
                       </div>

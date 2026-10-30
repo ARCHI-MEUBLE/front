@@ -1,71 +1,50 @@
 import type { AppProps } from "next/app";
 import Script from "next/script";
 import Head from "next/head";
-import { useEffect } from "react";
 import { SampleCartProvider } from "@/contexts/SampleCartContext";
 import { CustomerProvider } from "@/context/CustomerContext";
 
-// Fonts
-import "@fontsource/playfair-display/400.css";
-import "@fontsource/playfair-display/500.css";
-import "@fontsource/playfair-display/600.css";
-import "@fontsource/playfair-display/700.css";
-import "@fontsource/dm-sans/400.css";
-import "@fontsource/dm-sans/500.css";
-import "@fontsource/dm-sans/600.css";
-import "@fontsource/dm-sans/700.css";
-import "@fontsource/jetbrains-mono/400.css";
-import "@fontsource/jetbrains-mono/500.css";
+// Polices hébergées par le site (aucune requête vers Google Fonts) : Geist pour les titres, le texte et l'interface, Geist Mono pour les étiquettes.
+// Graisses chargées = graisses utilisées (400 texte, 500 titres, 600 emphase ; mono 400 et 500) : voir styles/globals.css
+import "@fontsource/geist-sans/400.css";
+import "@fontsource/geist-sans/500.css";
+import "@fontsource/geist-sans/600.css";
+import "@fontsource/geist-mono/400.css";
+import "@fontsource/geist-mono/500.css";
 
 import "../../styles/globals.css";
 import "@/styles/configurator.css";
 
+// Page qui affiche des <model-viewer> (aperçus 3D du panier) : voir cart.tsx
+type PageWithModelViewer = AppProps["Component"] & { needsModelViewer?: boolean };
+
 export default function App({ Component, pageProps }: AppProps) {
-  useEffect(() => {
-    // Charger le widget Crisp depuis la configuration backend
-    const loadCrisp = async () => {
-      try {
-        const res = await fetch('/api/config');
-        if (res.ok) {
-          const data = await res.json();
-          const crispId = data.crisp?.websiteId;
-
-          if (crispId) {
-            // Initialiser Crisp
-            (window as any).$crisp = [];
-            (window as any).CRISP_WEBSITE_ID = crispId;
-
-            const script = document.createElement('script');
-            script.src = 'https://client.crisp.chat/l.js';
-            script.async = true;
-            document.head.appendChild(script);
-          }
-        }
-      } catch (err) {
-        console.error('Erreur lors du chargement de Crisp:', err);
-      }
-    };
-
-    loadCrisp();
-  }, []);
+  // Le script de <model-viewer> n'est chargé que pour ces pages : il embarque sa propre copie de Three.js,
+  // qui doublonnait celle des pages 3D (« Multiple instances of Three.js ») quand il était chargé partout.
+  // Garder l'import de next/script dans ce fichier : sans lui, Turbopack (dev) perd next/router sur /checkout
+  const needsModelViewer = (Component as PageWithModelViewer).needsModelViewer;
 
   return (
     <>
       <Head>
-        <link rel="icon" href="/images/logo.jpg" />
-        <link rel="apple-touch-icon" href="/images/logo.jpg" />
+        {/* Monogramme AM sur fond papier : le logo complet, réduit à 16 px, était illisible dans l'onglet */}
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="theme-color" content="#F4F0E8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <CustomerProvider>
         <SampleCartProvider>
-          {/* Load model-viewer globally once for entire app */}
-          <Script
-            type="module"
-            src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"
-            strategy="afterInteractive"
-            onError={(e) => {
-              console.error('Erreur chargement model-viewer:', e);
-            }}
-          />
+          {needsModelViewer && (
+            <Script
+              type="module"
+              src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"
+              strategy="afterInteractive"
+              onError={(e) => {
+                console.error('Erreur chargement model-viewer:', e);
+              }}
+            />
+          )}
           <Component {...pageProps} />
         </SampleCartProvider>
       </CustomerProvider>

@@ -1,0 +1,32 @@
+export const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
+  agglomere: 'Aggloméré',
+  mdf_melamine: 'MDF + revêtement (mélaminé)',
+  plaque_bois: 'Plaqué bois',
+};
+
+export const DEFAULT_COLOR_HEX = '#D8C7A1';
+export const DEFAULT_COLOR_NAME = 'Chêne naturel';
+
+export const HANDLE_TYPE_CODE: Record<string, string> = {
+  'vertical_bar': '1',
+  'horizontal_bar': '2',
+  'knob': '3',
+  'recessed': '4',
+};
+
+export function normalizeMaterialKey(value: string | null | undefined): string {
+  if (!value) return 'agglomere';
+
+  const normalized = value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+  if (normalized === 'agglomere') return 'agglomere';
+  if (normalized === 'mdf + revetement (melamine)' || normalized === 'mdf_melamine') return 'mdf_melamine';
+  if (normalized === 'plaque bois' || normalized === 'plaque_bois') return 'plaque_bois';
+
+  return value;
+}
+
+// Libellé à afficher : la base écrit « Agglomere » ou « MDF + revetement (melamine) », sans accents
+export function materialLabelFromKey(key: string): string {
+  return MATERIAL_LABEL_BY_KEY[normalizeMaterialKey(key)] ?? key;
+}

@@ -15,10 +15,15 @@ export default function PaymentConfirmation() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!router.isReady) return;
     if (payment_intent && typeof payment_intent === 'string') {
       verifyPayment(payment_intent);
+    } else {
+      // Adresse ouverte sans paiement à vérifier (recopiée, retour Stripe incomplet) : la page tournait sans fin
+      setPaymentStatus('failed');
+      setIsVerifying(false);
     }
-  }, [payment_intent]);
+  }, [router.isReady, payment_intent]);
 
   const verifyPayment = async (paymentIntentId: string) => {
     try {
@@ -57,7 +62,7 @@ export default function PaymentConfirmation() {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-am-paper flex items-center justify-center px-4">
         <div className="text-center">
           <svg className="animate-spin h-16 w-16 text-primary mx-auto mb-6" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -71,7 +76,7 @@ export default function PaymentConfirmation() {
 
   if (paymentStatus === 'failed') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-am-paper flex items-center justify-center px-4">
         <Toaster position="top-center" />
         <div className="max-w-md w-full">
           <Card className="border-2 border-destructive">
@@ -95,7 +100,7 @@ export default function PaymentConfirmation() {
               <div className="flex flex-col gap-4">
                 <Link href="/" className="w-full">
                   <Button className="w-full" size="lg">
-                    Retour à l'accueil
+                    Retour à l&apos;accueil
                   </Button>
                 </Link>
                 <a href="mailto:contact@archimeuble.com">
@@ -112,7 +117,7 @@ export default function PaymentConfirmation() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-am-paper flex items-center justify-center px-4 py-12">
       <Toaster position="top-center" />
       <div className="max-w-2xl w-full">
         <Card className="border-2">
@@ -187,7 +192,7 @@ export default function PaymentConfirmation() {
               <CardContent>
                 <ol className="space-y-4">
                   <li className="flex items-start gap-3">
-                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
                       1
                     </div>
                     <div className="flex-1">
@@ -198,7 +203,7 @@ export default function PaymentConfirmation() {
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
                       2
                     </div>
                     <div className="flex-1">
@@ -209,13 +214,13 @@ export default function PaymentConfirmation() {
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div className="bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
                       3
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold">Livraison</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Vous serez notifié dès l'expédition
+                        Vous serez notifié dès l&apos;expédition
                       </p>
                     </div>
                   </li>
@@ -227,14 +232,15 @@ export default function PaymentConfirmation() {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link href="/" className="flex-1">
                 <Button className="w-full h-12" size="lg">
-                  Retour à l'accueil
+                  Retour à l&apos;accueil
                 </Button>
               </Link>
               {payment_intent && (
                 <Button
                   variant="outline"
                   onClick={() => {
-                    window.open(`/backend/api/payment-link/download-invoice.php?payment_intent_id=${payment_intent}`, '_blank');
+                    const params = new URLSearchParams({ payment_intent_id: String(payment_intent), payment_intent_client_secret: String(payment_intent_client_secret ?? '') });
+                    window.open(`/backend/api/payment-link/download-invoice.php?${params}`, '_blank');
                   }}
                   className="flex-1 h-12"
                   size="lg"

@@ -6,14 +6,10 @@ export function ServiceAreaSection() {
     <section aria-labelledby="zone-title" className={HOME_SECTION}>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div>
-          <h2
-            id="zone-title"
-            className="m-0 mb-5 max-w-[12ch] font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
-            style={{ fontSize: "clamp(36px,5vw,72px)" }}
-          >
+          <h2 id="zone-title" className="m-0 mb-5 max-w-[12ch] text-title text-black">
             Lille et la métropole lilloise.
           </h2>
-          <p className="m-0 max-w-[44ch] text-[18px] text-[#3B3832]">
+          <p className="m-0 max-w-[44ch] text-[18px] text-black/85">
             Et dans le cas où vous vous situez dans une ville qui n&apos;est pas listée ici, il est possible que
             nous nous déplacions tout de même.
           </p>
@@ -25,8 +21,8 @@ export function ServiceAreaSection() {
               className="rounded-full px-[18px] py-2.5 tracking-[-0.01em]"
               style={{
                 fontSize: "clamp(16px,1.4vw,19px)",
-                border: `1px solid ${index === 0 ? "#161513" : "#E5E2D9"}`,
-                background: index === 0 ? "#D4FF3A" : "#FFFFFF",
+                border: `1px solid ${index === 0 ? "#000000" : "rgba(0,0,0,0.15)"}`,
+                background: index === 0 ? "var(--am-mist)" : "#FFFFFF",
               }}
             >
               {city}

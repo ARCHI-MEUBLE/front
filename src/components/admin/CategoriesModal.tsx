@@ -248,7 +248,7 @@ export function CategoriesModal({ isOpen, onClose }: CategoriesModalProps) {
             {/* Image */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Image d'accueil
+                Image d&apos;accueil
               </Label>
               <div className="flex items-center gap-3">
                 {imagePreview ? (

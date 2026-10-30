@@ -11,8 +11,8 @@ interface StylePresetsProps {
 export default function StylePresets({ onSelectPreset, selectedPresetId }: StylePresetsProps) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-xl font-bold mb-4">Styles prédéfinis</h3>
-      <p className="text-sm text-gray-600 mb-4">
+      <h3 className="text-xl font-semibold mb-4">Styles prédéfinis</h3>
+      <p className="text-sm text-black/70 mb-4">
         Choisissez un style pour appliquer automatiquement finitions, couleurs et configurations
       </p>
       
@@ -36,21 +36,21 @@ export default function StylePresets({ onSelectPreset, selectedPresetId }: Style
             </div>
             <div className="p-3">
               <h4 className="font-semibold text-sm">{preset.name}</h4>
-              <p className="text-xs text-gray-500 mt-1">{preset.description}</p>
+              <p className="text-xs text-black/60 mt-1">{preset.description}</p>
               
               <div className="mt-2 flex items-center gap-2">
                 <div 
-                  className="w-6 h-6 rounded border border-gray-300"
+                  className="w-6 h-6 rounded border border-black/20"
                   style={{ backgroundColor: preset.config.color }}
                   title={`Couleur: ${preset.config.color}`}
                 />
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-black/70">
                   {preset.config.doors} porte{preset.config.doors > 1 ? 's' : ''}
                 </span>
               </div>
               
               <div className="mt-2 flex flex-wrap gap-1">
-                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                <span className="text-xs bg-am-mist/25 px-2 py-1 rounded">
                   {preset.config.finish}
                 </span>
                 {preset.config.socle && (

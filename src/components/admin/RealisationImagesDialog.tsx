@@ -233,7 +233,7 @@ export function RealisationImagesDialog({ realisationId, isOpen, onClose }: Prop
         <DialogHeader>
           <DialogTitle>Gérer les images de la réalisation</DialogTitle>
           <DialogDescription>
-            Ajoutez plusieurs photos et réorganisez-les. La première image sera l'image principale.
+            Ajoutez plusieurs photos et réorganisez-les. La première image sera l&apos;image principale.
           </DialogDescription>
         </DialogHeader>
 

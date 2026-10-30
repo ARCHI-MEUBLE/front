@@ -60,8 +60,6 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
   // Gestion du montage côté client uniquement (évite les erreurs SSR)
   useEffect(() => {
     setIsMounted(true);
-    // Log pour debugging
-    console.log('🔍 Calendly Widget URL:', calendlyUrl);
 
     // Écouter les événements Calendly
     const handleCalendlyEvent = async (e: MessageEvent) => {
@@ -69,9 +67,6 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
       if (!e.data.event || e.data.event !== 'calendly.event_scheduled') {
         return;
       }
-
-      console.log('✅ Rendez-vous planifié sur Calendly - Payload complet:', e.data);
-      console.log('📋 Payload stringifié:', JSON.stringify(e.data, null, 2));
 
       try {
         const payload = e.data.payload;
@@ -81,18 +76,6 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
           console.error('❌ Payload manquant dans l\'événement Calendly');
           return;
         }
-
-        console.log('📦 Structure du payload:', {
-          hasEvent: !!payload.event,
-          hasInvitee: !!payload.invitee,
-          hasEventType: !!payload.event_type,
-          payloadKeys: Object.keys(payload),
-          inviteeKeys: payload.invitee ? Object.keys(payload.invitee) : [],
-          eventKeys: payload.event ? Object.keys(payload.event) : []
-        });
-
-        console.log('👤 Invitee URI:', payload.invitee?.uri);
-        console.log('📅 Event URI:', payload.event?.uri);
 
         // On envoie simplement les URIs, le backend récupérera les données via l'API Calendly
         const eventData = {
@@ -105,8 +88,6 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
           return;
         }
 
-        console.log('📧 Envoi de la demande de confirmation au backend...', eventData);
-
         // Appeler notre API backend pour envoyer les emails de confirmation
         const response = await fetch('/backend/api/calendly/send-confirmation.php', {
           method: 'POST',
@@ -118,9 +99,7 @@ export function CalendlyWidget({ url, prefill }: CalendlyWidgetProps) {
 
         const result = await response.json();
 
-        if (result.success) {
-          console.log('✅ Emails de confirmation envoyés avec succès', result);
-        } else {
+        if (!result.success) {
           console.error('❌ Erreur lors de l\'envoi des emails', result);
         }
       } catch (error) {

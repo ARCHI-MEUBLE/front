@@ -13,14 +13,14 @@ export default function Confidentialite() {
 
       <Header />
 
-      <main className="min-h-screen bg-[#FAFAF9]">
+      <main className="min-h-screen bg-am-paper">
         {/* Header */}
-        <div className="border-b border-[#E8E6E3] bg-white">
+        <div className="border-b border-black/10 bg-white">
           <div className="mx-auto max-w-4xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+            <h1 className="text-heading text-black">
               Politique de Confidentialité
             </h1>
-            <p className="mt-4 text-[#706F6C]">
+            <p className="mt-4 text-black/65">
               Dernière mise à jour : Décembre 2024
             </p>
           </div>
@@ -31,51 +31,51 @@ export default function Confidentialite() {
           <div className="space-y-12">
             {/* Introduction */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Introduction
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
-                  ArchiMeuble s'engage à protéger la vie privée des utilisateurs de son site internet.
+                  ArchiMeuble s&apos;engage à protéger la vie privée des utilisateurs de son site internet.
                   Cette politique de confidentialité explique comment nous collectons, utilisons et
                   protégeons vos données personnelles.
                 </p>
                 <p>
-                  <strong className="text-[#1A1917]">Responsable du traitement :</strong><br />
+                  <strong className="text-black">Responsable du traitement :</strong><br />
                   ArchiMeuble<br />
                   30 Rue Henri Regnault, 59000 Lille, France<br />
-                  Email : <Link href="mailto:pro.archimeuble@gmail.com" className="hover:text-[#8B7355]">pro.archimeuble@gmail.com</Link>
+                  Email : <Link href="mailto:pro.archimeuble@gmail.com" className="hover:text-am-navy">pro.archimeuble@gmail.com</Link>
                 </p>
               </div>
             </section>
 
             {/* Données collectées */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Données collectées
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>Nous collectons les données suivantes :</p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Données d'identification :</strong> nom, prénom, adresse email, numéro de téléphone</li>
-                  <li><strong className="text-[#1A1917]">Données de livraison :</strong> adresse postale</li>
-                  <li><strong className="text-[#1A1917]">Données de commande :</strong> historique des commandes, configurations de meubles</li>
-                  <li><strong className="text-[#1A1917]">Données de connexion :</strong> adresse IP, données de navigation</li>
-                  <li><strong className="text-[#1A1917]">Données de paiement :</strong> traitées de manière sécurisée par notre prestataire Stripe</li>
+                  <li><strong className="text-black">Données d&apos;identification :</strong> nom, prénom, adresse email, numéro de téléphone</li>
+                  <li><strong className="text-black">Données de livraison :</strong> adresse postale</li>
+                  <li><strong className="text-black">Données de commande :</strong> historique des commandes, configurations de meubles</li>
+                  <li><strong className="text-black">Données de connexion :</strong> adresse IP, données de navigation</li>
+                  <li><strong className="text-black">Données de paiement :</strong> traitées de manière sécurisée par notre prestataire Stripe</li>
                 </ul>
               </div>
             </section>
 
             {/* Finalités */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Finalités du traitement
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>Vos données sont utilisées pour :</p>
                 <ul className="ml-6 list-disc space-y-2">
                   <li>Traiter et suivre vos commandes</li>
-                  <li>Gérer votre compte client</li>
+                  <li>Confirmer votre adresse email par un code à usage unique (aucun compte ni mot de passe)</li>
                   <li>Vous contacter concernant vos projets de meubles sur mesure</li>
                   <li>Améliorer nos services et notre site internet</li>
                   <li>Respecter nos obligations légales et réglementaires</li>
@@ -86,49 +86,49 @@ export default function Confidentialite() {
 
             {/* Base légale */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Base légale du traitement
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>Le traitement de vos données repose sur :</p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">L'exécution d'un contrat :</strong> traitement de vos commandes</li>
-                  <li><strong className="text-[#1A1917]">Votre consentement :</strong> envoi de newsletters et communications commerciales</li>
-                  <li><strong className="text-[#1A1917]">L'intérêt légitime :</strong> amélioration de nos services, prévention de la fraude</li>
-                  <li><strong className="text-[#1A1917]">Les obligations légales :</strong> conservation des factures</li>
+                  <li><strong className="text-black">L&apos;exécution d&apos;un contrat :</strong> traitement de vos commandes</li>
+                  <li><strong className="text-black">Votre consentement :</strong> envoi de newsletters et communications commerciales</li>
+                  <li><strong className="text-black">L&apos;intérêt légitime :</strong> amélioration de nos services, prévention de la fraude</li>
+                  <li><strong className="text-black">Les obligations légales :</strong> conservation des factures</li>
                 </ul>
               </div>
             </section>
 
             {/* Conservation */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Durée de conservation
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>Vos données sont conservées pendant :</p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Données clients :</strong> 3 ans après la dernière commande</li>
-                  <li><strong className="text-[#1A1917]">Données de facturation :</strong> 10 ans (obligation légale)</li>
-                  <li><strong className="text-[#1A1917]">Données de prospection :</strong> 3 ans après le dernier contact</li>
-                  <li><strong className="text-[#1A1917]">Cookies :</strong> 13 mois maximum</li>
+                  <li><strong className="text-black">Données clients :</strong> 3 ans après la dernière commande</li>
+                  <li><strong className="text-black">Données de facturation :</strong> 10 ans (obligation légale)</li>
+                  <li><strong className="text-black">Données de prospection :</strong> 3 ans après le dernier contact</li>
+                  <li><strong className="text-black">Cookies :</strong> 13 mois maximum</li>
                 </ul>
               </div>
             </section>
 
             {/* Partage */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Partage des données
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Vos données peuvent être partagées avec :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
                   <li>Nos prestataires de paiement (Stripe)</li>
                   <li>Nos prestataires de livraison</li>
-                  <li>Nos prestataires d'hébergement (Vercel)</li>
+                  <li>Nos prestataires d&apos;hébergement (Vercel)</li>
                   <li>Les autorités compétentes si requis par la loi</li>
                 </ul>
                 <p>
@@ -139,24 +139,24 @@ export default function Confidentialite() {
 
             {/* Droits */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Vos droits
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Conformément au RGPD, vous disposez des droits suivants :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Droit d'accès :</strong> obtenir une copie de vos données</li>
-                  <li><strong className="text-[#1A1917]">Droit de rectification :</strong> corriger vos données inexactes</li>
-                  <li><strong className="text-[#1A1917]">Droit à l'effacement :</strong> demander la suppression de vos données</li>
-                  <li><strong className="text-[#1A1917]">Droit à la portabilité :</strong> recevoir vos données dans un format structuré</li>
-                  <li><strong className="text-[#1A1917]">Droit d'opposition :</strong> vous opposer au traitement de vos données</li>
-                  <li><strong className="text-[#1A1917]">Droit de limitation :</strong> limiter le traitement de vos données</li>
+                  <li><strong className="text-black">Droit d&apos;accès :</strong> obtenir une copie de vos données</li>
+                  <li><strong className="text-black">Droit de rectification :</strong> corriger vos données inexactes</li>
+                  <li><strong className="text-black">Droit à l&apos;effacement :</strong> demander la suppression de vos données</li>
+                  <li><strong className="text-black">Droit à la portabilité :</strong> recevoir vos données dans un format structuré</li>
+                  <li><strong className="text-black">Droit d&apos;opposition :</strong> vous opposer au traitement de vos données</li>
+                  <li><strong className="text-black">Droit de limitation :</strong> limiter le traitement de vos données</li>
                 </ul>
                 <p>
                   Pour exercer vos droits, contactez-nous à{' '}
-                  <Link href="mailto:pro.archimeuble@gmail.com" className="text-[#1A1917] underline hover:text-[#8B7355]">
+                  <Link href="mailto:pro.archimeuble@gmail.com" className="text-black underline hover:text-am-navy">
                     pro.archimeuble@gmail.com
                   </Link>.
                 </p>
@@ -165,10 +165,10 @@ export default function Confidentialite() {
 
             {/* Sécurité */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Sécurité des données
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour
                   protéger vos données contre tout accès non autorisé, modification, divulgation ou
@@ -176,7 +176,7 @@ export default function Confidentialite() {
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
                   <li>Chiffrement SSL/TLS des communications</li>
-                  <li>Authentification sécurisée des comptes utilisateurs</li>
+                  <li>Confirmation de l&apos;adresse email par un code à usage unique, limité dans le temps et en nombre d&apos;essais</li>
                   <li>Accès limité aux données par notre personnel</li>
                   <li>Sauvegardes régulières et sécurisées</li>
                 </ul>
@@ -185,17 +185,17 @@ export default function Confidentialite() {
 
             {/* Cookies */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Cookies
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Notre site utilise des cookies pour :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-[#1A1917]">Cookies essentiels :</strong> fonctionnement du site, panier d'achat</li>
-                  <li><strong className="text-[#1A1917]">Cookies analytiques :</strong> analyse de l'utilisation du site</li>
-                  <li><strong className="text-[#1A1917]">Cookies de préférence :</strong> mémorisation de vos choix</li>
+                  <li><strong className="text-black">Cookies essentiels :</strong> fonctionnement du site, panier d&apos;achat</li>
+                  <li><strong className="text-black">Cookies analytiques :</strong> analyse de l&apos;utilisation du site</li>
+                  <li><strong className="text-black">Cookies de préférence :</strong> mémorisation de vos choix</li>
                 </ul>
                 <p>
                   Vous pouvez configurer vos préférences de cookies dans les paramètres de votre navigateur.
@@ -205,20 +205,20 @@ export default function Confidentialite() {
 
             {/* Réclamation */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Réclamation
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Si vous estimez que vos droits ne sont pas respectés, vous pouvez adresser une réclamation
-                  à la Commission Nationale de l'Informatique et des Libertés (CNIL) :
+                  à la Commission Nationale de l&apos;Informatique et des Libertés (CNIL) :
                 </p>
                 <p>
                   CNIL<br />
                   3 Place de Fontenoy<br />
                   TSA 80715<br />
                   75334 Paris Cedex 07<br />
-                  <Link href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-[#1A1917] underline hover:text-[#8B7355]">
+                  <Link href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-black underline hover:text-am-navy">
                     www.cnil.fr
                   </Link>
                 </p>
@@ -226,17 +226,17 @@ export default function Confidentialite() {
             </section>
 
             {/* Contact */}
-            <section className="border-t border-[#E8E6E3] pt-12">
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+            <section className="border-t border-black/10 pt-12">
+              <h2 className="text-2xl text-black">
                 Nous contacter
               </h2>
-              <p className="mt-6 text-[#706F6C]">
+              <p className="mt-6 text-black/65">
                 Pour toute question relative à cette politique de confidentialité :
               </p>
               <div className="mt-6">
                 <Link
                   href="/contact-request"
-                  className="inline-flex h-12 items-center justify-center bg-[#1A1917] px-8 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                  className="inline-flex h-12 items-center justify-center bg-am-navy px-8 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                 >
                   Nous contacter
                 </Link>

@@ -66,7 +66,7 @@ export function ConfigsStatsCards({ total, pending, validated, converted }: Conf
             Validation client <IconClock className="size-4" />
           </div>
           <div className="text-muted-foreground">
-            En attente d'approbation
+            En attente d&apos;approbation
           </div>
         </CardFooter>
       </Card>

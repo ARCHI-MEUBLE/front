@@ -1,0 +1,57 @@
+import { HOME_MONO } from "@/components/home/homeLayout";
+import { displayMaterialName } from "@/lib/displayNames";
+
+export function SamplesMaterialList({
+  materials,
+  descriptions,
+  selected,
+  onSelect,
+}: {
+  materials: string[];
+  descriptions: Record<string, string>;
+  selected: string | null;
+  onSelect: (material: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-baseline gap-4">
+        <span className={HOME_MONO}>01</span>
+        {/* Cible des boutons « Composer mon kit » et « Commander un échantillon » : scroll-mt laisse la place à l'en-tête collant (68 px) */}
+        <h2 id="ech-step1" className="m-0 scroll-mt-24 text-heading text-black">
+          Choisissez votre matériau
+        </h2>
+      </div>
+      <div role="radiogroup" aria-label="Matériau" className="flex flex-col border-t border-black/15">
+        {materials.map((material) => {
+          const isActive = material === selected;
+          return (
+            <button
+              key={material}
+              type="button"
+              role="radio"
+              aria-checked={isActive}
+              onClick={() => onSelect(material)}
+              className="grid items-center gap-4 border-b border-black/15 py-[22px] px-1 text-left text-black"
+              style={{ gridTemplateColumns: "28px minmax(0,1fr)" }}
+            >
+              <span
+                aria-hidden="true"
+                className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-[1.5px] border-black"
+              >
+                <span className="h-3 w-3 rounded-full bg-am-navy" style={{ opacity: isActive ? 1 : 0 }} />
+              </span>
+              <span className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
+                <span className="text-card-title">
+                  {displayMaterialName(material)}
+                </span>
+                <span className="text-[15px] text-black/70">
+                  {descriptions[displayMaterialName(material)] || "Découvrez nos finitions disponibles"}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

@@ -17,7 +17,9 @@ export interface UserSession {
 
 const SESSION_COOKIE_NAME = "user_token";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 jours
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "archimeuble_dev_secret";
+// Le secret de secours est public (il est dans le dépôt) : en production, des jetons signés avec lui seraient falsifiables
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ?? (process.env.NODE_ENV === "production" ? undefined : "archimeuble_dev_secret");
 
 const base64url = (value: string | Buffer) =>
   Buffer.from(value)
@@ -46,6 +48,9 @@ function serializeCookie(name: string, value: string, options: CookieOptions = {
 }
 
 function signSessionPayload(payload: string) {
+  if (!SESSION_SECRET) {
+    throw new Error("SESSION_SECRET manquant");
+  }
   return base64url(createHmac("sha256", SESSION_SECRET).update(payload).digest());
 }
 
@@ -56,7 +61,7 @@ export function createSessionToken(session: UserSession) {
 }
 
 export function verifySessionToken(token?: string): UserSession | null {
-  if (!token) return null;
+  if (!token || !SESSION_SECRET) return null;
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
   const expectedSignature = signSessionPayload(payload);

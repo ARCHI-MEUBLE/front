@@ -1,26 +1,93 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { Menu, X, ShoppingBag, User, ChevronRight, Layers } from "lucide-react";
-import { useCustomer } from "@/context/CustomerContext";
+import { useEffect, useId, useState } from "react";
+import { Menu, X, ShoppingBag, ChevronRight, ChevronDown, Layers, Package, DoorClosed, Palette } from "lucide-react";
+import { useCartCount } from "@/hooks/useCartCount";
+import { NavDropdown, isPathActive, type NavDropdownItem } from "@/components/NavDropdown";
 
-const navLinks = [
+interface NavGroup {
+  label: string;
+  items: NavDropdownItem[];
+}
+
+type NavItem = NavDropdownItem | NavGroup;
+
+const isGroup = (item: NavItem): item is NavGroup => "items" in item;
+
+// Boutique est un menu déroulant : le catalogue, les façades et les échantillons y sont regroupés
+const navItems: NavItem[] = [
   { href: "/models", label: "Nos modèles" },
-  { href: "/facades", label: "Façades" },
-  { href: "/catalogue", label: "Boutique" },
-  { href: "/samples", label: "Échantillons" },
+  {
+    label: "Boutique",
+    // Les lignes descriptives reprennent le ton des pages : « produits et accessoires » (boutique), « Configurateur de façades »,
+    // « Touchez la qualité avant de commander » (échantillons)
+    items: [
+      { href: "/catalogue", label: "Tous les produits", description: "Produits et accessoires", icon: Package },
+      { href: "/facades", label: "Façades", description: "Configurez vos façades", icon: DoorClosed },
+      { href: "/samples", label: "Échantillons", description: "Touchez avant de commander", icon: Palette },
+    ],
+  },
   { href: "/realisations", label: "Réalisations" },
-  { href: "/avis", label: "Avis clients" },
   { href: "/contact-request", label: "Contact" },
 ];
 
+// Plus de place dans le tiroir mobile que dans la barre du haut : les avis s'y ajoutent, avant Contact
+const drawerItems: NavItem[] = [...navItems.slice(0, -1), { href: "/avis", label: "Avis clients" }, navItems[navItems.length - 1]];
+
+// Groupe du tiroir mobile : se déplie au toucher, ouvert d'emblée quand la page courante en fait partie
+function DrawerGroup({ group, pathname, onNavigate }: { group: NavGroup; pathname: string; onNavigate: () => void }) {
+  const hasActive = group.items.some((item) => isPathActive(pathname, item.href));
+  const [open, setOpen] = useState(hasActive);
+  const panelId = useId();
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((current) => !current)}
+        className={
+          "flex w-full items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-black " +
+          (hasActive && !open ? "bg-am-mist/30" : "hover:bg-am-mist/30")
+        }
+      >
+        {group.label}
+        <ChevronDown aria-hidden="true" className={`h-4 w-4 text-black/40 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div id={panelId} className="mb-1 ml-4 mt-1 space-y-1 border-l border-black/15 pl-2">
+          {group.items.map((item) => {
+            const isActive = isPathActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={isActive ? "page" : undefined}
+                className={
+                  "flex items-center rounded-lg px-4 py-2.5 text-[15px] font-medium text-black " +
+                  (isActive ? "bg-am-mist/30" : "hover:bg-am-mist/30")
+                }
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Header() {
   const router = useRouter();
-  const { customer } = useCustomer();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const cartCount = useCartCount();
+
 
   useEffect(() => {
     setIsMenuOpen(false);
@@ -37,107 +104,89 @@ export function Header() {
     };
   }, [isMenuOpen]);
 
-  useEffect(() => {
-    const loadCart = async () => {
-      if (!customer) return;
-      try {
-        const res = await fetch("/backend/api/cart/index.php", { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setCartCount(data.items?.length || 0);
-        }
-      } catch (err) {
-        console.error("Erreur panier:", err);
-      }
-    };
-    loadCart();
-  }, [customer]);
-
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center">
-            <img
-              src="/images/logo site .png"
-              alt="ArchiMeuble"
-              className="h-8 w-auto"
-            />
+      <header className="sticky top-0 z-50 border-b border-black/15 bg-am-paper/[0.88] backdrop-blur-md">
+        <nav
+          aria-label="Navigation principale"
+          className="mx-auto flex h-[68px] max-w-[1360px] items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] sm:gap-6"
+        >
+          <Link href="/" className="flex items-center gap-2.5 py-2" aria-label="ArchiMeuble, accueil">
+            <Image src="/images/logo site .png" alt="ArchiMeuble" width={320} height={113} className="h-8 w-auto" priority />
+            <span className="font-mono text-[11px] text-black/70 max-[359px]:hidden">Lille</span>
           </Link>
 
-          <nav className="hidden lg:flex lg:items-center lg:gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={"text-sm font-medium transition-colors hover:text-gray-900 " + (router.pathname === link.href ? "text-gray-900" : "text-gray-500")}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="hidden items-center gap-1 xl:flex">
+            {navItems.map((item) => {
+              if (isGroup(item)) {
+                return <NavDropdown key={item.label} label={item.label} items={item.items} pathname={router.pathname} />;
+              }
+              const isActive = isPathActive(router.pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`rounded-full px-4 py-2.5 text-[14px] font-medium text-black transition-colors hover:bg-am-mist/30 ${
+                    isActive ? "bg-am-mist/30" : ""
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
 
           <div className="flex items-center gap-2">
             <Link
-              href="/models"
-              className="mr-2 hidden rounded-full bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 sm:inline-flex"
-            >
-              Configurer
-            </Link>
-
-            <Link
               href="/cart"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              aria-label={`Panier, ${cartCount} article${cartCount > 1 ? "s" : ""}`}
+              className="relative hidden h-11 w-11 flex-none items-center justify-center rounded-full border border-black/30 bg-white text-black sm:flex"
             >
-              <ShoppingBag className="h-5 w-5" />
+              <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.6} />
               {cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs font-medium text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-am-wine font-mono text-[11px] text-white">
                   {cartCount}
                 </span>
               )}
             </Link>
-
-            <Link
-              href={customer ? "/account" : "/auth/login?redirect=/account"}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            >
-              <User className="h-5 w-5" />
-            </Link>
-
             <button
               type="button"
               onClick={() => setIsMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 lg:hidden"
-              aria-label="Ouvrir le menu"
+              aria-label="Menu"
+              aria-expanded={isMenuOpen}
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-black/30 bg-white text-black xl:hidden"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-[18px] w-[18px]" />
             </button>
           </div>
-        </div>
+        </nav>
       </header>
 
       {isMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm xl:hidden"
           onClick={() => setIsMenuOpen(false)}
         />
       )}
 
       <div
-        className={"fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-white shadow-xl transition-transform duration-300 ease-in-out lg:hidden " + (isMenuOpen ? "translate-x-0" : "translate-x-full")}
+        className={
+          "fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-am-paper shadow-xl transition-transform duration-300 ease-in-out xl:hidden " +
+          (isMenuOpen ? "translate-x-0" : "translate-x-full")
+        }
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-            <img
-              src="/images/logo site .png"
-              alt="ArchiMeuble"
-              className="h-7 w-auto"
-            />
+          <div className="flex items-center justify-between border-b border-black/15 px-4 py-4">
+            <span className="flex items-center gap-2.5">
+              <Image src="/images/logo site .png" alt="ArchiMeuble" width={320} height={113} className="h-7 w-auto" />
+              <span className="font-mono text-[11px] text-black/70">Lille</span>
+            </span>
             <button
               type="button"
               onClick={() => setIsMenuOpen(false)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
               aria-label="Fermer le menu"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-black hover:bg-am-mist/30"
             >
               <X className="h-5 w-5" />
             </button>
@@ -145,49 +194,38 @@ export function Header() {
 
           <nav className="flex-1 overflow-y-auto px-4 py-6">
             <div className="space-y-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={"flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium transition-colors " + (router.pathname === link.href ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900")}
-                >
-                  {link.label}
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </Link>
-              ))}
+              {drawerItems.map((item) =>
+                isGroup(item) ? (
+                  <DrawerGroup key={item.label} group={item} pathname={router.pathname} onNavigate={() => setIsMenuOpen(false)} />
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={
+                      "flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-black " +
+                      (router.pathname === item.href ? "bg-am-mist/30" : "hover:bg-am-mist/30")
+                    }
+                  >
+                    {item.label}
+                    <ChevronRight className="h-4 w-4 text-black/40" />
+                  </Link>
+                )
+              )}
             </div>
 
-            <div className="my-6 border-t border-gray-100" />
+            <div className="my-6 border-t border-black/15" />
 
             <div className="space-y-1">
               <Link
-                href={customer ? "/account" : "/auth/login?redirect=/account"}
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-              >
-                <User className="h-5 w-5" />
-                {customer ? "Mon compte" : "Se connecter"}
-              </Link>
-              {customer && (
-                <Link
-                  href="/account?section=configurations"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                >
-                  <Layers className="h-5 w-5" />
-                  Mes configurations
-                </Link>
-              )}
-              <Link
                 href="/cart"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-black hover:bg-am-mist/30"
               >
                 <ShoppingBag className="h-5 w-5" />
                 Panier
                 {cartCount > 0 && (
-                  <span className="ml-auto rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-white">
+                  <span className="ml-auto rounded-full bg-am-wine px-2 py-0.5 font-mono text-xs text-white">
                     {cartCount}
                   </span>
                 )}
@@ -195,11 +233,11 @@ export function Header() {
             </div>
           </nav>
 
-          <div className="border-t border-gray-100 p-4">
+          <div className="border-t border-black/15 p-4">
             <Link
               href="/models"
               onClick={() => setIsMenuOpen(false)}
-              className="flex w-full items-center justify-center rounded-full bg-gray-900 px-6 py-3 text-base font-medium text-white transition-colors hover:bg-gray-800"
+              className="flex w-full items-center justify-center rounded-full border border-black bg-am-wine px-6 py-3 text-base font-medium text-white"
             >
               Configurer mon meuble
             </Link>

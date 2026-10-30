@@ -25,7 +25,7 @@ export function CatalogueToolbar({
   cartCount: number;
 }) {
   return (
-    <div className="sticky top-16 z-10 mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E2D9] bg-[#F7F6F2]/95 py-4 backdrop-blur-md">
+    <div className="sticky top-[68px] z-10 mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-black/15 bg-am-paper/95 py-4 backdrop-blur-md">
       <div role="tablist" aria-label="Catégories" className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -34,12 +34,12 @@ export function CatalogueToolbar({
           onClick={() => onCategoryChange("")}
           className={`flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-2 text-[14px] ${
             selectedCategory === ""
-              ? "border-[#161513] bg-[#161513] text-[#F7F6F2]"
-              : "border-[#E5E2D9] bg-white text-[#161513]"
+              ? "border-black bg-am-navy text-white"
+              : "border-black/15 bg-white text-black"
           }`}
         >
           <span>Tout</span>
-          <span className="font-[Geist_Mono] text-[11px] opacity-70">{totalCount}</span>
+          <span className="font-mono text-[11px] opacity-70">{totalCount}</span>
         </button>
         {categories.map((category) => {
           const isActive = category === selectedCategory;
@@ -51,11 +51,11 @@ export function CatalogueToolbar({
               aria-selected={isActive}
               onClick={() => onCategoryChange(category)}
               className={`flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-2 text-[14px] ${
-                isActive ? "border-[#161513] bg-[#161513] text-[#F7F6F2]" : "border-[#E5E2D9] bg-white text-[#161513]"
+                isActive ? "border-black bg-am-navy text-white" : "border-black/15 bg-white text-black"
               }`}
             >
               <span>{category}</span>
-              <span className="font-[Geist_Mono] text-[11px] opacity-70">{categoryCounts[category] ?? 0}</span>
+              <span className="font-mono text-[11px] opacity-70">{categoryCounts[category] ?? 0}</span>
             </button>
           );
         })}
@@ -66,14 +66,14 @@ export function CatalogueToolbar({
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Rechercher..."
-          className="h-10 min-w-0 flex-1 rounded-full border border-[#CFCBC0] bg-white px-4 text-[14px] text-[#161513] outline-none placeholder:text-[#5F5B53]"
+          className="h-10 min-w-0 flex-1 rounded-full border border-black/30 bg-white px-4 text-[14px] text-black outline-none placeholder:text-black/70"
         />
-        <label className={`flex items-center gap-2 text-[12px] ${HOME_MONO}`}>
+        <label className={`flex items-center gap-2 ${HOME_MONO}`}>
           Trier
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value)}
-            className="min-h-10 cursor-pointer rounded-full border border-[#CFCBC0] bg-white px-3.5 py-2 font-[Geist] text-[14px] normal-case tracking-normal text-[#161513]"
+            className="min-h-10 cursor-pointer rounded-full border border-black/30 bg-white px-3.5 py-2 font-sans text-[14px] normal-case tracking-normal text-black"
           >
             <option value="newest">Nouveautés</option>
             <option value="price_asc">Prix croissant</option>
@@ -82,10 +82,10 @@ export function CatalogueToolbar({
         </label>
         <Link
           href="/cart"
-          className="flex min-h-10 items-center gap-2 rounded-full bg-[#161513] px-4 py-2 text-[14px] text-[#F7F6F2]"
+          className="flex min-h-10 items-center gap-2 rounded-full bg-am-navy px-4 py-2 text-[14px] text-white"
         >
           Panier
-          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[#D4FF3A] px-1.5 font-[Geist_Mono] text-[12px] text-[#161513]">
+          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-am-mist px-1.5 font-mono text-[12px] text-black">
             {cartCount}
           </span>
         </Link>

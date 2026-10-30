@@ -8,8 +8,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('[GENERATE PROXY] Calling backend generate.php with body:', req.body);
-
     const backendResponse = await fetch(`${BACKEND_URL}/backend/api/generate.php`, {
       method: 'POST',
       headers: {
@@ -19,7 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const responseText = await backendResponse.text();
-    console.log('[GENERATE PROXY] Backend response:', responseText.substring(0, 500));
 
     let data;
     try {
@@ -29,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({
         success: false,
         error: 'Réponse backend invalide',
-        details: responseText.substring(0, 200)
       });
     }
 
@@ -42,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('[GENERATE PROXY] Error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Erreur interne du serveur'
+      error: 'Erreur interne du serveur'
     });
   }
 }

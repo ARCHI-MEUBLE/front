@@ -1,8 +1,88 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+/* ==========================================================================
+   Identité typographique ArchiMeuble : source unique des polices et de l'échelle.
+
+   - Geist porte les titres, le texte et l'interface. Geist Mono porte les étiquettes, les chiffres et les
+     mentions techniques. Plus aucune autre famille (le logo est lui aussi un sans-serif géométrique).
+   - Un titre se pose avec UN jeton de l'échelle ci-dessous (text-display-xl … text-card-title) ou, pour un
+     petit titre d'interface, avec une taille Tailwind (text-xl, text-2xl…) : le style de base des h1–h4
+     (graisse 500, interlettrage serré) s'applique dans les deux cas. Ne plus écrire font-sans / leading-* /
+     tracking-* / style={{ fontSize }} à la main sur un titre.
+   - Une étiquette en capitales mono se pose avec « eyebrow » (11 px) ou « eyebrow-lg » (12 px), jamais avec
+     uppercase + tracking-* à la main.
+   - Graisses chargées (voir _app.tsx) : Geist 400 / 500 / 600, Geist Mono 400 / 500. Pas de 700 : font-bold
+     retombe sur le 600.
+   - Tailwind v4 : tout CSS écrit hors d'un @layer l'emporte sur les utilities (c'est ce qui faisait tomber
+     tous les titres en Playfair malgré font-sans). Ici, n'écrire hors layer que des variables et des @keyframes.
+   ========================================================================== */
+
+@theme {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Plus de serif : une classe font-serif oubliée n'a aucun effet et le texte reste en Geist */
+  --font-serif: initial;
+
+  /* Échelle des titres éditoriaux (fluide, mobile → bureau). Les valeurs viennent de la maquette de l'accueil. */
+  /* Titre d'accueil, grande bannière finale */
+  --text-display-xl: clamp(2.875rem, 8.6vw, 8.25rem);
+  --text-display-xl--line-height: 0.96;
+  --text-display-xl--letter-spacing: -0.055em;
+  --text-display-xl--font-weight: 500;
+
+  /* Titre (h1) des pages de premier niveau */
+  --text-display: clamp(2.75rem, 6.2vw, 6rem);
+  --text-display--line-height: 0.96;
+  --text-display--letter-spacing: -0.055em;
+  --text-display--font-weight: 500;
+
+  /* Titre de section, bandeau d'appel à l'action */
+  --text-title: clamp(2.25rem, 5vw, 4.5rem);
+  --text-title--line-height: 0.98;
+  --text-title--letter-spacing: -0.05em;
+  --text-title--font-weight: 500;
+
+  /* Titre de page de formulaire ou de document, titre de sous-section large */
+  --text-heading: clamp(1.75rem, 3.2vw, 2.875rem);
+  --text-heading--line-height: 1.05;
+  --text-heading--letter-spacing: -0.045em;
+  --text-heading--font-weight: 500;
+
+  /* Titre de liste, d'état vide, de bloc */
+  --text-subheading: clamp(1.5rem, 2.4vw, 2rem);
+  --text-subheading--line-height: 1.1;
+  --text-subheading--letter-spacing: -0.04em;
+  --text-subheading--font-weight: 500;
+
+  /* Titre d'une carte (modèle, réalisation, produit) */
+  --text-card-title: 1.25rem;
+  --text-card-title--line-height: 1.2;
+  --text-card-title--letter-spacing: -0.03em;
+  --text-card-title--font-weight: 500;
+
+  /* Paragraphe d'introduction sous un titre de page */
+  --text-lead: clamp(1.0625rem, 1.5vw, 1.3125rem);
+  --text-lead--line-height: 1.45;
+}
+
+/* Étiquette en capitales Geist Mono. La couleur se pose à part (text-black/70 en général) : un utility qui
+   fixerait la couleur pourrait passer devant text-white sur un fond sombre. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@utility eyebrow-lg {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
 @layer base {
   :root {
@@ -13,19 +93,20 @@
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 0 0% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 97%;
+    /* Composants shadcn (boutons, champs, menus) aux couleurs de la palette : bleu foncé en principal, bleu clair en survol et en focus */
+    --primary: 234 20% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 231 20% 94%;
     --secondary-foreground: 0 0% 10%;
     --muted: 0 0% 97%;
     --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 97%;
+    --accent: 231 20% 93%;
     --accent-foreground: 0 0% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 92%;
     --input: 0 0% 92%;
-    --ring: 0 0% 65%;
+    --ring: 231 20% 65%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -81,373 +162,234 @@
     border-color: hsl(var(--border));
   }
 
+  html {
+    scroll-behavior: smooth;
+    width: 100%;
+    overflow-x: hidden;
+    background-color: var(--am-paper);
+  }
+
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+    background-color: var(--am-paper);
+    color: #1A1A1A;
+    font-family: var(--font-sans);
+    font-feature-settings: 'ss01' on, 'ss02' on;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Style de base de tous les titres : Geist moyen, interlettrage serré. Les jetons text-display-xl … text-card-title
+     le remplacent par le leur ; un titre sans jeton (petit titre d'interface en text-lg, text-xl…) garde celui-ci.
+     « balance » répartit les mots d'un titre sur ses lignes : plus de « de » seul à la ligne. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Pas de 700 dans l'identité : l'emphase dans un texte est en 600 (Tailwind met « bolder », soit 700, non chargé) */
+  b,
+  strong {
+    font-weight: 600;
+  }
+
+  /* Sélection de texte aux couleurs du site */
+  ::selection {
+    background-color: var(--am-mist);
+    color: #000000;
   }
 }
 
+/* Palette du site (texte : noir ou blanc, le reste vient d'ici) */
 :root {
-  color: #1A1A1A;
-  background-color: #FAF9F7;
-  font-family: 'DM Sans', 'IBM Plex Sans', -apple-system, sans-serif;
+  --am-navy: #3B3E58; /* bleu-gris foncé : boutons et blocs sombres */
+  --am-mist: #B2B6CC; /* bleu clair : surbrillances, pastilles, grands panneaux, survols */
+  --am-wine: #6A2025; /* bordeaux : appels à l'action, blocs sombres, bandeaux */
+  --am-paper: #F4F0E8; /* fond des pages : blanc cassé (les cartes restent en blanc pur pour se détacher) */
 }
 
-html {
-  scroll-behavior: smooth;
-}
+@layer components {
+  /* ==================== Classes utilisées par la page admin des échantillons (admin/samples.tsx) ==================== */
+  .btn-primary {
+    background: #1A1A1A;
+    color: white;
+    padding: 14px 28px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: background 200ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
 
-body {
-  min-height: 100vh;
-  background-color: #FAF9F7;
-  color: #1A1A1A;
-  font-feature-settings: 'ss01' on, 'ss02' on;
-}
+  .btn-primary:hover {
+    background: #2D2D2D;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid #1A1A1A;
+    color: #1A1A1A;
+    padding: 14px 28px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: all 200ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
 
-h1,
-h2,
-h3,
-h4,
-.heading-serif {
-  font-family: 'Playfair Display', 'Libre Baskerville', Georgia, serif;
-  letter-spacing: -0.02em;
-}
+  .btn-secondary:hover {
+    background: #1A1A1A;
+    color: white;
+  }
 
-/* ==================== BUTTONS (design artisanal, pas de gradient) ==================== */
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-/* Primary button - solide, simple */
-.btn-primary {
-  background: #1A1A1A;
-  color: white;
-  padding: 14px 28px;
-  border-radius: 4px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  transition: background 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
+  .input,
+  .textarea {
+    width: 100%;
+    border: 1px solid #E7E5E4;
+    border-radius: 4px;
+    background: white;
+    padding: 14px 16px;
+    font-size: 15px;
+    color: #1A1A1A;
+    transition: border-color 200ms ease;
+  }
 
-.btn-primary:hover {
-  background: #2D2D2D;
-}
+  .input::placeholder {
+    color: #A8A29E;
+  }
 
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .input:focus,
+  .textarea:focus {
+    outline: none;
+    border-color: #1A1A1A;
+  }
 
-/* Secondary button - outline fin */
-.btn-secondary {
-  background: transparent;
-  border: 1px solid #1A1A1A;
-  color: #1A1A1A;
-  padding: 14px 28px;
-  border-radius: 4px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  transition: all 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
+  .input:disabled {
+    background: #F5F5F4;
+    color: #A8A29E;
+    cursor: not-allowed;
+  }
 
-.btn-secondary:hover {
-  background: #1A1A1A;
-  color: white;
-}
+  .textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
 
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .card {
+    background: white;
+    border: 1px solid #E7E5E4;
+    border-radius: 2px;
+    padding: 32px;
+    transition: border-color 200ms ease;
+  }
 
-/* Ghost button - texte simple */
-.btn-ghost {
-  background: transparent;
-  color: #1A1A1A;
-  padding: 14px 28px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  transition: opacity 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
+  .card:hover {
+    border-color: #1A1A1A;
+  }
 
-.btn-ghost:hover {
-  opacity: 0.7;
-}
-
-/* Small button variant */
-.btn-sm {
-  padding: 10px 20px;
-  font-size: 14px;
-}
-
-/* Link style button */
-.btn-link {
-  background: none;
-  border: none;
-  color: #1A1A1A;
-  font-weight: 500;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  transition: opacity 200ms ease;
-}
-
-.btn-link:hover {
-  opacity: 0.7;
-}
-
-/* ==================== FORM INPUTS ==================== */
-.input {
-  width: 100%;
-  border: 1px solid #E7E5E4;
-  border-radius: 4px;
-  background: white;
-  padding: 14px 16px;
-  font-size: 15px;
-  color: #1A1A1A;
-  transition: border-color 200ms ease;
-}
-
-.input::placeholder {
-  color: #A8A29E;
-}
-
-.input:focus {
-  outline: none;
-  border-color: #1A1A1A;
-}
-
-.input:disabled {
-  background: #F5F5F4;
-  color: #A8A29E;
-  cursor: not-allowed;
-}
-
-/* Input with bottom border only */
-.input-minimal {
-  width: 100%;
-  border: none;
-  border-bottom: 1px solid #E7E5E4;
-  border-radius: 0;
-  background: transparent;
-  padding: 14px 0;
-  font-size: 15px;
-  color: #1A1A1A;
-  transition: border-color 200ms ease;
-}
-
-.input-minimal:focus {
-  outline: none;
-  border-bottom-color: #1A1A1A;
-}
-
-.textarea {
-  width: 100%;
-  border: 1px solid #E7E5E4;
-  border-radius: 4px;
-  background: white;
-  padding: 14px 16px;
-  font-size: 15px;
-  color: #1A1A1A;
-  transition: border-color 200ms ease;
-  resize: vertical;
-  min-height: 120px;
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: #1A1A1A;
-}
-
-.select {
-  width: 100%;
-  border: 1px solid #E7E5E4;
-  border-radius: 4px;
-  background: white;
-  padding: 14px 16px;
-  font-size: 15px;
-  color: #1A1A1A;
-  transition: border-color 200ms ease;
-  cursor: pointer;
-}
-
-.select:focus {
-  outline: none;
-  border-color: #1A1A1A;
-}
-
-/* ==================== CARDS (minimalistes) ==================== */
-.card {
-  background: white;
-  border: 1px solid #E7E5E4;
-  border-radius: 2px;
-  padding: 32px;
-  transition: border-color 200ms ease;
-}
-
-.card:hover {
-  border-color: #1A1A1A;
-}
-
-.card-flat {
-  background: white;
-  border: 1px solid #E7E5E4;
-  border-radius: 2px;
-  padding: 24px;
-}
-
-/* ==================== SECTION CONTAINERS ==================== */
-.section-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 96px 24px;
-}
-
-.section-container-sm {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 64px 24px;
-}
-
-@media (min-width: 768px) {
   .section-container {
-    padding: 120px 48px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 96px 24px;
   }
-  .section-container-sm {
-    padding: 80px 48px;
+
+  @media (min-width: 768px) {
+    .section-container {
+      padding: 120px 48px;
+    }
   }
-}
 
-/* ==================== LABELS & BADGES ==================== */
-.label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: #57534E;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.badge-success {
-  color: #166534;
-}
-
-.badge-error {
-  color: #DC2626;
-}
-
-.badge-warning {
-  color: #D97706;
-}
-
-/* ==================== SECTION TITLES ==================== */
-.section-label {
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #A8A29E;
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 400;
-  color: #1A1A1A;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-/* ==================== UTILITY CLASSES ==================== */
-.text-mono {
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
-}
-
-.text-muted {
-  color: #A8A29E;
-}
-
-.text-stone {
-  color: #57534E;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* ==================== DIVIDERS ==================== */
-.divider {
-  height: 1px;
-  background: #E7E5E4;
-  width: 100%;
-}
-
-/* ==================== ANIMATIONS (subtiles) ==================== */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+  .label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #57534E;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
-  to {
-    opacity: 1;
+
+  /* ==================== Barre de défilement fine (résumé du configurateur) ==================== */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
   }
-}
 
-.animate-fade-in {
-  animation: fadeIn 400ms ease;
-}
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-/* ==================== CUSTOM SCROLLBAR ==================== */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-}
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-}
+  /* ==================== Défilements de l'accueil ==================== */
+  .home-marquee-products {
+    animation: home-marquee-x 40s linear infinite;
+  }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  .home-marquee-up {
+    animation: home-marquee-up 36s linear infinite;
+  }
+
+  .home-marquee-down {
+    animation: home-marquee-down 36s linear infinite;
+  }
+
+  .home-marquee-products:hover,
+  .home-marquee-up:hover,
+  .home-marquee-down:hover {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-marquee-products,
+    .home-marquee-up,
+    .home-marquee-down {
+      animation: none;
+    }
+  }
+
+  /* Surlignage bleu des titres : la bande reste dans la hauteur de ligne, sinon elle mord sur la ligne du dessus quand le titre passe à la ligne */
+  .am-highlight {
+    background: linear-gradient(transparent 14%, var(--am-mist) 14%, var(--am-mist) 86%, transparent 86%);
+    /* La marge négative reprend le padding : le texte surligné reste aligné avec les lignes voisines, seule la bande déborde */
+    padding: 0 0.12em;
+    margin: 0 -0.12em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
 }
 
 @keyframes home-marquee-x {
@@ -463,43 +405,4 @@ h4,
 @keyframes home-marquee-down {
   from { transform: translateY(-50%); }
   to { transform: translateY(0); }
-}
-
-.home-marquee-products {
-  animation: home-marquee-x 40s linear infinite;
-}
-
-.home-marquee-up {
-  animation: home-marquee-up 36s linear infinite;
-}
-
-.home-marquee-down {
-  animation: home-marquee-down 36s linear infinite;
-}
-
-.home-marquee-products:hover,
-.home-marquee-up:hover,
-.home-marquee-down:hover {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-marquee-products,
-  .home-marquee-up,
-  .home-marquee-down,
-  .home-fade-slide {
-    animation: none;
-  }
-}
-
-@keyframes home-fade-cycle {
-  0% { opacity: 1; }
-  16% { opacity: 1; }
-  20% { opacity: 0; }
-  96% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.home-fade-slide {
-  animation: home-fade-cycle 18000ms infinite;
 }

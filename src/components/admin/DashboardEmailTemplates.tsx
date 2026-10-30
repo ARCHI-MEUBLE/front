@@ -170,7 +170,7 @@ export function DashboardEmailTemplates() {
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-lg font-semibold text-gray-900">Configuration des Emails</h2>
         <p className="text-sm text-gray-600 mt-1">
-          Personnalisez les templates d'emails envoyés aux clients et administrateurs
+          Personnalisez les templates d&apos;emails envoyés aux clients et administrateurs
         </p>
       </div>
 
@@ -263,7 +263,7 @@ export function DashboardEmailTemplates() {
               {/* Sujet */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sujet de l'email
+                  Sujet de l&apos;email
                 </label>
                 <input
                   type="text"
@@ -277,7 +277,7 @@ export function DashboardEmailTemplates() {
               {/* Header text */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Texte du header (titre dans l'email)
+                  Texte du header (titre dans l&apos;email)
                 </label>
                 <input
                   type="text"
@@ -306,7 +306,7 @@ export function DashboardEmailTemplates() {
 
               {/* Options Logo & Galerie */}
               <div className="border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Options d'affichage</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Options d&apos;affichage</h3>
                 <div className="space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -327,7 +327,7 @@ export function DashboardEmailTemplates() {
                       className="w-4 h-4 text-gray-900 border-gray-300 focus:ring-gray-900"
                       disabled={isSaving}
                     />
-                    <span className="text-sm text-gray-700">Afficher la galerie d'images</span>
+                    <span className="text-sm text-gray-700">Afficher la galerie d&apos;images</span>
                   </label>
                 </div>
               </div>
@@ -392,7 +392,7 @@ export function DashboardEmailTemplates() {
                   disabled={isSaving}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  CSS appliqué au template HTML de l'email
+                  CSS appliqué au template HTML de l&apos;email
                 </p>
               </div>
             </div>

@@ -11,8 +11,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
     const url = `${API_URL}/backend/api/admin/payment-links.php${queryString ? '?' + queryString : ''}`;
 
-    console.log('🔗 Proxy payment-links vers:', url);
-
     const response = await fetch(url, {
       method: req.method || 'GET',
       headers: {
@@ -22,8 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
       credentials: 'include',
     });
-
-    console.log('📡 Réponse backend:', response.status);
 
     const data = await response.json();
 
@@ -39,7 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Payment links proxy error:', error);
     res.status(500).json({
       error: 'Failed to manage payment links',
-      details: error instanceof Error ? error.message : String(error)
     });
   }
 }
