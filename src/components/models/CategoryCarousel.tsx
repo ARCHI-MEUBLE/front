@@ -123,7 +123,7 @@ export function CategoryCarousel({
             groups={groups}
             activeIndex={activeIndex}
             orientation="vertical"
-            className="absolute top-1/2 -left-14 -translate-y-1/2"
+            className="absolute top-1/2 -left-11 -translate-y-1/2"
           />
         )}
         {/* touch-none : un glissé vertical sur la liste fait tourner la roulette au lieu de faire défiler la page */}
@@ -140,7 +140,7 @@ export function CategoryCarousel({
             </>
           )}
           {/* Clée sur la catégorie centrale : la barre se redessine à chaque changement pour marquer l'arrivée */}
-          <span aria-hidden="true" className="absolute top-1/2 -left-7 flex h-12 w-1 -translate-y-1/2 items-center">
+          <span aria-hidden="true" className="absolute top-1/2 -left-6 flex h-12 w-1 -translate-y-1/2 items-center">
             <motion.span
               key={center}
               className="h-full w-full rounded-full bg-am-wine"

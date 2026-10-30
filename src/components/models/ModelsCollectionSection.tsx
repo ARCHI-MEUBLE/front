@@ -109,17 +109,17 @@ export function ModelsCollectionSection({
       </div>
 
       {isLoading ? (
-        <div className="grid items-center gap-10 lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-12">
+        <div className="grid items-center gap-10 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-4">
           <div className="mx-auto flex w-[250px] flex-col gap-[56px] lg:w-[290px]">
             <div className="h-5 w-32 animate-pulse rounded bg-am-wine/15" />
             <div className="h-7 w-48 animate-pulse rounded bg-am-wine/30" />
             <div className="h-5 w-28 animate-pulse rounded bg-am-wine/15" />
           </div>
-          <div className="grid grid-cols-1 gap-3 px-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 px-10 sm:grid-cols-2">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className={`aspect-[4/3.6] animate-pulse rounded-md bg-[#efefef] ${i > 0 ? "hidden sm:block" : ""} ${i > 1 ? "sm:hidden lg:block" : ""}`}
+                className={`aspect-[6/5] animate-pulse rounded-[18px] bg-[#efefef] ${i > 0 ? "hidden sm:block" : ""} ${i > 1 ? "sm:hidden" : ""}`}
               />
             ))}
           </div>
@@ -146,8 +146,14 @@ export function ModelsCollectionSection({
               <MobileProductList groups={groups} index={panelNav.index} direction={panelNav.direction} />
             </div>
           ) : (
-            <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-12">
-              <CategoryCarousel groups={groups} index={nav.index} onIndexChange={handleIndexChange} />
+            // À partir de xl, roulette et carrousel côte à côte, et la zone sort du gabarit de la page (1360 px) pour
+            // occuper la largeur de l'écran (moins 24 px de chaque côté, au plus 1760 px) : trois grandes cartes.
+            // Centrée sur la section (donc sur la page) ; 100vw inclut la barre de défilement, compensée par la marge.
+            <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 pb-4 xl:relative xl:left-1/2 xl:w-[min(100vw-48px,1760px)] xl:-translate-x-1/2 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-4">
+              {/* Roulette calée à droite de sa colonne : ses bulles, à sa gauche, restent dans l'écran */}
+              <div className="xl:justify-self-end">
+                <CategoryCarousel groups={groups} index={nav.index} onIndexChange={handleIndexChange} />
+              </div>
               <ProductCarousel
                 groups={groups}
                 index={panelNav.index}
