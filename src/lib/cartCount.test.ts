@@ -22,7 +22,7 @@ describe('countCartItems', () => {
 });
 
 describe('fetchCartCount', () => {
-  it('reads the four lists and ignores the ones that fail', async () => {
+  it('reads each list under its own name and ignores the ones that fail', async () => {
     const bodies: Record<string, unknown> = {
       '/api/cart/samples': { count: 2 },
       '/api/cart/catalogue': { items: [{ quantity: 3 }] },

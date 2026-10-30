@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
+import { absoluteUrl, breadcrumbJsonLd } from "@/lib/seo";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { Header } from "@/components/Header";
@@ -12,22 +14,60 @@ import { ProductBreadcrumb } from "@/components/catalogue/ProductBreadcrumb";
 import { ProductInfo } from "@/components/catalogue/ProductInfo";
 import { RelatedProducts, RelatedProduct } from "@/components/catalogue/RelatedProducts";
 import { CatalogueItemDetail } from "@/lib/catalogueItem";
+import { PUBLIC_PAGE_CACHE, fetchBackend } from "@/lib/backendServer";
 
-export default function ProductDetail() {
+interface ProductDetailProps {
+  // Article lu par le serveur : la page arrive complète chez Google et dans les aperçus de partage.
+  // null si le backend n'a pas répondu à temps : l'article est alors chargé dans le navigateur.
+  initialItem: CatalogueItemDetail | null;
+}
+
+export const getServerSideProps: GetServerSideProps<ProductDetailProps> = async ({ params, res }) => {
+  const id = Number(params?.id);
+  if (!Number.isInteger(id) || id <= 0) return { notFound: true };
+  const result = await fetchBackend(`/backend/api/catalogue.php?action=item&id=${id}`);
+  // Article supprimé : vraie 404, Google le retire de son index
+  if (result.status === "not-found") return { notFound: true };
+  const data = result.status === "ok" ? (result.data as { success?: boolean; data?: CatalogueItemDetail }) : null;
+  const initialItem = data?.success && data.data ? data.data : null;
+  if (initialItem) res.setHeader("Cache-Control", PUBLIC_PAGE_CACHE);
+  return { props: { initialItem } };
+};
+
+const defaultVariationIndex = (item: CatalogueItemDetail | null) => {
+  const index = item?.variations?.findIndex((v) => v.is_default === 1) ?? -1;
+  return index >= 0 ? index : 0;
+};
+
+export default function ProductDetail({ initialItem }: ProductDetailProps) {
   const router = useRouter();
   const { id } = router.query;
   const { isAuthenticated, requireIdentity } = useCustomer();
 
-  const [item, setItem] = useState<CatalogueItemDetail | null>(null);
+  const [item, setItem] = useState<CatalogueItemDetail | null>(initialItem);
   const [related, setRelated] = useState<RelatedProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedVariationIdx, setSelectedVariationIdx] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(!initialItem);
+  const [selectedVariationIdx, setSelectedVariationIdx] = useState(() => defaultVariationIndex(initialItem));
+  const [quantity, setQuantity] = useState(initialItem?.min_order_quantity || 1);
   const [adding, setAdding] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
   useEffect(() => {
     if (!id) return;
+
+    const showItem = (data: CatalogueItemDetail) => {
+      setItem(data);
+      setSelectedVariationIdx(defaultVariationIndex(data));
+      setQuantity(data.min_order_quantity || 1);
+    };
+
+    // Article déjà fourni par le serveur (arrivée sur la page ou passage à un article voisin)
+    if (initialItem && initialItem.id === Number(id)) {
+      setAddedToCart(false);
+      showItem(initialItem);
+      setLoading(false);
+      return;
+    }
 
     const fetchItem = async () => {
       setLoading(true);
@@ -36,12 +76,7 @@ export default function ProductDetail() {
         const res = await fetch(`/api/catalogue?action=item&id=${id}`);
         const data = await res.json();
         if (data.success) {
-          setItem(data.data);
-          if (data.data.variations && data.data.variations.length > 0) {
-            const defaultIndex = data.data.variations.findIndex((v: { is_default: number }) => v.is_default === 1);
-            setSelectedVariationIdx(defaultIndex >= 0 ? defaultIndex : 0);
-          }
-          setQuantity(data.data.min_order_quantity || 1);
+          showItem(data.data);
         } else {
           toast.error("Produit introuvable");
           router.push("/catalogue");
@@ -54,7 +89,7 @@ export default function ProductDetail() {
     };
 
     fetchItem();
-  }, [id, router]);
+  }, [id, initialItem, router]);
 
   useEffect(() => {
     if (!id) return;
@@ -121,10 +156,35 @@ export default function ProductDetail() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>{item.name} — ArchiMeuble</title>
-        <meta name="description" content={item.description || item.name} />
-      </Head>
+      <Seo
+        title={`${item.name} — Boutique ArchiMeuble`}
+        description={item.description || `${item.name} : ${item.category}, sélectionné par ArchiMeuble, menuisier à Lille.`}
+        path={`/catalogue/${item.id}`}
+        image={item.image_url}
+        jsonLd={[
+          breadcrumbJsonLd([
+            { name: "Accueil", path: "/" },
+            { name: "Boutique", path: "/catalogue" },
+            { name: item.name, path: `/catalogue/${item.id}` },
+          ]),
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: item.name,
+            description: item.description || undefined,
+            image: item.image_url ? absoluteUrl(item.image_url) : undefined,
+            category: item.category || undefined,
+            material: item.material || undefined,
+            brand: { "@type": "Brand", name: "ArchiMeuble" },
+            offers: {
+              "@type": "Offer",
+              price: Number(item.unit_price).toFixed(2),
+              priceCurrency: "EUR",
+              url: absoluteUrl(`/catalogue/${item.id}`),
+            },
+          },
+        ]}
+      />
       <Header />
       <main className="flex-1">
         <section

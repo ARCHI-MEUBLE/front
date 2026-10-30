@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -121,13 +121,7 @@ export default function DemandeDevisPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Demande de devis — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Parlez-nous de votre projet de meuble sur mesure. Gauthier vous répond personnellement."
-        />
-      </Head>
+      <Seo title="Devis gratuit pour un meuble sur mesure — ArchiMeuble Lille" description="Décrivez votre projet de meuble sur mesure : un menuisier lillois vous répond personnellement avec un devis gratuit et une maquette 3D." />
       <Header />
       <main className="flex-1">
         {/* Tout le formulaire et les coordonnées tiennent dans l'écran */}

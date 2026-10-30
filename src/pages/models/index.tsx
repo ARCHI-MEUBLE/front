@@ -1,4 +1,4 @@
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -65,7 +65,9 @@ export default function ModelsPage() {
         apiClient.categories
           .getAll(true)
           .then(setCategories)
-          .catch((err) => console.error("Erreur lors du chargement des catégories:", err)),
+          // Avertissement et non erreur : sans catégories, les modèles restent affichés, regroupés à la fin ; console.error ferait
+          // apparaître l'erreur, pourtant gérée, dans la fenêtre d'erreurs de Next en développement
+          .catch((err) => console.warn("Catégories indisponibles :", err instanceof Error ? err.message : err)),
       ]);
       const productModels: ModelCardData[] = data.map((model: FurnitureModel) => {
         const categorySlug = model.category || inferCategorySlug(model.name);
@@ -74,6 +76,7 @@ export default function ModelsPage() {
           name: model.name,
           description: model.description || "",
           imagePath: model.image_url || null,
+          hoverImagePath: model.hover_image_url || null,
           categorySlug,
           categoryLabel: categorySlug,
         };
@@ -113,13 +116,7 @@ export default function ModelsPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Nos Modèles — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Découvrez nos modèles de meubles sur mesure fabriqués à Lille. Dressings, bibliothèques, buffets, bureaux, meubles TV et plus."
-        />
-      </Head>
+      <Seo title="Nos modèles de meubles sur mesure — ArchiMeuble Lille" description="Dressings, bibliothèques, buffets, bureaux, meubles TV : choisissez un modèle et configurez-le en 3D à vos dimensions. Fabriqué dans notre atelier à Lille." />
       <Header />
       <main className="flex-1">
         <ModelsHero />

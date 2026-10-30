@@ -155,6 +155,7 @@ export default function OrderConfirmationPage() {
       <>
         <Head>
           <title>Confirmation de commande - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="flex min-h-screen items-center justify-center">
@@ -172,6 +173,7 @@ export default function OrderConfirmationPage() {
       <>
         <Head>
           <title>Erreur - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="min-h-screen bg-am-paper px-4 py-12">
@@ -262,6 +264,7 @@ export default function OrderConfirmationPage() {
     <>
       <Head>
         <title>Commande confirmée - ArchiMeuble</title>
+        <meta name="robots" content="noindex" />
       </Head>
       <Header />
 

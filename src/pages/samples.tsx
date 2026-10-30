@@ -1,6 +1,6 @@
 "use client";
 
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -111,13 +111,7 @@ export default function SamplesPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Échantillons — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Commandez nos échantillons de matériaux et découvrez les textures et finitions de nos meubles sur mesure."
-        />
-      </Head>
+      <Seo title="Échantillons de bois et finitions — ArchiMeuble" description="Commandez nos échantillons de matériaux pour voir teintes, textures et finitions chez vous, à la lumière de votre intérieur, avant votre meuble sur mesure." />
       <Header />
       <main className="flex-1">
         <SamplesHero />

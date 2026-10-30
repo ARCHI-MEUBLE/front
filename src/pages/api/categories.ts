@@ -24,9 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const contentType = response.headers.get('content-type') || '';
-    const data = contentType.includes('application/json')
-      ? await response.json()
-      : { error: 'Le backend a retourné une réponse inattendue' };
+    // Page d'erreur PHP (souvent servie en 200) : signalée comme une panne, pas comme une réponse réussie
+    if (!contentType.includes('application/json')) {
+      return res.status(502).json({ error: 'Le backend a retourné une réponse inattendue' });
+    }
+    const data = await response.json();
 
     const setCookie = response.headers.get('set-cookie');
     if (setCookie) res.setHeader('Set-Cookie', setCookie);
