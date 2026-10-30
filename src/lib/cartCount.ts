@@ -31,9 +31,12 @@ async function readCartList(url: string): Promise<unknown> {
   }
 }
 
+// Réponses rangées par nom de liste, pas par position : une liste désactivée dans CART_URLS ne décale pas les autres
 export async function fetchCartCount(): Promise<number> {
-  const [configurations, samples, catalogue, facades] = await Promise.all(Object.values(CART_URLS).map(readCartList));
-  return countCartItems({ configurations, samples, catalogue, facades } as CartLists);
+  const lists = await Promise.all(
+    Object.entries(CART_URLS).map(async ([name, url]) => [name, await readCartList(url)] as const)
+  );
+  return countCartItems(Object.fromEntries(lists) as CartLists);
 }
 
 // Prévient les compteurs affichés qu'un article a été ajouté ou retiré, avec le nouveau total s'il est déjà connu
