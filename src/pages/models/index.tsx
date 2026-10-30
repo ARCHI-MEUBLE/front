@@ -76,6 +76,7 @@ export default function ModelsPage() {
           name: model.name,
           description: model.description || "",
           imagePath: model.image_url || null,
+          hoverImagePath: model.hover_image_url || null,
           categorySlug,
           categoryLabel: categorySlug,
         };
