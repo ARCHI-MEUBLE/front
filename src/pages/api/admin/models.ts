@@ -3,23 +3,17 @@
  * Proxie vers le backend PHP avec vérification admin
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAdminSession } from '@/lib/adminAuth';
+import { verifyAdminSession } from '@/lib/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   // Vérifier l'authentification admin
-  if (!hasAdminSession(req.headers.cookie)) {
-    console.log('Authentication failed - no admin session');
+  if (!(await verifyAdminSession(req, res))) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  console.log('---');
-  console.log('Method:', req.method);
-  console.log('Cookies being sent to backend:', req.headers.cookie);
-  console.log('Has PHPSESSID:', req.headers.cookie?.includes('PHPSESSID') ? 'YES' : 'NO');
-  console.log('Has user_session:', req.headers.cookie?.includes('user_session') ? 'YES' : 'NO');
 
   try {
     // Construire l'URL avec les query params si nécessaire
@@ -28,8 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const queryString = req.url.split('?')[1];
       url += `?${queryString}`;
     }
-
-    console.log('Calling backend URL:', url);
 
     // Déterminer l'URL du frontend
     const protocol = req.headers['x-forwarded-proto'] || (req.connection as any).encrypted ? 'https' : 'http';
@@ -47,8 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
       credentials: 'include',
     });
-
-    console.log('Backend response status:', response.status);
 
     // Vérifier si la réponse est du JSON
     const contentType = response.headers.get('content-type');

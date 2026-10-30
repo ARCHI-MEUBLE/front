@@ -98,10 +98,6 @@ const PromptGuideContent = () => (
         <div className="grid grid-cols-1 gap-2">
           <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
             <div className="flex items-center gap-3">
-              <code className="text-xs font-bold text-blue-600 dark:text-blue-400">v</code>
-              <span className="text-xs text-zinc-500">Étagère Verre</span>
-            </div>
-            <div className="flex items-center gap-3">
               <code className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Pm</code>
               <span className="text-xs text-zinc-500">Porte vitrée</span>
             </div>
@@ -203,16 +199,9 @@ export function DashboardModels() {
         credentials: 'include'
       });
       
-      console.log('--- DIAGNOSTIC CATEGORIES DASHBOARD ---');
-      console.log('Status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('Categories data:', data);
         setAvailableCategories(data.categories || []);
-      } else {
-        const text = await response.text();
-        console.log('Error response:', text);
       }
     } catch (error) {
       console.error("Erreur chargement categories:", error);
@@ -605,7 +594,7 @@ export function DashboardModels() {
         {/* Add Button */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-xl font-serif font-semibold tracking-tight text-[#1A1917]">Modèles enregistrés</h3>
+            <h3 className="text-xl font-semibold tracking-tight text-[#1A1917]">Modèles enregistrés</h3>
             <p className="text-sm text-muted-foreground">Gérez votre catalogue de meubles</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">

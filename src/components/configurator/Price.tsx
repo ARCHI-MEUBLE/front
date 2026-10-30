@@ -12,8 +12,8 @@ export default function Price({ base = 580, modules = 1, height = 600, depth = 4
 
   return (
     <div className="p-4 border rounded">
-      <div className="text-sm text-gray-600">Prix estimé</div>
-      <div className="text-2xl font-bold">€{price}</div>
+      <div className="text-sm text-black/70">Prix estimé</div>
+      <div className="text-2xl font-semibold">€{price}</div>
     </div>
   )
 }

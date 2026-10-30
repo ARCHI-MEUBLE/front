@@ -4,15 +4,16 @@ import dynamic from 'next/dynamic';
 import { Zone } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
+import type { RoomScene } from './scene/Room';
 
 // On utilise dynamic import pour forcer le rendu côté client uniquement
 const ThreeCanvas = dynamic(() => import('./ThreeCanvas'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#FAFAF9]" style={{ minHeight: '100%' }}>
+    <div className="flex h-full w-full items-center justify-center bg-am-paper" style={{ minHeight: '100%' }}>
       <div className="flex flex-col items-center gap-3">
-        <div className="h-10 w-10 animate-spin border-4 border-[#1A1917] border-t-transparent rounded-full" />
-        <p className="text-sm font-medium text-[#706F6C]">Initialisation du studio 3D...</p>
+        <div className="h-10 w-10 animate-spin border-4 border-am-navy border-t-transparent rounded-full" />
+        <p className="text-sm font-medium text-black/65">Initialisation du studio 3D...</p>
       </div>
     </div>
   )
@@ -28,10 +29,20 @@ export interface ThreeViewerProps {
   socle?: string;
   rootZone: Zone | null;
   selectedZoneIds?: string[];
+  // false : la zone sélectionnée n'est soulignée que par un contour, sans voile orangé
+  selectionTint?: boolean;
+  // Compartiments voisins de la sélection que l'on peut lui ajouter d'un clic (étape Portes)
+  neighborZoneIds?: string[];
   onSelectZone?: (id: string | null) => void;
   isBuffet?: boolean;
   doorsOpen?: boolean;
   showDecorations?: boolean;
+  // true : les tiroirs ne sont pas dessinés, on voit mieux les planches derrière
+  hideFacades?: boolean;
+  // Pièce autour du meuble (neutre par défaut)
+  roomScene?: RoomScene;
+  // Salon, Chambre : lampes allumées, ambiance du soir
+  roomLightsOn?: boolean;
   onToggleDoors?: () => void;
   componentColors?: ComponentColors;
   useMultiColor?: boolean;
@@ -43,6 +54,8 @@ export interface ThreeViewerProps {
   selectedPanelIds?: Set<string>;
   onSelectPanel?: (panelId: string | null) => void;
   deletedPanelIds?: Set<string>;
+  // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
+  onResizeDivider?: (zoneId: string, ratios: number[]) => void;
 }
 
 // Export du type pour utilisation externe

@@ -1,39 +1,40 @@
-import fs from "node:fs";
-import path from "node:path";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { DatabaseSync } from "node:sqlite";
+import type { NextApiRequest, NextApiResponse } from 'next';
 
-type ModelRow = {
-  id: number;
-  name: string;
-  description: string;
-  image_path: string | null;
-  created_at: string;
-};
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
-const dbDirectory = path.join(process.cwd(), "db");
-const dbPath = path.join(dbDirectory, "archimeuble.db");
-
-if (!fs.existsSync(dbDirectory)) {
-  fs.mkdirSync(dbDirectory, { recursive: true });
-}
-
-const database = new DatabaseSync(dbPath);
-const modelsStatement = database.prepare<ModelRow>(
-  "SELECT id, name, description, image_path, created_at FROM models"
-);
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).json({ message: "Méthode non autorisée" });
-  }
-
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const models = modelsStatement.all();
-    return res.status(200).json(models);
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (key !== 'id' && key !== 'active') continue;
+      if (value === undefined) continue;
+      for (const item of Array.isArray(value) ? value : [value]) {
+        query.append(key, item);
+      }
+    }
+
+    const queryString = query.toString();
+    const backendUrl = `${BACKEND_URL}/backend/api/models.php${queryString ? `?${queryString}` : ''}`;
+    const response = await fetch(backendUrl, {
+      method: req.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: req.headers.cookie || '',
+      },
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json()
+      : { error: 'Le backend a retourné une réponse inattendue' };
+
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) res.setHeader('Set-Cookie', setCookie);
+
+    return res.status(response.status).json(data);
   } catch (error) {
-    console.error("Erreur lors de la récupération des modèles", error);
-    return res.status(500).json({ message: "Erreur interne du serveur" });
+    console.error('Erreur lors de la communication avec le backend des modèles', error);
+    return res.status(502).json({ error: 'Erreur de connexion au backend' });
   }
 }

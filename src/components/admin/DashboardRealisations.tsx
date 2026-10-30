@@ -212,7 +212,7 @@ export function DashboardRealisations() {
     <div className="px-4 lg:px-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-serif font-semibold tracking-tight">Réalisations</h3>
+          <h3 className="text-xl font-semibold tracking-tight">Réalisations</h3>
           <p className="text-sm text-muted-foreground">Gérer les photos et détails des projets réels</p>
         </div>
         <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="flex-1 sm:flex-none">

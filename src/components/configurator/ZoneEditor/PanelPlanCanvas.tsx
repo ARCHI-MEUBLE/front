@@ -277,15 +277,6 @@ export default function PanelPlanCanvas({
         });
         const sortedBottomColumns = Array.from(uniqueBottomColumns.entries()).sort(([a], [b]) => a - b);
 
-        // DEBUG: Afficher les cellules touchant le bas
-        console.log('PanelPlanCanvas - maxBottom:', maxBottom);
-        console.log('PanelPlanCanvas - bottomTouchingCells:', bottomTouchingCells.length, 'cells');
-        console.log('PanelPlanCanvas - sortedBottomColumns:', sortedBottomColumns.length, 'columns');
-        console.log('PanelPlanCanvas - canvasHeight:', canvasHeight);
-        bottomTouchingCells.forEach(cell => {
-            console.log(`  Cell: x=${cell.x}, y=${cell.y}, width=${cell.width}, height=${cell.height}, bottom=${cell.y + cell.height}`);
-        });
-
         // Identifier les rangées uniques pour les panneaux gauche et droit
         const leftCells = allCells.filter(cell => cell.x < 1);
         const uniqueLeftRows = new Map<number, typeof allCells[0][]>();
@@ -430,14 +421,6 @@ export default function PanelPlanCanvas({
             });
         });
         
-        // DEBUG: Log pour vérifier la correspondance
-        if (typeof window !== 'undefined') {
-            console.log('PanelPlanCanvas - Back panel IDs:', allCells.map((cell) => {
-                const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
-                return `panel-back-${pathId}`;
-            }));
-        }
-
         // Traitement des séparateurs - segmentation comme ThreeCanvas
         // Utiliser le path du séparateur pour un ID stable
         allSeparators.forEach((sep, i) => {
@@ -451,13 +434,7 @@ export default function PanelPlanCanvas({
                     // Cellule à gauche (bord droit proche) OU cellule à droite (bord gauche proche)
                     return Math.abs(cellRight - sep.x) < 5 || Math.abs(cellLeft - sep.x) < 5;
                 });
-                
-                // Debug log pour ce séparateur
-                if (typeof window !== 'undefined') {
-                    console.log(`Sep V[${sep.path}] at x=${Math.round(sep.x)}: found ${adjacentCells.length} cells to the left`);
-                    adjacentCells.forEach(c => console.log(`  - cell at y=${Math.round(c.y)}, h=${Math.round(c.height)}`));
-                }
-                
+
                 if (adjacentCells.length > 0) {
                     // Grouper par Y avec haute précision (comme ThreeCanvas * 1000)
                     const uniqueRows = new Map<number, typeof allCells[0]>();
@@ -484,11 +461,6 @@ export default function PanelPlanCanvas({
                     // Donc on doit trier a.y - b.y (Y croissant) pour que j=0 = Y min = haut en CSS
                     const sortedRows = Array.from(uniqueRows.values()).sort((a, b) => a.y - b.y);
                     
-                    if (typeof window !== 'undefined') {
-                        console.log(`  -> ${sortedRows.length} unique rows, creating ${sortedRows.length} segments with IDs:`,
-                            sortedRows.map((_, j) => `separator-v-${sep.path}-${j}`));
-                    }
-                    
                     // Créer un segment pour chaque ligne unique
                     sortedRows.forEach((cell, j) => {
                         segments.push({
@@ -504,9 +476,6 @@ export default function PanelPlanCanvas({
                     });
                 } else {
                     // Pas de cellules adjacentes, segment unique
-                    if (typeof window !== 'undefined') {
-                        console.log(`  -> No adjacent cells, creating single segment`);
-                    }
                     segments.push({
                         id: `separator-v-${sep.path}-0`,
                         type: 'separator' as PanelType,
@@ -564,30 +533,6 @@ export default function PanelPlanCanvas({
             }
         });
         
-        // DEBUG: Log pour les séparateurs avec détails
-        if (typeof window !== 'undefined') {
-            console.log('=== PanelPlanCanvas Debug ===');
-            console.log('All cells:', allCells.map(c => ({
-                x: Math.round(c.x),
-                y: Math.round(c.y),
-                w: Math.round(c.width),
-                h: Math.round(c.height),
-                right: Math.round(c.x + c.width),
-                colPath: c.colPath.join('.'),
-                rowPath: c.rowPath.join('.')
-            })));
-            console.log('Separators:', allSeparators.map((sep) => ({
-                path: sep.path,
-                orientation: sep.orientation,
-                x: Math.round(sep.x),
-                y: Math.round(sep.y)
-            })));
-            
-            // Log des segments créés pour les séparateurs verticaux
-            const verticalSegments = segments.filter(s => s.type === 'separator' && s.orientation === 'vertical');
-            console.log('Vertical separator segments:', verticalSegments.map(s => s.id));
-        }
-
         return segments;
     }, [zone, canvasWidth, canvasHeight, collectGridCells, collectSeparators, panelThickness2D, separatorThickness2D]);
 
@@ -597,18 +542,18 @@ export default function PanelPlanCanvas({
     const borderPanels = panelSegments2D.filter(s => s.type !== 'back' && s.type !== 'separator');
 
     return (
-        <div className="border border-[#E8E6E3] bg-white p-5" style={{ borderRadius: '4px' }}>
+        <div className="border border-black/10 bg-white p-5" style={{ borderRadius: '4px' }}>
             {/* Header */}
             <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#1A1917]">Sélection des panneaux</h3>
-                <span className="font-mono text-base font-medium text-[#1A1917]">
+                <h3 className="text-lg font-semibold text-black">Sélection des panneaux</h3>
+                <span className="font-mono text-base font-medium text-black">
                     {width} × {height} mm
                 </span>
             </div>
 
             {/* Canvas */}
             <div
-                className="mx-auto inline-flex items-center justify-center overflow-visible bg-[#FAFAF9] cursor-default"
+                className="mx-auto inline-flex items-center justify-center overflow-visible bg-am-mist/15 cursor-default"
                 onClick={() => onSelectPanel(null)}
                 style={{
                     borderRadius: '4px',
@@ -662,13 +607,13 @@ export default function PanelPlanCanvas({
                                     width: segment.width,
                                     height: segment.height,
                                     backgroundColor: isDeleted 
-                                        ? 'rgba(255, 87, 34, 0.3)' 
-                                        : (isSelected ? '#2196F3' : '#E8E4DC'),
+                                        ? 'color-mix(in srgb, var(--am-wine) 25%, transparent)'
+                                        : (isSelected ? 'var(--am-navy)' : '#E8E4DC'),
                                     border: isDeleted
-                                        ? '2px solid #FF5722'
-                                        : (isSelected ? '2px solid #1976D2' : '1px dashed #B89B71'),
+                                        ? '2px solid var(--am-wine)'
+                                        : (isSelected ? '2px solid var(--am-navy)' : '1px dashed #B89B71'),
                                     boxShadow: isSelected 
-                                        ? (isDeleted ? '0 0 8px rgba(255, 87, 34, 0.5)' : '0 0 8px rgba(33, 150, 243, 0.5)')
+                                        ? (isDeleted ? '0 0 8px color-mix(in srgb, var(--am-wine) 50%, transparent)' : '0 0 8px color-mix(in srgb, var(--am-navy) 45%, transparent)')
                                         : 'none',
                                     zIndex: isSelected ? 5 : 0,
                                 }}
@@ -680,7 +625,7 @@ export default function PanelPlanCanvas({
                             >
                                 <div 
                                     className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity"
-                                    style={{ backgroundColor: isDeleted ? '#FF5722' : '#2196F3' }}
+                                    style={{ backgroundColor: isDeleted ? 'var(--am-wine)' : 'var(--am-navy)' }}
                                 />
                             </div>
                         );
@@ -725,13 +670,13 @@ export default function PanelPlanCanvas({
                                     width: segment.width,
                                     height: segment.height,
                                     backgroundColor: isDeleted 
-                                        ? 'rgba(255, 87, 34, 0.3)'
-                                        : (isSelected ? '#2196F3' : '#D4B896'),
+                                        ? 'color-mix(in srgb, var(--am-wine) 25%, transparent)'
+                                        : (isSelected ? 'var(--am-navy)' : '#D4B896'),
                                     border: isDeleted
-                                        ? '2px solid #FF5722'
-                                        : (isSelected ? '2px solid #1976D2' : '1px solid #B89B71'),
+                                        ? '2px solid var(--am-wine)'
+                                        : (isSelected ? '2px solid var(--am-navy)' : '1px solid #B89B71'),
                                     boxShadow: isSelected 
-                                        ? (isDeleted ? '0 0 8px rgba(255, 87, 34, 0.5)' : '0 0 8px rgba(33, 150, 243, 0.5)')
+                                        ? (isDeleted ? '0 0 8px color-mix(in srgb, var(--am-wine) 50%, transparent)' : '0 0 8px color-mix(in srgb, var(--am-navy) 45%, transparent)')
                                         : 'none',
                                     zIndex: isSelected ? 10 : 1,
                                 }}
@@ -743,7 +688,7 @@ export default function PanelPlanCanvas({
                             >
                                 <div 
                                     className="absolute inset-0 opacity-0 hover:opacity-30 transition-opacity"
-                                    style={{ backgroundColor: isDeleted ? '#FF5722' : '#2196F3' }}
+                                    style={{ backgroundColor: isDeleted ? 'var(--am-wine)' : 'var(--am-navy)' }}
                                 />
                             </div>
                         );
@@ -788,13 +733,13 @@ export default function PanelPlanCanvas({
                                     width: segment.width,
                                     height: segment.height,
                                     backgroundColor: isDeleted 
-                                        ? 'rgba(255, 87, 34, 0.3)'
-                                        : (isSelected ? '#2196F3' : '#A67B5B'),
+                                        ? 'color-mix(in srgb, var(--am-wine) 25%, transparent)'
+                                        : (isSelected ? 'var(--am-navy)' : '#A67B5B'),
                                     border: isDeleted
-                                        ? '2px solid #FF5722'
-                                        : (isSelected ? '2px solid #1976D2' : '1px solid #8B6B4F'),
+                                        ? '2px solid var(--am-wine)'
+                                        : (isSelected ? '2px solid var(--am-navy)' : '1px solid #8B6B4F'),
                                     boxShadow: isSelected 
-                                        ? (isDeleted ? '0 0 8px rgba(255, 87, 34, 0.5)' : '0 0 8px rgba(33, 150, 243, 0.5)')
+                                        ? (isDeleted ? '0 0 8px color-mix(in srgb, var(--am-wine) 50%, transparent)' : '0 0 8px color-mix(in srgb, var(--am-navy) 45%, transparent)')
                                         : 'none',
                                     zIndex: isSelected ? 15 : 3,
                                 }}
@@ -806,7 +751,7 @@ export default function PanelPlanCanvas({
                             >
                                 <div 
                                     className="absolute inset-0 opacity-0 hover:opacity-30 transition-opacity"
-                                    style={{ backgroundColor: isDeleted ? '#FF5722' : '#2196F3' }}
+                                    style={{ backgroundColor: isDeleted ? 'var(--am-wine)' : 'var(--am-navy)' }}
                                 />
                             </div>
                         );
@@ -835,14 +780,14 @@ export default function PanelPlanCanvas({
             </div>
 
             {/* Instruction */}
-            <p className="mt-4 text-center text-base text-[#706F6C]">
+            <p className="mt-4 text-center text-base text-black/65">
                 {selectedPanelIds.size > 0
                     ? `${selectedPanelIds.size} panneau${selectedPanelIds.size > 1 ? 'x' : ''} sélectionné${selectedPanelIds.size > 1 ? 's' : ''} - Cliquez ailleurs pour tout désélectionner`
                     : "Cliquez sur les panneaux pour les sélectionner (multi-sélection)"}
             </p>
 
             {/* Légende */}
-            <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-[#706F6C]">
+            <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-black/65">
                 <div className="flex items-center gap-1">
                     <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: '#D4B896', border: '1px solid #B89B71' }} />
                     <span>Panneaux latéraux</span>
@@ -856,7 +801,7 @@ export default function PanelPlanCanvas({
                     <span>Séparateurs</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: '#2196F3', border: '1px solid #1976D2' }} />
+                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: 'var(--am-navy)', border: '1px solid var(--am-navy)' }} />
                     <span>Sélectionné</span>
                 </div>
             </div>

@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DIMENSION_LIMITS } from '@/lib/configurator/constraints';
 
+/* ****************************************
+ * 
+ * A panel for adjusting the dimensions.
+ * It includes inputs for width, depth, and height, each with a slider and a text input.
+ *
+ * 
+ * ******************************************/
 interface DimensionInputProps {
   label: string;
   value: number;
@@ -45,12 +53,12 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
     onChange(newValue);
   };
 
-  const percentage = ((value - min) / (max - min)) * 100;
+  const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-medium text-[#1A1917]">{label}</label>
+        <label className="text-[11px] font-medium text-black">{label}</label>
         <div className="flex items-center gap-1.5">
           <input
             type="text"
@@ -59,10 +67,10 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
             onChange={handleInputChange}
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
-            className="w-14 border-2 border-[#E8E6E3] bg-white px-1.5 py-0.5 text-right font-mono text-[11px] text-[#1A1917] outline-none transition-colors hover:border-[#1A1917] focus:border-[#1A1917]"
+            className="w-14 border-2 border-black/10 bg-white px-1.5 py-0.5 text-right font-mono text-[11px] text-black outline-none transition-colors hover:border-am-navy focus:border-am-navy"
             style={{ borderRadius: '2px' }}
           />
-          <span className="text-[10px] text-[#706F6C]">{unit}</span>
+          <span className="text-[10px] text-black/65">{unit}</span>
         </div>
       </div>
 
@@ -77,17 +85,18 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           className="dimension-slider w-full"
         />
         <div
-          className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 bg-[#1A1917]"
+          className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 bg-am-navy"
           style={{ width: `${percentage}%`, borderRadius: '2px' }}
         />
       </div>
+      {hint && <p className="text-[10px] text-black/65">{hint}</p>}
 
       <style jsx>{`
         .dimension-slider {
           -webkit-appearance: none;
           appearance: none;
           height: 4px;
-          background: #E8E6E3;
+          background: rgba(0, 0, 0, 0.12);
           border-radius: 2px;
           cursor: pointer;
         }
@@ -96,7 +105,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
           appearance: none;
           width: 20px;
           height: 20px;
-          background: #1A1917;
+          background: var(--am-navy);
           border: 2px solid #FFFFFF;
           border-radius: 3px;
           cursor: pointer;
@@ -109,7 +118,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
         .dimension-slider::-moz-range-thumb {
           width: 20px;
           height: 20px;
-          background: #1A1917;
+          background: var(--am-navy);
           border: 2px solid #FFFFFF;
           border-radius: 3px;
           cursor: pointer;
@@ -143,39 +152,42 @@ export default function DimensionsPanel({
 }: DimensionsPanelProps) {
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-xs text-[#1A1917]">Dimensions du meuble</h3>
-        <span className="font-mono text-[10px] text-[#706F6C]">{width} × {depth} × {height} mm</span>
+      <div className="flex items-center justify-between border-b border-black/10 pb-2">
+        <h3 className="text-xs text-black">Dimensions extérieures</h3>
+        <span className="font-mono text-[10px] text-black/65">{width} × {depth} × {height} mm</span>
       </div>
 
       <DimensionInput
         label="Largeur"
         value={width}
         onChange={onWidthChange}
-        min={300}
-        max={6000}
+        min={DIMENSION_LIMITS.width.min}
+        max={DIMENSION_LIMITS.width.max}
         step={10}
         unit="mm"
+        hint={`De ${DIMENSION_LIMITS.width.min} à ${DIMENSION_LIMITS.width.max} mm : le dessus et le dessous sont d'un seul tenant.`}
       />
 
       <DimensionInput
         label="Profondeur"
         value={depth}
         onChange={onDepthChange}
-        min={200}
-        max={800}
+        min={DIMENSION_LIMITS.depth.min}
+        max={DIMENSION_LIMITS.depth.max}
         step={10}
         unit="mm"
+        hint={`De ${DIMENSION_LIMITS.depth.min} à ${DIMENSION_LIMITS.depth.max} mm.`}
       />
 
       <DimensionInput
         label="Hauteur"
         value={height}
         onChange={onHeightChange}
-        min={100}
-        max={4000}
+        min={DIMENSION_LIMITS.height.min}
+        max={DIMENSION_LIMITS.height.max}
         step={10}
         unit="mm"
+        hint={`Hauteur totale, pieds compris : ${DIMENSION_LIMITS.height.max} mm maximum.`}
       />
     </div>
   );

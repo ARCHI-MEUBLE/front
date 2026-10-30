@@ -8,6 +8,7 @@ import { AvisHero } from "@/components/avis/AvisHero";
 import { AvisMarquee } from "@/components/avis/AvisMarquee";
 import { AvisForm } from "@/components/avis/AvisForm";
 import { AvisCta } from "@/components/avis/AvisCta";
+import { averageRating } from "@/lib/rating";
 
 type ApiReview = {
   id: string;
@@ -27,7 +28,7 @@ const FALLBACK: AvisReviewData[] = TESTIMONIALS.map((t, i) => ({
 }));
 
 export function Reviews() {
-  const { customer, isAuthenticated } = useCustomer();
+  const { customer, isAuthenticated, requireIdentity } = useCustomer();
   const [reviews, setReviews] = useState<AvisReviewData[]>([]);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export function Reviews() {
               data.map((r) => ({
                 id: r.id,
                 authorName: r.authorName,
-                rating: r.rating,
+                rating: Number(r.rating),
                 text: r.text,
                 avatarUrl: avatarUrl(r.authorName, ""),
               }))
@@ -84,7 +85,7 @@ export function Reviews() {
     }
   };
 
-  const avgRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 5;
+  const avgRating = reviews.length > 0 ? averageRating(reviews.map((r) => r.rating)) : 5;
 
   const distribution = [5, 4, 3, 2, 1].map((star) => ({
     star,
@@ -97,6 +98,7 @@ export function Reviews() {
       <AvisMarquee reviews={reviews} />
       <AvisForm
         isAuthenticated={isAuthenticated}
+        onIdentify={() => void requireIdentity()}
         defaultFirstName={customer ? `${customer.first_name} ${customer.last_name.charAt(0)}.` : undefined}
         defaultCity={customer?.city}
         onSubmit={addReview}

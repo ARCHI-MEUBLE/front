@@ -13,14 +13,14 @@ export default function MentionsLegales() {
 
       <Header />
 
-      <main className="min-h-screen bg-[#FAFAF9]">
+      <main className="min-h-screen bg-am-paper">
         {/* Header */}
-        <div className="border-b border-[#E8E6E3] bg-white">
+        <div className="border-b border-black/10 bg-white">
           <div className="mx-auto max-w-4xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1A1917] sm:text-4xl lg:text-5xl">
+            <h1 className="text-heading text-black">
               Mentions Légales
             </h1>
-            <p className="mt-4 text-[#706F6C]">
+            <p className="mt-4 text-black/65">
               Dernière mise à jour : Décembre 2024
             </p>
           </div>
@@ -31,54 +31,54 @@ export default function MentionsLegales() {
           <div className="space-y-12">
             {/* Éditeur du site */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Éditeur du site
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
-                  <strong className="text-[#1A1917]">ArchiMeuble</strong>
+                  <strong className="text-black">ArchiMeuble</strong>
                 </p>
                 <p>
                   30 Rue Henri Regnault<br />
                   59000 Lille, France
                 </p>
                 <p>
-                  <strong className="text-[#1A1917]">Téléphone :</strong>{' '}
-                  <Link href="tel:+33601062867" className="hover:text-[#8B7355]">
+                  <strong className="text-black">Téléphone :</strong>{' '}
+                  <Link href="tel:+33601062867" className="hover:text-am-navy">
                     06 01 06 28 67
                   </Link>
                 </p>
                 <p>
-                  <strong className="text-[#1A1917]">Email :</strong>{' '}
-                  <Link href="mailto:pro.archimeuble@gmail.com" className="hover:text-[#8B7355]">
+                  <strong className="text-black">Email :</strong>{' '}
+                  <Link href="mailto:pro.archimeuble@gmail.com" className="hover:text-am-navy">
                     pro.archimeuble@gmail.com
                   </Link>
                 </p>
                 <p>
-                  <strong className="text-[#1A1917]">SIRET :</strong> 8098 4114 1000 25
+                  <strong className="text-black">SIRET :</strong> 8098 4114 1000 25
                 </p>
               </div>
             </section>
 
             {/* Directeur de la publication */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Directeur de la publication
               </h2>
-              <p className="mt-6 text-[#706F6C]">
+              <p className="mt-6 text-black/65">
                 Le directeur de la publication est le représentant légal de la société ArchiMeuble.
               </p>
             </section>
 
             {/* Hébergement */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Hébergement
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Ce site est hébergé par :<br />
-                  <strong className="text-[#1A1917]">Vercel Inc.</strong><br />
+                  <strong className="text-black">Vercel Inc.</strong><br />
                   440 N Barranca Ave #4133<br />
                   Covina, CA 91723, États-Unis
                 </p>
@@ -87,10 +87,10 @@ export default function MentionsLegales() {
 
             {/* Propriété intellectuelle */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Propriété intellectuelle
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   L&apos;ensemble du contenu de ce site (textes, images, vidéos, logos, graphismes, icônes, etc.)
                   est la propriété exclusive d&apos;ArchiMeuble ou de ses partenaires et est protégé par les lois
@@ -106,10 +106,10 @@ export default function MentionsLegales() {
 
             {/* Protection des données */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Protection des données personnelles
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Conformément à la loi « Informatique et Libertés » du 6 janvier 1978 modifiée et au
                   Règlement Général sur la Protection des Données (RGPD), vous disposez d&apos;un droit d&apos;accès,
@@ -117,14 +117,14 @@ export default function MentionsLegales() {
                 </p>
                 <p>
                   Pour exercer ces droits, vous pouvez nous contacter par email à{' '}
-                  <Link href="mailto:pro.archimeuble@gmail.com" className="text-[#1A1917] underline hover:text-[#8B7355]">
+                  <Link href="mailto:pro.archimeuble@gmail.com" className="text-black underline hover:text-am-navy">
                     pro.archimeuble@gmail.com
                   </Link>{' '}
                   ou par courrier à l&apos;adresse mentionnée ci-dessus.
                 </p>
                 <p>
                   Pour plus d&apos;informations, consultez notre{' '}
-                  <Link href="/confidentialite" className="text-[#1A1917] underline hover:text-[#8B7355]">
+                  <Link href="/confidentialite" className="text-black underline hover:text-am-navy">
                     Politique de Confidentialité
                   </Link>.
                 </p>
@@ -133,10 +133,10 @@ export default function MentionsLegales() {
 
             {/* Cookies */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Cookies
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Ce site utilise des cookies pour améliorer votre expérience de navigation, réaliser des
                   statistiques de visites et vous proposer des contenus adaptés. Vous pouvez configurer
@@ -147,10 +147,10 @@ export default function MentionsLegales() {
 
             {/* Limitation de responsabilité */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Limitation de responsabilité
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   ArchiMeuble s&apos;efforce d&apos;assurer l&apos;exactitude et la mise à jour des informations diffusées
                   sur ce site. Toutefois, ArchiMeuble ne peut garantir l&apos;exactitude, la précision ou
@@ -166,10 +166,10 @@ export default function MentionsLegales() {
 
             {/* Droit applicable */}
             <section>
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+              <h2 className="text-2xl text-black">
                 Droit applicable
               </h2>
-              <div className="mt-6 space-y-4 text-[#706F6C]">
+              <div className="mt-6 space-y-4 text-black/65">
                 <p>
                   Les présentes mentions légales sont régies par le droit français. En cas de litige,
                   les tribunaux français seront seuls compétents.
@@ -178,17 +178,17 @@ export default function MentionsLegales() {
             </section>
 
             {/* Contact */}
-            <section className="border-t border-[#E8E6E3] pt-12">
-              <h2 className="font-serif text-2xl text-[#1A1917]">
+            <section className="border-t border-black/10 pt-12">
+              <h2 className="text-2xl text-black">
                 Nous contacter
               </h2>
-              <p className="mt-6 text-[#706F6C]">
+              <p className="mt-6 text-black/65">
                 Pour toute question relative aux présentes mentions légales, vous pouvez nous contacter :
               </p>
               <div className="mt-6">
                 <Link
                   href="/contact-request"
-                  className="inline-flex h-12 items-center justify-center bg-[#1A1917] px-8 text-sm font-medium text-white transition-colors hover:bg-[#2D2B28]"
+                  className="inline-flex h-12 items-center justify-center bg-am-navy px-8 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                 >
                   Nous contacter
                 </Link>

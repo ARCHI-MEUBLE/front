@@ -1,3 +1,10 @@
+/* ****************************************
+ * 
+ * Socle and foot selection.
+ *
+ * 
+ * ******************************************/
+
 interface SocleSelectorProps {
   value: string;
   onChange: (value: string) => void;
@@ -6,8 +13,8 @@ interface SocleSelectorProps {
 const SOCLE_OPTIONS = [
   {
     id: 'none',
-    label: 'Sans socle',
-    description: 'Posé au sol',
+    label: 'Posé au sol',
+    description: 'Sans pieds',
     visual: (
       <svg viewBox="0 0 80 50" className="h-full w-full">
         <rect x="10" y="10" width="60" height="35" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="1.5" />
@@ -18,7 +25,7 @@ const SOCLE_OPTIONS = [
   {
     id: 'wood',
     label: 'Caisson bois',
-    description: 'Bois assorti',
+    description: 'Plinthe assortie',
     visual: (
       <svg viewBox="0 0 80 50" className="h-full w-full">
         <rect x="10" y="5" width="60" height="30" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="1.5" />
@@ -45,11 +52,7 @@ const SOCLE_OPTIONS = [
 export default function SocleSelector({ value, onChange }: SocleSelectorProps) {
   return (
     <div className="space-y-2.5">
-      <div className="border-b border-[#E8E6E3] pb-2">
-        <h3 className="font-serif text-xs text-[#1A1917]">Socle</h3>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2.5">
         {SOCLE_OPTIONS.map((option) => {
           const isActive = value === option.id;
           return (
@@ -57,17 +60,21 @@ export default function SocleSelector({ value, onChange }: SocleSelectorProps) {
               key={option.id}
               type="button"
               onClick={() => onChange(option.id)}
-              className={`flex flex-col items-center border-2 p-2 transition-all duration-200 ${
+              aria-pressed={isActive}
+              className={`flex flex-col items-center border-2 p-3 transition-all duration-200 ${
                 isActive
-                  ? 'border-[#1A1917] bg-[#1A1917] text-white'
-                  : 'border-[#E8E6E3] bg-white text-[#1A1917] hover:border-[#1A1917]'
+                  ? 'border-am-navy bg-am-navy text-white'
+                  : 'border-black/10 bg-white text-black hover:border-am-navy'
               }`}
               style={{ borderRadius: '2px' }}
             >
-              <div className={`mb-1.5 h-6 w-8 ${isActive ? 'text-white' : 'text-[#1A1917]'}`}>
+              <div className={`mb-2 h-8 w-12 ${isActive ? 'text-white' : 'text-black'}`}>
                 {option.visual}
               </div>
-              <span className="text-[10px] font-medium">{option.label}</span>
+              <span className="text-[13px] font-semibold leading-tight">{option.label}</span>
+              <span className={`mt-0.5 text-[11px] leading-tight ${isActive ? 'text-white/70' : 'text-black/65'}`}>
+                {option.description}
+              </span>
             </button>
           );
         })}

@@ -134,7 +134,7 @@ export function DashboardFacades() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-serif font-semibold tracking-tight">Gestion des Façades</h3>
+          <h3 className="text-xl font-semibold tracking-tight">Gestion des Façades</h3>
           <p className="text-sm text-muted-foreground">
             Configurez les matériaux, paramètres et tarification des façades
           </p>
@@ -324,7 +324,6 @@ function MaterialModal({
     try {
       // Utiliser la même fonction que les échantillons
       const imageUrl = await uploadImage(textureFile);
-      console.log('Upload response:', imageUrl);
 
       setFormData(prev => ({ ...prev, texture_url: imageUrl }));
       toast.success('Texture uploadée');
@@ -354,9 +353,6 @@ function MaterialModal({
 
       // Si mode texture, uploader le fichier s'il n'est pas encore uploadé
       let finalTextureUrl = formData.texture_url;
-      console.log('handleSubmit - renderMode:', renderMode);
-      console.log('handleSubmit - formData.texture_url:', formData.texture_url);
-      console.log('handleSubmit - textureFile:', textureFile?.name);
 
       if (renderMode === 'texture') {
         if (!finalTextureUrl && textureFile) {

@@ -2,7 +2,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient, FurnitureModel, Category } from "@/lib/apiClient";
 import { ModelsHero } from "@/components/models/ModelsHero";
 import { ModelsCollectionSection } from "@/components/models/ModelsCollectionSection";
@@ -29,17 +29,44 @@ export default function ModelsPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
 
+  const urlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Catégorie lue dans l'URL au chargement, puis seulement lors d'une vraie navigation (lien vers /models?category=…).
+  // Les router.replace de la page sont « shallow » et ignorés : leur retour via router.query arrive après coup, parfois
+  // quand on a déjà changé de catégorie, et ramenait le carrousel en arrière.
+  const { isReady, events } = router;
+  const initialCategory = router.query.category;
   useEffect(() => {
-    if (router.isReady && router.query.category) {
-      setActiveCategory(router.query.category as string);
-    }
-  }, [router.isReady, router.query.category]);
+    if (!isReady) return;
+    if (typeof initialCategory === "string") setActiveCategory(initialCategory);
+    const onRouteChange = (url: string, { shallow }: { shallow: boolean }) => {
+      if (shallow) return;
+      const category = new URL(url, window.location.origin).searchParams.get("category");
+      if (category) setActiveCategory(category);
+    };
+    events.on("routeChangeComplete", onRouteChange);
+    return () => events.off("routeChangeComplete", onRouteChange);
+    // initialCategory volontairement exclu : seule la valeur au chargement compte, la suite passe par routeChangeComplete
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, events]);
+
+  useEffect(() => () => {
+    if (urlTimerRef.current) clearTimeout(urlTimerRef.current);
+  }, []);
 
   const loadModels = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await apiClient.models.getAll();
+      // Catégories chargées avec les modèles : le carrousel n'apparaît qu'une fois l'ordre des catégories connu,
+      // sinon il s'afficherait d'abord sur une autre catégorie puis glisserait vers celle de l'URL
+      const [data] = await Promise.all([
+        apiClient.models.getAll(),
+        apiClient.categories
+          .getAll(true)
+          .then(setCategories)
+          .catch((err) => console.error("Erreur lors du chargement des catégories:", err)),
+      ]);
       const productModels: ModelCardData[] = data.map((model: FurnitureModel) => {
         const categorySlug = model.category || inferCategorySlug(model.name);
         return {
@@ -61,30 +88,31 @@ export default function ModelsPage() {
 
   useEffect(() => {
     void loadModels();
-
-    const loadCategories = async () => {
-      try {
-        const data = await apiClient.categories.getAll(true);
-        setCategories(data);
-      } catch (err) {
-        console.error("Erreur lors du chargement des catégories:", err);
-      }
-    };
-    void loadCategories();
   }, [loadModels]);
 
-  const labelledModels: ModelCardData[] = models.map((model) => {
-    const category = categories.find((c) => c.slug === model.categorySlug);
-    return { ...model, categoryLabel: category ? category.name : model.categorySlug };
-  });
+  // Mémorisé : recréé à chaque rendu (donc à chaque pas du carrousel), ce tableau faisait recalculer tous les groupes
+  // de catégories et redessiner toutes les cartes
+  const labelledModels: ModelCardData[] = useMemo(
+    () =>
+      models.map((model) => {
+        const category = categories.find((c) => c.slug === model.categorySlug);
+        return { ...model, categoryLabel: category ? category.name : model.categorySlug };
+      }),
+    [models, categories],
+  );
 
+  // L'état change tout de suite ; l'URL n'est réécrite qu'une fois la navigation posée (molette ou glissé enchaînent
+  // plusieurs catégories par seconde, et un router.replace à chaque pas saccade le carrousel)
   const handleCategoryChange = (slug: string) => {
     setActiveCategory(slug);
-    router.replace(slug === "all" ? "/models" : `/models?category=${slug}`, undefined, { shallow: true });
+    if (urlTimerRef.current) clearTimeout(urlTimerRef.current);
+    urlTimerRef.current = setTimeout(() => {
+      router.replace(slug === "all" ? "/models" : `/models?category=${slug}`, undefined, { shallow: true });
+    }, 250);
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F6F2] text-[#161513]">
+    <div className="flex min-h-screen flex-col bg-am-paper text-black">
       <Head>
         <title>Nos Modèles — ArchiMeuble</title>
         <meta

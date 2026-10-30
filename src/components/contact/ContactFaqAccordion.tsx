@@ -15,11 +15,7 @@ export function ContactFaqAccordion() {
 
   return (
     <section aria-labelledby="contact-faq-title" className={HOME_SECTION}>
-      <h2
-        id="contact-faq-title"
-        className="m-0 mb-10 text-center font-[Geist] font-medium leading-[0.98] tracking-[-0.05em] text-[#161513]"
-        style={{ fontSize: "clamp(32px,4.4vw,56px)" }}
-      >
+      <h2 id="contact-faq-title" className="m-0 mb-10 text-center text-heading text-black">
         Questions fréquentes
       </h2>
       <div className="mx-auto flex max-w-[680px] flex-col gap-3">
@@ -29,21 +25,20 @@ export function ContactFaqAccordion() {
             <div
               key={item.q}
               className="rounded-[14px] bg-white transition-colors duration-200"
-              style={{ border: `1px solid ${isOpen ? "#161513" : "#E5E2D9"}` }}
+              style={{ border: `1px solid ${isOpen ? "#000000" : "rgba(0,0,0,0.15)"}` }}
             >
               <h3 className="m-0">
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? -1 : index)}
                   aria-expanded={isOpen}
-                  className="flex min-h-11 w-full items-center justify-between gap-5 px-[22px] py-5 text-left font-[Geist] font-medium tracking-[-0.02em] text-[#161513]"
-                  style={{ fontSize: "clamp(17px,1.4vw,19px)" }}
+                  className="flex min-h-11 w-full items-center justify-between gap-5 px-[22px] py-5 text-left text-lg font-medium tracking-[-0.02em] text-black"
                 >
                   <span>{item.q}</span>
                   <span
                     aria-hidden="true"
                     className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] transition-colors duration-200"
-                    style={{ background: isOpen ? "#D4FF3A" : "#EDEBE4", border: `1px solid ${isOpen ? "#161513" : "#EDEBE4"}` }}
+                    style={{ background: isOpen ? "var(--am-mist)" : "color-mix(in srgb, var(--am-mist) 30%, transparent)", border: `1px solid ${isOpen ? "#000000" : "color-mix(in srgb, var(--am-mist) 30%, transparent)"}` }}
                   >
                     <svg
                       width="14"
@@ -51,12 +46,12 @@ export function ContactFaqAccordion() {
                       viewBox="0 0 14 14"
                       style={{ transform: `rotate(${isOpen ? 180 : 0}deg)`, transition: "transform .3s cubic-bezier(.16,1,.3,1)" }}
                     >
-                      <path d="M3 5.5 7 9.5 11 5.5" fill="none" stroke="#161513" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3 5.5 7 9.5 11 5.5" fill="none" stroke="#000000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </span>
                 </button>
               </h3>
-              {isOpen && <p className="m-0 px-[22px] pb-[22px] text-[16px] leading-[1.55] text-[#5F5B53]">{item.a}</p>}
+              {isOpen && <p className="m-0 px-[22px] pb-[22px] text-[16px] leading-[1.55] text-black/70">{item.a}</p>}
             </div>
           );
         })}

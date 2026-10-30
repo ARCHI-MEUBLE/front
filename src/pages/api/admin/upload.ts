@@ -66,7 +66,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const relativePath = `/uploads/models/${uniqueName}`;
 
-    console.log('[LOCAL] Image saved:', relativePath);
     res.status(200).json({ imagePath: relativePath });
     return;
   }

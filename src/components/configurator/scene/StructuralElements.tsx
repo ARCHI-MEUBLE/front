@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import * as THREE from 'three';
 import { TexturedMaterial } from './TexturedMaterial';
+import { isRealClick } from './pointer';
 
 interface PanelSegmentHitboxProps {
     panelId: string;
@@ -18,25 +20,40 @@ export function PanelSegmentHitbox({
                                 onSelect,
                                 isDeleted = false
                             }: PanelSegmentHitboxProps) {
+    // Survol : la planche se teinte, on voit qu'un clic la choisit
+    const [hovered, setHovered] = useState(false);
+
     return (
         <group position={position}>
             <mesh
                 visible={false}
                 onPointerOver={(e) => {
                     e.stopPropagation();
+                    setHovered(true);
                     document.body.style.cursor = 'pointer';
                 }}
                 onPointerOut={() => {
+                    setHovered(false);
                     document.body.style.cursor = 'default';
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
+                    // Un glissement pour tourner autour du meuble ne sélectionne pas de planche
+                    if (!isRealClick(e)) return;
                     onSelect(isSelected ? null : panelId);
                 }}
             >
-                <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.002]} />
+                {/* Un peu plus profond que les zones des compartiments : sur la tranche d'un panneau c'est lui qui répond */}
+                <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, size[2] + 0.004]} />
                 <meshBasicMaterial transparent opacity={0} />
             </mesh>
+
+            {hovered && !isSelected && (
+                <mesh>
+                    <boxGeometry args={[size[0] + 0.003, size[1] + 0.003, size[2] + 0.003]} />
+                    <meshBasicMaterial transparent opacity={0.4} color="#3B3E58" depthWrite={false} toneMapped={false} />
+                </mesh>
+            )}
 
             {isSelected && (
                 <>
@@ -45,18 +62,18 @@ export function PanelSegmentHitbox({
                         <meshBasicMaterial
                             transparent
                             opacity={isDeleted ? 0.35 : 0.4}
-                            color={isDeleted ? "#FF5722" : "#2196F3"}
+                            color={isDeleted ? "#6A2025" : "#3B3E58"}
                             depthWrite={false}
                             toneMapped={false}
                         />
                     </mesh>
                     <mesh>
                         <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, size[2] + 0.004]} />
-                        <meshBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} wireframe transparent opacity={0.5} toneMapped={false} />
+                        <meshBasicMaterial color={isDeleted ? "#6A2025" : "#3B3E58"} wireframe transparent opacity={0.5} toneMapped={false} />
                     </mesh>
                     <lineSegments>
                         <edgesGeometry args={[new THREE.BoxGeometry(size[0] + 0.005, size[1] + 0.005, size[2] + 0.005)]} />
-                        <lineBasicMaterial color={isDeleted ? "#FF5722" : "#2196F3"} linewidth={4} toneMapped={false} />
+                        <lineBasicMaterial color={isDeleted ? "#6A2025" : "#3B3E58"} linewidth={4} toneMapped={false} />
                     </lineSegments>
                 </>
             )}

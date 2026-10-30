@@ -4,13 +4,8 @@ export const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
   plaque_bois: 'Plaqué bois',
 };
 
-export const MATERIAL_PRICE_BY_KEY: Record<string, number> = {
-  agglomere: 0,
-  mdf_melamine: 70,
-  plaque_bois: 140,
-};
-
 export const DEFAULT_COLOR_HEX = '#D8C7A1';
+export const DEFAULT_COLOR_NAME = 'Chêne naturel';
 
 export const HANDLE_TYPE_CODE: Record<string, string> = {
   'vertical_bar': '1',
@@ -31,6 +26,7 @@ export function normalizeMaterialKey(value: string | null | undefined): string {
   return value;
 }
 
+// Libellé à afficher : la base écrit « Agglomere » ou « MDF + revetement (melamine) », sans accents
 export function materialLabelFromKey(key: string): string {
-  return key;
+  return MATERIAL_LABEL_BY_KEY[normalizeMaterialKey(key)] ?? key;
 }
