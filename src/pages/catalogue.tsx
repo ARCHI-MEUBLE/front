@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
 import { toast } from "react-hot-toast";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -135,13 +135,7 @@ export default function Catalogue() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Boutique — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Découvrez notre sélection de produits et accessoires haut de gamme pour vos projets d'aménagement."
-        />
-      </Head>
+      <Seo title="Boutique : quincaillerie et accessoires — ArchiMeuble" description="Charnières, boutons, quincaillerie et accessoires sélectionnés par nos menuisiers lillois pour vos meubles et aménagements. Commande en ligne." />
       <Header />
       <main className="flex-1">
         <CatalogueHero />

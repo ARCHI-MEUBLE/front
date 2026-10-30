@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /paiement/
+Disallow: /order-confirmation/
+
+Sitemap: https://www.archimeuble.com/sitemap.xml

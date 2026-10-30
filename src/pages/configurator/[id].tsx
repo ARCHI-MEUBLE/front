@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import Head from 'next/head';
+import type { GetServerSideProps } from 'next';
+import { Seo } from '@/components/Seo';
+import { breadcrumbJsonLd } from '@/lib/seo';
+import { PUBLIC_PAGE_CACHE, fetchBackend } from '@/lib/backendServer';
 import Link from 'next/link';
 import { adminUrl } from '@/lib/adminPath';
 
@@ -168,7 +171,67 @@ function notifyRemovedFacades(removed: number) {
   else if (removed > 1) toast(`${removed} portes ou tiroirs qui se superposaient ont été retirés.`);
 }
 
-export default function ConfiguratorPage() {
+type SeoModel = Pick<FurnitureModel, 'id' | 'name' | 'description' | 'image_url'>;
+
+// Titre et description d'un modèle, pour Google et les aperçus de partage
+function modelSeo(model: SeoModel) {
+  return {
+    title: `${model.name} sur mesure, à configurer en 3D — ArchiMeuble`,
+    description:
+      model.description ||
+      `Configurez votre ${model.name.toLowerCase()} sur mesure en 3D : dimensions, matériaux, couleurs et façades. Fabriqué et posé par nos menuisiers à Lille.`,
+  };
+}
+
+interface ConfiguratorRouteProps {
+  // Modèle lu par le serveur : titre, description et image sont dans la page dès son arrivée, ce que lisent Google
+  // et les aperçus de liens partagés (WhatsApp, Facebook… n'exécutent pas le JavaScript). null : backend
+  // injoignable ou adresse sans modèle, la page garde son titre calculé dans le navigateur.
+  seoModel: SeoModel | null;
+  noindex: boolean;
+}
+
+export const getServerSideProps: GetServerSideProps<ConfiguratorRouteProps> = async ({ params, query, res }) => {
+  const fromAdmin = Boolean(query.adminMode || query.fromAdmin);
+  const id = Number(params?.id);
+  if (!Number.isInteger(id) || id <= 0) return { props: { seoModel: null, noindex: true } };
+
+  const result = await fetchBackend(`/backend/api/models.php?id=${id}`);
+  // Modèle supprimé : vraie 404, Google le retire de son index (l'administration garde son propre affichage d'erreur)
+  if (result.status === 'not-found' && !fromAdmin) return { notFound: true };
+  const data = result.status === 'ok' ? (result.data as Partial<SeoModel>) : null;
+  const seoModel =
+    data && typeof data.name === 'string'
+      ? { id, name: data.name, description: data.description ?? null, image_url: data.image_url ?? null }
+      : null;
+
+  // Page publique sans réglage propre à un visiteur (seul ?partage= peut s'ajouter) : mise en cache par le CDN
+  const publicUrl = Object.keys(query).every((key) => key === 'id' || key === SHARE_QUERY_PARAM);
+  if (seoModel && publicUrl && !fromAdmin) res.setHeader('Cache-Control', PUBLIC_PAGE_CACHE);
+  return { props: { seoModel, noindex: fromAdmin } };
+};
+
+export default function ConfiguratorRoute({ seoModel, noindex }: ConfiguratorRouteProps) {
+  return (
+    <>
+      {seoModel && (
+        <Seo
+          {...modelSeo(seoModel)}
+          image={seoModel.image_url}
+          noindex={noindex}
+          jsonLd={breadcrumbJsonLd([
+            { name: 'Accueil', path: '/' },
+            { name: 'Nos modèles', path: '/models' },
+            { name: seoModel.name, path: `/configurator/${seoModel.id}` },
+          ])}
+        />
+      )}
+      <ConfiguratorPage serverSeo={seoModel !== null} />
+    </>
+  );
+}
+
+function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const router = useRouter();
   const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
   const { customer, isAuthenticated } = useCustomer();
@@ -2239,9 +2302,8 @@ export default function ConfiguratorPage() {
 
   return (
     <>
-      <Head>
-        <title>Configurateur - {model.name} | ArchiMeuble</title>
-      </Head>
+      {/* Repli quand le serveur n'a pas pu lire le modèle */}
+      {!serverSeo && <Seo {...modelSeo(model)} image={model.image_url} noindex={isAdminCreateModel} />}
       <Toaster position="top-center" />
 
       <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>

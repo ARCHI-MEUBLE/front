@@ -15,9 +15,11 @@ interface Props {
   images: RealisationImage[];
   className?: string;
   onGalleryOpen?: (images: RealisationImage[], startIndex: number) => void;
+  // Description des photos sans légende (titre et lieu du projet) : lue par Google Images et les lecteurs d'écran
+  altBase?: string;
 }
 
-export function RealisationCarousel({ images, className = '', onGalleryOpen }: Props) {
+export function RealisationCarousel({ images, className = '', onGalleryOpen, altBase }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!images || images.length === 0) {
@@ -51,7 +53,12 @@ export function RealisationCarousel({ images, className = '', onGalleryOpen }: P
         <motion.img
           key={currentIndex}
           src={images[currentIndex].image_url}
-          alt={`Image ${currentIndex + 1}`}
+          alt={
+            images[currentIndex].legende ||
+            (altBase
+              ? images.length > 1 ? `${altBase} (photo ${currentIndex + 1} sur ${images.length})` : altBase
+              : `Image ${currentIndex + 1}`)
+          }
           className="w-full h-full object-cover cursor-pointer"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
