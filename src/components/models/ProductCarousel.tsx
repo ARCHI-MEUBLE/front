@@ -2,19 +2,10 @@ import { memo, useEffect, useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion, useMotionValueEvent, useTransform, type MotionValue } from "framer-motion";
 import type { ModelCardData } from "@/components/models/ModelCard";
 import { Chevron } from "@/components/models/Chevron";
-import { ModelCarouselCard } from "@/components/models/ModelCarouselCard";
+import { ModelCarouselCard, ModelPreviewTile } from "@/components/models/ModelCarouselCard";
 import { carouselSlots, mod, useSmoothScroller, type CategoryGroup } from "@/components/models/modelsCarousel";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-// Sert uniquement à réserver la hauteur d'une carte d'aperçu absente (rendue invisible)
-const PLACEHOLDER_MODEL: ModelCardData = {
-  id: 0,
-  name: " ",
-  description: "",
-  imagePath: null,
-  categorySlug: "",
-  categoryLabel: "",
-};
 
 // Changement de catégorie : le bloc glisse dans le sens de la navigation et ses rangées arrivent en cascade (fondu et
 // léger zoom), en commençant par celle qui vient du côté de l'arrivée. Pas de flou : animer `filter: blur` sur des
@@ -33,21 +24,40 @@ const ROW_VARIANTS = {
   exit: { opacity: 0, scale: 0.98, transition: { duration: 0.22, ease: EASE } },
 };
 
-// Aperçu atténué d'une catégorie voisine (au-dessus : précédente, au-dessous : suivante), purement décoratif.
-// Les emplacements vides gardent leur place pour que la hauteur ne change pas d'une catégorie à l'autre.
-function PreviewRow({ group, visible }: { group: CategoryGroup; visible: number }) {
-  const models = group.models.slice(0, visible);
+// Aperçu d'une catégorie voisine (au-dessus : précédente, au-dessous : suivante), purement décoratif : trois photos,
+// coupées pour n'en garder que les deux tiers côté rangée principale, et fondues vers l'extérieur — les catégories
+// voisines semblent dépasser de part et d'autre de la sélection, comme sur une roulette.
+const PREVIEW_COUNT = 3;
+// Hauteur visible du cadre : 2/3 d'une vignette (format 6:5) quand trois vignettes occupent sa largeur, soit
+// largeur × 5/27 ; l'écart entre vignettes, négligé ici, ne change la coupe que de quelques pixels
+const PREVIEW_FRAME_ASPECT = "27 / 5";
+
+function PreviewRow({ group, side }: { group: CategoryGroup; side: "above" | "below" }) {
+  const models = group.models.slice(0, PREVIEW_COUNT);
+  // Transparent sur le bord extérieur, opaque côté rangée principale
+  const fade = `linear-gradient(to ${side === "above" ? "bottom" : "top"}, transparent 0%, rgba(0, 0, 0, 0.45) 40%, #000 90%)`;
   return (
-    <div aria-hidden="true" className="pointer-events-none mx-auto grid w-[78%] gap-2 opacity-35" style={{ gridTemplateColumns: `repeat(${visible}, minmax(0, 1fr))` }}>
-      {Array.from({ length: visible }).map((_, i) =>
-        models[i] ? (
-          <ModelCarouselCard key={models[i].id} model={models[i]} preview />
-        ) : (
-          <div key={`empty-${i}`} className="invisible">
-            <ModelCarouselCard model={PLACEHOLDER_MODEL} preview />
-          </div>
-        ),
-      )}
+    <div
+      aria-hidden="true"
+      className="pointer-events-none relative mx-auto w-[66%] max-w-[760px] overflow-hidden opacity-80"
+      style={{ aspectRatio: PREVIEW_FRAME_ASPECT, maskImage: fade, WebkitMaskImage: fade }}
+    >
+      {/* Vignettes collées au bord intérieur du cadre : la coupe enlève le tiers extérieur */}
+      <div
+        className={`absolute inset-x-0 grid gap-2.5 ${side === "above" ? "bottom-0" : "top-0"}`}
+        style={{ gridTemplateColumns: `repeat(${PREVIEW_COUNT}, minmax(0, 1fr))` }}
+      >
+        {Array.from({ length: PREVIEW_COUNT }).map((_, i) =>
+          models[i] ? (
+            <ModelPreviewTile key={models[i].id} model={models[i]} />
+          ) : (
+            // Emplacement vide : garde sa place pour que les vignettes restent alignées
+            <div key={`empty-${i}`} className="invisible">
+              <ModelPreviewTile model={null} />
+            </div>
+          ),
+        )}
+      </div>
     </div>
   );
 }
@@ -113,7 +123,8 @@ function MainRow({
   return (
     // Moins de modèles que d'emplacements : la rangée se resserre au centre, les cartes gardent leur taille
     <div data-carousel-track className="mx-auto overflow-hidden" style={{ width: `${(shown / visible) * 100}%` }}>
-      <div className="grid grid-cols-[minmax(0,1fr)]">
+      {/* Marge basse : laisse voir l'ombre des vignettes, sinon coupée par le cadre masqué */}
+      <div className="grid grid-cols-[minmax(0,1fr)] pb-6">
         {slots.map(({ key, index }) => (
           <CardSlot
             key={key}
@@ -196,7 +207,7 @@ export const ProductCarousel = memo(function ProductCarousel({
   const firstShown = offset + 1;
   // Au bout du carrousel (ou s'il n'y a pas de quoi défiler), la flèche disparaît mais garde sa place
   const arrowClass =
-    "flex h-16 w-9 flex-none items-center justify-center self-center rounded text-am-navy transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy disabled:invisible sm:w-12";
+    "flex h-16 w-9 flex-none items-center justify-center self-center rounded text-am-navy transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy disabled:invisible sm:w-10 xl:w-8";
 
   return (
     // touch-pan-y : la page défile toujours au doigt à la verticale, le glissé horizontal fait défiler les modèles
@@ -205,7 +216,7 @@ export const ProductCarousel = memo(function ProductCarousel({
       aria-roledescription="carrousel"
       aria-label={`Modèles : ${current.label}`}
       onKeyDown={handleKeyDown}
-      className="grid min-w-0 touch-pan-y grid-cols-[auto_minmax(0,1fr)_auto] gap-x-1 sm:gap-x-4"
+      className="grid min-w-0 touch-pan-y grid-cols-[auto_minmax(0,1fr)_auto] gap-x-1 sm:gap-x-3 xl:gap-x-2"
     >
       <button
         type="button"
@@ -226,11 +237,11 @@ export const ProductCarousel = memo(function ProductCarousel({
             initial="enter"
             animate="center"
             exit="exit"
-            className="flex w-full flex-col gap-4 sm:gap-6"
+            className="flex w-full flex-col gap-3 sm:gap-4"
           >
             {prev && (
               <motion.div variants={ROW_VARIANTS}>
-                <PreviewRow group={prev} visible={visible} />
+                <PreviewRow group={prev} side="above" />
               </motion.div>
             )}
             <motion.div variants={ROW_VARIANTS}>
@@ -238,7 +249,7 @@ export const ProductCarousel = memo(function ProductCarousel({
             </motion.div>
             {next && (
               <motion.div variants={ROW_VARIANTS}>
-                <PreviewRow group={next} visible={visible} />
+                <PreviewRow group={next} side="below" />
               </motion.div>
             )}
           </motion.div>

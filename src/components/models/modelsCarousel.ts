@@ -59,25 +59,30 @@ export function carouselSlots(offset: number, visible: number, count: number) {
   return slots;
 }
 
-// Nombre de cartes de la rangée principale selon la largeur (1 / 2 / 3), aligné sur les breakpoints sm et lg
+// Nombre de cartes de la rangée principale : 1 sur téléphone (sous le breakpoint sm, version dédiée), 2 sur tablette,
+// 3 à partir de lg — la mise en page laisse alors assez de largeur pour trois grandes cartes.
+const SM_QUERY = "(min-width: 640px)";
+const LG_QUERY = "(min-width: 1024px)";
+const countFor = (sm: boolean, lg: boolean) => (lg ? 3 : sm ? 2 : 1);
+
 export function useVisibleCount(): number {
-  // Lu dès le premier rendu côté navigateur : évite de rendre 3 cartes puis 1 sur mobile. Sans risque d'écart
+  // Lu dès le premier rendu côté navigateur : évite de rendre 3 cartes puis 1 sur téléphone. Sans risque d'écart
   // d'hydratation, le carrousel n'étant affiché qu'après le chargement des données (côté client)
   const [visible, setVisible] = useState(() => {
     if (typeof window === "undefined") return 3;
-    return window.matchMedia("(min-width: 1024px)").matches ? 3 : window.matchMedia("(min-width: 640px)").matches ? 2 : 1;
+    return countFor(window.matchMedia(SM_QUERY).matches, window.matchMedia(LG_QUERY).matches);
   });
 
   useEffect(() => {
-    const lg = window.matchMedia("(min-width: 1024px)");
-    const sm = window.matchMedia("(min-width: 640px)");
-    const update = () => setVisible(lg.matches ? 3 : sm.matches ? 2 : 1);
+    const sm = window.matchMedia(SM_QUERY);
+    const lg = window.matchMedia(LG_QUERY);
+    const update = () => setVisible(countFor(sm.matches, lg.matches));
     update();
-    lg.addEventListener("change", update);
     sm.addEventListener("change", update);
+    lg.addEventListener("change", update);
     return () => {
-      lg.removeEventListener("change", update);
       sm.removeEventListener("change", update);
+      lg.removeEventListener("change", update);
     };
   }, []);
 

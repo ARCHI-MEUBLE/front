@@ -1,93 +1,74 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Pencil, SlidersHorizontal } from "lucide-react";
 import type { ModelCardData } from "@/components/models/ModelCard";
 
 // Images du site (public/images) : redimensionnées et converties par l'optimiseur de Next, au lieu de télécharger des
 // originaux de plusieurs Mo pour une carte de ~250 px. Les autres (uploads servis par le backend) restent telles quelles.
 const isOptimizable = (src: string) => src.startsWith("/images/");
 
-// Carte des carrousels de la page modèles : fond gris clair, image contenue, nom en pied.
-// En aperçu (rangées du dessus et du dessous) elle n'est ni cliquable ni focusable : seule la rangée centrale se navigue.
-// Mémorisée : un pas du carrousel ne redessine que les cartes dont les props changent.
-export const ModelCarouselCard = memo(function ModelCarouselCard({
-  model,
-  preview = false,
-  focusable = true,
-}: {
-  model: ModelCardData;
-  preview?: boolean;
-  focusable?: boolean;
-}) {
+// Format commun de toutes les vignettes : les photos sont recadrées (object-cover, centrées) dans ce cadre, pour que
+// la grille reste régulière quelles que soient les images d'origine. À aligner sur le format des futures photos.
+export const MODEL_TILE_ASPECT = "6 / 5";
+export const MODEL_TILE_RATIO = 6 / 5;
+
+// Bandeau des cartes (≈ 190 à 450 px de large selon l'écran) : il suit la largeur de la carte elle-même (container
+// queries, la carte porte `@container`), pour que le nom tienne à toutes les tailles
+const BAR = {
+  radius: "rounded-[20px]",
+  bar: "h-[48px] pl-3.5 pr-1.5 @min-[300px]:h-[52px] @min-[300px]:pl-4 @min-[400px]:h-[56px] @min-[400px]:pl-5",
+  title: "text-[13px] @min-[300px]:text-[15px] @min-[400px]:text-[16px]",
+  button: "px-3 py-1.5 text-[12px] @min-[300px]:px-3.5 @min-[300px]:py-2 @min-[300px]:text-[13px] @min-[400px]:px-4",
+};
+
+// Photo d'une vignette, recadrée dans le format commun (mêmes réglages pour les cartes et les aperçus)
+function TileImage({ model, sizes }: { model: ModelCardData; sizes: string }) {
+  return model.imagePath ? (
+    <Image
+      src={model.imagePath}
+      alt=""
+      fill
+      unoptimized={!isOptimizable(model.imagePath)}
+      className="object-cover object-center transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+      sizes={sizes}
+    />
+  ) : (
+    <div className="absolute inset-0 flex items-start justify-center pt-[18%]">
+      <span className="eyebrow text-black/40">Visuel à venir</span>
+    </div>
+  );
+}
+
+// Vignette d'un modèle : photo plein cadre, et en bas un bandeau bleu nuit arrondi avec le nom et le bouton
+// « Configurer ». Rien d'autre, pour que la photo du meuble porte la vignette.
+function ModelTile({ model, children }: { model: ModelCardData; children: (content: ReactNode, className: string) => ReactNode }) {
+  const s = BAR;
   const content = (
     <>
-      <div className="flex items-center justify-between text-black/70">
-        <span className={`flex items-center gap-1.5 ${preview ? "text-[9px]" : "text-[11px]"}`}>
-          <Pencil aria-hidden="true" className={preview ? "h-2.5 w-2.5" : "h-3 w-3"} strokeWidth={1.75} />
-          Sur-mesure
-        </span>
-        <span
-          aria-hidden="true"
-          className={`flex items-center justify-center rounded-full border border-black/40 ${preview ? "h-4 w-4" : "h-6 w-6"}`}
-        >
-          <SlidersHorizontal className={preview ? "h-2 w-2" : "h-3 w-3"} strokeWidth={1.75} />
-        </span>
-      </div>
-      <div className="relative aspect-[4/3] w-full">
-        {model.imagePath ? (
-          <Image
-            src={model.imagePath}
-            alt={preview ? "" : model.name}
-            fill
-            unoptimized={!isOptimizable(model.imagePath)}
-            className="object-contain transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-            sizes={
-              preview
-                ? "(max-width: 640px) 60vw, (max-width: 1024px) 30vw, 16vw"
-                : "(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 22vw"
-            }
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center rounded-sm border border-dashed border-black/10">
-            <span className="eyebrow text-black/40">Visuel à venir</span>
-          </div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-col items-center gap-0.5 text-center">
-        <h3 className={`m-0 w-full truncate text-black ${preview ? "text-[11px]" : "text-[15px] font-medium"}`}>
+      <TileImage model={model} sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw" />
+      <div className={`absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-am-navy ${s.radius} ${s.bar}`}>
+        {/* Nom trop long pour la carte : coupé par des points de suspension, complet au survol */}
+        <h3 title={model.name} className={`m-0 min-w-0 truncate font-medium tracking-[-0.02em] text-white ${s.title}`}>
           {model.name}
         </h3>
-        {!preview && (
-          <span className="text-[12px] text-black/60 underline decoration-black/20 underline-offset-4 transition-colors group-hover:decoration-black">
-            Configurer ce modèle
-          </span>
-        )}
+        <span
+          aria-hidden="true"
+          className={`flex-none whitespace-nowrap rounded-full bg-am-mist text-am-navy transition-colors duration-200 group-hover:bg-white ${s.button}`}
+        >
+          Configurer →
+        </span>
       </div>
     </>
   );
-
-  const cardClass = `group flex flex-col rounded-md bg-[#efefef] ${preview ? "gap-2 p-2" : "gap-4 p-3 sm:p-4"}`;
-
-  if (preview) return <div className={cardClass}>{content}</div>;
-
-  return (
-    <Link
-      href={`/configurator/${model.id}`}
-      aria-label={`Configurer : ${model.name}`}
-      tabIndex={focusable ? undefined : -1}
-      className={`${cardClass} transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
-    >
-      {content}
-    </Link>
+  return children(
+    content,
+    `@container group relative block overflow-hidden bg-[#e9e7e2] shadow-[0_10px_24px_-8px_rgba(31,34,56,0.35)] ${s.radius}`,
   );
-});
+}
 
-// Vignette compacte de la liste des modèles sur téléphone : image à gauche, nom et lien à droite, sur une hauteur
-// fixe (MOBILE_ROW_HEIGHT) pour que trois vignettes tiennent à l'écran avec la catégorie au-dessus.
-export const MOBILE_ROW_HEIGHT = 112;
-
-export const ModelRowCard = memo(function ModelRowCard({
+// Carte des carrousels de la page modèles (ordinateur et tablette), au format commun MODEL_TILE_ASPECT.
+// Mémorisée : un pas du carrousel ne redessine que les cartes dont les props changent.
+export const ModelCarouselCard = memo(function ModelCarouselCard({
   model,
   focusable = true,
 }: {
@@ -95,39 +76,56 @@ export const ModelRowCard = memo(function ModelRowCard({
   focusable?: boolean;
 }) {
   return (
-    <Link
-      href={`/configurator/${model.id}`}
-      aria-label={`Configurer : ${model.name}`}
-      tabIndex={focusable ? undefined : -1}
-      style={{ height: MOBILE_ROW_HEIGHT }}
-      className="group flex items-stretch gap-3 rounded-md bg-[#efefef] p-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy"
-    >
-      <div className="relative aspect-[4/3] h-full flex-none">
-        {model.imagePath ? (
-          <Image
-            src={model.imagePath}
-            alt={model.name}
-            fill
-            unoptimized={!isOptimizable(model.imagePath)}
-            className="object-contain"
-            sizes="40vw"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center rounded-sm border border-dashed border-black/10">
-            <span className="eyebrow text-black/40">Visuel à venir</span>
-          </div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-        <span className="flex items-center gap-1.5 text-[11px] text-black/70">
-          <Pencil aria-hidden="true" className="h-3 w-3" strokeWidth={1.75} />
-          Sur-mesure
-        </span>
-        <h3 className="m-0 truncate text-[15px] font-medium text-black">{model.name}</h3>
-        <span className="self-start text-[12px] text-black/60 underline decoration-black/20 underline-offset-4">
-          Configurer ce modèle
-        </span>
-      </div>
-    </Link>
+    <ModelTile model={model}>
+      {(content, className) => (
+        <Link
+          href={`/configurator/${model.id}`}
+          aria-label={`Configurer : ${model.name}`}
+          tabIndex={focusable ? undefined : -1}
+          style={{ aspectRatio: MODEL_TILE_ASPECT }}
+          className={`${className} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
+        >
+          {content}
+        </Link>
+      )}
+    </ModelTile>
+  );
+});
+
+// Vignette des aperçus (catégories précédente et suivante) : la photo seule, au format commun, ni cliquable ni
+// focusable — seule la rangée centrale se navigue. La rangée d'aperçu la coupe et la fond (ProductCarousel).
+export const ModelPreviewTile = memo(function ModelPreviewTile({ model }: { model: ModelCardData | null }) {
+  return (
+    <div className="relative overflow-hidden rounded-[14px] bg-[#e9e7e2]" style={{ aspectRatio: MODEL_TILE_ASPECT }}>
+      {model && <TileImage model={model} sizes="(max-width: 1024px) 22vw, 15vw" />}
+    </div>
+  );
+});
+
+// Vignette de la liste des modèles sur téléphone : même vignette et même format (MODEL_TILE_ASPECT) que sur
+// ordinateur, donc photo cadrée à l'identique ; sa hauteur est calculée par la liste pour que trois tiennent à l'écran.
+export const ModelRowCard = memo(function ModelRowCard({
+  model,
+  height,
+  focusable = true,
+}: {
+  model: ModelCardData;
+  height: number;
+  focusable?: boolean;
+}) {
+  return (
+    <ModelTile model={model}>
+      {(content, className) => (
+        <Link
+          href={`/configurator/${model.id}`}
+          aria-label={`Configurer : ${model.name}`}
+          tabIndex={focusable ? undefined : -1}
+          style={{ height, width: Math.round(height * MODEL_TILE_RATIO) }}
+          className={`${className} mx-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
+        >
+          {content}
+        </Link>
+      )}
+    </ModelTile>
   );
 });
