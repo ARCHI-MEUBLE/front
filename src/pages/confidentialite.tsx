@@ -1,4 +1,4 @@
-import Head from 'next/head';
+import { Seo } from "@/components/Seo";
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -6,10 +6,7 @@ import { Footer } from '@/components/Footer';
 export default function Confidentialite() {
   return (
     <>
-      <Head>
-        <title>Politique de Confidentialité - ArchiMeuble</title>
-        <meta name="description" content="Politique de confidentialité du site ArchiMeuble - Protection de vos données personnelles" />
-      </Head>
+      <Seo title="Politique de confidentialité — ArchiMeuble" description="Comment ArchiMeuble collecte, utilise et protège vos données personnelles." />
 
       <Header />
 

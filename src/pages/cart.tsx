@@ -315,6 +315,7 @@ export default function Cart() {
       <>
         <Head>
           <title>Mon Panier - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="min-h-screen bg-am-paper">
@@ -341,6 +342,7 @@ export default function Cart() {
     <>
       <Head>
         <title>Mon Panier - ArchiMeuble</title>
+        <meta name="robots" content="noindex" />
       </Head>
       <Header />
 

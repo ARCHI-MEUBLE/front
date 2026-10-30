@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
 import { useRouter } from "next/router";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -64,13 +64,7 @@ export default function ContactRequestPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Contact — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Contactez ArchiMeuble pour vos projets de meubles sur mesure. Devis gratuit et consultation personnalisée."
-        />
-      </Head>
+      <Seo title="Contact — ArchiMeuble, menuisier à Lille" description="Contactez ArchiMeuble, menuisier à Lille, pour votre projet de meuble sur mesure : atelier au 30 rue Henri Regnault, 06 01 06 28 67. Devis gratuit." />
       <Header />
       <main className="flex-1">
         {/* Tout le formulaire et les coordonnées tiennent dans l'écran : la FAQ commence juste dessous */}

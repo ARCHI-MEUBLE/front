@@ -399,6 +399,7 @@ export default function CheckoutStripe() {
       <>
         <Head>
           <title>Paiement - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="min-h-screen bg-am-paper">
@@ -419,6 +420,7 @@ export default function CheckoutStripe() {
       <>
         <Head>
           <title>Paiement - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="min-h-screen bg-am-paper flex items-center justify-center">
@@ -448,6 +450,7 @@ export default function CheckoutStripe() {
     <>
       <Head>
         <title>Paiement - ArchiMeuble</title>
+        <meta name="robots" content="noindex" />
       </Head>
       <Header />
 
