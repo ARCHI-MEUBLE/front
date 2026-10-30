@@ -10,7 +10,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Vérifier l'authentification admin
   if (!(await verifyAdminSession(req, res))) {
-    console.log('Authentication failed - no admin session');
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -23,8 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const queryString = req.url.split('?')[1];
       url += `?${queryString}`;
     }
-
-    console.log('Calling backend URL:', url);
 
     // Déterminer l'URL du frontend
     const protocol = req.headers['x-forwarded-proto'] || (req.connection as any).encrypted ? 'https' : 'http';
@@ -42,8 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
       credentials: 'include',
     });
-
-    console.log('Backend response status:', response.status);
 
     // Vérifier si la réponse est du JSON
     const contentType = response.headers.get('content-type');

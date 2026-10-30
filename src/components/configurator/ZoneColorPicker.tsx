@@ -55,17 +55,19 @@ export default function ZoneColorPicker({
       if (match) materialKey = match;
     }
 
-    console.log('🎨 ZoneColorPicker - materialKey résolu:', materialKey);
-    const materialTypes = materialsMap[materialKey] || [];
-    console.log('🎨 ZoneColorPicker - materialTypes trouvés:', materialTypes.length);
+    // Une façade peut venir d'une autre matière que le reste du meuble : toutes les matières sont proposées,
+    // celle du meuble en premier
+    const keys = Object.keys(materialsMap).sort((a, b) => Number(b === materialKey) - Number(a === materialKey));
     const list: SampleColor[] = [];
     const seen = new Set<number>();
 
-    for (const type of materialTypes) {
-      for (const colorOption of type.colors || []) {
-        if (seen.has(colorOption.id)) continue;
-        seen.add(colorOption.id);
-        list.push(colorOption);
+    for (const key of keys) {
+      for (const type of materialsMap[key] || []) {
+        for (const colorOption of type.colors || []) {
+          if (seen.has(colorOption.id)) continue;
+          seen.add(colorOption.id);
+          list.push(colorOption);
+        }
       }
     }
     return list;

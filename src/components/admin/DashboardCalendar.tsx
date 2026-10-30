@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, dateFnsLocalizer, Views, SlotInfo, View, stringOrDate } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, Views, View, stringOrDate } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -194,10 +194,6 @@ export function DashboardCalendar() {
     setSelectedAppointment(event.resource);
   };
 
-  const handleSelectSlot = (slotInfo: SlotInfo) => {
-    console.log('Slot sélectionné:', slotInfo);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -265,7 +261,6 @@ export function DashboardCalendar() {
                 endAccessor="end"
                 style={{ height: '100%' }}
                 onSelectEvent={handleSelectEvent}
-                onSelectSlot={handleSelectSlot}
                 selectable
                 view={view}
                 onView={setView}
