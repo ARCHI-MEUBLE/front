@@ -31,7 +31,8 @@ export const AR_MESSAGES = {
   recheck: 'Vérifier à nouveau',
   googleCamera: "L'application Google va s'ouvrir et vous demander à son tour l'accès à l'appareil photo : acceptez.",
   failed: "Le modèle 3D n'a pas pu être préparé.",
-  webXrIntro: "Chrome va vous demander l'accès à l'appareil photo : acceptez, puis visez le sol.",
+  // Chrome, mais aussi Samsung Internet et les autres navigateurs qui ont la réalité augmentée WebXR
+  webXrIntro: "Le navigateur va vous demander l'accès à l'appareil photo : acceptez, puis visez le sol.",
   webXrDenied:
     "L'accès à l'appareil photo a été refusé : autorisez-le pour ce site (cadenas à gauche de l'adresse > Autorisations > Appareil photo), puis relancez.",
   webXrFailed: "La réalité augmentée n'a pas pu démarrer dans la page. Essayez avec l'application Google ou en 3D, ci-dessous.",
