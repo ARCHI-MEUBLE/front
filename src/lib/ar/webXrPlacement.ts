@@ -273,6 +273,9 @@ export async function runWebXrPlacement({ session, glbUrl, onPhase, onError, onE
     environment.dispose();
     pmrem.dispose();
     renderer.dispose();
+    // Libère le contexte WebGL tout de suite : Chrome en limite le nombre, et après plusieurs lancements il retirait
+    // le plus ancien, celui de la vue 3D du configurateur (écran figé au retour)
+    renderer.forceContextLoss();
     renderer.domElement.remove();
   };
 
