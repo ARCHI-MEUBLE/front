@@ -406,3 +406,9 @@
   from { transform: translateY(-50%); }
   to { transform: translateY(0); }
 }
+
+/* Plan 2D : la cote qu'on vient de modifier (largeur ou hauteur) s'allume puis revient au calme */
+@keyframes am-cote-flash {
+  0%, 45% { background-color: var(--am-navy); color: #fff; }
+  100% { background-color: transparent; color: inherit; }
+}

@@ -2,10 +2,18 @@ import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent
 import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, SquareDashed, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { moveDivider } from '@/lib/configurator/zoneResize';
+import { DIMENSION_LIMITS } from '@/lib/configurator/constraints';
 import { layoutLeafText } from './leafLayout';
 
 // Jamais plus large que ça, même sur un très grand écran
 const MAX_CANVAS_WIDTH = 1100;
+// Place des cotes (px) : largeur au-dessus du dessin, hauteur sur le côté
+const COTE_TOP = 28;
+const COTE_SIDE = 30;
+// Quand le meuble ne tient plus pendant une modification, il n'occupe plus que cette part de la place
+const HEADROOM = 0.85;
+// Après une modification des dimensions, délai avant que le dessin revienne remplir toute la place
+const REFIT_DELAY_MS = 2500;
 
 interface LeafVisual {
     // Même icône que dans le panneau de réglage : on reconnaît le contenu d'un coup d'œil
@@ -406,24 +414,45 @@ export default function ZoneCanvas({
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
-    // Calcul du ratio réel du meuble (identique au modèle 3D), dans la boîte disponible
-    const aspectRatio = width / height;
-    const boxWidth = availableWidth === null ? 500 : Math.max(1, Math.min(availableWidth - 32, MAX_CANVAS_WIDTH));
-    const boxHeight = Math.max(1, maxCanvasHeight);
+    // Place réservée autour du dessin pour les cotes (largeur au-dessus, hauteur à gauche ; la marge de
+    // droite est la même que celle de gauche pour garder le dessin centré)
+    const boxWidth = availableWidth === null ? 500 : Math.max(1, Math.min(availableWidth - 32 - 2 * COTE_SIDE, MAX_CANVAS_WIDTH));
+    const boxHeight = Math.max(1, maxCanvasHeight - COTE_TOP);
 
-    let canvasWidth: number;
-    let canvasHeight: number;
-
-    if (aspectRatio > boxWidth / boxHeight) {
-        canvasWidth = boxWidth;
-        canvasHeight = boxWidth / aspectRatio;
-    } else {
-        canvasHeight = boxHeight;
-        canvasWidth = boxHeight * aspectRatio;
+    // Au repos, le meuble remplit toute la place. Quand on change la largeur ou la hauteur, l'échelle reste
+    // un moment figée : le dessin grandit ou rétrécit sous les yeux (sinon il se recadre aussitôt et on ne
+    // voit pas ce qu'on modifie), puis il revient remplir la place après REFIT_DELAY_MS sans changement.
+    const fitScale = Math.min(boxWidth / width, boxHeight / height);
+    const boxKey = `${boxWidth}x${boxHeight}`;
+    // Le meuble ne tient plus : on recule en lui laissant de quoi grandir encore à l'écran
+    const roomyScale = () =>
+        Math.min(
+            boxWidth / Math.max(width, Math.min(width / HEADROOM, DIMENSION_LIMITS.width.max)),
+            boxHeight / Math.max(height, Math.min(height / HEADROOM, DIMENSION_LIMITS.height.max))
+        );
+    const [view, setView] = useState(() => ({ scale: fitScale, boxKey }));
+    let scale = view.scale;
+    if (view.boxKey !== boxKey) {
+        // La place disponible a changé (fenêtre, ouverture du plan) : on remplit tout de suite
+        scale = fitScale;
+        setView({ scale, boxKey });
+    } else if (scale > fitScale) {
+        scale = roomyScale();
+        setView({ scale, boxKey });
     }
 
-    canvasWidth = Math.max(1, canvasWidth);
-    canvasHeight = Math.max(1, canvasHeight);
+    useEffect(() => {
+        if (Math.abs(view.scale - fitScale) < 1e-9) return;
+        const timer = setTimeout(() => setView({ scale: fitScale, boxKey }), REFIT_DELAY_MS);
+        return () => clearTimeout(timer);
+    }, [view.scale, fitScale, boxKey]);
+
+    const canvasWidth = Math.max(1, width * scale);
+    const canvasHeight = Math.max(1, height * scale);
+
+    // Dimensions à l'ouverture : seules les cotes modifiées ensuite s'allument
+    const [initialSize] = useState({ width, height });
+    const flash = (changed: boolean) => (changed ? { animation: 'am-cote-flash 1.4s ease-out' } : undefined);
 
     useEffect(() => {
         const element = canvasContainerRef.current;
@@ -463,19 +492,58 @@ export default function ZoneCanvas({
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
                 ref={canvasContainerRef}
-                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-am-mist/15 p-2 cursor-default sm:p-4"
+                className="mx-auto flex w-full items-end justify-center overflow-hidden bg-am-mist/15 p-2 cursor-default sm:p-4"
                 onClick={() => onSelect(null)}
                 style={{
                     borderRadius: '4px',
+                    // Hauteur fixe : le meuble reste posé au même « sol » quand ses dimensions changent
+                    height: boxHeight + COTE_TOP,
+                    boxSizing: 'content-box',
                 }}
             >
                 <div
-                    className="relative"
+                    className="relative transition-[width,height] duration-500 ease-out motion-reduce:transition-none"
                     style={{
                         width: canvasWidth,
                         height: canvasHeight,
                     }}
                 >
+                    {/* Cote de largeur, au-dessus du meuble */}
+                    <div
+                        className="pointer-events-none absolute left-0 right-0 flex items-center justify-center text-black/60"
+                        style={{ top: -COTE_TOP, height: COTE_TOP - 6 }}
+                        aria-hidden="true"
+                    >
+                        <div className="absolute inset-x-0 top-1/2 border-t border-current" />
+                        <div className="absolute left-0 top-1/2 h-2.5 -translate-y-1/2 border-l border-current" />
+                        <div className="absolute right-0 top-1/2 h-2.5 -translate-y-1/2 border-l border-current" />
+                        <span
+                            key={width}
+                            className="relative whitespace-nowrap bg-white px-1.5 font-mono text-xs font-medium text-black"
+                            style={{ borderRadius: '3px', ...flash(width !== initialSize.width) }}
+                        >
+                            {width} mm
+                        </span>
+                    </div>
+
+                    {/* Cote de hauteur, à gauche du meuble */}
+                    <div
+                        className="pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-black/60"
+                        style={{ left: -COTE_SIDE, width: COTE_SIDE - 6 }}
+                        aria-hidden="true"
+                    >
+                        <div className="absolute inset-y-0 left-1/2 border-l border-current" />
+                        <div className="absolute top-0 left-1/2 w-2.5 -translate-x-1/2 border-t border-current" />
+                        <div className="absolute bottom-0 left-1/2 w-2.5 -translate-x-1/2 border-t border-current" />
+                        <span
+                            key={height}
+                            className="relative -rotate-90 whitespace-nowrap bg-white px-1.5 font-mono text-xs font-medium text-black"
+                            style={{ borderRadius: '3px', ...flash(height !== initialSize.height) }}
+                        >
+                            {height} mm
+                        </span>
+                    </div>
+
                     <ZoneNode
                         zone={zone}
                         selectedZoneIds={selectedZoneIds}
@@ -485,7 +553,7 @@ export default function ZoneCanvas({
                         realHeight={height}
                         showNumbers={showNumbers}
                         leafNumbers={leafNumbers}
-                        pxPerMm={canvasWidth / width}
+                        pxPerMm={scale}
                         deletedPanelIds={deletedPanelIds}
                     />
                 </div>
