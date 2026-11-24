@@ -1,12 +1,14 @@
-export type ConfigStep = 1 | 2 | 3 | 4 | 5;
+export type ConfigStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 // Ordre du parcours : du global (taille) au local (compartiments), puis matières et finitions
 export const STEP = {
   DIMENSIONS: 1,
-  DIVISION: 2,
-  DOORS: 3,
-  MATERIALS: 4,
-  FINISHES: 5,
+  BASE_AND_EDGES: 2,
+  DIVISION: 3,
+  DOORS: 4,
+  DRAWERS: 5,
+  MATERIALS: 6,
+  FINISHES: 7,
 } as const satisfies Record<string, ConfigStep>;
 
 export interface StepDefinition {
@@ -27,6 +29,13 @@ export const CONFIG_STEPS: StepDefinition[] = [
     view: '3d',
   },
   {
+    id: STEP.BASE_AND_EDGES,
+    label: 'Base & bords',
+    title: 'Base & bords',
+    hint: 'Réglez le socle et les bords du meuble.',
+    view: '3d',
+  },
+  {
     id: STEP.DIVISION,
     label: 'Division',
     title: "Divisez l'intérieur",
@@ -38,6 +47,13 @@ export const CONFIG_STEPS: StepDefinition[] = [
     label: 'Portes',
     title: 'Portes, tiroirs & poignées',
     hint: 'Habillez chaque compartiment, puis choisissez le montage et les poignées.',
+    view: '3d',
+  },
+  {
+    id: STEP.DRAWERS,
+    label: 'Tiroirs',
+    title: 'Tiroirs',
+    hint: 'Réglez les tiroirs du meuble.',
     view: '3d',
   },
   {

@@ -24,10 +24,11 @@ import { CameraRig, type CameraApi } from './scene/CameraRig';
 import { CameraToolbar } from './scene/CameraToolbar';
 import { createDoubleClickDetector, isRealClick } from './scene/pointer';
 import { DividerHandles, type DividerChange } from './scene/DividerHandles';
-import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box } from '@/lib/configurator/zoneBounds';
+import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box, type Vec3 } from '@/lib/configurator/zoneBounds';
 import { getZoneFacade } from '@/lib/configurator/zoneStats';
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
+import { RoundedCorner } from './scene/RoundedCorner';
 
 export type { ThreeCanvasHandle };
 
@@ -64,6 +65,16 @@ interface ThreeViewerProps {
     doorSide?: 'left' | 'right';
     useMultiColor?: boolean;
     mountingStyle?: 'applique' | 'encastre';
+    // Bords avant arrondis, pleine hauteur (voir char=="Z" côté back) : réduit la largeur utile du
+    // meuble du côté concerné pour laisser la place au caisson arrondi, indépendamment l'un de
+    // l'autre. *Width (mm) = de combien il dépasse la planche latérale ("largeur"). *Depth (mm) =
+    // profondeur, côté arrière, de la partie courbe ("profondeur de l'arrondi").
+    roundedLeft?: boolean;
+    roundedLeftWidth?: number;
+    roundedLeftDepth?: number;
+    roundedRight?: boolean;
+    roundedRightWidth?: number;
+    roundedRightDepth?: number;
     onCaptureReady?: (captureFunction: () => string | null) => void;
     // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
     onResizeDivider?: (zoneId: string, ratios: number[]) => void;
@@ -82,6 +93,12 @@ export function Furniture({
                        doorSide = 'left',
                        useMultiColor = false,
                        mountingStyle = 'applique',
+                       roundedLeft = false,
+                       roundedLeftWidth = 60,
+                       roundedLeftDepth = 60,
+                       roundedRight = false,
+                       roundedRightWidth = 60,
+                       roundedRightDepth = 60,
                        selectedZoneIds = [],
                        selectionTint = true,
                        neighborZoneIds = [],
@@ -117,9 +134,21 @@ export function Furniture({
             [id]: !prev[id]
         }));
     }, []);
-    const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
-    const { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
-        const { width: w, depth: d, sideHeight, yOffset, thickness } = layout;
+    const leftExtensionMm = roundedLeft ? roundedLeftWidth : 0;
+    const rightExtensionMm = roundedRight ? roundedRightWidth : 0;
+    const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle, leftExtensionMm, rightExtensionMm), [width, height, depth, hasSocle, leftExtensionMm, rightExtensionMm]);
+    const { w, declaredW, offsetX, radiusLeft, radiusRight, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess } = useMemo(() => {
+        // "w" (utilisée partout ensuite pour poser portes/cloisons/planches latérales) est déjà
+        // réduite des bords arrondis par getFurnitureLayout ; "declaredW" reste la taille totale du
+        // meuble, pour poser les caissons arrondis à l'extérieur d'elle — même logique que le
+        // retrait g/d côté Python (char=="Z"). Si un seul côté est arrondi, l'intérieur n'est plus
+        // centré dans l'enveloppe déclarée : "offsetX" recentre tout le reste du meuble (posé de
+        // façon symétrique autour de x=0 par le code existant) pour que le côté NON arrondi reste
+        // flush avec son bord déclaré, et que seul le côté arrondi recule de sa largeur voulue.
+        const { width: w, declaredWidth: declaredW, depth: d, sideHeight, yOffset, thickness } = layout;
+        const radiusLeft = leftExtensionMm / 1000;
+        const radiusRight = rightExtensionMm / 1000;
+        const offsetX = (radiusLeft - radiusRight) / 2;
         const h = (height || 730) / 1000;
         // Le fond n'est pas flush contre l'arrière réelle du meuble : il glisse dans une rainure
         // des plaques latérales, en retrait de cette distance (même valeur que RAINURE_FOND_MM
@@ -138,8 +167,8 @@ export function Furniture({
         const mountingOffset = mountingStyle === 'encastre' ? -0.004 - 0.023 : 0;
         const doorOverlap = mountingStyle === 'encastre' ? 0 : thickness;
         const doorRecess = 0;
-        return { w, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess };
-    }, [layout, height, mountingStyle]);
+        return { w, declaredW, offsetX, radiusLeft, radiusRight, h, d, sideHeight, yOffset, thickness, backPanelThickness, backPanelZ, compartmentGap, mountingOffset, doorOverlap, doorRecess };
+    }, [layout, leftExtensionMm, rightExtensionMm, height, mountingStyle]);
 
     // Une division verticale à la racine est un caisson (double planche : chaque caisson a sa
     // propre paroi, comme en Python) — elle consomme donc 2x l'épaisseur, pas 1x comme une
@@ -1293,7 +1322,8 @@ export function Furniture({
     };
 
     return (
-        <group>
+        <>
+        <group position={[offsetX, 0, 0]}>
             {panelSegments.leftSegments.map((segment) => (
                 !deletedPanelIds.has(segment.id) && (
                     <StructuralPanel
@@ -1517,7 +1547,7 @@ export function Furniture({
                     rootZone={rootZone}
                     zoneId={hoveredZoneId}
                     layout={layout}
-                    widthMm={width}
+                    widthMm={layout.width * 1000}
                     heightMm={height}
                     clickToOpen={!onSelectZone}
                 />
@@ -1526,7 +1556,7 @@ export function Furniture({
                 <DividerHandles
                     rootZone={rootZone}
                     layout={layout}
-                    widthMm={width}
+                    widthMm={layout.width * 1000}
                     heightMm={height}
                     doorsOpen={!!doorsOpen}
                     selectedZoneIds={selectedZoneIds}
@@ -1677,6 +1707,35 @@ export function Furniture({
                 </group>
             )}
         </group>
+        {roundedLeft && (
+            <RoundedCorner
+                outerX={-declaredW / 2}
+                innerX={-declaredW / 2 + radiusLeft}
+                frontZ={-d / 2}
+                backZ={d / 2}
+                bottomY={yOffset}
+                topY={yOffset + sideHeight}
+                width={radiusLeft}
+                depth={roundedLeftDepth / 1000}
+                hexColor={finalStructureColor}
+                imageUrl={finalStructureImageUrl}
+            />
+        )}
+        {roundedRight && (
+            <RoundedCorner
+                outerX={declaredW / 2}
+                innerX={declaredW / 2 - radiusRight}
+                frontZ={-d / 2}
+                backZ={d / 2}
+                bottomY={yOffset}
+                topY={yOffset + sideHeight}
+                width={radiusRight}
+                depth={roundedRightDepth / 1000}
+                hexColor={finalStructureColor}
+                imageUrl={finalStructureImageUrl}
+            />
+        )}
+        </>
     );
 }
 
@@ -1701,7 +1760,7 @@ function NavigationHint() {
 }
 
 const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref) => {
-    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle, onResizeDivider, roomScene = 'neutral', roomLightsOn = false } = props;
+    const { onSelectZone, rootZone, selectedZoneIds, width, height, depth, hasSocle, roundedLeft, roundedLeftWidth = 60, roundedRight, roundedRightWidth = 60, onResizeDivider, roomScene = 'neutral', roomLightsOn = false } = props;
     // Interrupteur de la pièce : sans objet dans le studio neutre. Le soir, la lumière du jour baisse pour
     // que les lampes se voient.
     const roomLights = roomScene === 'neutral' ? null : roomLightsOn;
@@ -1753,12 +1812,19 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
     };
 
     // Ce que la caméra doit cadrer : le meuble entier, ou les zones sélectionnées
-    const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle), [width, height, depth, hasSocle]);
+    const leftExtensionMm = roundedLeft ? roundedLeftWidth : 0;
+    const rightExtensionMm = roundedRight ? roundedRightWidth : 0;
+    const layout = useMemo(() => getFurnitureLayout(width, height, depth, hasSocle, leftExtensionMm, rightExtensionMm), [width, height, depth, hasSocle, leftExtensionMm, rightExtensionMm]);
     const furnitureBox = useMemo(() => getFurnitureBox(layout), [layout]);
+    // Quand un seul côté est arrondi, getZoneBox (symétrique autour de x=0 par construction) ne
+    // correspond plus à la scène réelle, décalée pour garder le côté non arrondi flush avec son
+    // bord déclaré (voir "offsetX" dans Furniture ci-dessus, même formule).
+    const selectionOffsetX = useMemo(() => (leftExtensionMm - rightExtensionMm) / 2000, [leftExtensionMm, rightExtensionMm]);
     const selectionBox = useMemo(() => {
         if (!rootZone || !selectedZoneIds?.length) return null;
-        return unionBoxes(selectedZoneIds.map((id) => getZoneBox(rootZone, id, layout)).filter((box): box is Box => !!box));
-    }, [rootZone, selectedZoneIds, layout]);
+        const box = unionBoxes(selectedZoneIds.map((id) => getZoneBox(rootZone, id, layout)).filter((box): box is Box => !!box));
+        return box ? { ...box, center: [box.center[0] + selectionOffsetX, box.center[1], box.center[2]] as Vec3 } : null;
+    }, [rootZone, selectedZoneIds, layout, selectionOffsetX]);
 
     return (
         <div

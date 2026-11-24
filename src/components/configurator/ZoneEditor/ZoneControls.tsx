@@ -844,6 +844,16 @@ export default function ZoneControls({
               Tiroirs, niches & rangements
             </SectionLabel>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              <OptionTile
+                icon={Minus}
+                label="Aucune"
+                desc="Compartiment ouvert"
+                active={(selectedZone.content ?? 'empty') === 'empty' && !selectedZone.noBack}
+                onClick={() => {
+                  setDoorSideDialog({ isOpen: false, doorType: null });
+                  onSetContent(selectedZone.id, 'empty');
+                }}
+              />
               {STORAGE_OPTIONS.map(({ id, icon, label, desc }) => (
                 <OptionTile
                   key={id}

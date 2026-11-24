@@ -137,7 +137,18 @@ const FACADE_LABELS: Partial<Record<ZoneContent, string>> = {
   glass_shelf: 'Étagère en verre',
 };
 
-export function findConstraintIssues(root: Zone, dims: { width: number; height: number; depth: number }): ConstraintIssue[] {
+export function findConstraintIssues(
+  root: Zone,
+  dims: {
+    width: number;
+    height: number;
+    depth: number;
+    // Largeur réellement disponible pour les compartiments (réduite des bords avant arrondis, le
+    // cas échéant) : `width` reste la taille déclarée du meuble, utilisée pour les limites de
+    // fabrication globales (largeur mini/maxi), distinctes de l'espace intérieur dispo.
+    usableWidth?: number;
+  }
+): ConstraintIssue[] {
   const issues: ConstraintIssue[] = [];
 
   (Object.keys(DIMENSION_LIMITS) as DimensionKey[]).forEach((key) => {
@@ -184,6 +195,6 @@ export function findConstraintIssues(root: Zone, dims: { width: number; height: 
     });
   };
 
-  visit(root, null, dims.width, dims.height);
+  visit(root, null, dims.usableWidth ?? dims.width, dims.height);
   return issues;
 }
