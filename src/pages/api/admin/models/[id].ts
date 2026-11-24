@@ -6,6 +6,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -37,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'include',

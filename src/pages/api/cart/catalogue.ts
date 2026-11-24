@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       body: req.method !== 'GET' && req.method !== 'DELETE' ? JSON.stringify(req.body) : undefined,
     });

@@ -5,6 +5,8 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -13,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       credentials: 'include',
       body: req.method === 'POST' ? JSON.stringify(req.body) : undefined,
@@ -22,11 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
 
     // Transférer les cookies si présents
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
-    }
-
+    forwardSetCookies(res, response);
     res.status(response.status).json(data);
   } catch (error) {
     console.error('Erreur proxy reviews:', error);

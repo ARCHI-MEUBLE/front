@@ -6,7 +6,7 @@ import { Seo } from '@/components/Seo';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { PUBLIC_PAGE_CACHE, fetchBackend } from '@/lib/backendServer';
 import Link from 'next/link';
-import { adminUrl } from '@/lib/adminPath';
+import { goToAdmin } from '@/lib/adminPath';
 
 const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
   ssr: false,
@@ -3203,7 +3203,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => router.push(adminUrl('/dashboard?section=models'))}
+                  onClick={() => goToAdmin('/dashboard?section=models')}
                   className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
@@ -3232,7 +3232,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push(adminUrl('/dashboard'))}
+                    onClick={() => goToAdmin('/dashboard')}
                     className="border-2 border-black/10 bg-white px-4 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                     style={{ borderRadius: '2px' }}
                   >
@@ -3307,7 +3307,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                     <button
                       type="button"
                       onClick={() => {
-                        router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/models');
+                        if (isAdmin) goToAdmin('/dashboard?tab=configurations');
+                        else router.push('/models');
                       }}
                       className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
@@ -3328,7 +3329,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                     <button
                       type="button"
                       onClick={() => {
-                        router.push(isAdmin ? adminUrl('/dashboard') : '/models');
+                        if (isAdmin) goToAdmin('/dashboard');
+                        else router.push('/models');
                       }}
                       className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}

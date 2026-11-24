@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -29,10 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     // Ajouter le cookie de session pour l'authentification backend
-    if (req.headers.cookie) {
-      headers.Cookie = req.headers.cookie;
-    }
-
+    Object.assign(headers, backendHeaders(req));
     const response = await fetch(backendUrl, {
       method: req.method,
       headers,
@@ -49,14 +48,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('[CATALOGUE PROXY] Erreur parsing JSON. Réponse reçue:', text.substring(0, 500));
       return res.status(500).json({
         success: false,
-        error: 'Erreur serveur backend - Réponse invalide',
-        details: text.substring(0, 500)
+        error: 'Erreur serveur backend - Réponse invalide'
       });
     }
 
     res.status(response.status).json(data);
   } catch (error) {
     console.error('[CATALOGUE PROXY] Erreur proxy catalogue admin:', error);
-    res.status(500).json({ success: false, error: 'Erreur interne du serveur', details: String(error) });
+    res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
   }
 }

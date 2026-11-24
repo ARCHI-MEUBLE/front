@@ -1,3 +1,6 @@
+import { createAvatar } from "@dicebear/core";
+import * as notionists from "@dicebear/notionists";
+
 export const TESTIMONIALS: { quote: string; name: string; city: string; rating: number; avatarParams: string }[] = [
   { quote: "Un travail remarquable du début à la fin. Notre bibliothèque s'intègre parfaitement dans le salon, comme si elle avait toujours été là.", name: "Marie-Claire D.", city: "Lille", rating: 5, avatarParams: "&hair=variant02&beardProbability=0" },
   { quote: "Le configurateur en ligne est vraiment bien fait. J'ai pu visualiser mon dressing avant de commander.", name: "Thomas L.", city: "Roubaix", rating: 4, avatarParams: "&hair=variant05&beardProbability=0" },
@@ -9,8 +12,19 @@ export const TESTIMONIALS: { quote: string; name: string; city: string; rating: 
   { quote: "Délai de 30 jours respecté comme annoncé. Le bureau sur mesure est solide et très beau.", name: "Karim H.", city: "Croix", rating: 4, avatarParams: "&hair=variant49&beardProbability=0" },
 ];
 
+// Avatar « Notionists » dessiné dans la page (bibliothèque DiceBear), identique à celui de l'API api.dicebear.com.
+// L'API recevait le nom en clair depuis le navigateur de chaque visiteur, y compris celui des clients qui ont laissé un
+// avis, avec l'adresse IP du visiteur : rien ne sort plus du site. params : « &hair=variant02&beardProbability=0 ».
 export function avatarUrl(name: string, params: string): string {
-  return "https://api.dicebear.com/9.x/notionists/svg?backgroundColor=edebe4&seed=" + encodeURIComponent(name) + params;
+  const options = new URLSearchParams(params);
+  const hair = options.get("hair");
+  const beardProbability = options.get("beardProbability");
+  return createAvatar(notionists, {
+    seed: name,
+    backgroundColor: ["edebe4"],
+    ...(hair ? { hair: [hair as NonNullable<notionists.Options["hair"]>[number]] } : {}),
+    ...(beardProbability !== null ? { beardProbability: Number(beardProbability) } : {}),
+  }).toDataUri();
 }
 
 export const CITIES: string[] = ["Lille", "Roubaix", "Tourcoing", "Villeneuve d'Ascq", "La Madeleine", "Marcq-en-Barœul", "Lambersart", "Croix", "Wasquehal", "Mons-en-Barœul", "Loos"];

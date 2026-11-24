@@ -6,7 +6,7 @@ export function RealisationsDelaiCta() {
     <section aria-labelledby="delai-title" style={{ paddingTop: "clamp(80px,10vw,144px)" }}>
       <div className="relative flex items-center overflow-hidden bg-am-wine" style={{ minHeight: "clamp(420px,46vw,620px)" }}>
         <Image
-          src="https://images.unsplash.com/photo-1497219055242-93359eeed651?auto=format&fit=crop&w=2000&q=70"
+          src="/images/stock/realisations-delai.jpg"
           alt=""
           fill
           unoptimized

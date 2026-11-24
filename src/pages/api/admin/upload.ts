@@ -3,7 +3,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+import { verifyAdminSession } from '@/lib/adminAuth';
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 const IS_LOCAL = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
 
 type UploadPayload = {
@@ -32,8 +35,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  // MODE LOCAL : Sauvegarder dans Next.js public/uploads
+  // MODE LOCAL : Sauvegarder dans Next.js public/uploads. Le backend ne voit pas ce fichier : on vérifie ici que
+  // l'envoi vient bien d'un admin (sans ça, n'importe qui pouvait écrire dans public/uploads)
   if (IS_LOCAL) {
+    if (!(await verifyAdminSession(req, res))) {
+      res.status(401).json({ error: 'Non authentifié' });
+      return;
+    }
     const payload = req.body as UploadPayload;
     const { fileName, fileType, data } = payload;
 
@@ -72,14 +80,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // MODE PRODUCTION : Proxier vers backend Railway
   try {
-    // Transférer la requête vers le backend PHP avec les cookies
-    const cookieHeader = req.headers.cookie || '';
-    // Proxy la requête vers l'API PHP du backend
+    // Proxy la requête vers l'API PHP du backend, avec les cookies du visiteur
     const response = await fetch(`${API_URL}/backend/api/upload.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': cookieHeader,
+        ...backendHeaders(req),
       },
       body: JSON.stringify(req.body),
       credentials: 'include',
@@ -87,20 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Récupérer les données de réponse
     const data = await response.json();
 
-    // Transférer les cookies du backend vers le frontend
-    const backendCookies = (response.headers as any).getSetCookie?.() || [];
-    if (backendCookies.length > 0) {
-      // Plusieurs cookies
-      backendCookies.forEach((cookie: string) => {
-        res.setHeader('Set-Cookie', cookie);
-      });
-    } else {
-      // Fallback: un seul cookie
-      const singleCookie = response.headers.get('set-cookie');
-      if (singleCookie) {
-        res.setHeader('Set-Cookie', singleCookie);
-      }
-    }
+    forwardSetCookies(res, response);
 
   // Retourner la réponse avec le même statut
     res.status(response.status).json(data);

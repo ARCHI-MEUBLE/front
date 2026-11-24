@@ -4,9 +4,10 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   // Gérer les requêtes GET pour vérifier l'état de connexion
   if (req.method === 'GET') {
@@ -27,33 +28,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const response = await fetch(`${API_URL}/backend/api/admin-auth/login.php`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      // Adresse du visiteur : la limite d'essais de connexion du backend est comptée par visiteur, pas pour tout le site
+      headers: backendHeaders(req, { 'Content-Type': 'application/json' }),
       body: JSON.stringify(req.body),
       credentials: 'include',
     });
 
     const data = await response.json();
 
-    if (response.ok) {
-      const cookies = [];
-
-      // Transférer tous les cookies de session PHP du backend
-      // Utiliser getSetCookie() qui est la méthode standard pour récupérer les multiples Set-Cookie
-      const backendCookies = response.headers.getSetCookie?.() || [];
-      if (backendCookies.length > 0) {
-        cookies.push(...backendCookies);
-      } else {
-        // Fallback: essayer d'obtenir un seul cookie
-        const singleCookie = response.headers.get('set-cookie');
-        if (singleCookie) {
-          cookies.push(singleCookie);
-        }
-      }
-
-      res.setHeader('Set-Cookie', cookies);
-    }
+    // Transférer tous les cookies de session PHP du backend
+    if (response.ok) forwardSetCookies(res, response);
 
     res.status(response.status).json(data);
   } catch (error) {

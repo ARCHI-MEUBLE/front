@@ -1,6 +1,8 @@
 import nextVitals from 'eslint-config-next/core-web-vitals';
 
 const eslintConfig = [
+  // Bibliothèques tierces déjà minifiées, servies telles quelles (model-viewer pour la réalité augmentée)
+  { ignores: ['public/vendor/**'] },
   ...nextVitals,
   {
     rules: {

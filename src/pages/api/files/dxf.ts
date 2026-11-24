@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -16,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
     });
 
