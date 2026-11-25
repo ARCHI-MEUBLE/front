@@ -160,6 +160,54 @@ function ModelHandleShape({ model, length }: { model: HandleModel; length: numbe
             </>
         );
     }
+    if (model.shape === 'recessed') {
+        // Cuvette ronde encastrée dans la façade : bague en relief et fond sombre
+        return (
+            <>
+                <mesh position={[0, 0, 0.002]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                    <cylinderGeometry args={[0.026, 0.026, 0.004, 32]} />
+                    <ModelHandleMaterial finish={finish} />
+                </mesh>
+                <mesh position={[0, 0, 0.0045]} rotation={[QUARTER_TURN, 0, 0]}>
+                    <cylinderGeometry args={[0.019, 0.019, 0.002, 32]} />
+                    <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.8} />
+                </mesh>
+            </>
+        );
+    }
+    if (model.shape === 'cup') {
+        // Cuvette oblongue : plaque arrondie avec creux sombre pour les doigts
+        return (
+            <>
+                <mesh position={[0, 0, 0.004]} castShadow>
+                    <boxGeometry args={[length, 0.03, 0.008]} />
+                    <ModelHandleMaterial finish={finish} />
+                </mesh>
+                <mesh position={[0, 0, 0.0085]}>
+                    <boxGeometry args={[length * 0.8, 0.018, 0.002]} />
+                    <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.8} />
+                </mesh>
+            </>
+        );
+    }
+    if (model.shape === 'leather') {
+        // Lanière de cuir fixée par deux rivets métalliques
+        return (
+            <>
+                <mesh position={[0, 0, BAR_STANDOFF]} castShadow>
+                    <boxGeometry args={[length, 0.014, 0.004]} />
+                    <meshStandardMaterial color={finish} metalness={0.05} roughness={0.85} />
+                </mesh>
+                {[-1, 1].map((sign) => (
+                    <mesh key={sign} position={[sign * (length / 2 - 0.008), 0, BAR_STANDOFF + 0.003]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                        <cylinderGeometry args={[0.004, 0.004, 0.003, 16]} />
+                        <meshStandardMaterial color="#B8B8B8" metalness={0.9} roughness={0.25} />
+                    </mesh>
+                ))}
+                <HandleFeet length={length * 1.2} depth={BAR_STANDOFF - 0.002} finish={finish} />
+            </>
+        );
+    }
     if (model.shape === 'profile') {
         // Profilé collé à la façade, sans pied
         return (

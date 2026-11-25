@@ -23,7 +23,7 @@ export function HandleModelPreview({ model, orientation = 'horizontal', classNam
   const finish = HEX.test(model.finish_hex) ? model.finish_hex : '#1C1C1C';
   // Longueur dessinée : proportionnelle au modèle (64 à 400 mm), dans une vignette de 100 × 100
   const length = Math.max(28, Math.min(80, ((model.length_mm ?? 160) / 400) * 80));
-  const vertical = orientation === 'vertical' && model.shape !== 'knob';
+  const vertical = orientation === 'vertical' && model.shape !== 'knob' && model.shape !== 'recessed';
 
   let shape: React.ReactNode;
   if (model.shape === 'knob') {
@@ -34,14 +34,22 @@ export function HandleModelPreview({ model, orientation = 'horizontal', classNam
         <circle cx="46" cy="46" r="4" fill="white" opacity="0.25" />
       </>
     );
+  } else if (model.shape === 'recessed') {
+    shape = (
+      <>
+        <circle cx="50" cy="52" r="15" fill="black" opacity="0.12" />
+        <circle cx="50" cy="50" r="15" fill={finish} />
+        <circle cx="50" cy="50" r="10" fill="#1a1a1a" opacity="0.85" />
+      </>
+    );
   } else {
-    const thickness = model.shape === 'bar' ? 6 : model.shape === 'flat_bar' ? 8 : 10;
-    const radius = model.shape === 'bar' ? 3 : model.shape === 'flat_bar' ? 1.5 : 1;
+    const thickness = model.shape === 'bar' ? 6 : model.shape === 'flat_bar' ? 8 : model.shape === 'cup' ? 14 : model.shape === 'leather' ? 7 : 10;
+    const radius = model.shape === 'bar' ? 3 : model.shape === 'flat_bar' ? 1.5 : model.shape === 'cup' ? 6 : 1;
     const x = 50 - length / 2;
     const y = 50 - thickness / 2;
     shape = (
       <g transform={vertical ? 'rotate(90 50 50)' : undefined}>
-        {model.shape !== 'profile' && (
+        {model.shape !== 'profile' && model.shape !== 'cup' && (
           <>
             <rect x={x + 5} y={y + thickness} width="3" height="6" fill={finish} opacity="0.7" />
             <rect x={x + length - 8} y={y + thickness} width="3" height="6" fill={finish} opacity="0.7" />

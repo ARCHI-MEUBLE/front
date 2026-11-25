@@ -14,17 +14,20 @@
 import type { HandleType, Zone, ZoneContent } from '@/components/configurator/ZoneEditor/types';
 import { getZoneFacade, isDoorContent, isDrawerContent, isPushContent } from './zoneStats';
 
-export type HandleShape = 'bar' | 'flat_bar' | 'profile' | 'knob';
+export type HandleShape = 'bar' | 'flat_bar' | 'profile' | 'knob' | 'cup' | 'recessed' | 'leather';
 export type HandleOrientation = 'horizontal' | 'vertical';
 export type HandleFacadeKind = 'door' | 'drawer';
 
-export const HANDLE_SHAPES: HandleShape[] = ['bar', 'flat_bar', 'profile', 'knob'];
+export const HANDLE_SHAPES: HandleShape[] = ['bar', 'flat_bar', 'profile', 'knob', 'cup', 'recessed', 'leather'];
 
 export const HANDLE_SHAPE_LABELS: Record<HandleShape, string> = {
   bar: 'Barre ronde',
   flat_bar: 'Barre plate',
   profile: 'Profilé',
   knob: 'Bouton',
+  cup: 'Poignée cuvette',
+  recessed: 'Poignée encastrée',
+  leather: 'Lanière cuir',
 };
 
 export const HANDLE_ORIENTATION_LABELS: Record<HandleOrientation, string> = {
@@ -84,9 +87,9 @@ export function isHandleOrientation(value: unknown): value is HandleOrientation 
   return value === 'horizontal' || value === 'vertical';
 }
 
-// Un bouton n'a pas de sens de pose
+// Un bouton ou une poignée encastrée ronde n'a ni sens de pose ni longueur
 export function shapeHasOrientation(shape: HandleShape | null | undefined): boolean {
-  return shape !== 'knob';
+  return shape !== 'knob' && shape !== 'recessed';
 }
 
 // Façade de la zone, comme la dessine la vue 3D (contenu d'une feuille, ou porte posée sur un groupe)
@@ -169,7 +172,7 @@ export function handlePromptCode(zone: Zone, kind: HandleFacadeKind, models: Han
   const resolved = resolveZoneHandle(zone, kind, models, defaults);
   if (!resolved.customized) return '';
   if (resolved.legacyType === 'knob' || resolved.model?.shape === 'knob') return '3';
-  if (resolved.legacyType === 'recessed') return '4';
+  if (resolved.legacyType === 'recessed' || resolved.model?.shape === 'recessed') return '4';
   return resolved.orientation === 'vertical' ? '1' : '2';
 }
 
