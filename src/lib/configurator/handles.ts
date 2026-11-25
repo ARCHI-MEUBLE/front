@@ -42,6 +42,13 @@ export interface HandleModel {
   shape: HandleShape;
   finish_hex: string;
   length_mm: number | null;
+  // Cotes du plan du fabricant (mm), facultatives : sans elles, la vue 3D prend les proportions de la forme.
+  // Entraxe : distance entre les deux vis (perçages de la façade)
+  center_distance_mm?: number | null;
+  // Largeur vue de face (diamètre d'une barre ronde ou d'un bouton)
+  width_mm?: number | null;
+  // Saillie : distance entre la façade et l'avant de la poignée
+  projection_mm?: number | null;
   image_url: string | null;
   position: number;
 }

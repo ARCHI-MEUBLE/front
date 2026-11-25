@@ -8,10 +8,60 @@ import {
     layoutHandle,
     legacyHandleLength,
     legacyHandleType,
+    modelHandleDimensions,
     modelHandleLength,
     safeFinishHex,
     type HandleFacade,
 } from './handleGeometry';
+
+describe('modelHandleDimensions', () => {
+    // Fiches LMC : « entraxe (longueur x largeur x saillie) »
+    const fil128 = { shape: 'bar' as const, length_mm: 138, center_distance_mm: 128, width_mm: 10, projection_mm: 30 };
+    const safari = { shape: 'leather' as const, length_mm: 224, center_distance_mm: 160, width_mm: 24, projection_mm: 25 };
+
+    it('draws a handle with the dimensions of its manufacturer drawing', () => {
+        const fil = modelHandleDimensions(fil128, 0.138);
+        expect(fil.spacing).toBeCloseTo(0.128);
+        expect(fil.width).toBeCloseTo(0.01);
+        expect(fil.projection).toBeCloseTo(0.03);
+
+        const strap = modelHandleDimensions(safari, 0.224);
+        expect(strap.spacing).toBeCloseTo(0.16);
+        expect(strap.width).toBeCloseTo(0.024);
+        expect(strap.projection).toBeCloseTo(0.025);
+    });
+
+    it('shrinks the centre distance with a handle shortened to fit a small facade', () => {
+        expect(modelHandleDimensions(fil128, 0.069).spacing).toBeCloseTo(0.064);
+        // Jamais plus que la longueur posée
+        expect(modelHandleDimensions({ ...fil128, length_mm: null }, 0.1).spacing).toBeLessThanOrEqual(0.1);
+    });
+
+    it('keeps the former proportions of each shape when the drawing is not filled in', () => {
+        const bar = modelHandleDimensions({ shape: 'bar', length_mm: 160 }, 0.16);
+        expect(bar.spacing).toBeCloseTo(0.128);
+        expect(bar.width).toBeCloseTo(0.012);
+        expect(bar.projection).toBeCloseTo(0.026);
+        expect(modelHandleDimensions({ shape: 'leather', length_mm: 160 }, 0.16).spacing).toBeCloseTo(0.144);
+        expect(modelHandleDimensions({ shape: 'knob', length_mm: null }, 0).width).toBeCloseTo(0.027);
+        expect(modelHandleDimensions({ shape: 'recessed', length_mm: null }, 0).width).toBeCloseTo(0.052);
+    });
+
+    it('sets a cup handle into the door, with only its rim standing out', () => {
+        const living = modelHandleDimensions({ shape: 'cup', length_mm: 92, width_mm: 27 }, 0.092);
+        expect(living.width).toBeCloseTo(0.027);
+        expect(living.projection).toBeCloseTo(0.002);
+        // Saillie 0 : à fleur de façade
+        expect(modelHandleDimensions({ shape: 'cup', length_mm: 92, projection_mm: 0 }, 0.092).projection).toBe(0);
+    });
+
+    it('ignores unreadable dimensions', () => {
+        const odd = modelHandleDimensions({ shape: 'bar', length_mm: 160, center_distance_mm: 0, width_mm: Number.NaN, projection_mm: -4 }, 0.16);
+        expect(odd.spacing).toBeCloseTo(0.128);
+        expect(odd.width).toBeCloseTo(0.012);
+        expect(odd.projection).toBeCloseTo(0.026);
+    });
+});
 
 describe('modelHandleLength', () => {
     it('converts the admin length from mm to m', () => {

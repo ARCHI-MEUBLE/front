@@ -1,6 +1,6 @@
 import type { HandleModel, HandleOrientation } from '@/lib/configurator/handles';
 
-type PreviewModel = Pick<HandleModel, 'name' | 'shape' | 'finish_hex' | 'length_mm' | 'image_url'>;
+type PreviewModel = Pick<HandleModel, 'name' | 'shape' | 'finish_hex' | 'length_mm' | 'image_url' | 'center_distance_mm'>;
 
 interface HandleModelPreviewProps {
   model: PreviewModel;
@@ -47,12 +47,16 @@ export function HandleModelPreview({ model, orientation = 'horizontal', classNam
     const radius = model.shape === 'bar' ? 3 : model.shape === 'flat_bar' ? 1.5 : model.shape === 'cup' ? 6 : 1;
     const x = 50 - length / 2;
     const y = 50 - thickness / 2;
+    // Pieds aux vis : à l'entraxe du plan quand il est connu
+    const ownSpacing =
+      model.center_distance_mm && model.length_mm ? length * Math.min(1, model.center_distance_mm / model.length_mm) : null;
+    const spacing = Math.max(6, ownSpacing ?? length - 13);
     shape = (
       <g transform={vertical ? 'rotate(90 50 50)' : undefined}>
         {model.shape !== 'profile' && model.shape !== 'cup' && (
           <>
-            <rect x={x + 5} y={y + thickness} width="3" height="6" fill={finish} opacity="0.7" />
-            <rect x={x + length - 8} y={y + thickness} width="3" height="6" fill={finish} opacity="0.7" />
+            <rect x={50 - spacing / 2 - 1.5} y={y + thickness} width="3" height="6" fill={finish} opacity="0.7" />
+            <rect x={50 + spacing / 2 - 1.5} y={y + thickness} width="3" height="6" fill={finish} opacity="0.7" />
           </>
         )}
         <rect x={x} y={y + 2} width={length} height={thickness} rx={radius} fill="black" opacity="0.12" />

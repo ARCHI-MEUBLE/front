@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { QUICK_CLOSE_MS, arPlatformFor, openSceneViewer, quickLookIsReliable, type BrowserTraits } from './launchAr';
+import {
+  QUICK_CLOSE_MS,
+  arPlatformFor,
+  isMobileDeviceFor,
+  mayBeHiddenAndroidFor,
+  openSceneViewer,
+  quickLookIsReliable,
+  type BrowserTraits,
+} from './launchAr';
 
 const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
 const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)';
@@ -110,9 +118,59 @@ describe('arPlatformFor on Android and computers', () => {
 
   it('has no phone AR on a headset or a computer', () => {
     expect(arPlatformFor(android('Mozilla/5.0 (Linux; Android 12; Quest 3) OculusBrowser/37.0.0 Chrome/132.0 VR Safari/537.36'))).toBeNull();
+    expect(arPlatformFor(android('Mozilla/5.0 (X11; Linux x86_64; Quest 3) AppleWebKit/537.36 OculusBrowser/37.0.0 Chrome/132.0 VR Safari/537.36'))).toBeNull();
+    expect(arPlatformFor(android('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 PicoBrowser/3.3.38 Chrome/105.0 VR Safari/537.36'))).toBeNull();
     expect(arPlatformFor(desktop('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.0.0 Safari/537.36'))).toBeNull();
     expect(arPlatformFor(desktop('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0'))).toBeNull();
     expect(arPlatformFor({ ...desktop(`${MAC} Version/18.5 Safari/605.1.15`, 'MacIntel'), supportsArLinks: true })).toBeNull();
+  });
+
+  // Chrome passe d'office les tablettes haut de gamme en « version pour ordinateur » : identifiant de Linux
+  const DESKTOP_MODE = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)';
+
+  it('recognises an Android tablet or phone in desktop mode by its touch screen and ARM processor', () => {
+    expect(arPlatformFor(android(`${DESKTOP_MODE} Chrome/138.0.0.0 Safari/537.36`))).toBe('scene-viewer');
+    expect(arPlatformFor({ ...android(`${DESKTOP_MODE} Chrome/138.0.0.0 Safari/537.36`), platform: 'Linux armv81' })).toBe('scene-viewer');
+    expect(arPlatformFor({ ...android(`${DESKTOP_MODE} Chrome/138.0.0.0 Safari/537.36`), platform: 'Linux aarch64' })).toBe('scene-viewer');
+    expect(arPlatformFor(android(`${DESKTOP_MODE} SamsungBrowser/28.0 Chrome/130.0.0.0 Safari/537.36`))).toBe('scene-viewer');
+    expect(arPlatformFor(android('Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0'))).toBe('scene-viewer');
+    // maxTouchPoints masqué : les media queries du doigt suffisent
+    expect(arPlatformFor({ ...android(`${DESKTOP_MODE} Chrome/138.0.0.0 Safari/537.36`), maxTouchPoints: 0 })).toBe('scene-viewer');
+  });
+
+  it('keeps Linux computers, Chromebooks and Googlebooks as computers', () => {
+    const linuxChrome = `${DESKTOP_MODE} Chrome/138.0.0.0 Safari/537.36`;
+    expect(arPlatformFor(desktop(linuxChrome, 'Linux x86_64'))).toBeNull();
+    // Écran tactile mais processeur x86 (portable Linux tactile, Googlebook)
+    expect(arPlatformFor({ ...desktop(linuxChrome, 'Linux x86_64'), maxTouchPoints: 10, touchScreen: true })).toBeNull();
+    // Processeur ARM sans écran tactile (Raspberry Pi)
+    expect(arPlatformFor(desktop(linuxChrome, 'Linux aarch64'))).toBeNull();
+    expect(
+      arPlatformFor({ ...desktop('Mozilla/5.0 (X11; CrOS aarch64 15917.71.0) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36', 'Linux aarch64'), maxTouchPoints: 10, touchScreen: true })
+    ).toBeNull();
+  });
+});
+
+describe('isMobileDeviceFor and mayBeHiddenAndroidFor', () => {
+  it('treats headsets and HarmonyOS phones as mobile devices without phone AR, not as computers', () => {
+    const quest = android('Mozilla/5.0 (Linux; Android 12; Quest 3) OculusBrowser/37.0.0 Chrome/132.0 VR Safari/537.36');
+    expect(isMobileDeviceFor(quest)).toBe(true);
+    const harmony = desktop(
+      'Mozilla/5.0 (Phone; OpenHarmony 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 ArkWeb/4.1.6.1 Mobile HuaweiBrowser/5.0.4.300',
+      ''
+    );
+    expect(arPlatformFor(harmony)).toBeNull();
+    expect(isMobileDeviceFor(harmony)).toBe(true);
+    expect(isMobileDeviceFor(desktop('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.0.0 Safari/537.36'))).toBe(false);
+  });
+
+  it('asks WebXR only for a touch Linux device that is not already recognised', () => {
+    const touchLinux = { ...desktop('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36', 'Linux x86_64'), maxTouchPoints: 10, touchScreen: true };
+    expect(mayBeHiddenAndroidFor(touchLinux)).toBe(true);
+    expect(mayBeHiddenAndroidFor({ ...touchLinux, maxTouchPoints: 0, touchScreen: false })).toBe(false);
+    expect(mayBeHiddenAndroidFor({ ...touchLinux, platform: 'Linux armv81' })).toBe(false);
+    expect(mayBeHiddenAndroidFor(desktop('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.0.0 Safari/537.36'))).toBe(false);
+    expect(mayBeHiddenAndroidFor({ ...touchLinux, userAgent: `${touchLinux.userAgent} PicoBrowser/3.3.38 VR` })).toBe(false);
   });
 });
 

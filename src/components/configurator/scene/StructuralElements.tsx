@@ -9,6 +9,7 @@ import {
     layoutHandle,
     legacyHandleLength,
     legacyHandleType,
+    modelHandleDimensions,
     modelHandleLength,
     safeFinishHex,
     type HandleFacade,
@@ -119,21 +120,28 @@ export function StructuralPanel({
 
 // Repère local des poignées : l'axe long est X (posée horizontalement), Z sort de la façade. Une poignée verticale est
 // la même tournée d'un quart de tour. Matériaux MeshStandardMaterial : l'export AR ne garde que ce type.
+// Cotes (entraxe, largeur, saillie) : celles du plan du fabricant saisies dans l'admin, sinon celles de la forme
+// (modelHandleDimensions).
 const QUARTER_TURN = Math.PI / 2;
-// Barres sur pieds : axe de la barre à 2 cm de la façade, pieds à 10 % des bouts
-const BAR_STANDOFF = 0.02;
 const FOOT_RADIUS = 0.004;
+// Épaisseur d'une barre plate ou d'une lanière
+const STRAP_THICKNESS = 0.004;
+// Chapeau d'un bouton, un peu plus large que son corps
+const KNOB_CAP_THICKNESS = 0.004;
+const KNOB_BODY_RATIO = 0.89;
+const DARK_INSET = <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.8} />;
 
 function ModelHandleMaterial({ finish }: { finish: string }) {
     return <meshStandardMaterial color={finish} metalness={0.85} roughness={0.3} />;
 }
 
-// Deux pieds entre la façade et la barre (depth : longueur des pieds)
-function HandleFeet({ length, depth, finish }: { length: number; depth: number; finish: string }) {
+// Deux pieds entre la façade et la barre, aux vis (spacing : entraxe ; depth : longueur des pieds)
+function HandleFeet({ spacing, depth, finish }: { spacing: number; depth: number; finish: string }) {
+    if (depth <= 0) return null;
     return (
         <>
             {[-1, 1].map((sign) => (
-                <mesh key={sign} position={[sign * length * 0.4, 0, depth / 2]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                <mesh key={sign} position={[(sign * spacing) / 2, 0, depth / 2]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
                     <cylinderGeometry args={[FOOT_RADIUS, FOOT_RADIUS, depth, 12]} />
                     <ModelHandleMaterial finish={finish} />
                 </mesh>
@@ -144,97 +152,107 @@ function HandleFeet({ length, depth, finish }: { length: number; depth: number; 
 
 function ModelHandleShape({ model, length }: { model: HandleModel; length: number }) {
     const finish = safeFinishHex(model.finish_hex);
+    const { spacing, width, projection } = modelHandleDimensions(model, length);
 
     if (model.shape === 'knob') {
-        // Corps cylindrique coiffé d'un chapeau un peu plus large
+        // Corps cylindrique coiffé d'un chapeau un peu plus large (largeur : diamètre du chapeau)
+        const capRadius = width / 2;
+        const bodyHeight = Math.max(0.002, projection - KNOB_CAP_THICKNESS);
         return (
             <>
-                <mesh position={[0, 0, 0.009]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
-                    <cylinderGeometry args={[0.012, 0.012, 0.018, 24]} />
+                <mesh position={[0, 0, bodyHeight / 2]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                    <cylinderGeometry args={[capRadius * KNOB_BODY_RATIO, capRadius * KNOB_BODY_RATIO, bodyHeight, 24]} />
                     <ModelHandleMaterial finish={finish} />
                 </mesh>
-                <mesh position={[0, 0, 0.02]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
-                    <cylinderGeometry args={[0.0135, 0.0135, 0.004, 24]} />
+                <mesh position={[0, 0, bodyHeight + KNOB_CAP_THICKNESS / 2]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                    <cylinderGeometry args={[capRadius, capRadius, KNOB_CAP_THICKNESS, 24]} />
                     <ModelHandleMaterial finish={finish} />
                 </mesh>
             </>
         );
     }
     if (model.shape === 'recessed') {
-        // Cuvette ronde encastrée dans la façade : bague en relief et fond sombre
+        // Cuvette ronde encastrée dans la façade : bague (largeur : son diamètre) et fond sombre
+        const ring = Math.max(0.001, projection);
         return (
             <>
-                <mesh position={[0, 0, 0.002]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
-                    <cylinderGeometry args={[0.026, 0.026, 0.004, 32]} />
+                <mesh position={[0, 0, ring / 2]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                    <cylinderGeometry args={[width / 2, width / 2, ring, 32]} />
                     <ModelHandleMaterial finish={finish} />
                 </mesh>
-                <mesh position={[0, 0, 0.0045]} rotation={[QUARTER_TURN, 0, 0]}>
-                    <cylinderGeometry args={[0.019, 0.019, 0.002, 32]} />
-                    <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.8} />
+                <mesh position={[0, 0, ring + 0.0005]} rotation={[QUARTER_TURN, 0, 0]}>
+                    <cylinderGeometry args={[width * 0.365, width * 0.365, 0.002, 32]} />
+                    {DARK_INSET}
                 </mesh>
             </>
         );
     }
     if (model.shape === 'cup') {
-        // Cuvette oblongue : plaque arrondie avec creux sombre pour les doigts
+        // Cuvette oblongue encastrée : rebord à fleur de façade et creux sombre pour les doigts
+        const rim = Math.max(0.001, projection);
         return (
             <>
-                <mesh position={[0, 0, 0.004]} castShadow>
-                    <boxGeometry args={[length, 0.03, 0.008]} />
+                <mesh position={[0, 0, rim / 2]} castShadow>
+                    <boxGeometry args={[length, width, rim]} />
                     <ModelHandleMaterial finish={finish} />
                 </mesh>
-                <mesh position={[0, 0, 0.0085]}>
-                    <boxGeometry args={[length * 0.8, 0.018, 0.002]} />
-                    <meshStandardMaterial color="#1a1a1a" metalness={0.2} roughness={0.8} />
+                <mesh position={[0, 0, rim + 0.0005]}>
+                    <boxGeometry args={[length * 0.8, width * 0.6, 0.002]} />
+                    {DARK_INSET}
                 </mesh>
             </>
         );
     }
     if (model.shape === 'leather') {
-        // Lanière de cuir fixée par deux rivets métalliques
+        // Lanière de cuir vissée par deux rivets métalliques, à l'entraxe
+        const strapZ = Math.max(STRAP_THICKNESS / 2, projection - STRAP_THICKNESS / 2);
         return (
             <>
-                <mesh position={[0, 0, BAR_STANDOFF]} castShadow>
-                    <boxGeometry args={[length, 0.014, 0.004]} />
+                <mesh position={[0, 0, strapZ]} castShadow>
+                    <boxGeometry args={[length, width, STRAP_THICKNESS]} />
                     <meshStandardMaterial color={finish} metalness={0.05} roughness={0.85} />
                 </mesh>
                 {[-1, 1].map((sign) => (
-                    <mesh key={sign} position={[sign * (length / 2 - 0.008), 0, BAR_STANDOFF + 0.003]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
+                    <mesh key={sign} position={[(sign * spacing) / 2, 0, strapZ + 0.003]} rotation={[QUARTER_TURN, 0, 0]} castShadow>
                         <cylinderGeometry args={[0.004, 0.004, 0.003, 16]} />
                         <meshStandardMaterial color="#B8B8B8" metalness={0.9} roughness={0.25} />
                     </mesh>
                 ))}
-                <HandleFeet length={length * 1.2} depth={BAR_STANDOFF - 0.002} finish={finish} />
+                <HandleFeet spacing={spacing} depth={strapZ - STRAP_THICKNESS / 2} finish={finish} />
             </>
         );
     }
     if (model.shape === 'profile') {
         // Profilé collé à la façade, sans pied
         return (
-            <mesh position={[0, 0, 0.006]} castShadow>
-                <boxGeometry args={[length, 0.016, 0.012]} />
+            <mesh position={[0, 0, projection / 2]} castShadow>
+                <boxGeometry args={[length, width, Math.max(0.001, projection)]} />
                 <ModelHandleMaterial finish={finish} />
             </mesh>
         );
     }
     if (model.shape === 'flat_bar') {
+        const barZ = Math.max(STRAP_THICKNESS / 2, projection - STRAP_THICKNESS / 2);
         return (
             <>
-                <mesh position={[0, 0, BAR_STANDOFF]} castShadow>
-                    <boxGeometry args={[length, 0.012, 0.004]} />
+                <mesh position={[0, 0, barZ]} castShadow>
+                    <boxGeometry args={[length, width, STRAP_THICKNESS]} />
                     <ModelHandleMaterial finish={finish} />
                 </mesh>
-                <HandleFeet length={length} depth={BAR_STANDOFF - 0.002} finish={finish} />
+                <HandleFeet spacing={spacing} depth={barZ - STRAP_THICKNESS / 2} finish={finish} />
             </>
         );
     }
+    // Barre ronde : largeur = diamètre, l'avant de la barre à la saillie
+    const radius = width / 2;
+    const axisZ = Math.max(radius, projection - radius);
     return (
         <>
-            <mesh position={[0, 0, BAR_STANDOFF]} rotation={[0, 0, QUARTER_TURN]} castShadow>
-                <cylinderGeometry args={[0.006, 0.006, length, 16]} />
+            <mesh position={[0, 0, axisZ]} rotation={[0, 0, QUARTER_TURN]} castShadow>
+                <cylinderGeometry args={[radius, radius, length, 16]} />
                 <ModelHandleMaterial finish={finish} />
             </mesh>
-            <HandleFeet length={length} depth={BAR_STANDOFF} finish={finish} />
+            <HandleFeet spacing={spacing} depth={axisZ} finish={finish} />
         </>
     );
 }
