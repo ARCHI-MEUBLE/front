@@ -16,6 +16,7 @@ import {
   IconDotsVertical,
   IconCurrencyEuro,
   IconColorSwatch,
+  IconGripHorizontal,
   IconCategory,
   IconCamera,
   IconMailbox,
@@ -57,6 +58,7 @@ export type DashboardSection =
   | 'avis'
   | 'pricing'
   | 'samples'
+  | 'handles'
   | 'realisations'
   | 'password'
 
@@ -116,13 +118,18 @@ const navMain = [
   },
   {
     id: "pricing" as DashboardSection,
-    title: "Gestion des prix",
+    title: "Prix & livraison",
     icon: IconCurrencyEuro,
   },
   {
     id: "samples" as DashboardSection,
     title: "Échantillons",
     icon: IconColorSwatch,
+  },
+  {
+    id: "handles" as DashboardSection,
+    title: "Poignées",
+    icon: IconGripHorizontal,
   },
 ]
 

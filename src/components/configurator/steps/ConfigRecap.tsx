@@ -1,5 +1,7 @@
 import type { ZoneStats } from '@/lib/configurator/zoneStats';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
+import { formatPrice } from '@/lib/format';
+import { formatPriceRange, type PriceEstimate } from '@/lib/pricing';
 import type { MountingStyle } from './MountingStyleSelector';
 
 interface ConfigRecapProps {
@@ -15,6 +17,12 @@ interface ConfigRecapProps {
   mountingStyle: MountingStyle;
   socle: string;
   stats: ZoneStats;
+  // Poignées posées (summarizeHandles) ; null : aucune porte ni aucun tiroir à poignée
+  handles?: string | null;
+  // Prix du meuble (estimation du backend) et livraison, ajoutée à part au panier. Sur téléphone, la barre du bas
+  // n'affiche que la fourchette : le récapitulatif donne le prix central et la livraison.
+  estimate?: PriceEstimate | null;
+  priceError?: string | null;
 }
 
 const SOCLE_LABELS: Record<string, string> = {
@@ -48,6 +56,9 @@ export default function ConfigRecap({
   mountingStyle,
   socle,
   stats,
+  handles,
+  estimate = null,
+  priceError = null,
 }: ConfigRecapProps) {
   const equipment = [
     stats.doors > 0 && plural(stats.doors, 'porte'),
@@ -83,8 +94,28 @@ export default function ConfigRecap({
         {facadeColorLabel && <Row label="Façades">{displayColorName(facadeColorLabel)}</Row>}
         <Row label="Compartiments">{stats.compartments}</Row>
         <Row label="Montage">{mountingStyle === 'encastre' ? 'Encastré' : 'En applique'}</Row>
+        {handles && <Row label="Poignées">{handles}</Row>}
         <Row label="Pieds">{SOCLE_LABELS[socle] ?? socle}</Row>
         <Row label="Équipements">{equipment.length > 0 ? equipment.join(' · ') : 'Aucun'}</Row>
+        {priceError ? (
+          <Row label="Prix du meuble">
+            <span className="text-am-wine">Prix indisponible</span>
+          </Row>
+        ) : (
+          estimate && (
+            <>
+              <Row label="Prix du meuble">
+                {formatPrice(estimate.price)}
+                <span className="block font-normal text-black/65">estimation {formatPriceRange(estimate)}</span>
+              </Row>
+              {estimate.delivery !== null && (
+                <Row label="Livraison">
+                  {estimate.delivery > 0 ? `${formatPrice(estimate.delivery)}, ajoutée au panier` : 'Offerte'}
+                </Row>
+              )}
+            </>
+          )
+        )}
       </dl>
     </div>
   );

@@ -8,7 +8,10 @@ import { Header } from '@/components/Header';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import { formatPrice } from '@/lib/format';
 import { Footer } from '@/components/Footer';
-import { MapPin, CreditCard, Package, Truck, Shield, Check, ChevronLeft, AlertTriangle, X } from 'lucide-react';
+import { MapPin, CreditCard, Package, Truck, Shield, Check, ChevronLeft } from 'lucide-react';
+import { fetchCartShipping, shippingLines, type CartShipping, type ShippingLine } from '@/lib/shippingApi';
+import { cartTotals, isTrueFlag, orderPayment, sumItems, toAmount, type OrderPayment } from '@/lib/orderTotals';
+import FacadeDetailsModal from '@/components/facades/FacadeDetailsModal';
 
 // Import dynamique pour éviter les problèmes SSR avec Stripe
 const StripeCheckoutWrapper = dynamic(
@@ -29,6 +32,8 @@ interface CartItem {
     id: number;
     name: string;
     price: number;
+    // Configurations enregistrées avant que la livraison sorte du prix : leur prix la comprend déjà
+    price_includes_delivery?: boolean | string;
   };
   quantity: number;
 }
@@ -43,7 +48,6 @@ interface SampleCartItem {
   type_name: string;
   material: string;
   type_description: string | null;
-  price_per_m2: number;
   unit_price: number;
 }
 
@@ -134,6 +138,13 @@ export default function CheckoutStripe() {
   const [error, setError] = useState('');
   const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'balance'>('full');
   const [orderData, setOrderData] = useState<any>(null);
+  // Panier : frais de livraison calculés par le serveur (null tant qu'inconnus)
+  const [shipping, setShipping] = useState<CartShipping | null>(null);
+  const [shippingError, setShippingError] = useState(false);
+  // Commande déjà créée (paiement d'un acompte, d'un solde, ou d'une commande validée) : ses montants font foi
+  const [orderAmounts, setOrderAmounts] = useState<OrderPayment | null>(null);
+  // Montant à payer maintenant, tel que le serveur l'a fixé pour le paiement Stripe (livraison comprise)
+  const [dueAmount, setDueAmount] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     shipping_address: '',
@@ -197,18 +208,20 @@ export default function CheckoutStripe() {
       }
 
       setOrderData(order);
+      setOrderAmounts(orderPayment(order));
 
-      // Déterminer le montant à payer
-      let amountToPay = order.total || 0;
+      // Déterminer le montant à payer (le serveur le confirme à la création du paiement)
+      let amountToPay = toAmount(order.total);
       if (order.payment_strategy === 'deposit') {
         if (order.deposit_payment_status !== 'paid') {
           setPaymentType('deposit');
-          amountToPay = order.deposit_amount;
+          amountToPay = toAmount(order.deposit_amount);
         } else if (order.balance_payment_status !== 'paid') {
           setPaymentType('balance');
-          amountToPay = order.remaining_amount;
+          amountToPay = toAmount(order.remaining_amount);
         }
       }
+      setDueAmount(amountToPay);
 
       // Vérifier que la commande n'est pas déjà payée
       if (order.payment_status === 'paid' || (order.payment_strategy === 'deposit' && order.balance_payment_status === 'paid')) {
@@ -216,18 +229,60 @@ export default function CheckoutStripe() {
         return;
       }
 
-      // Convertir la commande en format panier pour réutiliser le composant
+      // Convertir la commande en format panier pour réutiliser le récapitulatif : toutes ses lignes, aux prix
+      // enregistrés dans la commande
       setOrderId(existingOrderId);
+      const orderItems: CartItem[] = (order.items || []).map((item: any) => ({
+        configuration: {
+          id: item.configuration_id,
+          name: item.name || item.configuration?.name || 'Configuration',
+          price: toAmount(item.unit_price ?? item.price),
+        },
+        quantity: toAmount(item.quantity),
+      }));
       setCart({
-        items: order.items?.map((item: any) => ({
-          configuration: {
-            id: item.configuration_id,
-            name: item.name || item.configuration?.name || 'Configuration',
-            price: item.price || item.unit_price || 0
-          },
-          quantity: item.quantity
-        })) || [],
-        total: amountToPay
+        items: orderItems,
+        total: sumItems(orderItems, (item) => item.configuration.price, (item) => item.quantity),
+      });
+      setSamplesCart({
+        items: (order.samples || []).map((sample: any) => ({
+          id: sample.id,
+          sample_color_id: sample.sample_color_id ?? 0,
+          quantity: toAmount(sample.quantity),
+          color_name: sample.sample_name,
+          hex: sample.hex ?? null,
+          image_url: sample.image_url ?? null,
+          type_name: sample.sample_type_name ?? '',
+          material: sample.material ?? '',
+          type_description: null,
+          unit_price: toAmount(sample.price),
+        })),
+        count: (order.samples || []).length,
+      });
+      setCatalogueCart({
+        items: (order.catalogue_items || []).map((item: any) => ({
+          id: item.id,
+          catalogue_item_id: item.catalogue_item_id,
+          variation_id: item.variation_id ?? null,
+          quantity: toAmount(item.quantity),
+          name: item.name || item.item_name || 'Article',
+          unit_price: toAmount(item.unit_price),
+          unit: item.unit ?? '',
+          item_image: item.image_url ?? null,
+          variation_name: item.variation_name ?? null,
+          variation_image: null,
+        })),
+      });
+      const facadeItems: FacadeCartItem[] = (order.facade_items || []).map((facade: any) => ({
+        id: facade.id,
+        config: facade.config || {},
+        quantity: toAmount(facade.quantity),
+        unit_price: toAmount(facade.unit_price),
+      }));
+      setFacadeCart({
+        items: facadeItems,
+        total: sumItems(facadeItems, (item) => item.unit_price, (item) => item.quantity),
+        count: facadeItems.length,
       });
 
       // Pré-remplir les adresses depuis la commande
@@ -291,6 +346,15 @@ export default function CheckoutStripe() {
       if (facadeResponse.ok) {
         facadeData = await facadeResponse.json();
         setFacadeCart(facadeData);
+      }
+
+      // Livraison calculée par le serveur, la même qu'il ajoutera au total de la commande
+      try {
+        setShipping(await fetchCartShipping());
+        setShippingError(false);
+      } catch (shippingErr) {
+        console.warn('Frais de livraison indisponibles :', shippingErr instanceof Error ? shippingErr.message : shippingErr);
+        setShippingError(true);
       }
 
       // Vérifier que le panier n'est pas vide (configs OU échantillons OU catalogue OU façades)
@@ -364,9 +428,12 @@ export default function CheckoutStripe() {
 
       const result = await response.json();
       setOrderId(result.order.id);
+      // Le total de la commande est celui du serveur (articles + livraison) : c'est lui qui sera payé
+      const serverTotal = toAmount(result.order.total);
+      setDueAmount(serverTotal);
 
-      // Si le total est 0€ (seulement échantillons gratuits), valider directement
-      if (grandTotal === 0) {
+      // Si le total est 0€ (seulement échantillons gratuits, livraison offerte), valider directement
+      if (serverTotal === 0) {
         // Marquer comme payé et rediriger
         await fetch('/backend/api/orders/validate.php', {
           method: 'POST',
@@ -435,10 +502,30 @@ export default function CheckoutStripe() {
     );
   }
 
-  const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const facadeTotal = facadeCart?.total || 0;
-  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal + facadeTotal;
+  // Articles + livraison. Pour une commande déjà créée, ses montants enregistrés ; pour le panier, la livraison
+  // calculée par le serveur (la même qu'il ajoutera à la commande).
+  const hasFurniture = (cart?.items.length ?? 0) > 0;
+  const hasParcelItems =
+    (samplesCart?.items.length ?? 0) > 0 || (catalogueCart?.items.length ?? 0) > 0 || (facadeCart?.items.length ?? 0) > 0;
+  const furnitureDeliveryIncluded = hasFurniture && cart!.items.every((item) => isTrueFlag(item.configuration.price_includes_delivery));
+  const cartShippingLines = shipping ? shippingLines(shipping, { hasFurniture, hasParcelItems, furnitureDeliveryIncluded }) : [];
+  const totals = cartTotals(
+    {
+      furniture: toAmount(cart?.total),
+      facades: toAmount(facadeCart?.total),
+      catalogue: sumItems(catalogueCart?.items, (item) => item.unit_price, (item) => item.quantity),
+      samples: sumItems(samplesCart?.items, (item) => item.unit_price, (item) => item.quantity),
+    },
+    shipping ? cartShippingLines.reduce((sum, line) => sum + line.amount, 0) : null,
+  );
+  const summaryShippingLines: ShippingLine[] = orderAmounts
+    ? orderAmounts.shipping > 0
+      ? [{ key: 'furniture', label: 'Livraison', amount: orderAmounts.shipping, value: formatPrice(orderAmounts.shipping), note: null }]
+      : []
+    : cartShippingLines;
+  const itemsTotal = orderAmounts ? orderAmounts.items : totals.items;
+  const grandTotal = orderAmounts ? orderAmounts.total : totals.total;
+  const shippingKnown = orderAmounts !== null || shipping !== null;
 
   // Stripe Public Key Check
   const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -703,14 +790,17 @@ export default function CheckoutStripe() {
                               ? `Paiement de l'acompte (${orderData?.deposit_percentage}%)`
                               : `Paiement du solde restant`}
                           </p>
-                          <p className="text-sm text-amber-700 mt-1">
-                            Montant à régler : {formatPrice(cart?.total)}
-                          </p>
+                          {dueAmount !== null && (
+                            <p className="text-sm text-amber-700 mt-1">
+                              Montant à régler : {formatPrice(dueAmount)}
+                            </p>
+                          )}
                         </div>
                       )}
                       <StripeCheckoutWrapper
                         orderId={orderId}
-                        amount={grandTotal}
+                        paymentType={paymentType}
+                        onAmount={setDueAmount}
                         onError={(error) => setError(error)}
                       />
                     </div>
@@ -790,8 +880,8 @@ export default function CheckoutStripe() {
                               <p className="text-xs text-black/65">{displayMaterialName(sample.material)}</p>
                             </div>
                           </div>
-                          <span className={`flex-shrink-0 text-xs font-medium ${sample.unit_price > 0 ? 'text-black' : 'text-am-navy'}`}>
-                            {sample.unit_price > 0 ? `${sample.unit_price} €` : 'Offert'}
+                          <span className={`flex-shrink-0 text-xs font-medium ${toAmount(sample.unit_price) > 0 ? 'text-black' : 'text-am-navy'}`}>
+                            {toAmount(sample.unit_price) > 0 ? formatPrice(toAmount(sample.unit_price) * sample.quantity) : 'Offert'}
                           </span>
                         </div>
                       ))}
@@ -879,39 +969,68 @@ export default function CheckoutStripe() {
                     </div>
                   )}
 
-                  {/* Total */}
+                  {/* Total : articles, puis livraison (calculée par le serveur), puis ce qui reste à payer */}
                   <div className="mt-6 border-t border-black/10 pt-6">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-black/65">Sous-total</span>
-                      <span className="font-mono text-black">{formatPrice(cart?.total || 0)}</span>
-                    </div>
-                    {catalogueTotal > 0 && (
-                      <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="text-black/65">Articles catalogue</span>
-                        <span className="font-mono text-black">{formatPrice(catalogueTotal)}</span>
+                    {hasFurniture && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-black/65">Meubles sur mesure</span>
+                        <span className="font-mono text-black">{formatPrice(totals.furniture)}</span>
                       </div>
                     )}
-                    {samplesTotal > 0 && (
-                      <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="text-black/65">Échantillons</span>
-                        <span className="font-mono text-black">{formatPrice(samplesTotal)}</span>
-                      </div>
-                    )}
-                    {facadeTotal > 0 && (
+                    {totals.facades > 0 && (
                       <div className="mt-2 flex items-center justify-between text-sm">
                         <span className="text-black/65">Façades</span>
-                        <span className="font-mono text-black">{formatPrice(facadeTotal)}</span>
+                        <span className="font-mono text-black">{formatPrice(totals.facades)}</span>
                       </div>
                     )}
-                    <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="text-black/65">Livraison</span>
-                      <span className="text-sm font-medium text-am-navy">Offerte</span>
+                    {totals.catalogue > 0 && (
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-black/65">Articles du catalogue</span>
+                        <span className="font-mono text-black">{formatPrice(totals.catalogue)}</span>
+                      </div>
+                    )}
+                    {totals.samples > 0 && (
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-black/65">Échantillons</span>
+                        <span className="font-mono text-black">{formatPrice(totals.samples)}</span>
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center justify-between border-t border-dashed border-black/10 pt-2 text-sm">
+                      <span className="text-black/65">Sous-total articles</span>
+                      <span className="font-mono text-black">{formatPrice(itemsTotal)}</span>
                     </div>
+                    {summaryShippingLines.map((line) => (
+                      <div key={line.key} className="mt-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-black/65">{line.label}</span>
+                          <span className={line.amount > 0 ? 'font-mono text-black' : 'font-medium text-am-navy'}>{line.value}</span>
+                        </div>
+                        {line.note && <p className="mt-0.5 text-right text-xs text-black/65">{line.note}</p>}
+                      </div>
+                    ))}
+                    {!shippingKnown && (
+                      <div className="mt-2 flex items-center justify-between text-sm">
+                        <span className="text-black/65">Livraison</span>
+                        <span className="text-black/65">{shippingError ? 'Calculée à la commande' : '…'}</span>
+                      </div>
+                    )}
                     <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-4">
-                      <span className="text-black">Total</span>
+                      <span className="text-black">{shippingKnown ? 'Total' : 'Total hors livraison'}</span>
                       <span className="font-mono text-2xl text-black">{formatPrice(grandTotal)}</span>
                     </div>
                     <p className="mt-1 text-right text-xs text-black/65">TVA incluse</p>
+                    {orderAmounts && orderAmounts.paid > 0 && (
+                      <div className="mt-3 space-y-1 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-black/65">Déjà payé</span>
+                          <span className="font-mono text-black">{formatPrice(orderAmounts.paid)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-black">Reste à payer</span>
+                          <span className="font-mono text-black">{formatPrice(orderAmounts.remaining)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -928,8 +1047,8 @@ export default function CheckoutStripe() {
                     <div className="flex items-start gap-3">
                       <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                       <div>
-                        <p className="text-sm font-medium text-black">Livraison gratuite</p>
-                        <p className="text-xs text-black/65">Partout en France</p>
+                        <p className="text-sm font-medium text-black">Livraison à domicile</p>
+                        <p className="text-xs text-black/65">Partout en France, frais détaillés ci-dessus</p>
                       </div>
                     </div>
                   </div>
@@ -950,222 +1069,8 @@ export default function CheckoutStripe() {
 
       <Footer />
 
-      {/* Modal détails façade */}
-      {selectedFacade && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => setSelectedFacade(null)}
-        >
-          <div
-            className="relative w-full max-w-lg bg-white shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-black/10 p-6">
-              <h3 className="text-xl text-black">Détails de la façade</h3>
-              <button
-                type="button"
-                onClick={() => setSelectedFacade(null)}
-                className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6">
-              {(() => {
-                const materialObj = typeof selectedFacade.config.material === 'object' ? selectedFacade.config.material : null;
-                const materialName = displayColorName(materialObj?.name || selectedFacade.config.materialName || (typeof selectedFacade.config.material === 'string' ? selectedFacade.config.material : '')) || 'Matériau';
-                const hinges = selectedFacade.config.hinges;
-                const hingeCount = hinges?.count || selectedFacade.config.hingeCount || 0;
-                const hingeType = hinges?.type || selectedFacade.config.hingeType || '';
-                const hingeSide = hinges?.direction || selectedFacade.config.hingeSide || '';
-                const drillings = selectedFacade.config.drillings || [];
-
-                return (
-                  <div className="space-y-6">
-                    {/* 3D Preview */}
-                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-black/10 overflow-hidden bg-am-mist/15">
-                      <FacadeCartPreview
-                        width={selectedFacade.config.width}
-                        height={selectedFacade.config.height}
-                        depth={selectedFacade.config.depth || 19}
-                        colorHex={materialObj?.color_hex || '#CCCCCC'}
-                        textureUrl={materialObj?.texture_url}
-                        drillings={drillings}
-                      />
-                    </div>
-
-                    {/* Info Grid */}
-                    <div className="grid gap-4">
-                      {/* Dimensions */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Dimensions</span>
-                        <span className="text-sm font-medium text-black">
-                          {selectedFacade.config.width / 10} × {selectedFacade.config.height / 10} cm · {selectedFacade.config.depth || 19} mm
-                        </span>
-                      </div>
-
-                      {/* Matériau */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Matériau</span>
-                        <div className="flex items-center gap-2">
-                          {materialObj?.texture_url ? (
-                            <div className="h-5 w-5 border border-black/10 overflow-hidden">
-                              <img src={materialObj.texture_url} alt="" className="h-full w-full object-cover" />
-                            </div>
-                          ) : materialObj?.color_hex ? (
-                            <div className="h-5 w-5 border border-black/10" style={{ backgroundColor: materialObj.color_hex }} />
-                          ) : null}
-                          <span className="text-sm font-medium text-black">{materialName}</span>
-                        </div>
-                      </div>
-
-                      {/* Type de charnière */}
-                      <div className="py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65 block mb-3">Charnières</span>
-                        <div className="flex items-center gap-3 p-3 bg-am-mist/15 rounded-lg">
-                          {/* Icône du type de charnière */}
-                          <div className="flex-shrink-0">
-                            {hingeType === 'no-hole-no-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
-                                <circle cx="40" cy="32" r="2" fill="#6B7280"/>
-                                <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
-                                <line x1="52" y1="12" x2="12" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
-                              </svg>
-                            )}
-                            {hingeType === 'hole-with-applied-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <circle cx="22" cy="24" r="1.5" fill="#374151"/>
-                                <circle cx="22" cy="29" r="1.5" fill="#374151"/>
-                                <circle cx="17" cy="26" r="1.5" fill="#374151"/>
-                                <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-                              </svg>
-                            )}
-                            {hingeType === 'hole-with-twin-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <circle cx="29" cy="24" r="1.2" fill="#374151"/>
-                                <circle cx="35" cy="24" r="1.2" fill="#374151"/>
-                                <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
-                                <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
-                              </svg>
-                            )}
-                            {hingeType === 'hole-with-integrated-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-                                <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-                                <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-                                <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-                                <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-                                <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-                                <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-                              </svg>
-                            )}
-                            {!hingeType && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
-                                <circle cx="40" cy="32" r="2" fill="#6B7280"/>
-                                <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
-                                <line x1="52" y1="12" x2="12" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
-                              </svg>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-black">
-                              {hingeType === 'no-hole-no-hinge' && 'Sans trou, sans charnière'}
-                              {hingeType === 'hole-with-applied-hinge' && 'Trou + charnière fournie porte en applique'}
-                              {hingeType === 'hole-with-twin-hinge' && 'Trou + charnière fournie porte jumelée'}
-                              {hingeType === 'hole-with-integrated-hinge' && 'Trou + charnière fournie porte encastrée'}
-                              {!hingeType && 'Sans trou, sans charnière'}
-                            </p>
-                            {hingeType && hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
-                              <p className="text-xs text-black/65 mt-1">
-                                {hingeCount} charnières · Ouverture {hingeSide === 'left' ? 'gauche' : hingeSide === 'right' ? 'droite' : hingeSide}
-                              </p>
-                            )}
-                            <p className="text-xs text-am-navy mt-1">
-                              Prix unit. {!hingeType || hingeType === 'no-hole-no-hinge' ? '0.00' : '34.20'} € TTC
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Perçages */}
-                      {drillings.length > 0 && (
-                        <div className="py-3 border-b border-black/10">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-black/65">Perçages</span>
-                            <span className="text-sm font-medium text-black">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
-                          </div>
-                          <div className="space-y-1 pl-4">
-                            {drillings.map((drill, idx) => (
-                              <div key={drill.id} className="flex justify-between text-xs">
-                                <span className="text-black/65">
-                                  {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
-                                </span>
-                                {drill.price > 0 && (
-                                  <span className="text-black">+{formatPrice(drill.price)}</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quantité */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Quantité</span>
-                        <span className="text-sm font-medium text-black">{selectedFacade.quantity}</span>
-                      </div>
-
-                      {/* Prix unitaire */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Prix unitaire</span>
-                        <span className="text-sm font-medium text-black">{formatPrice(selectedFacade.unit_price)}</span>
-                      </div>
-
-                      {/* Total */}
-                      <div className="flex justify-between items-center py-3 bg-am-mist/15 px-4 -mx-4">
-                        <span className="text-sm font-medium text-black">Total</span>
-                        <span className="text-lg font-medium text-black">
-                          {formatPrice(selectedFacade.unit_price * selectedFacade.quantity)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-black/10 p-6">
-              <button
-                type="button"
-                onClick={() => setSelectedFacade(null)}
-                className="w-full h-12 bg-am-navy text-white text-sm font-medium transition-colors hover:bg-am-navy/90"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal détails façade (composant partagé avec le panier) */}
+      {selectedFacade && <FacadeDetailsModal facade={selectedFacade} onClose={() => setSelectedFacade(null)} />}
     </>
   );
 }

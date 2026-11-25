@@ -5,6 +5,7 @@ import { Zone } from './ZoneEditor/types';
 import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 import type { RoomScene } from './scene/Room';
+import type { HandleDefaults, HandleModel } from '@/lib/configurator/handles';
 
 // On utilise dynamic import pour forcer le rendu côté client uniquement
 const ThreeCanvas = dynamic(() => import('./ThreeCanvas'), {
@@ -56,6 +57,9 @@ export interface ThreeViewerProps {
   deletedPanelIds?: Set<string>;
   // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
   onResizeDivider?: (zoneId: string, ratios: number[]) => void;
+  // Modèles de poignées de l'admin et choix pour tout le meuble (config_data.handles) ; sans eux, barres par défaut
+  handleModels?: HandleModel[];
+  handleDefaults?: HandleDefaults;
 }
 
 // Export du type pour utilisation externe

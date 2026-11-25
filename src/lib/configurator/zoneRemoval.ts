@@ -17,12 +17,20 @@ function ratioFields(ratios: number[]): Pick<Zone, 'splitRatio' | 'splitRatios'>
   return { splitRatio: undefined, splitRatios: ratios };
 }
 
+const hasOwnHandle = (zone: Zone) => !!zone.handleType || zone.handleModelId != null || !!zone.handleOrientation;
+
 // Le groupe n'a plus qu'une partie : elle prend sa place. Elle garde l'identifiant du groupe (son parent
 // et la sélection y font référence) et la porte qui couvrait tout le groupe.
 function replaceGroupByChild(group: Zone, child: Zone): Zone {
   const groupDoor = group.doorContent && group.doorContent !== 'empty' ? group.doorContent : undefined;
   const merged: Zone = { ...child, id: group.id };
-  if (!merged.handleType && group.handleType) merged.handleType = group.handleType;
+  // La poignée choisie pour la porte du groupe la suit, d'un bloc (modèle, orientation, ancien type) : la partie
+  // ne mélange pas son propre choix avec celui du groupe
+  if (!hasOwnHandle(merged) && hasOwnHandle(group)) {
+    if (group.handleType) merged.handleType = group.handleType;
+    if (group.handleModelId != null) merged.handleModelId = group.handleModelId;
+    if (group.handleOrientation) merged.handleOrientation = group.handleOrientation;
+  }
   if (!merged.zoneColor && group.zoneColor) merged.zoneColor = group.zoneColor;
   if (!groupDoor) return merged;
   if (child.type === 'leaf') {

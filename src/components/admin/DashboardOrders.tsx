@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/dateUtils';
+import { formatPrice } from '@/lib/format';
+import { pricingAdminApi, pricingErrorMessage } from '@/lib/pricingAdminApi';
 import {
   IconClock,
   IconCircleCheck,
@@ -15,6 +17,8 @@ import {
   IconTrendingUp,
   IconSquare,
   IconDownload,
+  IconPalette,
+  IconLoader2,
 } from '@tabler/icons-react';
 import PaymentLinkModal from '@/components/admin/PaymentLinkModal';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +27,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface OrderItem {
   configuration_id: number;
@@ -74,6 +81,16 @@ interface FacadeOrderItem {
   total_price: number;
 }
 
+interface SampleOrderItem {
+  id: number;
+  sample_name: string;
+  material: string | null;
+  hex: string | null;
+  image_url: string | null;
+  quantity: number;
+  price: number | string;
+}
+
 interface Customer {
   id: number;
   email: string;
@@ -93,6 +110,8 @@ interface Order {
   status: string;
   total: number;
   amount?: number;
+  // Frais de livraison compris dans le total (DECIMAL : parfois en texte)
+  shipping_amount?: number | string;
   shipping_address: string;
   payment_method: string;
   payment_status: string;
@@ -106,6 +125,7 @@ interface Order {
   items?: OrderItem[];
   catalogue_items?: CatalogueOrderItem[];
   facade_items?: FacadeOrderItem[];
+  samples?: SampleOrderItem[];
 }
 
 const STATUS_CONFIG: {
@@ -135,6 +155,40 @@ const getHingeTypeLabel = (hingeType: string): string => {
   return HINGE_TYPE_LABELS[hingeType] || hingeType;
 };
 
+// Les montants DECIMAL arrivent parfois en texte (« 1290.00 »)
+const amount = (value: unknown): number => {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const orderTotal = (order: Order): number => amount(order.total || order.amount);
+
+// Déjà encaissé et reste à payer, d'après le statut de chaque paiement
+function paymentProgress(order: Order): { paid: number; remaining: number } {
+  const total = orderTotal(order);
+  let paid = 0;
+  if (order.payment_strategy === 'deposit') {
+    if (order.deposit_payment_status === 'paid') paid += amount(order.deposit_amount);
+    if (order.balance_payment_status === 'paid') paid += amount(order.remaining_amount);
+  } else if (order.payment_status === 'paid') {
+    paid = total;
+  }
+  if (order.payment_status === 'paid') paid = total;
+  return { paid, remaining: Math.max(0, Math.round((total - paid) * 100) / 100) };
+}
+
+// Aperçu de l'acompte, même règle que le serveur (PaymentStrategyRepository) : meubles et façades au pourcentage,
+// échantillons et catalogue en totalité ; le solde est le reste du total (livraison comprise)
+function depositPreview(order: Order, percent: number): { deposit: number; balance: number } | null {
+  if (!order.items && !order.facade_items && !order.samples && !order.catalogue_items) return null;
+  const furniture = (order.items ?? []).reduce((sum, item) => sum + amount(item.price) * (item.quantity || 1), 0);
+  const facades = (order.facade_items ?? []).reduce((sum, f) => sum + amount(f.total_price), 0);
+  const samples = (order.samples ?? []).reduce((sum, sample) => sum + amount(sample.price) * (sample.quantity || 1), 0);
+  const catalogue = (order.catalogue_items ?? []).reduce((sum, c) => sum + amount(c.total_price), 0);
+  const deposit = Math.round(((furniture + facades) * (percent / 100) + samples + catalogue) * 100) / 100;
+  return { deposit, balance: Math.round((orderTotal(order) - deposit) * 100) / 100 };
+}
+
 export function DashboardOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -144,10 +198,22 @@ export function DashboardOrders() {
 
   const [paymentLinkModalOpen, setPaymentLinkModalOpen] = useState(false);
   const [selectedOrderForPaymentLink, setSelectedOrderForPaymentLink] = useState<Order | null>(null);
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  // Nouvelle clé à chaque ouverture : le dialogue repart de l'acompte par défaut
+  const [depositDialogKey, setDepositDialogKey] = useState(0);
+  // Acompte par défaut (Prix & livraison > Paiement) ; null si le réglage est introuvable
+  const [depositDefault, setDepositDefault] = useState<number | null>(null);
 
   useEffect(() => {
     loadOrders();
   }, [filterStatus]);
+
+  useEffect(() => {
+    pricingAdminApi
+      .depositDefaultPercent()
+      .then(setDepositDefault)
+      .catch(() => setDepositDefault(null));
+  }, []);
 
   const loadOrders = async () => {
     try {
@@ -215,30 +281,21 @@ export function DashboardOrders() {
     }
   };
 
+  // Lève l'erreur du serveur : le dialogue d'acompte l'affiche en ligne
+  const savePaymentStrategy = async (orderId: string, strategy: 'full' | 'deposit', percentage: number = 0) => {
+    await pricingAdminApi.setPaymentStrategy(orderId, strategy, percentage);
+    toast.success(strategy === 'deposit' ? `Acompte de ${percentage.toLocaleString('fr-FR')} % enregistré` : 'Paiement en une fois enregistré');
+    await loadOrders();
+    if (selectedOrder && selectedOrder.id === orderId) {
+      await loadOrderDetails(orderId);
+    }
+  };
+
   const updatePaymentStrategy = async (orderId: string, strategy: 'full' | 'deposit', percentage: number = 0) => {
     try {
-      const response = await fetch('/backend/api/admin/orders/payment-strategy.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          order_id: orderId,
-          strategy: strategy,
-          deposit_percentage: percentage
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la mise à jour de la stratégie de paiement');
-      }
-
-      toast.success('Stratégie de paiement mise à jour');
-      await loadOrders();
-      if (selectedOrder && selectedOrder.id === orderId) {
-        await loadOrderDetails(orderId);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la mise à jour');
+      await savePaymentStrategy(orderId, strategy, percentage);
+    } catch (err) {
+      toast.error(pricingErrorMessage(err, 'Erreur lors de la mise à jour'));
     }
   };
 
@@ -254,9 +311,7 @@ export function DashboardOrders() {
     return order.customer?.phone || order.customer_phone || 'N/A';
   };
 
-  const getOrderTotal = (order: Order): number => {
-    return order.total || order.amount || 0;
-  };
+  const getOrderTotal = orderTotal;
 
   // Calculate important stats
   const stats = {
@@ -421,7 +476,14 @@ export function DashboardOrders() {
                           <div className="text-muted-foreground">{getCustomerEmail(order)}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{getOrderTotal(order)}€</TableCell>
+                      <TableCell className="font-medium tabular-nums">
+                        {formatPrice(getOrderTotal(order))}
+                        {amount(order.shipping_amount) > 0 && (
+                          <div className="text-xs font-normal text-muted-foreground">
+                            dont livraison {formatPrice(order.shipping_amount)}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={statusConfig.variant} className="gap-1">
                           <StatusIcon className="w-3 h-3" />
@@ -516,8 +578,8 @@ export function DashboardOrders() {
                         </Button>
                         <Button
                           onClick={() => {
-                            const p = prompt('Pourcentage de l\'acompte (ex: 30) :', '30');
-                            if (p) updatePaymentStrategy(selectedOrder.id, 'deposit', parseFloat(p));
+                            setDepositDialogKey((k) => k + 1);
+                            setDepositDialogOpen(true);
                           }}
                           variant={selectedOrder.payment_strategy === 'deposit' ? 'default' : 'outline'}
                           size="sm"
@@ -536,8 +598,8 @@ export function DashboardOrders() {
 
                       {selectedOrder.payment_strategy === 'deposit' && (
                         <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm space-y-1">
-                          <p><span className="font-medium">Acompte ({selectedOrder.deposit_percentage}%):</span> {selectedOrder.deposit_amount}€ ({selectedOrder.deposit_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
-                          <p><span className="font-medium">Solde restant:</span> {selectedOrder.remaining_amount}€ ({selectedOrder.balance_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
+                          <p><span className="font-medium">Acompte ({amount(selectedOrder.deposit_percentage).toLocaleString('fr-FR')} %) :</span> {formatPrice(selectedOrder.deposit_amount)} ({selectedOrder.deposit_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
+                          <p><span className="font-medium">Solde :</span> {formatPrice(selectedOrder.remaining_amount)} ({selectedOrder.balance_payment_status === 'paid' ? 'Payé' : 'En attente'})</p>
                         </div>
                       )}
                     </div>
@@ -723,6 +785,41 @@ export function DashboardOrders() {
                 </Card>
                 )}
 
+                {/* Échantillons */}
+                {selectedOrder.samples && selectedOrder.samples.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <IconPalette className="w-4 h-4" />
+                        Échantillons
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="divide-y text-sm">
+                        {selectedOrder.samples.map((sample) => (
+                          <li key={sample.id} className="flex items-center gap-3 py-2">
+                            <span
+                              className="h-6 w-6 shrink-0 rounded border bg-muted bg-cover bg-center"
+                              style={{
+                                backgroundColor: sample.hex || undefined,
+                                backgroundImage: sample.image_url ? `url(${sample.image_url})` : undefined,
+                              }}
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0 flex-1 truncate">
+                              {sample.sample_name}
+                              {sample.material && <span className="text-muted-foreground"> · {sample.material}</span>}
+                            </span>
+                            <span className="shrink-0 tabular-nums text-muted-foreground">
+                              {sample.quantity} × {amount(sample.price) > 0 ? formatPrice(sample.price) : 'offert'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Shipping Address */}
                 <Card>
                   <CardHeader>
@@ -736,10 +833,7 @@ export function DashboardOrders() {
                 {/* Total */}
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="flex justify-between items-center text-lg font-semibold">
-                        <span>Total à facturer</span>
-                        <span>{getOrderTotal(selectedOrder)}€</span>
-                      </div>
+                    <OrderAmounts order={selectedOrder} />
                       <div className="mt-4">
                         <Button
                           onClick={() => {
@@ -773,11 +867,185 @@ export function DashboardOrders() {
           orderNumber={selectedOrderForPaymentLink.order_number}
           totalAmount={getOrderTotal(selectedOrderForPaymentLink)}
           paymentStrategy={selectedOrderForPaymentLink.payment_strategy}
-          depositAmount={selectedOrderForPaymentLink.deposit_amount}
-          remainingAmount={selectedOrderForPaymentLink.remaining_amount}
+          depositAmount={amount(selectedOrderForPaymentLink.deposit_amount)}
+          remainingAmount={amount(selectedOrderForPaymentLink.remaining_amount)}
           depositPaymentStatus={selectedOrderForPaymentLink.deposit_payment_status}
         />
       )}
+
+      {selectedOrder && (
+        <DepositDialog
+          key={`${selectedOrder.id}-${depositDialogKey}`}
+          open={depositDialogOpen}
+          onOpenChange={setDepositDialogOpen}
+          order={selectedOrder}
+          defaultPercent={depositDefault}
+          onConfirm={async (percent) => {
+            await savePaymentStrategy(selectedOrder.id, 'deposit', percent);
+            setDepositDialogOpen(false);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+// Récapitulatif des montants : articles, livraison, total, puis déjà payé et reste à payer
+function OrderAmounts({ order }: { order: Order }) {
+  const total = orderTotal(order);
+  const shipping = amount(order.shipping_amount);
+  const { paid, remaining } = paymentProgress(order);
+  return (
+    <dl className="space-y-1.5 text-sm">
+      <div className="flex justify-between">
+        <dt className="text-muted-foreground">Articles</dt>
+        <dd className="tabular-nums">{formatPrice(total - shipping)}</dd>
+      </div>
+      <div className="flex justify-between">
+        <dt className="text-muted-foreground">Livraison</dt>
+        <dd className="tabular-nums">{shipping > 0 ? formatPrice(shipping) : 'Aucuns frais'}</dd>
+      </div>
+      <div className="flex justify-between border-t pt-2 text-lg font-semibold">
+        <dt>Total à facturer</dt>
+        <dd className="tabular-nums">{formatPrice(total)}</dd>
+      </div>
+      <div className="flex justify-between">
+        <dt className="text-muted-foreground">Déjà payé</dt>
+        <dd className="tabular-nums text-emerald-700">{formatPrice(paid)}</dd>
+      </div>
+      <div className="flex justify-between font-medium">
+        <dt>Reste à payer</dt>
+        <dd className="tabular-nums">{formatPrice(remaining)}</dd>
+      </div>
+    </dl>
+  );
+}
+
+// Passage en « acompte + solde » : pourcentage prérempli avec l'acompte par défaut, aperçu des deux montants
+function DepositDialog({
+  open,
+  onOpenChange,
+  order,
+  defaultPercent,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  order: Order;
+  defaultPercent: number | null;
+  onConfirm: (percent: number) => Promise<void>;
+}) {
+  const id = useId();
+  // Commande déjà en acompte : on repart de son pourcentage, sinon de l'acompte par défaut
+  const current = order.payment_strategy === 'deposit' ? amount(order.deposit_percentage) : 0;
+  const initial = current > 0 ? current : defaultPercent;
+  const [value, setValue] = useState(initial !== null ? String(initial) : '');
+  const [saving, setSaving] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const percent = Number(value.trim().replace(',', '.'));
+  const inputError =
+    value.trim() === ''
+      ? 'Indiquez un pourcentage.'
+      : !Number.isFinite(percent)
+        ? 'Nombre attendu, par exemple 30.'
+        : percent < 1 || percent > 99
+          ? "L'acompte doit être compris entre 1 et 99 %."
+          : null;
+  const preview = inputError ? null : depositPreview(order, percent);
+  // Champ vide : pas d'erreur tant que l'admin n'a pas tenté d'enregistrer
+  const error = (inputError && value.trim() !== '' ? inputError : null) ?? serverError;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputError) {
+      setServerError(inputError);
+      return;
+    }
+    setSaving(true);
+    setServerError(null);
+    try {
+      await onConfirm(Math.round(percent * 100) / 100);
+    } catch (err) {
+      setServerError(pricingErrorMessage(err, 'Acompte non enregistré'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Acompte + solde</DialogTitle>
+          <DialogDescription>
+            Commande #{order.order_number} : le client paie d&apos;abord l&apos;acompte, puis le solde. Les meubles et
+            façades sont comptés au pourcentage, les échantillons et articles du catalogue en totalité avec
+            l&apos;acompte.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4" noValidate>
+          <div className="space-y-2">
+            <Label htmlFor={`${id}-percent`}>Pourcentage de l&apos;acompte</Label>
+            <div className="relative max-w-[10rem]">
+              <Input
+                id={`${id}-percent`}
+                type="number"
+                inputMode="decimal"
+                min={1}
+                max={99}
+                step={1}
+                value={value}
+                autoFocus
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  setServerError(null);
+                }}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={`${id}-help`}
+                className="pr-8"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+            </div>
+            <p
+              id={`${id}-help`}
+              className={error ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}
+              role={error ? 'alert' : undefined}
+            >
+              {error ??
+                (defaultPercent !== null
+                  ? `Acompte par défaut : ${defaultPercent.toLocaleString('fr-FR')} % (réglable dans Prix & livraison > Paiement).`
+                  : 'Acompte par défaut introuvable : saisissez le pourcentage.')}
+            </p>
+          </div>
+
+          {preview && (
+            <dl className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Acompte</dt>
+                <dd className="font-medium tabular-nums">{formatPrice(preview.deposit)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Solde</dt>
+                <dd className="font-medium tabular-nums">{formatPrice(preview.balance)}</dd>
+              </div>
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                Aperçu : le serveur calcule les montants définitifs à l&apos;enregistrement.
+              </p>
+            </dl>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <IconLoader2 className="animate-spin" />}
+              Enregistrer l&apos;acompte
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

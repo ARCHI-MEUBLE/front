@@ -9,6 +9,9 @@ import toast from 'react-hot-toast';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import { formatPrice } from '@/lib/format';
 import { countCartItems, notifyCartChanged } from '@/lib/cartCount';
+import { fetchCartShipping, shippingLines, type CartShipping } from '@/lib/shippingApi';
+import { cartTotals, isTrueFlag, sumItems, toAmount } from '@/lib/orderTotals';
+import FacadeDetailsModal from '@/components/facades/FacadeDetailsModal';
 import dynamic from 'next/dynamic';
 
 const Toaster = dynamic(
@@ -37,6 +40,8 @@ interface CartItem {
     thumbnail_url: string | null;
     price: number;
     model_id: number | null;
+    // Configurations enregistrées avant que la livraison sorte du prix : leur prix la comprend déjà
+    price_includes_delivery?: boolean | string;
   };
 }
 
@@ -50,7 +55,6 @@ interface SampleCartItem {
   type_name: string;
   material: string;
   type_description: string | null;
-  price_per_m2: number;
   unit_price: number;
 }
 
@@ -133,6 +137,10 @@ export default function Cart() {
   const [error, setError] = useState('');
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [selectedFacade, setSelectedFacade] = useState<FacadeCartItem | null>(null);
+  // Frais de livraison calculés par le serveur ; null tant qu'ils ne sont pas connus, shippingError s'ils n'ont pas pu
+  // être chargés (le total s'affiche alors hors livraison)
+  const [shipping, setShipping] = useState<CartShipping | null>(null);
+  const [shippingError, setShippingError] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -189,6 +197,16 @@ export default function Cart() {
       if (facadeResponse.ok) {
         const facadeData = await facadeResponse.json();
         setFacadeCart(facadeData);
+      }
+
+      // Livraison : relue à chaque changement du panier (elle dépend des meubles et du montant des autres articles)
+      try {
+        setShipping(await fetchCartShipping());
+        setShippingError(false);
+      } catch (shippingErr) {
+        console.warn('Frais de livraison indisponibles :', shippingErr instanceof Error ? shippingErr.message : shippingErr);
+        setShipping(null);
+        setShippingError(true);
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement');
@@ -332,11 +350,22 @@ export default function Cart() {
 
   const isEmpty = (!cart || cart.items.length === 0) && (!samplesCart || samplesCart.items.length === 0) && (!catalogueCart || catalogueCart.items.length === 0) && (!facadeCart || facadeCart.items.length === 0);
 
-  const samplesTotal = samplesCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const catalogueTotal = catalogueCart?.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0;
-  const facadeTotal = facadeCart?.total || 0;
-  const grandTotal = (cart?.total || 0) + samplesTotal + catalogueTotal + facadeTotal;
-  const hasPaidSamples = samplesCart?.items.some(item => item.unit_price > 0);
+  // Total = articles (meubles, façades, catalogue, échantillons) + livraison calculée par le serveur
+  const hasFurniture = (cart?.items.length ?? 0) > 0;
+  const hasParcelItems =
+    (samplesCart?.items.length ?? 0) > 0 || (catalogueCart?.items.length ?? 0) > 0 || (facadeCart?.items.length ?? 0) > 0;
+  const furnitureDeliveryIncluded =
+    hasFurniture && cart!.items.every((item) => isTrueFlag(item.configuration.price_includes_delivery));
+  const lines = shipping ? shippingLines(shipping, { hasFurniture, hasParcelItems, furnitureDeliveryIncluded }) : [];
+  const totals = cartTotals(
+    {
+      furniture: toAmount(cart?.total),
+      facades: toAmount(facadeCart?.total),
+      catalogue: sumItems(catalogueCart?.items, (item) => item.unit_price, (item) => item.quantity),
+      samples: sumItems(samplesCart?.items, (item) => item.unit_price, (item) => item.quantity),
+    },
+    shipping ? lines.reduce((sum, line) => sum + line.amount, 0) : null,
+  );
 
   return (
     <>
@@ -562,13 +591,8 @@ export default function Cart() {
                               {displayMaterialName(sample.material)}
                             </p>
                             <p className="mt-2 text-xs font-medium text-am-navy">
-                              {sample.unit_price > 0 ? formatPrice(sample.unit_price) : 'Gratuit'}
+                              {toAmount(sample.unit_price) > 0 ? formatPrice(sample.unit_price) : 'Gratuit'}
                             </p>
-                            {sample.price_per_m2 > 0 && (
-                              <p className="mt-1 text-[10px] text-black/65">
-                                {sample.price_per_m2} € / m²
-                              </p>
-                            )}
                           </div>
                           <button
                             onClick={async () => {
@@ -739,6 +763,9 @@ export default function Cart() {
                                   <p className="mt-2 font-mono text-lg text-black">
                                     {formatPrice(item.configuration.price)}
                                   </p>
+                                  {isTrueFlag(item.configuration.price_includes_delivery) && (
+                                    <p className="mt-1 text-xs text-black/65">Livraison comprise</p>
+                                  )}
                                 </div>
                               </div>
 
@@ -868,6 +895,9 @@ export default function Cart() {
                                 <p className="font-mono text-lg text-black">
                                   {formatPrice(item.configuration.price)}
                                 </p>
+                                {isTrueFlag(item.configuration.price_includes_delivery) && (
+                                  <p className="mt-1 text-xs text-black/65">Livraison comprise</p>
+                                )}
                                 {item.quantity > 1 && (
                                   <p className="mt-1 text-sm text-black/65">
                                     Total : {formatPrice(item.configuration.price * item.quantity)}
@@ -896,36 +926,59 @@ export default function Cart() {
                   {/* Details */}
                   <div className="p-6">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-black/65">Sous-total</span>
-                        <span className="font-mono text-black">{formatPrice(cart?.total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-black/65">Livraison</span>
-                        <span className="font-medium text-am-navy">Offerte</span>
-                      </div>
-                      {samplesCart && samplesCart.count > 0 && (
+                      {hasFurniture && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-black/65">Échantillons</span>
-                          <span className={`font-medium ${samplesTotal > 0 ? 'font-mono text-black' : 'text-am-navy'}`}>
-                            {samplesTotal > 0 ? formatPrice(samplesTotal) : 'Offerts'}
-                          </span>
+                          <span className="text-black/65">Meubles sur mesure</span>
+                          <span className="font-mono text-black">{formatPrice(totals.furniture)}</span>
                         </div>
                       )}
                       {facadeCart && facadeCart.count > 0 && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-black/65">Façades ({facadeCart.count})</span>
                           <span className="font-mono text-black">
-                            {formatPrice(facadeTotal)}
+                            {formatPrice(totals.facades)}
                           </span>
+                        </div>
+                      )}
+                      {catalogueCart && catalogueCart.items.length > 0 && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-black/65">Articles du catalogue</span>
+                          <span className="font-mono text-black">{formatPrice(totals.catalogue)}</span>
+                        </div>
+                      )}
+                      {samplesCart && samplesCart.count > 0 && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-black/65">Échantillons</span>
+                          <span className={`font-medium ${totals.samples > 0 ? 'font-mono text-black' : 'text-am-navy'}`}>
+                            {totals.samples > 0 ? formatPrice(totals.samples) : 'Offerts'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between border-t border-dashed border-black/10 pt-4 text-sm">
+                        <span className="text-black/65">Sous-total articles</span>
+                        <span className="font-mono text-black">{formatPrice(totals.items)}</span>
+                      </div>
+                      {lines.map((line) => (
+                        <div key={line.key} className="text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-black/65">{line.label}</span>
+                            <span className={line.amount > 0 ? 'font-mono text-black' : 'font-medium text-am-navy'}>{line.value}</span>
+                          </div>
+                          {line.note && <p className="mt-0.5 text-right text-xs text-black/65">{line.note}</p>}
+                        </div>
+                      ))}
+                      {!shipping && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-black/65">Livraison</span>
+                          <span className="text-black/65">{shippingError ? 'Calculée à la commande' : '…'}</span>
                         </div>
                       )}
                     </div>
 
                     <div className="mt-6 border-t border-black/10 pt-6">
                       <div className="flex items-center justify-between">
-                        <span className="text-black">Total</span>
-                        <span className="font-mono text-2xl text-black">{formatPrice(grandTotal)}</span>
+                        <span className="text-black">{shipping ? 'Total' : 'Total hors livraison'}</span>
+                        <span className="font-mono text-2xl text-black">{formatPrice(totals.total)}</span>
                       </div>
                       <p className="mt-1 text-right text-xs text-black/65">
                         TVA incluse
@@ -955,8 +1008,8 @@ export default function Cart() {
                       <div className="flex items-start gap-3">
                         <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-am-navy" />
                         <div>
-                          <p className="text-sm font-medium text-black">Livraison gratuite</p>
-                          <p className="text-xs text-black/65">Partout en France métropolitaine</p>
+                          <p className="text-sm font-medium text-black">Livraison à domicile</p>
+                          <p className="text-xs text-black/65">Partout en France métropolitaine, frais détaillés ci-dessus</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
@@ -993,212 +1046,7 @@ export default function Cart() {
       />
 
       {/* Modal détails façade */}
-      {selectedFacade && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => setSelectedFacade(null)}
-        >
-          <div
-            className="relative w-full max-w-lg bg-white shadow-xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between border-b border-black/10 bg-white p-6">
-              <h3 className="text-xl text-black">Détails de la façade</h3>
-              <button
-                type="button"
-                onClick={() => setSelectedFacade(null)}
-                className="flex h-10 w-10 items-center justify-center text-black/65 transition-colors hover:bg-am-mist/30 hover:text-black"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6">
-              {(() => {
-                const materialObj = selectedFacade.config.material;
-                const materialName = displayColorName(materialObj?.name) || 'Matériau';
-                const hinges = selectedFacade.config.hinges;
-                const hingeCount = hinges?.count || 0;
-                const hingeType = hinges?.type || '';
-                const hingeSide = hinges?.direction || '';
-                const drillings = selectedFacade.config.drillings || [];
-
-                return (
-                  <div className="space-y-6">
-                    {/* 3D Preview */}
-                    <div className="aspect-square w-full max-w-[200px] mx-auto border border-black/10 overflow-hidden bg-am-mist/15">
-                      <FacadeCartPreview
-                        width={selectedFacade.config.width}
-                        height={selectedFacade.config.height}
-                        depth={selectedFacade.config.depth || 19}
-                        colorHex={materialObj?.color_hex || '#CCCCCC'}
-                        textureUrl={materialObj?.texture_url}
-                        drillings={drillings}
-                      />
-                    </div>
-
-                    {/* Info Grid */}
-                    <div className="grid gap-4">
-                      {/* Dimensions */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Dimensions</span>
-                        <span className="text-sm font-medium text-black">
-                          {selectedFacade.config.width / 10} × {selectedFacade.config.height / 10} cm · {selectedFacade.config.depth || 19} mm
-                        </span>
-                      </div>
-
-                      {/* Matériau */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Matériau</span>
-                        <div className="flex items-center gap-2">
-                          {materialObj?.texture_url ? (
-                            <div className="h-5 w-5 border border-black/10 overflow-hidden">
-                              <img src={materialObj.texture_url} alt="" className="h-full w-full object-cover" />
-                            </div>
-                          ) : materialObj?.color_hex ? (
-                            <div className="h-5 w-5 border border-black/10" style={{ backgroundColor: materialObj.color_hex }} />
-                          ) : null}
-                          <span className="text-sm font-medium text-black">{materialName}</span>
-                        </div>
-                      </div>
-
-                      {/* Type de charnière */}
-                      <div className="py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65 block mb-3">Charnières</span>
-                        <div className="flex items-center gap-3 p-3 bg-am-mist/15 rounded-lg">
-                          {/* Icône du type de charnière */}
-                          <div className="flex-shrink-0">
-                            {hingeType === 'no-hole-no-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="16" y="8" width="32" height="48" fill="#D1D5DB" stroke="#1A1917" strokeWidth="2" rx="2"/>
-                                <circle cx="40" cy="32" r="2" fill="#6B7280"/>
-                                <line x1="12" y1="12" x2="52" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
-                                <line x1="52" y1="12" x2="12" y2="52" stroke="#DC2626" strokeWidth="3" strokeLinecap="round"/>
-                              </svg>
-                            )}
-                            {hingeType === 'hole-with-applied-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="6" y="8" width="16" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="20" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <rect x="18" y="20" width="8" height="12" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="14" y="22" width="6" height="8" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <circle cx="22" cy="24" r="1.5" fill="#374151"/>
-                                <circle cx="22" cy="29" r="1.5" fill="#374151"/>
-                                <circle cx="17" cy="26" r="1.5" fill="#374151"/>
-                                <circle cx="40" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-                              </svg>
-                            )}
-                            {hingeType === 'hole-with-twin-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="28" y="8" width="8" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="6" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <rect x="36" y="12" width="22" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <rect x="26" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="22" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="32" y="20" width="6" height="10" fill="#4B5563" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <rect x="37" y="22" width="5" height="6" fill="#6B7280" stroke="#1A1917" strokeWidth="1" rx="1"/>
-                                <circle cx="29" cy="24" r="1.2" fill="#374151"/>
-                                <circle cx="35" cy="24" r="1.2" fill="#374151"/>
-                                <circle cx="20" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
-                                <circle cx="44" cy="32" r="2" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8"/>
-                              </svg>
-                            )}
-                            {hingeType === 'hole-with-integrated-hinge' && (
-                              <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
-                                <rect x="6" y="8" width="20" height="48" fill="#9CA3AF" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="24" y="12" width="4" height="40" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-                                <rect x="26" y="12" width="28" height="40" fill="#E5E7EB" stroke="#1A1917" strokeWidth="2" rx="1"/>
-                                <circle cx="29" cy="22" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-                                <circle cx="29" cy="32" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-                                <circle cx="29" cy="42" r="3" fill="#4B5563" stroke="#1A1917" strokeWidth="1.5"/>
-                                <rect x="27" y="20" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-                                <rect x="27" y="30" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-                                <rect x="27" y="40" width="8" height="4" fill="#6B7280" stroke="#1A1917" strokeWidth="0.8" rx="0.5"/>
-                                <circle cx="45" cy="32" r="2.5" fill="#6B7280" stroke="#1A1917" strokeWidth="1"/>
-                              </svg>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-black">
-                              {hingeType === 'no-hole-no-hinge' && 'Sans trou, sans charnière'}
-                              {hingeType === 'hole-with-applied-hinge' && 'Trou + charnière fournie porte en applique'}
-                              {hingeType === 'hole-with-twin-hinge' && 'Trou + charnière fournie porte jumelée'}
-                              {hingeType === 'hole-with-integrated-hinge' && 'Trou + charnière fournie porte encastrée'}
-                            </p>
-                            {hingeType !== 'no-hole-no-hinge' && hingeCount > 0 && (
-                              <p className="text-xs text-black/65 mt-1">
-                                {hingeCount} charnières · Ouverture {hingeSide === 'left' ? 'gauche' : hingeSide === 'right' ? 'droite' : hingeSide}
-                              </p>
-                            )}
-                            <p className="text-xs text-am-navy mt-1">
-                              Prix unit. {hingeType === 'no-hole-no-hinge' ? '0.00' : '34.20'} € TTC
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Perçages */}
-                      {drillings.length > 0 && (
-                        <div className="py-3 border-b border-black/10">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-black/65">Perçages</span>
-                            <span className="text-sm font-medium text-black">{drillings.length} trou{drillings.length > 1 ? 's' : ''}</span>
-                          </div>
-                          <div className="space-y-1 pl-4">
-                            {drillings.map((drill, idx) => (
-                              <div key={drill.id} className="flex justify-between text-xs">
-                                <span className="text-black/65">
-                                  {drill.typeName || `Trou ${idx + 1}`} ({drill.diameter}mm) - Position: {drill.x}×{drill.y} cm
-                                </span>
-                                {drill.price > 0 && (
-                                  <span className="text-black">+{formatPrice(drill.price)}</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quantité */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Quantité</span>
-                        <span className="text-sm font-medium text-black">{selectedFacade.quantity}</span>
-                      </div>
-
-                      {/* Prix unitaire */}
-                      <div className="flex justify-between items-center py-3 border-b border-black/10">
-                        <span className="text-sm text-black/65">Prix unitaire</span>
-                        <span className="text-sm font-medium text-black">{formatPrice(selectedFacade.unit_price)}</span>
-                      </div>
-
-                      {/* Total */}
-                      <div className="flex justify-between items-center py-3 bg-am-mist/15 px-4 -mx-4">
-                        <span className="text-sm font-medium text-black">Total</span>
-                        <span className="text-lg font-medium text-black">
-                          {formatPrice(selectedFacade.unit_price * selectedFacade.quantity)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Footer */}
-            <div className="sticky bottom-0 border-t border-black/10 bg-white p-6">
-              <button
-                type="button"
-                onClick={() => setSelectedFacade(null)}
-                className="w-full h-12 bg-am-navy text-white text-sm font-medium transition-colors hover:bg-am-navy/90"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {selectedFacade && <FacadeDetailsModal facade={selectedFacade} onClose={() => setSelectedFacade(null)} />}
     </>
   );
 }

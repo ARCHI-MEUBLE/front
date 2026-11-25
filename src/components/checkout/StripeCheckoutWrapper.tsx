@@ -10,42 +10,45 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 
 interface StripeCheckoutWrapperProps {
   orderId: number;
-  amount: number;
+  // Paiement intégral, acompte ou solde : le serveur en déduit le montant dû de la commande
+  paymentType?: 'full' | 'deposit' | 'balance';
+  // Montant fixé par le serveur pour ce paiement (en euros), pour l'afficher partout à l'identique
+  onAmount?: (amount: number) => void;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
 
 export default function StripeCheckoutWrapper({
   orderId,
-  amount,
+  paymentType = 'full',
+  onAmount,
   onSuccess,
   onError
 }: StripeCheckoutWrapperProps) {
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [currentAmount, setCurrentAmount] = useState(amount);
+  // Montant du paiement renvoyé par le serveur : la commande fait foi (articles + livraison)
+  const [amount, setAmount] = useState<number | null>(null);
 
   useEffect(() => {
-    if (amount !== currentAmount) {
-      setClientSecret('');
-      setCurrentAmount(amount);
-    }
+    setClientSecret('');
     createPaymentIntent();
-  }, [amount]);
+  }, [orderId, paymentType]);
 
   const createPaymentIntent = async () => {
     try {
       setLoading(true);
       setError('');
 
+      // La commande et le type de paiement suffisent : le serveur prend le montant dans la commande
       const response = await fetch('/backend/api/stripe/create-payment-intent.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          amount,
-          currency: 'eur'
+          order_id: orderId,
+          payment_type: paymentType,
         })
       });
 
@@ -58,6 +61,13 @@ export default function StripeCheckoutWrapper({
 
       if (!data.clientSecret) {
         throw new Error('Client secret manquant');
+      }
+
+      // Stripe compte en centimes
+      const serverAmount = Number(data.amount) / 100;
+      if (Number.isFinite(serverAmount) && serverAmount > 0) {
+        setAmount(serverAmount);
+        onAmount?.(serverAmount);
       }
 
       // Mettre à jour la commande avec le payment intent ID
@@ -127,7 +137,7 @@ export default function StripeCheckoutWrapper({
     );
   }
 
-  if (!clientSecret) {
+  if (!clientSecret || amount === null) {
     return null;
   }
 

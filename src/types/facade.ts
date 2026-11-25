@@ -28,7 +28,8 @@ export interface FacadeMaterial {
   color_hex: string;
   texture_url?: string;
   price_modifier: number;
-  price_per_m2: number;
+  // Prix au m² de la matière (texte possible, colonne DECIMAL) ; 0 : prix par défaut des réglages de l'admin
+  price_per_m2: number | string;
   is_active: boolean;
 }
 
@@ -42,11 +43,11 @@ export type HingeCount = 2 | 3 | 4 | 5;
 
 export type OpeningDirection = 'left' | 'right';
 
+// Sans prix : celui des charnières vient des réglages de l'admin (facade_settings), le serveur le recalcule
 export interface HingeConfig {
   type: HingeType;
   count: HingeCount;
   direction: OpeningDirection;
-  price: number;
 }
 
 export interface FacadeConfig {

@@ -4,6 +4,7 @@ import { getSafeColor } from './utils';
 import { TexturedMaterial } from './TexturedMaterial';
 import { Handle } from './StructuralElements';
 import { useSmoothedPositionZ } from './useSmoothed';
+import type { ResolvedHandle } from '@/lib/configurator/handles';
 
 // Les tiroirs ne gèrent pas eux-mêmes le pointeur : la scène les enveloppe dans un groupe qui s'en charge
 // (survol, sélection, ouverture), ce qui garde un comportement identique pour toutes les façades.
@@ -28,11 +29,14 @@ interface DrawerProps {
     hexColor?: string | null;
     imageUrl?: string | null;
     isOpen?: boolean;
-    handleType?: string;
+    // Poignée du tiroir ; absente : barre horizontale par défaut
+    handle?: ResolvedHandle | null;
 }
 
 // Un tiroir ouvert sort de 60 % de la profondeur du meuble
 const DRAWER_TRAVEL = 0.6;
+// Face avant de la façade (épaisse de 0.02, centrée), où se fixe la poignée
+const DRAWER_FACE_Z = 0.01;
 
 // Caisson du tiroir (système à coulisses type Legrabox) : toujours blanc, indépendamment de la couleur
 // choisie pour la façade — ces coulisses sont de la quincaillerie vendue dans quelques finitions fixes.
@@ -92,7 +96,7 @@ function DrawerBox({ width, centerX, bottomY, depth }: { width: number; centerX:
     );
 }
 
-export function AnimatedPushDrawer({ position, width, height, boxWidth, boxCenterX, boxBottomY, boxDepth, depth, hexColor, imageUrl, isOpen }: Omit<DrawerProps, 'handleType'>) {
+export function AnimatedPushDrawer({ position, width, height, boxWidth, boxCenterX, boxBottomY, boxDepth, depth, hexColor, imageUrl, isOpen }: Omit<DrawerProps, 'handle'>) {
     const initialZ = position[2];
     const groupRef = useDrawerSlide(initialZ, depth, isOpen);
     const safeHexColor = getSafeColor(hexColor);
@@ -108,7 +112,7 @@ export function AnimatedPushDrawer({ position, width, height, boxWidth, boxCente
     );
 }
 
-export function AnimatedDrawer({ position, width, height, boxWidth, boxCenterX, boxBottomY, boxDepth, depth, hexColor, imageUrl, isOpen, handleType }: DrawerProps) {
+export function AnimatedDrawer({ position, width, height, boxWidth, boxCenterX, boxBottomY, boxDepth, depth, hexColor, imageUrl, isOpen, handle }: DrawerProps) {
     const initialZ = position[2];
     const groupRef = useDrawerSlide(initialZ, depth, isOpen);
     const safeHexColor = getSafeColor(hexColor);
@@ -119,13 +123,7 @@ export function AnimatedDrawer({ position, width, height, boxWidth, boxCenterX, 
                 <boxGeometry args={[width - 0.005, height, 0.02]} />
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
-            <Handle
-                type={handleType || 'horizontal_bar'}
-                position={[0, 0, 0.015]}
-                side="center"
-                height={height}
-                width={width}
-            />
+            <Handle handle={handle} facade={{ kind: 'drawer', width, height }} origin={[0, 0, DRAWER_FACE_Z]} />
             <DrawerBox width={boxWidth} centerX={boxCenterX} bottomY={boxBottomY} depth={boxDepth} />
         </group>
     );

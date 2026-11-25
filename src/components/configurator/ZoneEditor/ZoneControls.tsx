@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronLeft, ChevronRight, PanelBottomClose, SquareDashed } from 'lucide-react';
-import { Zone, ZoneContent, HandleType } from './types';
-import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, ChevronLeft, ChevronRight, PanelBottomClose, SquareDashed } from 'lucide-react';
+import { Zone, ZoneContent } from './types';
+import { getChildRatios } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
 import { getDivisionCount, isShelfGrid, shelfColumnWidths, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 
-// Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie
-export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'handles' | 'accessories';
+// Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie (les poignées ont leur
+// propre sélecteur à l'étape Finitions, voir HandleSelector)
+export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'accessories';
 
-export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'handles', 'accessories', 'division'];
+export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'accessories', 'division'];
 
 
 
@@ -31,7 +32,6 @@ interface ZoneControlsProps {
   onToggleDressing?: (zoneId: string) => void;
   onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
-  onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   zoneHeightMm?: number; // Hauteur de la zone en mm
   zoneWidthMm?: number; // Largeur de la zone en mm
   depthMm?: number; // Profondeur du meuble en mm
@@ -431,13 +431,6 @@ const DOOR_OPTIONS = [
   { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
 ];
 
-const HANDLE_OPTIONS = [
-  { type: 'vertical_bar' as HandleType, icon: GripVertical, label: 'Barre V' },
-  { type: 'horizontal_bar' as HandleType, icon: GripHorizontal, label: 'Barre H' },
-  { type: 'knob' as HandleType, icon: Circle, label: 'Bouton' },
-  { type: 'recessed' as HandleType, icon: RectangleHorizontal, label: 'Encastrée' },
-];
-
 export default function ZoneControls({
   selectedZone,
   selectedZoneIds,
@@ -453,7 +446,6 @@ export default function ZoneControls({
   onToggleDressing,
   onApplyNoBack,
   onGroupZones,
-  onSetHandleType,
   zoneHeightMm,
   zoneWidthMm,
   depthMm,
@@ -471,8 +463,6 @@ export default function ZoneControls({
     isOpen: boolean;
     doorType: 'push' | null;
   }>({ isOpen: false, doorType: null });
-
-  const facade = getZoneFacade(selectedZone);
 
   // Limites physiques : une taille inconnue n'impose aucune restriction
   const zoneWidth = zoneWidthMm ?? 0;
@@ -725,41 +715,6 @@ export default function ZoneControls({
         ) : !show('facades') ? (
           <InfoNote>Ce groupe est divisé : cliquez sur l&apos;un de ses compartiments pour y mettre un tiroir.</InfoNote>
         ) : null
-      )}
-
-      {/* ── Poignées ─────────────────────────────────────── */}
-      {show('handles') && (
-        <div>
-          <SectionLabel>Poignées</SectionLabel>
-          {!facade ? (
-            <InfoNote>Posez d&apos;abord une porte ou un tiroir : vous pourrez alors choisir sa poignée.</InfoNote>
-          ) : isPushContent(facade) ? (
-            <InfoNote>Cette façade s&apos;ouvre par simple pression (Push-to-Open) : elle n&apos;a pas de poignée.</InfoNote>
-          ) : onSetHandleType ? (
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {HANDLE_OPTIONS.map(({ type, icon: Icon, label }) => {
-                const isActive = (selectedZone.handleType || 'vertical_bar') === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => onSetHandleType(selectedZone.id, type)}
-                    aria-pressed={isActive}
-                    className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
-                      isActive
-                        ? 'border-am-navy bg-am-navy text-white'
-                        : 'border-black/10 bg-white text-black hover:border-am-navy'
-                    }`}
-                    style={{ borderRadius: '4px' }}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs font-medium">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
       )}
 
       {/* ── Accessoires (compartiments uniquement) ───────── */}
