@@ -15,33 +15,49 @@ export interface BrowserTraits {
   userAgent: string;
   platform: string;
   maxTouchPoints: number;
+  // Écran tactile d'après les événements et les media queries (pointeur grossier, pas de survol). Sert quand
+  // maxTouchPoints est masqué : la protection contre le pistage de Safari peut faire passer un iPad pour un Mac en
+  // entier, maxTouchPoints compris, mais pas sans casser les sites qui adaptent leur interface au doigt.
+  touchScreen: boolean;
   // Vue web d'application (WKWebView) : sur iPhone, Chrome, Edge et Firefox en sont aussi
   inWebView: boolean;
   // Le lien <a rel="ar"> de Quick Look est reconnu (Safari)
   supportsArLinks: boolean;
 }
 
-// iPadOS se présente comme un Mac : on le reconnaît à son écran tactile (aucun Mac n'en a). navigator.platform ne
-// suffit pas : déprécié, il peut valoir autre chose que « MacIntel » (protection contre le pistage de Safari, Chrome
-// ou Firefox sur iPad) ; l'identifiant « Macintosh » prend alors le relais.
-const isIOSDevice = ({ userAgent, platform, maxTouchPoints }: BrowserTraits) =>
-  /iPad|iPhone|iPod/.test(userAgent) || ((platform === 'MacIntel' || /Macintosh/.test(userAgent)) && maxTouchPoints > 1);
+// iPadOS se présente comme un Mac (« Macintosh », platform « MacIntel ») : on le reconnaît à son écran tactile, aucun
+// Mac n'en a. navigator.platform ne suffit pas : déprécié, il peut valoir autre chose sur iPad ; l'identifiant
+// « Macintosh » prend alors le relais.
+const isIOSDevice = ({ userAgent, platform, maxTouchPoints, touchScreen }: BrowserTraits) =>
+  /iPad|iPhone|iPod/.test(userAgent) ||
+  ((platform === 'MacIntel' || /Macintosh/.test(userAgent)) && (maxTouchPoints > 1 || touchScreen));
 
 const isAndroidDevice = ({ userAgent }: BrowserTraits) => /android/i.test(userAgent);
 
-// iPhone et iPad : mêmes règles que <model-viewer>. Quick Look s'ouvre dans Safari et dans les navigateurs connus
-// (Chrome, Edge, Firefox, DuckDuckGo), pas dans les vues web des applications (Instagram, Facebook…) ni dans
-// l'application Google. Android : Scene Viewer depuis tous les navigateurs. <model-viewer> écarte encore Firefox, qui
-// ouvre pourtant les liens intent:// après avoir demandé la permission d'ouvrir l'application Google.
+// Navigateurs iOS dont on sait qu'ils ouvrent Quick Look bien qu'ils soient des vues web
+const IOS_BROWSERS = /CriOS\/|EdgiOS\/|FxiOS\/|DuckDuckGo\//;
+// Vues web d'applications où Quick Look ne s'ouvre souvent pas
+const IN_APP_VIEWS = /GSA\/|FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Snapchat|Twitter|Line\/|MicroMessenger|Pinterest/;
+
+// Tous les navigateurs d'iPhone et d'iPad tentent Quick Look : sur iOS, ils reposent tous sur le même moteur (WebKit),
+// et ceux qu'on ne connaît pas (Brave, Opera, Vivaldi, vues web d'applications…) l'ouvrent souvent quand même. Bloquer
+// le bouton laissait ces visiteurs sans rien ; quickLookIsReliable dit quand ajouter « sinon, ouvrez dans Safari ».
+// Android : Scene Viewer ou WebXR depuis tous les navigateurs. Firefox ouvre les liens intent:// après avoir demandé la
+// permission d'ouvrir l'application Google. Seuls les casques (Quest) n'ont pas de réalité augmentée de téléphone.
 export function arPlatformFor(traits: BrowserTraits): ArPlatform | null {
-  const { userAgent } = traits;
-  if (isIOSDevice(traits)) {
-    if (/GSA\//.test(userAgent)) return null;
-    if (traits.inWebView) return /CriOS\/|EdgiOS\/|FxiOS\/|DuckDuckGo\//.test(userAgent) ? 'quick-look' : null;
-    return traits.supportsArLinks ? 'quick-look' : null;
-  }
-  if (isAndroidDevice(traits) && !/OculusBrowser/i.test(userAgent)) return 'scene-viewer';
+  if (isIOSDevice(traits)) return 'quick-look';
+  if (isAndroidDevice(traits) && !/OculusBrowser/i.test(traits.userAgent)) return 'scene-viewer';
   return null;
+}
+
+// Quick Look s'ouvre à coup sûr : Safari (lien rel="ar" reconnu) et les navigateurs iOS connus. Sur iPad en « version
+// ordinateur » (réglage par défaut), Chrome et les autres envoient l'identifiant de Safari pour Mac, sans leur nom :
+// une vue web sans « Mobile/ » ni nom d'application est alors un navigateur.
+export function quickLookIsReliable(traits: BrowserTraits): boolean {
+  const { userAgent } = traits;
+  if (IN_APP_VIEWS.test(userAgent)) return false;
+  if (traits.inWebView) return IOS_BROWSERS.test(userAgent) || !/Mobile\//.test(userAgent);
+  return traits.supportsArLinks;
 }
 
 type WebKitWindow = Window & { webkit?: { messageHandlers?: unknown } };
@@ -53,10 +69,18 @@ function browserTraits(): BrowserTraits {
   } catch {
     // relList.supports lève une erreur dans les navigateurs qui ne connaissent aucune valeur de rel
   }
+  const media = (query: string) => {
+    try {
+      return window.matchMedia?.(query).matches ?? false;
+    } catch {
+      return false;
+    }
+  };
   return {
     userAgent: navigator.userAgent,
     platform: navigator.platform,
     maxTouchPoints: navigator.maxTouchPoints,
+    touchScreen: 'ontouchend' in document || media('(any-pointer: coarse)') || media('(hover: none) and (pointer: coarse)'),
     inWebView: Boolean((window as WebKitWindow).webkit?.messageHandlers),
     supportsArLinks,
   };
@@ -70,6 +94,10 @@ export function isPhoneOrTablet(): boolean {
 export function getArPlatform(): ArPlatform | null {
   if (typeof window === 'undefined') return null;
   return arPlatformFor(browserTraits());
+}
+
+export function isQuickLookReliable(): boolean {
+  return typeof window === 'undefined' || quickLookIsReliable(browserTraits());
 }
 
 // GLB → USDZ pour Quick Look (adresse blob: à libérer avec URL.revokeObjectURL)
@@ -94,7 +122,8 @@ export async function createUsdzUrl(glbPath: string): Promise<string> {
   return URL.createObjectURL(new Blob([usdz], { type: 'model/vnd.usdz+zip' }));
 }
 
-// À appeler directement dans le clic : iOS n'ouvre Quick Look que sur une action de l'utilisateur
+// À appeler directement dans le clic : iOS n'ouvre Quick Look que sur une action de l'utilisateur. Dans un navigateur
+// qui ignore rel="ar", l'attribut download enregistre le fichier : ouvert depuis Fichiers, il passe aussi en AR.
 export function openQuickLook(usdzUrl: string) {
   const anchor = document.createElement('a');
   anchor.setAttribute('rel', 'ar');

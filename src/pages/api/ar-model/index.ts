@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { backendHeaders } from '@/lib/backendProxy';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
@@ -37,17 +38,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  // Le backend limite les dépôts par adresse IP : on lui transmet celle du visiteur, pas celle du serveur Next
-  const forwarded = req.headers['x-forwarded-for'];
-  const clientIp = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0].trim() || req.socket.remoteAddress || '';
-
   try {
     const upstream = await fetch(`${BACKEND_URL}/api/ar-model`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'model/gltf-binary',
-        ...(clientIp ? { 'X-Forwarded-For': clientIp } : {}),
-      },
+      // Le backend limite les dépôts par visiteur : on lui transmet son adresse, signée (un X-Forwarded-For posé ici
+      // était ignoré par le backend, qui ne voyait que l'adresse du serveur Next)
+      headers: backendHeaders(req, { 'Content-Type': 'model/gltf-binary' }),
       body: new Uint8Array(body),
     });
     const text = await upstream.text();

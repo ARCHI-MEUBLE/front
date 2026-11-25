@@ -8,7 +8,12 @@ export const AR_MESSAGES = {
   retry: 'Réessayer',
   tip: 'Visez le sol de la pièce et bougez doucement le téléphone : le meuble apparaît à taille réelle.',
   wrongBrowser:
-    "Pour voir le meuble chez vous, ouvrez cette page dans le navigateur du téléphone (Safari, Chrome, Firefox…) : la réalité augmentée ne s'ouvre pas depuis l'application où vous êtes.",
+    "Cet appareil n'ouvre pas la réalité augmentée d'un téléphone : ouvrez cette page sur un téléphone ou une tablette.",
+  // iPhone, iPad : navigateur ou application dont on ne sait pas s'il ouvre Quick Look
+  quickLookFallbackPage:
+    "Rien ne s'ouvre ? Cette application n'ouvre pas toujours la réalité augmentée : ouvrez la page dans Safari (bouton Partager ou ⋯, puis « Ouvrir dans Safari »).",
+  quickLookFallbackConfigurator:
+    "Rien ne s'ouvre ? Ce navigateur n'ouvre pas toujours la réalité augmentée : touchez « Partager » en haut de la page, puis ouvrez le lien dans Safari.",
   unavailable:
     "La réalité augmentée n'a pas pu s'ouvrir : sur Android, elle passe par l'application Google, absente ou désactivée sur ce téléphone.",
   notOpened:
@@ -26,12 +31,15 @@ export const AR_MESSAGES = {
   recheck: 'Vérifier à nouveau',
   googleCamera: "L'application Google va s'ouvrir et vous demander à son tour l'accès à l'appareil photo : acceptez.",
   failed: "Le modèle 3D n'a pas pu être préparé.",
-  webXrIntro: "Chrome va vous demander l'accès à l'appareil photo : acceptez, puis visez le sol.",
+  // Chrome, mais aussi Samsung Internet et les autres navigateurs qui ont la réalité augmentée WebXR
+  webXrIntro: "Le navigateur va vous demander l'accès à l'appareil photo : acceptez, puis visez le sol.",
   webXrDenied:
     "L'accès à l'appareil photo a été refusé : autorisez-le pour ce site (cadenas à gauche de l'adresse > Autorisations > Appareil photo), puis relancez.",
   webXrFailed: "La réalité augmentée n'a pas pu démarrer dans la page. Essayez avec l'application Google ou en 3D, ci-dessous.",
   webXrModel: "Le meuble n'a pas pu être chargé en réalité augmentée : relancez, ou affichez-le en 3D.",
   openWithGoogle: "Ouvrir avec l'application Google",
+  sceneViewerUpload:
+    "Le meuble n'a pas pu être envoyé à l'application Google. Vérifiez la connexion puis touchez le bouton pour réessayer, ou affichez-le en 3D.",
   connection: "La connexion a été coupée pendant l'envoi du modèle 3D : réessayez.",
   expired: "Ce lien a expiré. Affichez un nouveau QR code depuis le configurateur, à l'étape Finitions.",
 } as const;

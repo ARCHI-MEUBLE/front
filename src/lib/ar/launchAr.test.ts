@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { QUICK_CLOSE_MS, arPlatformFor, openSceneViewer, type BrowserTraits } from './launchAr';
+import { QUICK_CLOSE_MS, arPlatformFor, openSceneViewer, quickLookIsReliable, type BrowserTraits } from './launchAr';
 
 const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
 const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)';
@@ -9,6 +9,7 @@ const iphone = (suffix: string, inWebView = true): BrowserTraits => ({
   userAgent: `${IOS} ${suffix}`,
   platform: 'iPhone',
   maxTouchPoints: 5,
+  touchScreen: true,
   inWebView,
   supportsArLinks: !inWebView,
 });
@@ -16,6 +17,7 @@ const android = (userAgent: string): BrowserTraits => ({
   userAgent,
   platform: 'Linux armv8l',
   maxTouchPoints: 5,
+  touchScreen: true,
   inWebView: false,
   supportsArLinks: false,
 });
@@ -23,6 +25,7 @@ const desktop = (userAgent: string, platform = 'Win32'): BrowserTraits => ({
   userAgent,
   platform,
   maxTouchPoints: 0,
+  touchScreen: false,
   inWebView: false,
   supportsArLinks: false,
 });
@@ -37,22 +40,60 @@ describe('arPlatformFor', () => {
   });
 
   it('recognises an iPad, which presents itself as a Mac, by its touch screen', () => {
-    const ipad: BrowserTraits = { ...desktop(`${MAC} Version/18.5 Safari/605.1.15`, 'MacIntel'), maxTouchPoints: 5, supportsArLinks: true };
+    const ipad: BrowserTraits = {
+      ...desktop(`${MAC} Version/18.5 Safari/605.1.15`, 'MacIntel'),
+      maxTouchPoints: 5,
+      touchScreen: true,
+      supportsArLinks: true,
+    };
     expect(arPlatformFor(ipad)).toBe('quick-look');
-    expect(arPlatformFor({ ...ipad, maxTouchPoints: 0 })).toBeNull();
+    // maxTouchPoints masqué par la protection contre le pistage : l'écran tactile se voit encore
+    expect(arPlatformFor({ ...ipad, maxTouchPoints: 0 })).toBe('quick-look');
+    expect(arPlatformFor({ ...ipad, maxTouchPoints: 0, touchScreen: false })).toBeNull();
     // navigator.platform masqué ou vide : l'identifiant « Macintosh » et l'écran tactile suffisent
     expect(arPlatformFor({ ...ipad, platform: '' })).toBe('quick-look');
     expect(arPlatformFor({ ...ipad, platform: 'iPad' })).toBe('quick-look');
-    // Chrome sur iPad en version ordinateur
-    expect(arPlatformFor({ ...ipad, userAgent: `${MAC} CriOS/138.0.7204.156 Safari/604.1`, inWebView: true, supportsArLinks: false })).toBe(
-      'quick-look'
-    );
+    // iPad en version mobile (identifiant « iPad »)
+    expect(
+      arPlatformFor({ ...ipad, userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Version/18.5 Mobile/15E148 Safari/604.1' })
+    ).toBe('quick-look');
   });
 
-  it('leaves out the Google app and the web views of other apps, where Quick Look does not open', () => {
-    expect(arPlatformFor(iphone('GSA/380.0.785196451 Mobile/15E148 Safari/604.1'))).toBeNull();
-    expect(arPlatformFor(iphone('Mobile/22F76 Instagram 385.0.0.21.86 (iPhone15,2; iOS 18_5; fr_FR)'))).toBeNull();
+  it('lets every iPhone and iPad browser try Quick Look, even the web views of apps', () => {
+    expect(arPlatformFor(iphone('GSA/380.0.785196451 Mobile/15E148 Safari/604.1'))).toBe('quick-look');
+    expect(arPlatformFor(iphone('Mobile/22F76 Instagram 385.0.0.21.86 (iPhone15,2; iOS 18_5; fr_FR)'))).toBe('quick-look');
+    // Brave, Opera, Vivaldi : identifiant de Safari sans leur nom
+    expect(arPlatformFor(iphone('Version/18.5 Mobile/15E148 Safari/604.1'))).toBe('quick-look');
   });
+});
+
+describe('quickLookIsReliable', () => {
+  const ipad: BrowserTraits = {
+    ...desktop(`${MAC} Version/18.5 Safari/605.1.15`, 'MacIntel'),
+    maxTouchPoints: 5,
+    touchScreen: true,
+    supportsArLinks: true,
+  };
+
+  it('trusts Safari and the known iOS browsers', () => {
+    expect(quickLookIsReliable(iphone('Version/18.5 Mobile/15E148 Safari/604.1', false))).toBe(true);
+    expect(quickLookIsReliable(iphone('CriOS/138.0.7204.156 Mobile/15E148 Safari/604.1'))).toBe(true);
+    expect(quickLookIsReliable(iphone('Mobile/15E148 DuckDuckGo/7 Safari/605.1.15'))).toBe(true);
+    expect(quickLookIsReliable(ipad)).toBe(true);
+    // Chrome sur iPad en version ordinateur, avec ou sans son nom dans l'identifiant
+    expect(quickLookIsReliable({ ...ipad, userAgent: `${MAC} CriOS/138.0.7204.156 Safari/604.1`, inWebView: true, supportsArLinks: false })).toBe(true);
+    expect(quickLookIsReliable({ ...ipad, inWebView: true, supportsArLinks: false })).toBe(true);
+  });
+
+  it('warns in the Google app, app web views and unknown iPhone browsers', () => {
+    expect(quickLookIsReliable(iphone('GSA/380.0.785196451 Mobile/15E148 Safari/604.1'))).toBe(false);
+    expect(quickLookIsReliable(iphone('Mobile/22F76 Instagram 385.0.0.21.86 (iPhone15,2; iOS 18_5; fr_FR)'))).toBe(false);
+    expect(quickLookIsReliable(iphone('Version/18.5 Mobile/15E148 Safari/604.1'))).toBe(false);
+    expect(quickLookIsReliable({ ...ipad, userAgent: `${MAC} Instagram 385.0.0.21.86`, inWebView: true, supportsArLinks: false })).toBe(false);
+  });
+});
+
+describe('arPlatformFor on Android and computers', () => {
 
   it('opens Scene Viewer from every Android browser, Firefox included', () => {
     expect(arPlatformFor(android(`${ANDROID} Chrome/138.0.0.0 Mobile Safari/537.36`))).toBe('scene-viewer');

@@ -5,12 +5,13 @@ import { apiClient, type SampleType, uploadImage } from '@/lib/apiClient';
 import type { GetServerSideProps } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
+import { serverAdminUrl } from '@/lib/adminPathServer';
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (!(await verifyAdminSession(req, res))) {
     return {
       redirect: {
-        destination: adminUrl('/login'),
+        destination: serverAdminUrl('/login'),
         permanent: false,
       },
     };

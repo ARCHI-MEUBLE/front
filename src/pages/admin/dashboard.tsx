@@ -21,6 +21,7 @@ import { DashboardRealisations } from '@/components/admin/DashboardRealisations'
 import { DashboardFacades } from '@/components/admin/DashboardFacades';
 import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
+import { serverAdminUrl } from '@/lib/adminPathServer';
 import NotificationsModal from '@/components/admin/NotificationsModal';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
@@ -28,7 +29,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (!(await verifyAdminSession(req, res))) {
     return {
       redirect: {
-        destination: adminUrl('/login'),
+        destination: serverAdminUrl('/login'),
         permanent: false,
       },
     };

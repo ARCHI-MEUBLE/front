@@ -6,6 +6,8 @@ import { verifyAdminSession } from '@/lib/adminAuth';
 import formidable from 'formidable'; // Utilisation de formidable pour gérer les fichiers multi-part
 import fs from 'fs';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 export const config = {
   api: {
     bodyParser: false, // Désactiver le bodyParser pour laisser formidable gérer le flux
@@ -47,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: 'POST',
       headers: {
         'Content-Type': req.headers['content-type'] || '',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
         'Origin': frontendUrl,
         'Referer': frontendUrl,
       },

@@ -55,7 +55,7 @@ export function AvisHero({
             style={{ top: "6%", width: "68%", height: "84%" }}
           >
             <Image
-              src="https://images.unsplash.com/photo-1544164560-adac3045edb2?auto=format&fit=crop&w=1100&q=75"
+              src="/images/stock/avis-hero.jpg"
               alt=""
               fill
               unoptimized

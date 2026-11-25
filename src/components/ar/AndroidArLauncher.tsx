@@ -44,10 +44,22 @@ const touchAngle = (event: TouchEvent) => {
   return Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX);
 };
 
+const debugInUrl = () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug');
+
+interface AndroidArLauncherProps {
+  // Modèle lu dans la page (réalité augmentée WebXR, vue 3D) : adresse du site ou blob: créé dans le navigateur
+  glbPath: string;
+  title: string;
+  // Adresse https que Scene Viewer télécharge lui-même : dépose le modèle s'il ne l'est pas encore. Absente : glbPath
+  getSceneViewerPath?: () => Promise<string>;
+}
+
+type SceneViewerFile = { status: 'idle' } | { status: 'loading' } | { status: 'ready'; path: string } | { status: 'error' };
+
 // Android : vérifie le téléphone, puis lance la réalité augmentée dans la page (WebXR, Chrome avec ARCore), sans
 // dépendre de l'application Google. Sans WebXR (Firefox, Samsung Internet), passe par Scene Viewer, l'application
 // Google ; elle reste proposée en lien. La vue 3D sans caméra s'ouvre dans la page (Model3dDialog).
-export default function AndroidArLauncher({ glbPath, title }: { glbPath: string; title: string }) {
+export default function AndroidArLauncher({ glbPath, title, getSceneViewerPath }: AndroidArLauncherProps) {
   const [readiness, setReadiness] = useState<ArReadiness | null>(() => cachedReadiness);
   const [checking, setChecking] = useState(false);
   const [issue, setIssue] = useState<SceneViewerIssue | null>(null);
@@ -55,12 +67,20 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
   const [xrPhase, setXrPhase] = useState<WebXrPhase | 'starting' | null>(null);
   const [xrError, setXrError] = useState<string | null>(null);
   const [xrDebug, setXrDebug] = useState<string | null>(null);
-  // Diagnostic affiché par-dessus la caméra : bouton sous le bouton principal, ou ?debug=1 dans l'adresse
-  const [debugMode, setDebugMode] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug'));
+  // Diagnostic affiché par-dessus la caméra : bouton réservé au développement, ou ?debug=1 dans l'adresse
+  const [debugAvailable] = useState(() => process.env.NODE_ENV !== 'production' || debugInUrl());
+  const [debugMode, setDebugMode] = useState(debugInUrl);
+  const [sceneViewerFile, setSceneViewerFile] = useState<SceneViewerFile>(() =>
+    getSceneViewerPath ? { status: 'idle' } : { status: 'ready', path: glbPath }
+  );
   const overlayRef = useRef<HTMLDivElement>(null);
   const placementRef = useRef<WebXrPlacement | null>(null);
   const lastAngle = useRef<number | null>(null);
   const restorePage = useRef<(() => void) | null>(null);
+  const getSceneViewerPathRef = useRef(getSceneViewerPath);
+  useEffect(() => {
+    getSceneViewerPathRef.current = getSceneViewerPath;
+  });
 
   const showPage = () => {
     restorePage.current?.();
@@ -75,9 +95,34 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
     []
   );
 
+  // Scene Viewer télécharge lui-même le modèle : il doit être déposé avant le clic qui le lance (l'ouverture d'une
+  // application doit suivre le clic de près). On ne le dépose qu'une fois le visiteur décidé à voir le meuble chez lui.
+  const sceneViewerStatus = useRef(sceneViewerFile.status);
+  const prepareSceneViewer = useCallback(() => {
+    const get = getSceneViewerPathRef.current;
+    if (!get || sceneViewerStatus.current === 'loading' || sceneViewerStatus.current === 'ready') return;
+    const update = (next: SceneViewerFile) => {
+      sceneViewerStatus.current = next.status;
+      setSceneViewerFile(next);
+    };
+    update({ status: 'loading' });
+    get()
+      .then((path) => update({ status: 'ready', path }))
+      .catch((error) => {
+        console.warn('Dépôt du modèle pour Scene Viewer impossible :', error instanceof Error ? error.message : error);
+        update({ status: 'error' });
+      });
+  }, []);
+
+  // Vérifications déjà faites (retour sur les Finitions) : le modèle se prépare aussitôt pour Scene Viewer
+  useEffect(() => {
+    if (cachedReadiness) prepareSceneViewer();
+  }, [prepareSceneViewer]);
+
   const runChecks = async () => {
     setChecking(true);
     setIssue(null);
+    prepareSceneViewer();
     try {
       const result = await checkArReadiness();
       cachedReadiness = result;
@@ -88,9 +133,13 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
   };
 
   const launchSceneViewer = () => {
-    setIssue(null);
     setXrError(null);
-    openSceneViewer(glbPath, title, setIssue);
+    if (sceneViewerFile.status !== 'ready') {
+      prepareSceneViewer();
+      return;
+    }
+    setIssue(null);
+    openSceneViewer(sceneViewerFile.path, title, setIssue);
   };
 
   const close3d = useCallback(() => setShow3d(false), []);
@@ -103,25 +152,35 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
     flushSync(() => setXrPhase('starting'));
     restorePage.current = clearPageBehindCamera();
     let session: XRSession | null = null;
+    let ended = false;
+    // Fin de session, d'où qu'elle vienne (croix, bouton Retour d'Android, échec) : la page réapparaît. Écoutée dès
+    // l'ouverture de la session : quitter pendant le démarrage laissait sinon la page masquée et le bouton bloqué.
+    const onSessionEnd = () => {
+      ended = true;
+      placementRef.current = null;
+      showPage();
+      setXrPhase(null);
+    };
     try {
       session = await requestImmersiveAr(overlayRef.current as HTMLDivElement);
+      session.addEventListener('end', onSessionEnd);
       const { runWebXrPlacement } = await import('@/lib/ar/webXrPlacement');
-      placementRef.current = await runWebXrPlacement({
+      if (ended) return;
+      const placement = await runWebXrPlacement({
         session,
         glbUrl: glbPath,
         onPhase: setXrPhase,
         onError: () => setXrError(AR_MESSAGES.webXrModel),
         onDebug: debugMode ? setXrDebug : undefined,
-        onEnd: () => {
-          placementRef.current = null;
-          showPage();
-          setXrPhase(null);
-        },
+        onEnd: () => undefined,
       });
+      if (!ended) placementRef.current = placement;
     } catch (error) {
+      // Session refermée par le visiteur pendant le démarrage : l'erreur qui suit n'est pas un échec à signaler
+      const quitByVisitor = ended;
       void session?.end().catch(() => undefined);
-      showPage();
-      setXrPhase(null);
+      onSessionEnd();
+      if (quitByVisitor) return;
       setXrError(error instanceof Error && error.name === 'NotAllowedError' ? AR_MESSAGES.webXrDenied : AR_MESSAGES.webXrFailed);
     }
   };
@@ -156,7 +215,10 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
       label: AR_CHECK_LABELS.camera[readiness.camera],
     },
   ] as const;
-  const issueMessage = issue ? sceneViewerIssueMessage(issue) : xrError;
+  // Sans WebXR, le bouton principal lance Scene Viewer : il attend que le modèle soit déposé
+  const sceneViewerWaiting = !inPage && plan.offerAr && sceneViewerFile.status === 'loading';
+  const sceneViewerFailed = sceneViewerFile.status === 'error' ? AR_MESSAGES.sceneViewerUpload : null;
+  const issueMessage = issue ? sceneViewerIssueMessage(issue) : (xrError ?? (!inPage && plan.offerAr ? sceneViewerFailed : null));
   const hint = inPage ? AR_MESSAGES.webXrIntro : plan.offerAr ? `${AR_MESSAGES.googleCamera} ${AR_MESSAGES.tip}` : 'Le meuble s’ouvre en 3D, sans caméra.';
   const showRotation = xrPhase === 'placing' || xrPhase === 'estimated' || xrPhase === 'placed';
 
@@ -172,11 +234,11 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
       </ul>
 
       <ArLaunchButton
-        label={plan.offerAr ? AR_MESSAGES.launchAr : AR_MESSAGES.launch3d}
-        busy={xrPhase !== null}
+        label={sceneViewerWaiting ? AR_MESSAGES.preparing : plan.offerAr ? AR_MESSAGES.launchAr : AR_MESSAGES.launch3d}
+        busy={xrPhase !== null || sceneViewerWaiting}
         onClick={() => (inPage ? void launchInPage() : plan.offerAr ? launchSceneViewer() : setShow3d(true))}
       />
-      {inPage && (
+      {inPage && debugAvailable && (
         <button
           type="button"
           aria-pressed={debugMode}
@@ -195,8 +257,13 @@ export default function AndroidArLauncher({ glbPath, title }: { glbPath: string;
 
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {inPage && (
-          <button type="button" onClick={launchSceneViewer} className="text-xs text-am-navy underline hover:no-underline">
-            {AR_MESSAGES.openWithGoogle}
+          <button
+            type="button"
+            onClick={launchSceneViewer}
+            disabled={sceneViewerFile.status === 'loading'}
+            className="text-xs text-am-navy underline hover:no-underline disabled:opacity-50"
+          >
+            {sceneViewerFile.status === 'loading' ? AR_MESSAGES.preparing : AR_MESSAGES.openWithGoogle}
           </button>
         )}
         {plan.offerAr && (

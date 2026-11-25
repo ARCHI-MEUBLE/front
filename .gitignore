@@ -30,6 +30,8 @@ database/*.db-journal
 database/*.db-shm
 database/*.db-wal
 database/
+# Ancienne base SQLite du front (supprimée : toutes les données sont dans le backend)
+/db/
 
 # Fichiers Python
 __pycache__/

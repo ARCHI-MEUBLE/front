@@ -91,10 +91,10 @@ Le site est sur http://localhost:3000.
 |---|---|
 | `NEXT_PUBLIC_API_URL` | Adresse du backend PHP (`http://localhost:8000` en local) |
 | `BACKEND_URL` | Adresse du backend pour le serveur Next seulement, si `NEXT_PUBLIC_API_URL` est vide |
-| `NEXT_PUBLIC_ADMIN_PATH` | Chemin de l'administration (voir [Administration](#administration)) — **indispensable pour y accéder** |
+| `ADMIN_PATH` | Chemin de l'administration (voir [Administration](#administration)) — **indispensable pour y accéder**. Ancien nom : `NEXT_PUBLIC_ADMIN_PATH`, encore lu côté serveur mais recopié dans le code des navigateurs : à renommer |
+| `FRONT_PROXY_SECRET` | Secret partagé avec le backend (même valeur des deux côtés, 32 caractères au moins) : transmet l'adresse des visiteurs pour les limites anti-abus du backend |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Clé publique Stripe (`pk_test_…` en local) |
 | `NEXT_PUBLIC_SITE_URL` | Adresse canonique du site pour le référencement (par défaut `https://www.archimeuble.com`) |
-| `SESSION_SECRET` | Optionnel |
 
 Les variables `NEXT_PUBLIC_*` sont copiées dans le code envoyé aux navigateurs : n'y mettez jamais de secret.
 Les autres réglages (clé secrète Stripe, e-mails Resend, Calendly, Crisp…) sont dans `back/.env`.
@@ -283,7 +283,7 @@ vers le backend (`next.config.js`).
 ### Accès
 
 L'administration n'est pas à `/admin` : cette adresse renvoie volontairement une 404. Elle est servie sous le chemin
-défini par `NEXT_PUBLIC_ADMIN_PATH` (par exemple `http://localhost:3000/mon-chemin/login`), réécrit vers les pages
+défini par `ADMIN_PATH` (par exemple `http://localhost:3000/mon-chemin/login`), réécrit vers les pages
 `src/pages/admin/` par `src/proxy.ts`. **Sans cette variable, l'administration est inaccessible.**
 
 Les comptes administrateurs et la session sont gérés par le backend (PostgreSQL), avec un cookie de session.
@@ -380,7 +380,7 @@ curl -I http://localhost:3000/models/<fichier>.glb
 | « Erreur de connexion au backend » | Le backend n'est pas lancé : `docker compose up -d` dans `back/`, puis vérifier `NEXT_PUBLIC_API_URL` |
 | Erreurs CORS dans la console | Le navigateur appelle le backend directement : vérifier `FRONTEND_URL` dans `back/docker-compose.yml` (`http://localhost:3000` en local) |
 | Le modèle 3D généré ne s'affiche pas | Vérifier que le GLB existe dans `public/models/` (les deux dépôts doivent être côte à côte) et que l'adresse renvoyée par l'API est `/models/<fichier>.glb` ; voir la console du navigateur |
-| `/admin` affiche une 404 | Normal : utiliser le chemin défini par `NEXT_PUBLIC_ADMIN_PATH` |
+| `/admin` affiche une 404 | Normal : utiliser le chemin défini par `ADMIN_PATH` |
 | Administration déconnectée en boucle | Le cookie de session du backend n'arrive pas : vérifier les cookies du domaine `localhost` et que le backend tourne |
 | Erreur d'hydratation après beaucoup de modifications | Le serveur de développement sert une version périmée : recharger la page, sinon relancer `npm run dev` |
 | La réalité augmentée ne s'ouvre pas sur Android en local | Scene Viewer exige le https : tester sur le site en ligne |

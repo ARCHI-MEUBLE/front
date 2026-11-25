@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
+import { serverAdminUrl } from '@/lib/adminPathServer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (await verifyAdminSession(req, res)) {
     return {
       redirect: {
-        destination: adminUrl('/dashboard'),
+        destination: serverAdminUrl('/dashboard'),
         permanent: false,
       },
     };
@@ -91,7 +92,7 @@ export default function AdminLoginPage() {
           <div
             className="absolute inset-0 bg-zinc-900"
             style={{
-              backgroundImage: 'url("https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80")',
+              backgroundImage: 'url("/images/stock/admin-login.jpg")',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}

@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 /**
@@ -19,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       credentials: 'include',
     };
@@ -46,11 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
 
     // Transférer les cookies si nécessaire
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
-    }
-
+    forwardSetCookies(res, response);
     return res.status(200).json(data);
   } catch (error) {
     console.error('Error in admin samples API:', error);

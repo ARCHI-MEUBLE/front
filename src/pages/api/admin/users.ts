@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export default async function handler(
@@ -13,7 +15,7 @@ export default async function handler(
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(req.headers.cookie && { Cookie: req.headers.cookie }),
+        ...backendHeaders(req),
       },
     };
 
@@ -23,11 +25,7 @@ export default async function handler(
 
     const response = await fetch(`${API_URL}/api/users`, options);
 
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
-      res.setHeader('Set-Cookie', setCookieHeader);
-    }
-
+    forwardSetCookies(res, response);
     const data = await response.json();
 
     res.status(response.status).json(data);

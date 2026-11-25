@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { serverAdminSegment } from '@/lib/adminPathServer';
 
-const ADMIN_PATH = process.env.NEXT_PUBLIC_ADMIN_PATH;
+// Chemin secret de l'admin (ADMIN_PATH, ou l'ancien NEXT_PUBLIC_ADMIN_PATH). Il réduit le bruit des robots ; la vraie
+// protection est la session vérifiée par le backend sur chaque appel de l'admin.
+const ADMIN_PATH = serverAdminSegment();
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
