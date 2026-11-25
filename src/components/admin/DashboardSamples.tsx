@@ -585,7 +585,14 @@ function TypeRow({
         ) : (
           <div className="flex flex-wrap gap-3">
             {palette.map(({ color, type }) => (
-              <VariantCard key={color.id} variant={color} onChanged={onChanged} onDelete={() => removeColor(color, type)} />
+              <VariantCard
+                key={color.id}
+                variant={color}
+                type={type}
+                materialPrice={pricePerM2 ?? defaultPrice}
+                onChanged={onChanged}
+                onDelete={() => removeColor(color, type)}
+              />
             ))}
           </div>
         )}
@@ -600,17 +607,35 @@ function TypeRow({
   );
 }
 
-function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; onChanged: () => void; onDelete: () => void }) {
+function VariantCard({
+  variant,
+  type,
+  materialPrice,
+  onChanged,
+  onDelete,
+}: {
+  variant: SampleColor;
+  type: SampleType;
+  // Prix au m² du matériau (ou prix par défaut), appliqué tant que ce bois n'a pas le sien
+  materialPrice: number | null;
+  onChanged: () => void;
+  onDelete: () => void;
+}) {
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unitPrice, setUnitPrice] = useState(String(Number(variant.unit_price ?? 0)));
+  const [woodPrice, setWoodPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [woodError, setWoodError] = useState<string | null>(null);
   const unitPriceValue = Number(variant.unit_price ?? 0);
+  const ownWoodPrice = type.furniture_price_per_m2 == null ? null : Number(type.furniture_price_per_m2);
 
   const open = () => {
     setUnitPrice(String(unitPriceValue));
+    setWoodPrice(ownWoodPrice === null ? '' : String(ownWoodPrice));
     setError(null);
+    setWoodError(null);
     setEditing(true);
   };
 
@@ -621,14 +646,29 @@ function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; o
       setError(result.error);
       return;
     }
+    const woodResult = woodPrice.trim() === '' ? null : parseInput(materialParam(variant.name), woodPrice);
+    if (woodResult && !woodResult.ok) {
+      setWoodError(woodResult.error);
+      return;
+    }
     setSaving(true);
+    let sampleSaved = false;
     try {
       await apiClient.samples.updateColor(variant.id, { unit_price: result.value });
-      toast.success(`Prix de l'échantillon « ${variant.name} » enregistré`);
+      sampleSaved = true;
+      const newWoodPrice = woodResult ? woodResult.value : null;
+      if (newWoodPrice !== ownWoodPrice) await apiClient.samples.updateType(type.id, { furniture_price_per_m2: newWoodPrice });
+      toast.success(`Prix de « ${variant.name} » enregistrés`);
       setEditing(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
+      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour';
+      if (sampleSaved) {
+        setWoodError(`Prix de l'échantillon enregistré, mais pas le prix au m² : ${message}`);
+        onChanged();
+      } else {
+        setError(message);
+      }
     } finally {
       setSaving(false);
     }
@@ -669,14 +709,19 @@ function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; o
       <div className="mt-1 max-w-[56px] truncate text-[9px] font-bold text-center uppercase text-zinc-600">
         {unitPriceValue > 0 ? formatPrice(unitPriceValue) : 'OFFERT'}
       </div>
+      {ownWoodPrice !== null && (
+        <div className="max-w-[56px] truncate text-center text-[9px] font-semibold text-amber-700" title="Prix au m² propre à ce bois">
+          {ownWoodPrice} €/m²
+        </div>
+      )}
 
       <Dialog open={editing} onOpenChange={(value) => !saving && setEditing(value)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Prix de l&apos;échantillon « {variant.name} »</DialogTitle>
+            <DialogTitle>Prix de « {variant.name} »</DialogTitle>
             <DialogDescription>
-              Ce que le client paie pour recevoir cet échantillon (0 = offert). Le prix des meubles dépend du prix au m²
-              du matériau, réglé sur sa carte.
+              Prix de l&apos;échantillon : ce que le client paie pour le recevoir (0 = offert). Prix au m² : ce que coûte
+              ce bois dans le calcul des meubles.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={save} className="space-y-4" noValidate>
@@ -706,6 +751,35 @@ function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; o
                   {error}
                 </p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-wood-price`}>Prix au m² de ce bois</Label>
+              <div className="relative max-w-[12rem]">
+                <Input
+                  id={`${id}-wood-price`}
+                  type="number"
+                  inputMode="decimal"
+                  min={M2_SPEC.min}
+                  max={M2_SPEC.max}
+                  step={M2_SPEC.step}
+                  value={woodPrice}
+                  placeholder={materialPrice !== null ? String(materialPrice) : undefined}
+                  onChange={(e) => {
+                    setWoodPrice(e.target.value);
+                    setWoodError(null);
+                  }}
+                  aria-invalid={woodError ? true : undefined}
+                  aria-describedby={`${id}-wood-help`}
+                  className="pr-14"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  {M2_SPEC.suffix}
+                </span>
+              </div>
+              <p id={`${id}-wood-help`} className={woodError ? 'text-xs text-destructive' : 'text-[11px] text-muted-foreground'}>
+                {woodError ??
+                  `Laissez vide pour appliquer le prix du matériau${materialPrice !== null ? ` (${formatEuro(materialPrice)}/m²)` : ''}.`}
+              </p>
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>

@@ -297,6 +297,8 @@ export interface SampleType {
   position: number;
   price_per_m2?: number; // Optionnel maintenant
   unit_price?: number;  // Optionnel maintenant
+  // Prix au m² propre à ce bois pour le calcul des meubles ; null : celui de son matériau
+  furniture_price_per_m2?: string | null;
   colors: SampleColor[];
 }
 
@@ -330,7 +332,7 @@ export const samplesApi = {
     });
   },
 
-  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'|'price_per_m2'|'unit_price'>>): Promise<{ success: boolean }> {
+  async updateType(id: number, payload: Partial<Pick<SampleType, 'name'|'material'|'description'|'active'|'position'|'price_per_m2'|'unit_price'>> & { furniture_price_per_m2?: number | null }): Promise<{ success: boolean }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_type', id, ...payload }),

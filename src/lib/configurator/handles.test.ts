@@ -9,6 +9,7 @@ import {
   parseHandleDefaults,
   resolveZoneHandle,
   setZoneHandle,
+  shapeHasOrientation,
   summarizeHandles,
   zoneHandleFromPromptCode,
   type HandleModel,
@@ -106,6 +107,26 @@ describe('prompt code', () => {
     expect(zoneHandleFromPromptCode('3')).toEqual({ handleType: 'knob' });
     expect(zoneHandleFromPromptCode('4')).toEqual({ handleType: 'recessed' });
     expect(zoneHandleFromPromptCode('7')).toEqual({});
+  });
+});
+
+describe('shapes', () => {
+  const RECESSED: HandleModel = { id: 4, name: 'Encastrée', shape: 'recessed', finish_hex: '#B08D57', length_mm: null, image_url: null, position: 4 };
+  const CUP: HandleModel = { id: 5, name: 'Cuvette', shape: 'cup', finish_hex: '#C9CCCF', length_mm: 92, image_url: null, position: 5 };
+  const LEATHER: HandleModel = { id: 6, name: 'Cuir', shape: 'leather', finish_hex: '#A9703F', length_mm: 224, image_url: null, position: 6 };
+
+  it('gives a direction to every shape but the knob and the round recessed pull', () => {
+    expect(['bar', 'flat_bar', 'profile', 'cup', 'leather'].every((shape) => shapeHasOrientation(shape as HandleModel['shape']))).toBe(true);
+    expect(shapeHasOrientation('knob')).toBe(false);
+    expect(shapeHasOrientation('recessed')).toBe(false);
+  });
+
+  it('writes the recessed code for a recessed model and a directional code for the others', () => {
+    const own = (modelId: number) => leaf('d', { content: 'door', handleModelId: modelId });
+    const models = [RECESSED, CUP, LEATHER];
+    expect(handlePromptCode(own(4), 'door', models, DEFAULT_HANDLE_DEFAULTS)).toBe('4');
+    expect(handlePromptCode(own(5), 'door', models, DEFAULT_HANDLE_DEFAULTS)).toBe('1');
+    expect(handlePromptCode(own(6), 'door', models, DEFAULT_HANDLE_DEFAULTS)).toBe('1');
   });
 });
 

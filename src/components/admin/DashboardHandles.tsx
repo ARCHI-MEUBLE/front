@@ -231,7 +231,7 @@ export function DashboardHandles() {
         <p className="max-w-3xl text-sm text-muted-foreground">
           Les modèles actifs sont proposés dans le configurateur, à l&apos;étape Finitions : le client choisit la
           poignée de tout le meuble, puis peut la changer porte par porte ou tiroir par tiroir. Chaque modèle se pose à
-          l&apos;horizontale ou à la verticale, selon l&apos;orientation choisie (sauf les boutons).
+          l&apos;horizontale ou à la verticale, selon l&apos;orientation choisie (sauf les boutons et les poignées encastrées).
         </p>
       </div>
 
@@ -672,7 +672,7 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
             <HandleModelPreview model={preview} orientation="horizontal" />
           </div>
           <figcaption className="text-center text-[11px] text-muted-foreground">
-            {hasLength ? "À l'horizontale" : 'Bouton'}
+            {hasLength ? "À l'horizontale" : shape === 'recessed' ? 'Encastrée' : 'Bouton'}
           </figcaption>
         </figure>
         {hasLength && (
@@ -783,7 +783,7 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
         <FieldError id={`${id}-finish-error`} message={errorFor('finish')} />
       </fieldset>
 
-      {/* Longueur : sans objet pour un bouton (envoyée à null) */}
+      {/* Longueur : sans objet pour un bouton ou une poignée encastrée (envoyée à null) */}
       {hasLength ? (
         <div className="space-y-2">
           <Label htmlFor={`${id}-length`}>Longueur</Label>
@@ -828,7 +828,7 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
         </div>
       ) : (
         <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-          Un bouton n&apos;a ni longueur ni sens de pose.
+          {shape === 'recessed' ? 'Une poignée encastrée ronde' : 'Un bouton'} n&apos;a ni longueur ni sens de pose.
         </p>
       )}
 
