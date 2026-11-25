@@ -21,7 +21,10 @@ export type Zone = {
   hasLight?: boolean;
   hasCableHole?: boolean;
   hasDressing?: boolean;
-  handleType?: HandleType; // Type de poignée pour portes/tiroirs
+  handleType?: HandleType; // Ancien type de poignée (configurations enregistrées avant les modèles de poignées)
+  // Poignée propre à cette porte ou ce tiroir (sinon celle du meuble, voir lib/configurator/handles.ts)
+  handleModelId?: number;
+  handleOrientation?: 'horizontal' | 'vertical';
   zoneColor?: ZoneColor; // Couleur spécifique pour cette zone (tiroir/porte/niche)
   isOpenSpace?: boolean; // Espace ouvert (pas de fond, pas de haut) pour laisser voir le mur
   noBack?: boolean; // Fond retiré sur ce seul compartiment

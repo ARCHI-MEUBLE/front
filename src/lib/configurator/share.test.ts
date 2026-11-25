@@ -43,4 +43,21 @@ describe('configDataToRestore', () => {
   it('defaults to no base when the format has none', () => {
     expect(configDataToRestore({}).socle).toBe('none');
   });
+
+  it('reads the handles chosen for the whole furniture', () => {
+    expect(configDataToRestore({ handles: { modelId: 2, doorOrientation: 'horizontal', drawerOrientation: 'vertical' } }).handleDefaults).toEqual({
+      modelId: 2,
+      doorOrientation: 'horizontal',
+      drawerOrientation: 'vertical',
+    });
+  });
+
+  it('falls back to the default handles for configurations saved before handle models', () => {
+    expect(configDataToRestore({}).handleDefaults).toEqual({ modelId: null, doorOrientation: 'vertical', drawerOrientation: 'horizontal' });
+    expect(configDataToRestore({ handles: { modelId: 'x', doorOrientation: 'sideways' } }).handleDefaults).toEqual({
+      modelId: null,
+      doorOrientation: 'vertical',
+      drawerOrientation: 'horizontal',
+    });
+  });
 });

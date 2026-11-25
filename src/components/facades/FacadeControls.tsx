@@ -1,14 +1,24 @@
-import React, { useId, useState, useEffect } from 'react';
+import React, { useId, useState } from 'react';
 import { useCustomer } from '@/context/CustomerContext';
 import { notifyCartChanged } from '@/lib/cartCount';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial, DrillingType, HingeType, HingeCount, OpeningDirection } from '@/types/facade';
 import { getSafeSvgMarkup } from '@/lib/sanitizeSvg';
 import { formatDecimal, formatPrice } from '@/lib/format';
 import { displayColorName } from '@/lib/displayNames';
+import {
+  NO_HINGE,
+  facadeMaxSize,
+  facadePriceBreakdown,
+  facadePricePerM2,
+  facadeSizeIssue,
+  type FacadeSettings,
+} from '@/components/facades/facadePricing';
 
 interface FacadeControlsProps {
   config: FacadeConfig;
   materials: FacadeMaterial[];
+  // Réglages publics de l'admin (prix des charnières, majoration, dimensions maximales…)
+  settings: FacadeSettings;
   onUpdateConfig: (config: Partial<FacadeConfig>) => void;
   onAddDrilling: (drilling: FacadeDrilling) => void;
   onRemoveDrilling: (id: string) => void;
@@ -16,9 +26,28 @@ interface FacadeControlsProps {
 
 type Step = 'dimensions' | 'material' | 'hinges' | 'summary';
 
+// Positions des trous de charnières quand l'admin n'a pas réglé de marge ou de diamètre
+const DEFAULT_HINGE_EDGE_MARGIN_MM = 150;
+const DEFAULT_HINGE_HOLE_DIAMETER_MM = 26;
+
+// Prix de la façade retenu par le serveur à l'ajout au panier (c'est lui qui est facturé)
+async function fetchCartFacadePrice(id: string | number): Promise<number | null> {
+  try {
+    const response = await fetch('/backend/api/cart/facades.php', { credentials: 'include' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const item = (data?.items ?? []).find((row: { id: unknown }) => String(row.id) === String(id));
+    const price = Number(item?.unit_price);
+    return item && Number.isFinite(price) ? price : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function FacadeControls({
   config,
   materials,
+  settings,
   onUpdateConfig,
   onAddDrilling,
   onRemoveDrilling,
@@ -26,72 +55,14 @@ export default function FacadeControls({
   const { isAuthenticated, requireIdentity } = useCustomer();
   const [currentStep, setCurrentStep] = useState<Step>('dimensions');
   const [quantity, setQuantity] = useState(1);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [pricingSettings, setPricingSettings] = useState({
-    material_price_per_m2: 150,
-    hinge_base_price: 34.20,
-    hinge_coefficient: 0.05,
-    hinge_edge_margin: 150, // 15 cm par défaut
-    hinge_hole_diameter: 26,
-  });
+  // Ajout confirmé, avec le prix unitaire retenu par le serveur (null : pas pu le relire)
+  const [confirmation, setConfirmation] = useState<{ quantity: number; unitPrice: number | null } | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-  useEffect(() => {
-    fetchPricingSettings();
-  }, []);
-
-  const fetchPricingSettings = async () => {
-    try {
-      const response = await fetch(`${apiUrl}/backend/api/facade-settings.php`);
-      const data = await response.json();
-      if (data.success) {
-        const settings: Record<string, number> = {};
-        data.data.forEach((s: any) => {
-          if (['material_price_per_m2', 'hinge_base_price', 'hinge_coefficient', 'hinge_edge_margin', 'hinge_hole_diameter'].includes(s.setting_key)) {
-            settings[s.setting_key] = parseFloat(s.setting_value);
-          }
-        });
-        setPricingSettings({
-          material_price_per_m2: settings.material_price_per_m2 || 150,
-          hinge_base_price: settings.hinge_base_price || 34.20,
-          hinge_coefficient: settings.hinge_coefficient || 0.05,
-          hinge_edge_margin: settings.hinge_edge_margin || 20,
-          hinge_hole_diameter: settings.hinge_hole_diameter || 26,
-        });
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des paramètres de tarification:', error);
-    }
-  };
-
-  // Calculer le prix total selon la nouvelle formule
-  const calculateTotalPrice = () => {
-    // Surface en m² (largeur et hauteur sont en mm)
-    const surfaceM2 = (config.width / 1000) * (config.height / 1000);
-    
-    // Prix de la surface (utiliser le prix au m² du matériau sélectionné)
-    const surfacePrice = surfaceM2 * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2);
-    
-    // Prix des charnières (uniquement si des charnières sont choisies)
-    const hingesPrice = config.hinges.type !== 'no-hole-no-hinge' 
-      ? pricingSettings.hinge_base_price * config.hinges.count 
-      : 0;
-    
-    // Prix de base avant supplément (sans le price_modifier qui n'est plus utilisé)
-    const basePrice = surfacePrice + hingesPrice;
-    
-    // Supplément selon le nombre de charnières (coefficient × nb_charnières)
-    const supplement = config.hinges.type !== 'no-hole-no-hinge'
-      ? basePrice * (pricingSettings.hinge_coefficient * config.hinges.count)
-      : 0;
-    
-    // Prix des perçages
-    const drillingsPrice = config.drillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0);
-    
-    // Total
-    return basePrice + supplement + drillingsPrice;
-  };
+  // Même formule que le serveur (FacadePriceCalculator) ; null si un réglage manque : prix calculé à l'ajout au panier
+  const breakdown = facadePriceBreakdown(config, settings);
+  const sizeIssue = facadeSizeIssue(config, settings);
 
   const steps: { id: Step; label: string; number: number }[] = [
     { id: 'dimensions', label: 'Dimensions', number: 1 },
@@ -116,31 +87,38 @@ export default function FacadeControls({
   };
 
   const handleAddToCart = async () => {
+    if (sizeIssue) {
+      setAddError(sizeIssue);
+      return;
+    }
     if (!isAuthenticated && !(await requireIdentity())) return;
 
-    const unitPrice = calculateTotalPrice();
-
+    setAdding(true);
+    setAddError(null);
     try {
+      // Pas de prix envoyé : le serveur le calcule depuis la configuration et les réglages de l'admin
       const response = await fetch('/backend/api/cart/facades.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           config: config,
-          price: unitPrice,
           quantity: quantity,
         }),
       });
-
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error('Erreur lors de l\'ajout au panier');
+        throw new Error(data?.error || data?.message || 'Erreur lors de l\'ajout au panier');
       }
 
-      setShowConfirmation(true);
+      const unitPrice = data?.id !== undefined ? await fetchCartFacadePrice(data.id) : null;
+      setConfirmation({ quantity, unitPrice });
       notifyCartChanged();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de l\'ajout au panier');
+      setAddError(error instanceof Error ? error.message : 'Erreur lors de l\'ajout au panier');
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -156,10 +134,10 @@ export default function FacadeControls({
         <h2 className="text-lg font-semibold text-black">
           {currentStepData.label}
         </h2>
-        
+
         {/* Progress bar */}
         <div className="mt-3 h-1 bg-black/10 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-am-navy transition-all duration-300"
             style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
           />
@@ -169,7 +147,7 @@ export default function FacadeControls({
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {currentStep === 'dimensions' && (
-          <DimensionsPanel config={config} onUpdateConfig={onUpdateConfig} />
+          <DimensionsPanel config={config} settings={settings} sizeIssue={sizeIssue} onUpdateConfig={onUpdateConfig} />
         )}
         {currentStep === 'material' && (
           <MaterialPanel
@@ -184,13 +162,13 @@ export default function FacadeControls({
             onUpdateConfig={onUpdateConfig}
             onAddDrilling={onAddDrilling}
             onRemoveDrilling={onRemoveDrilling}
-            pricingSettings={pricingSettings}
+            settings={settings}
           />
         )}
         {currentStep === 'summary' && (
           <SummaryPanel
             config={config}
-            pricingSettings={pricingSettings}
+            settings={settings}
             quantity={quantity}
             onQuantityChange={setQuantity}
           />
@@ -199,6 +177,9 @@ export default function FacadeControls({
 
       {/* Navigation buttons */}
       <div className="border-t border-black/15 p-4">
+        {addError && (
+          <p role="alert" className="mb-3 text-sm text-am-wine">{addError}</p>
+        )}
         <div className="flex gap-3">
           <button
             onClick={handlePrevious}
@@ -210,9 +191,10 @@ export default function FacadeControls({
           {currentStep === 'summary' ? (
             <button
               onClick={handleAddToCart}
-              className="flex-1 px-4 py-3 bg-am-wine text-white rounded-lg hover:bg-am-wine/90 transition-colors font-medium"
+              disabled={adding || !!sizeIssue}
+              className="flex-1 px-4 py-3 bg-am-wine text-white rounded-lg hover:bg-am-wine/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Ajouter au panier
+              {adding ? 'Ajout…' : 'Ajouter au panier'}
             </button>
           ) : (
             <button
@@ -225,52 +207,55 @@ export default function FacadeControls({
         </div>
       </div>
 
-      {/* Price Summary */}
+      {/* Aperçu du prix : même calcul que le serveur, qui le refait à l'ajout au panier */}
       <div className="border-t border-black/15 p-4 bg-am-mist/25">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-black/70">Surface ({formatDecimal((config.width / 1000) * (config.height / 1000))} m²)</span>
-          <span className="text-sm font-medium">
-            {formatPrice((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2))}
-          </span>
-        </div>
-        {config.hinges.type !== 'no-hole-no-hinge' && (
+        {breakdown ? (
           <>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-black/70">Charnières ({config.hinges.count}×)</span>
-              <span className="text-sm font-medium">
-                {formatPrice(pricingSettings.hinge_base_price * config.hinges.count)}
-              </span>
+              <span className="text-sm text-black/70">Surface ({formatDecimal(breakdown.surfaceM2)} m²)</span>
+              <span className="text-sm font-medium">{formatPrice(breakdown.surface)}</span>
             </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-black/70">Supplément charnières</span>
-              <span className="text-sm font-medium">
-                {formatPrice(
-                  (((config.width / 1000) * (config.height / 1000) * (Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2)) +
-                  (pricingSettings.hinge_base_price * config.hinges.count)) *
-                  (pricingSettings.hinge_coefficient * config.hinges.count)
+            {breakdown.hingeCount > 0 && (
+              <>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-black/70">Charnières ({breakdown.hingeCount}×)</span>
+                  <span className="text-sm font-medium">{formatPrice(breakdown.hinges)}</span>
+                </div>
+                {breakdown.supplement > 0 && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-black/70">Supplément charnières</span>
+                    <span className="text-sm font-medium">{formatPrice(breakdown.supplement)}</span>
+                  </div>
                 )}
+              </>
+            )}
+            {breakdown.drillings > 0 && (
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-black/70">Perçages</span>
+                <span className="text-sm font-medium">{formatPrice(breakdown.drillings)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-4 border-t border-black/15">
+              <span className="text-lg font-semibold text-black">Total</span>
+              <span className="text-2xl font-semibold text-black">
+                {formatPrice(breakdown.unitPrice * quantity)} TTC
               </span>
             </div>
           </>
-        )}
-        {config.drillings.length > 0 && (
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-black/70">Perçages</span>
-            <span className="text-sm font-medium">
-              {formatPrice(config.drillings.reduce((sum: number, d: FacadeDrilling) => sum + (d.price || 0), 0))}
-            </span>
+        ) : (
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-semibold text-black">Total</span>
+            <span className="text-sm font-medium text-black/70">Calculé à l&apos;ajout au panier</span>
           </div>
         )}
-        <div className="flex justify-between items-center pt-4 border-t border-black/15">
-          <span className="text-lg font-semibold text-black">Total</span>
-          <span className="text-2xl font-semibold text-black">
-            {formatPrice(calculateTotalPrice() * quantity)} TTC
-          </span>
-        </div>
+        <p className="mt-2 text-xs text-black/70">
+          Prix indicatif : le prix final est recalculé par notre serveur à l&apos;ajout au panier. Livraison en plus,
+          indiquée au panier.
+        </p>
       </div>
 
       {/* Modal de confirmation */}
-      {showConfirmation && (
+      {confirmation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
             <div className="flex justify-center mb-4">
@@ -284,12 +269,13 @@ export default function FacadeControls({
               Ajouté au panier
             </h3>
             <p className="text-sm text-black/70 text-center mb-4">
-              {quantity} façade{quantity > 1 ? 's' : ''} · {formatPrice(calculateTotalPrice() * quantity)}
+              {confirmation.quantity} façade{confirmation.quantity > 1 ? 's' : ''}
+              {confirmation.unitPrice !== null && <> · {formatPrice(confirmation.unitPrice * confirmation.quantity)}</>}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  setShowConfirmation(false);
+                  setConfirmation(null);
                   setCurrentStep('dimensions');
                   setQuantity(1);
                 }}
@@ -314,9 +300,14 @@ export default function FacadeControls({
 // Composant pour les dimensions
 function DimensionsPanel({
   config,
+  settings,
+  sizeIssue,
   onUpdateConfig,
 }: {
   config: FacadeConfig;
+  settings: FacadeSettings;
+  // Dimensions que le serveur refuserait (au-delà des maximums de l'admin)
+  sizeIssue: string | null;
   onUpdateConfig: (config: Partial<FacadeConfig>) => void;
 }) {
   // Conversion mm -> cm pour l'affichage
@@ -324,6 +315,10 @@ function DimensionsPanel({
   const heightInCm = Math.round(config.height / 10);
   const widthId = useId();
   const heightId = useId();
+  // Maximums réglés dans l'admin (ceux que le serveur applique)
+  const max = facadeMaxSize(settings);
+  const maxWidthCm = Math.floor(max.width / 10);
+  const maxHeightCm = Math.floor(max.height / 10);
 
   return (
     <div className="space-y-6">
@@ -335,13 +330,13 @@ function DimensionsPanel({
           id={widthId}
           type="number"
           min="10"
-          max="60"
+          max={maxWidthCm}
           step="1"
           value={widthInCm}
           onChange={(e) => onUpdateConfig({ width: Number(e.target.value) * 10 })}
           className="w-full px-4 py-2 border border-black/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
-        <p className="text-xs text-black/70 mt-1">Maximum : 60 cm</p>
+        <p className="text-xs text-black/70 mt-1">Maximum : {maxWidthCm} cm</p>
       </div>
 
       <div>
@@ -352,19 +347,23 @@ function DimensionsPanel({
           id={heightId}
           type="number"
           min="50"
-          max="230"
+          max={maxHeightCm}
           step="1"
           value={heightInCm}
           onChange={(e) => onUpdateConfig({ height: Number(e.target.value) * 10 })}
           className="w-full px-4 py-2 border border-black/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
-        <p className="text-xs text-black/70 mt-1">Maximum : 230 cm</p>
+        <p className="text-xs text-black/70 mt-1">Maximum : {maxHeightCm} cm</p>
       </div>
+
+      {sizeIssue && (
+        <p role="alert" className="text-sm text-am-wine">{sizeIssue}</p>
+      )}
 
       {/* Info épaisseur fixe */}
       <div className="p-4 bg-am-mist/25 rounded-lg border border-black/15">
         <p className="text-sm text-black/70">
-          <span className="font-medium text-black">Épaisseur :</span> 19 mm (fixe)
+          <span className="font-medium text-black">Épaisseur :</span> {config.depth} mm (fixe)
         </p>
       </div>
 
@@ -469,19 +468,13 @@ function HingesPanel({
   onUpdateConfig,
   onAddDrilling,
   onRemoveDrilling,
-  pricingSettings,
+  settings,
 }: {
   config: FacadeConfig;
   onUpdateConfig: (config: Partial<FacadeConfig>) => void;
   onAddDrilling: (drilling: FacadeDrilling) => void;
   onRemoveDrilling: (id: string) => void;
-  pricingSettings: {
-    material_price_per_m2: number;
-    hinge_base_price: number;
-    hinge_coefficient: number;
-    hinge_edge_margin: number;
-    hinge_hole_diameter: number;
-  };
+  settings: FacadeSettings;
 }) {
   const getHingeIcon = (id: HingeType) => {
     switch(id) {
@@ -565,39 +558,27 @@ function HingesPanel({
     }
   };
 
-  const hingeTypes: { id: HingeType; label: string; price: number }[] = [
-    { 
-      id: 'no-hole-no-hinge', 
-      label: 'Sans trou, sans charnière', 
-      price: 0
-    },
-    { 
-      id: 'hole-with-applied-hinge', 
-      label: 'Trou + charnière fournie porte en applique', 
-      price: 34.20
-    },
-    { 
-      id: 'hole-with-twin-hinge', 
-      label: 'Trou + charnière fournie porte jumelée', 
-      price: 34.20
-    },
-    { 
-      id: 'hole-with-integrated-hinge', 
-      label: 'Trou + charnière fournie porte encastrée', 
-      price: 34.20
-    },
+  // Les trois types de charnière ont le même prix, réglé dans l'admin (facade_settings)
+  const hingeTypes: { id: HingeType; label: string }[] = [
+    { id: NO_HINGE, label: 'Sans trou, sans charnière' },
+    { id: 'hole-with-applied-hinge', label: 'Trou + charnière fournie porte en applique' },
+    { id: 'hole-with-twin-hinge', label: 'Trou + charnière fournie porte jumelée' },
+    { id: 'hole-with-integrated-hinge', label: 'Trou + charnière fournie porte encastrée' },
   ];
+
+  // Libellé de prix d'une charnière : rien plutôt qu'un prix faux si les réglages manquent
+  const hingePriceLabel = (type: HingeType): string | null => {
+    if (type === NO_HINGE) return 'Sans supplément';
+    if (settings.hingeBasePrice === null) return null;
+    const percent = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format((settings.hingeCoefficient ?? 0) * 100);
+    const supplement = settings.hingeCoefficient ? ` · + ${percent} % du prix par charnière` : '';
+    return `Prix unit. ${formatPrice(settings.hingeBasePrice)} TTC${supplement}`;
+  };
 
   const hingeCounts: HingeCount[] = [2, 3, 4, 5];
 
   const updateHinge = (field: keyof typeof config.hinges, value: any) => {
     const newHinges = { ...config.hinges, [field]: value };
-    
-    // Recalculer le prix basé sur le type sélectionné
-    const selectedType = hingeTypes.find(t => t.id === newHinges.type);
-    if (selectedType) {
-      newHinges.price = selectedType.price * newHinges.count;
-    }
     
     // Supprimer les anciens trous de charnières
     config.drillings
@@ -606,7 +587,13 @@ function HingesPanel({
     
     // Ajouter les nouveaux trous si le type nécessite des trous
     if (newHinges.type !== 'no-hole-no-hinge') {
-      const holes = generateHingeHoles(newHinges.count, newHinges.direction, config.height, pricingSettings.hinge_edge_margin, pricingSettings.hinge_hole_diameter);
+      const holes = generateHingeHoles(
+        newHinges.count,
+        newHinges.direction,
+        config.height,
+        settings.hingeEdgeMargin ?? DEFAULT_HINGE_EDGE_MARGIN_MM,
+        settings.hingeHoleDiameter ?? DEFAULT_HINGE_HOLE_DIAMETER_MM,
+      );
       holes.forEach((pos, index) => {
         const drilling: FacadeDrilling = {
           id: `hinge-${index}-${Date.now()}`,
@@ -648,9 +635,9 @@ function HingesPanel({
                   <p className="text-sm font-medium text-black">
                     {type.label}
                   </p>
-                  <p className="text-xs text-black/70 mt-1">
-                    Prix unit. {formatPrice(Number(type.price))} TTC
-                  </p>
+                  {hingePriceLabel(type.id) && (
+                    <p className="text-xs text-black/70 mt-1">{hingePriceLabel(type.id)}</p>
+                  )}
                 </div>
               </div>
               {config.hinges.type === type.id && (
@@ -900,19 +887,18 @@ function DrillingPanel({
 // Composant pour le récapitulatif
 function SummaryPanel({
   config,
-  pricingSettings,
+  settings,
   quantity,
   onQuantityChange,
 }: {
   config: FacadeConfig;
-  pricingSettings: {
-    material_price_per_m2: number;
-  };
+  settings: FacadeSettings;
   quantity: number;
   onQuantityChange: (qty: number) => void;
 }) {
   const surfaceM2 = (config.width / 1000) * (config.height / 1000);
-  const pricePerM2 = Number(config.material.price_per_m2) || pricingSettings.material_price_per_m2;
+  // Prix au m² de la matière, sinon celui par défaut de l'admin (comme le serveur) ; null : pas de prix affiché
+  const pricePerM2 = facadePricePerM2(config.material, settings);
 
   const getHingeTypeLabel = (type: string) => {
     switch (type) {
@@ -1028,7 +1014,7 @@ function SummaryPanel({
           />
           <div>
             <p className="text-sm font-medium text-black">{displayColorName(config.material.name)}</p>
-            <p className="text-xs text-black/70">{formatPrice(pricePerM2)}/m²</p>
+            {pricePerM2 !== null && <p className="text-xs text-black/70">{formatPrice(pricePerM2)}/m²</p>}
           </div>
         </div>
       </div>

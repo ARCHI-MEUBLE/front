@@ -41,7 +41,8 @@ import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
-import { fetchPriceEstimate, formatPriceRange, type PriceEstimate } from '@/lib/pricing';
+import { fetchPriceEstimate, formatPriceRange, savedQuoteFrom, type PriceEstimate } from '@/lib/pricing';
+import { formatPrice } from '@/lib/format';
 import ShareButton from '@/components/configurator/ShareButton';
 import ProjectRequestDialog from '@/components/configurator/ProjectRequestDialog';
 import {
@@ -81,9 +82,20 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   DEFAULT_COLOR_HEX,
   DEFAULT_COLOR_NAME,
-  HANDLE_TYPE_CODE,
   normalizeMaterialKey,
 } from '@/lib/configurator/materials';
+import {
+  DEFAULT_HANDLE_DEFAULTS,
+  handleFacadeKind,
+  listHandleFacades,
+  parseHandleDefaults,
+  summarizeHandles,
+  type HandleDefaults,
+  type HandleModel,
+} from '@/lib/configurator/handles';
+import { leafHandleFromPrompt, matchGroupDoor, zoneFacadeCodes } from '@/lib/configurator/promptHandles';
+import { handleModelsApi } from '@/lib/handleModelsApi';
+import HandleSelector from '@/components/configurator/HandleSelector';
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
@@ -268,11 +280,11 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     fetchCategories();
   }, [isAdminCreateModel]);
 
+  // Pas de prix dans le formulaire : le backend calcule celui du modèle depuis sa configuration
   const [modelForm, setModelForm] = useState({
     name: '',
     description: '',
     category: 'dressing',
-    price: 890,
     imageUrl: ''
   });
 
@@ -381,13 +393,13 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
-  const price = priceEstimate?.price ?? 0;
-
-  useEffect(() => {
-    if (isCreateModelDialogOpen && price > 0) {
-      setModelForm(prev => ({ ...prev, price: Math.round(price) }));
-    }
-  }, [isCreateModelDialogOpen, price]);
+  // Message du backend quand le prix ne peut pas être calculé : on affiche « Prix indisponible », jamais l'ancien prix
+  const [priceError, setPriceError] = useState<string | null>(null);
+  // Modèles de poignées de l'admin, et le choix pour tout le meuble (config_data.handles). Le choix d'une porte ou
+  // d'un tiroir vit dans sa zone (handleModelId, handleOrientation).
+  const [handleModels, setHandleModels] = useState<HandleModel[]>([]);
+  const [handleModelsLoading, setHandleModelsLoading] = useState(true);
+  const [handleDefaults, setHandleDefaults] = useState<HandleDefaults>(DEFAULT_HANDLE_DEFAULTS);
 
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
@@ -708,19 +720,6 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     notifyRemovedFacades(removed);
   }, [rootZone]);
 
-  const setZoneHandleType = useCallback((zoneId: string, handleType: 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed') => {
-    const updateZone = (z: Zone): Zone => {
-      if (z.id === zoneId) {
-        return { ...z, handleType };
-      }
-      if (z.children) {
-        return { ...z, children: z.children.map(updateZone) };
-      }
-      return z;
-    };
-    setRootZone(updateZone(rootZone));
-  }, [rootZone]);
-
   const setZoneColor = useCallback((zoneId: string, zoneColor: ZoneColor) => {
     const updateZone = (z: Zone): Zone => {
       if (z.id === zoneId) {
@@ -796,7 +795,10 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     doorSide,
     mountingStyle,
     deletedPanelIds,
-  }), [width, height, depth, color, selectedColorImage, socle, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds]);
+    // Poignées : dans configKey aussi, un autre modèle ou sens de pose refait l'export
+    handleModels,
+    handleDefaults,
+  }), [width, height, depth, color, selectedColorImage, socle, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds, handleModels, handleDefaults]);
   const arConfigKey = useMemo(
     () => JSON.stringify({ ...arFurniture, deletedPanelIds: Array.from(deletedPanelIds) }),
     [arFurniture, deletedPanelIds]
@@ -885,7 +887,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         }
       }
     } else if (step === STEP.FINISHES) {
-      if (!(selectedZoneIds.length === 1 && selectedZone?.type === 'leaf')) {
+      // Une seule zone choisie reste choisie : un compartiment, ou une porte de groupe dont on règle la poignée
+      const keepSelection =
+        selectedZoneIds.length === 1 &&
+        !!selectedZone &&
+        (selectedZone.type === 'leaf' || handleFacadeKind(selectedZone) !== null);
+      if (!keepSelection) {
         const leafId = firstLeafId(selectedZone ?? rootZone);
         if (leafId) {
           setSelectedZoneIds([leafId]);
@@ -930,6 +937,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
+  // Section « Poignées » de l'étape Finitions : seulement s'il y a une porte ou un tiroir à poignée
+  const hasHandleFacades = useMemo(() => listHandleFacades(rootZone).length > 0, [rootZone]);
+  const handlesSummary = useMemo(
+    () => summarizeHandles(rootZone, handleModels, handleDefaults),
+    [rootZone, handleModels, handleDefaults]
+  );
 
   // Une porte ou un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
   const facadeCount = zoneStats.drawers + zoneStats.doors;
@@ -1122,7 +1135,9 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     : colorsForMaterial.find((option) => option.id === componentColors.doors.colorId)?.name || 'Personnalisée';
 
   // Prix : estimé par le backend, qui refait le même calcul à l'enregistrement. Un quart de seconde après le dernier
-  // changement ; la requête précédente est annulée pour qu'une réponse lente n'écrase pas une plus récente.
+  // changement ; la requête précédente est annulée pour qu'une réponse lente n'écrase pas une plus récente. On envoie
+  // tout ce que config_data enregistre et qui compte dans le prix : la couleur de chaque partie (chaque partie est
+  // comptée au prix de sa matière), le montage, les panneaux retirés. En cas d'échec, le prix précédent est effacé.
   useEffect(() => {
     if (!initialConfigApplied) return;
     const controller = new AbortController();
@@ -1130,22 +1145,42 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       fetchPriceEstimate(
         {
           dimensions: { width, height, depth },
-          styling: { materialKey: selectedMaterialKey, finish, socle },
-          features: { doorType },
+          styling: { materialKey: selectedMaterialKey, finish, socle, colorId: selectedColorId },
+          features: { doorType, mountingStyle },
           advancedZones: rootZone,
+          handles: handleDefaults,
+          useMultiColor,
+          componentColors,
+          deletedPanelIds: Array.from(deletedPanelIds),
         },
         controller.signal,
       )
-        .then(setPriceEstimate)
+        .then((estimate) => {
+          setPriceEstimate(estimate);
+          setPriceError(null);
+        })
         .catch((error) => {
-          if (!controller.signal.aborted) console.warn('Estimation du prix impossible :', error instanceof Error ? error.message : error);
+          if (controller.signal.aborted) return;
+          setPriceEstimate(null);
+          setPriceError(error instanceof Error ? error.message : 'Estimation du prix impossible');
         });
     }, 250);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [initialConfigApplied, width, height, depth, selectedMaterialKey, finish, socle, doorType, rootZone]);
+  }, [initialConfigApplied, width, height, depth, selectedMaterialKey, finish, socle, selectedColorId, doorType, mountingStyle, rootZone, handleDefaults, useMultiColor, componentColors, deletedPanelIds]);
+
+  // Devis de la configuration ouverte (prix enregistré, éventuellement ajusté par l'atelier) : c'est lui qui est payé
+  const savedQuote = useMemo(() => (editingConfiguration ? savedQuoteFrom(editingConfiguration) : null), [editingConfiguration]);
+
+  // Prix à joindre à une demande ou à un enregistrement : jamais un ancien prix. null si le calcul a échoué ou n'est
+  // pas encore arrivé, avec le message à montrer au client.
+  const currentPriceOrReason = (): { price: number } | { reason: string } => {
+    if (priceError) return { reason: `Le prix de ce meuble ne peut pas être calculé : ${priceError}` };
+    if (!priceEstimate) return { reason: 'Le prix est en cours de calcul, réessayez dans un instant.' };
+    return { price: priceEstimate.price };
+  };
 
   useEffect(() => {
     if (!id || loading || isViewMode || !initialConfigApplied || showRestoreDialog) return;
@@ -1169,6 +1204,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       doorsOpen,
       showDecorations,
       deletedPanelIds: Array.from(deletedPanelIds),
+      handles: handleDefaults,
       timestamp: Date.now(),
     };
 
@@ -1177,7 +1213,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds, handleDefaults]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1195,6 +1231,31 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     loadMaterials();
     return () => { cancelled = true; };
   }, []);
+
+  // Modèles de poignées : sans eux, l'étape Finitions le dit et la vue 3D garde sa poignée par défaut
+  useEffect(() => {
+    let cancelled = false;
+    handleModelsApi
+      .listPublic()
+      .then((models) => {
+        if (!cancelled) setHandleModels(models);
+      })
+      .catch((error) => {
+        console.warn('Impossible de récupérer les modèles de poignées', error);
+        if (!cancelled) setHandleModels([]);
+      })
+      .finally(() => {
+        if (!cancelled) setHandleModelsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Modèle du meuble absent (nouvelle configuration) ou retiré par l'admin : le premier modèle proposé
+  useEffect(() => {
+    if (handleModels.length === 0) return;
+    if (handleDefaults.modelId !== null && handleModels.some((model) => model.id === handleDefaults.modelId)) return;
+    setHandleDefaults((prev) => ({ ...prev, modelId: handleModels[0].id }));
+  }, [handleModels, handleDefaults.modelId]);
 
   useEffect(() => {
     const materialKeys = Object.keys(materialsMap);
@@ -1270,16 +1331,17 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     const parseZones = (str: string, idPrefix: string): Zone => {
       const hMatch = str.match(/^H(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
       const vMatch = str.match(/^V(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
-      const gMatch = str.match(/^(G|P|P2|Pm|Po|Pd|Pg)(?:\[([^\]]+)\])?\((.*)\)$/);
-      
+      // Porte de groupe, avec son chiffre de poignée éventuel (« Pg1( », « P21( ») ; « P2( » reste une double porte
+      const gMatch = matchGroupDoor(str);
+
       if (hMatch || vMatch || gMatch) {
         const isH = !!hMatch;
         const isV = !!vMatch;
         const isG = !!gMatch && !isH && !isV;
-        
-        const match = hMatch || vMatch || gMatch;
-        const ratiosStr = match![1] && (isH || isV) ? match![1] : (isG ? match![2] : undefined);
-        const inner = isG ? match![3] : match![3];
+
+        const match = hMatch || vMatch;
+        const ratiosStr = isH || isV ? match![1] : gMatch!.ratios;
+        const inner = isH || isV ? match![3] : gMatch!.inner;
         
         const parts: string[] = [];
         let current = '';
@@ -1314,14 +1376,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         return {
           id: idPrefix,
           type: detectedType,
-          doorContent: isG ? (
-            str.startsWith('P2') ? 'door_double' : 
-            str.startsWith('Pm') ? 'mirror_door' :
-            str.startsWith('Po') ? 'push_door' :
-            str.startsWith('Pd') ? 'door_right' : 
-            (str.startsWith('P') || str.startsWith('Pg')) ? 'door' : 
-            undefined
-          ) : undefined,
+          doorContent: isG ? gMatch!.doorContent : undefined,
+          ...(isG ? gMatch!.handle : {}),
           children: orderedParts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
           splitRatio: (orderedRatios && orderedRatios.length === 2) ? orderedRatios[0] : undefined,
           splitRatios: (orderedRatios && orderedRatios.length > 2) ? orderedRatios : undefined,
@@ -1343,11 +1399,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
           str.includes('p') ? 'pegboard' :
           'empty'
         ) as ZoneContent,
-        handleType: (() => {
-          const m = str.match(/(?:T|Pg|Pd|P2|Pm)(\d)/);
-          if (!m) return undefined;
-          return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
-        })(),
+        // Chiffre de poignée : un sens de pose (le modèle reste celui du meuble), ou l'ancien bouton / encastrée
+        ...leafHandleFromPrompt(str),
       };
     };
 
@@ -1446,7 +1499,6 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
             name: modelData.name || '',
             description: modelData.description || '',
             category: modelData.category || 'dressing',
-            price: modelData.price || 890,
             imageUrl: modelData.image_url || ''
           });
         }
@@ -1639,6 +1691,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
         if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
+        if (configToRestore.handleDefaults) setHandleDefaults(configToRestore.handleDefaults);
         setInitialConfigApplied(true);
       } else {
         let restoreFound = false;
@@ -1735,7 +1788,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
     if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
     if (c.deletedPanelIds) setDeletedPanelIds(new Set(c.deletedPanelIds));
-    
+    if (c.handles) setHandleDefaults(parseHandleDefaults(c.handles));
+
     setTimeout(() => {
       setInitialConfigApplied(true);
       setShowRestoreDialog(false);
@@ -1752,46 +1806,11 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   };
 
   const buildPromptFromZoneTree = useCallback((zone: Zone, currentPath: string = ''): string => {
-    let doorCode = '';
-    const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
-
-    if (currentDoor) {
-      switch (currentDoor) {
-        case 'door': doorCode = zone.id === 'root' ? '' : 'Pg'; break;
-        case 'door_right': doorCode = 'Pd'; break;
-        case 'door_double': doorCode = 'P2'; break;
-        // Le format n'a pas de côté pour les portes vitrées et Push : la porte est transmise sans son sens d'ouverture
-        case 'mirror_door':
-        case 'mirror_door_right': doorCode = 'Pm'; break;
-        case 'push_door':
-        case 'push_door_right': doorCode = 'Po'; break;
-      }
-      
-      if (doorCode && ['door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right'].includes(currentDoor)) {
-        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
-        if (hCode) doorCode += hCode;
-      }
-    }
+    // Code de la porte (Pg, Pd, P2, Pm, Po) et du contenu (T, To, D), chiffre de poignée compris
+    const { door: doorCode, leaf: leafChar } = zoneFacadeCodes(zone, handleModels, handleDefaults);
 
     if (zone.type === 'leaf') {
-      let leafChar = '';
-      switch (zone.content) {
-        case 'drawer': leafChar = 'T'; break;
-        case 'push_drawer': leafChar = 'To'; break;
-        case 'dressing': leafChar = 'D'; break;
-        case 'shelf': leafChar = ''; break;
-        default: leafChar = '';
-      }
-
-      if (zone.content === 'drawer') {
-        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
-        if (hCode) leafChar += hCode;
-      }
-
-      let finalLeaf = leafChar;
-      if (doorCode) {
-        finalLeaf = doorCode + leafChar;
-      }
+      let finalLeaf = doorCode + leafChar;
 
       if (zone.hasCableHole) {
         finalLeaf += 'c';
@@ -1858,7 +1877,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     }
 
     return zoneCode;
-  }, [deletedPanelIds]);
+  }, [deletedPanelIds, handleModels, handleDefaults]);
 
   const generateModel = useCallback(async (prompt: string) => {
     setGenerating(true);
@@ -2021,16 +2040,19 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         },
         features: { doorsOpen, doorType, doorSide, mountingStyle },
         advancedZones: JSON.parse(JSON.stringify(rootZone)),
+        handles: handleDefaults,
         useMultiColor,
         componentColors,
+        // Comme buildConfigPayload : le prix du modèle, calculé par le backend, suit les panneaux retirés
+        deletedPanelIds: Array.from(deletedPanelIds),
       };
 
+      // Sans prix : le backend estime celui du modèle depuis config_data, et le recalcule à chaque affichage
       const payload = {
         name: modelForm.name,
         description: modelForm.description,
         prompt: fullPrompt,
         category: modelForm.category,
-        price: modelForm.price,
         image_url: finalImageUrl || '/images/accueil image/meubletv.jpg',
         config_data: currentConfigData,
       };
@@ -2111,6 +2133,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       },
       features: { doorsOpen, doorType, doorSide, mountingStyle },
       advancedZones: rootZone,
+      // Poignée du meuble ; celle d'une porte ou d'un tiroir est dans sa zone
+      handles: handleDefaults,
       useMultiColor,
       componentColors,
       deletedPanelIds: Array.from(deletedPanelIds),
@@ -2135,11 +2159,24 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       return;
     }
     if (reportZoneIssues()) return;
+    // Un meuble que le backend ne sait pas chiffrer ne peut pas partir en demande avec un prix faux ou ancien
+    const pricing = currentPriceOrReason();
+    if ('reason' in pricing) {
+      toast.error(pricing.reason);
+      return;
+    }
     setShowRequestDialog(true);
   };
 
   const saveConfiguration = async () => {
     if (reportZoneIssues()) return;
+    // Le backend recalcule le prix à l'enregistrement ; on n'envoie jamais un ancien prix
+    const pricing = currentPriceOrReason();
+    if ('reason' in pricing) {
+      setErrorMessage(pricing.reason);
+      setShowErrorModal(true);
+      return;
+    }
 
     const isAdminEditingConfig = isEditMode && editingConfigId;
 
@@ -2167,7 +2204,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         config_data: configData,
         glb_url: glbUrl,
         dxf_url: dxfUrl,
-        price,
+        price: pricing.price,
         thumbnail_url: glbUrl,
         status: isAdmin ? (editingConfiguration?.status || 'en_attente_validation') : 'en_attente_validation',
       };
@@ -2312,7 +2349,6 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     onGroupZones: groupZones,
     onSetZoneContent: setZoneContent,
     onSetDoorContent: setZoneDoorContent,
-    onSetHandleType: setZoneHandleType,
     onDeleteSection: deleteSection,
     width,
     height,
@@ -2370,22 +2406,19 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="price">Prix calculé (€)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="price"
-                  type="number"
-                  value={modelForm.price}
-                  readOnly
-                  className="bg-am-mist/15 font-semibold"
-                />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  Auto-calculé
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground italic">
-                Ce prix est calculé automatiquement selon les dimensions et options choisies.
+            <div className="grid gap-1">
+              <span className="text-sm font-medium">Prix estimé du modèle</span>
+              <p className={`text-lg font-semibold ${priceError ? 'text-am-wine' : ''}`}>
+                {priceError
+                  ? 'Prix indisponible'
+                  : priceEstimate
+                    ? `${formatPrice(priceEstimate.price)} (${formatPriceRange(priceEstimate)})`
+                    : '…'}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {priceError
+                  ? priceError
+                  : 'Calculé par le serveur avec la grille de prix actuelle, puis recalculé à chaque affichage du modèle : rien à saisir. Livraison en plus.'}
               </p>
             </div>
             <div className="grid gap-2">
@@ -2560,6 +2593,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                     deletedPanelIds={deletedPanelIds}
                     // Poignées de glissement des planches : à l'étape Division seulement
                     onResizeDivider={!isViewMode && activeStep === STEP.DIVISION ? handleDividerResize : undefined}
+                    handleModels={handleModels}
+                    handleDefaults={handleDefaults}
                   />
                 )}
                 <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
@@ -2853,12 +2888,16 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                 socle={socle}
                 rootZone={rootZone}
                 priceEstimate={priceEstimate}
+                priceError={priceError}
+                savedQuote={savedQuote}
                 modelName={model?.name}
                 isAdmin={isAdmin}
                 onEdit={handleAdminEdit}
                 mountingStyle={mountingStyle}
                 isOwner={isConfigOwner}
                 onEditOwn={handleOwnerEdit}
+                handleModels={handleModels}
+                handleDefaults={handleDefaults}
               />
             ) : (
               <>
@@ -2944,7 +2983,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                           <MountingStyleSelector value={mountingStyle} onChange={setMountingStyle} />
                         </StepSection>
 
-                        <StepSection title="Portes, tiroirs & poignées" aside="Pour le compartiment sélectionné">
+                        <StepSection title="Portes & tiroirs" aside="Pour le compartiment sélectionné">
                           {selectedZoneIds.length === 0 ? (
                             <ZoneEmptyState>
                               Cliquez sur un compartiment du meuble pour lui poser une porte ou un tiroir.
@@ -2953,7 +2992,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                             <ZoneEditor
                               {...zoneEditorProps}
                               hideDimensions
-                              controlSections={['facades', 'storage', 'handles']}
+                              controlSections={['facades', 'storage']}
                             />
                           )}
                           <p className="text-[11px] leading-relaxed text-black/65">
@@ -3025,6 +3064,20 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                           <SocleSelector value={socle} onChange={setSocle} />
                         </StepSection>
 
+                        {hasHandleFacades && (
+                          <StepSection title="Poignées" aside="Tout le meuble ou une façade">
+                            <HandleSelector
+                              rootZone={rootZone}
+                              selectedZone={selectedZoneIds.length === 1 ? selectedZone : null}
+                              models={handleModels}
+                              loading={handleModelsLoading}
+                              defaults={handleDefaults}
+                              onDefaultsChange={setHandleDefaults}
+                              onRootZoneChange={setRootZone}
+                            />
+                          </StepSection>
+                        )}
+
                         <StepSection title="Accessoires" aside="Pour le compartiment sélectionné">
                           {selectedZoneIds.length === 0 ? (
                             <ZoneEmptyState>
@@ -3052,6 +3105,9 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                             mountingStyle={mountingStyle}
                             socle={socle}
                             stats={zoneStats}
+                            handles={handlesSummary}
+                            estimate={priceEstimate}
+                            priceError={priceError}
                           />
                         </StepSection>
 
@@ -3093,6 +3149,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                 <div className="hidden flex-shrink-0 border-t border-black/10 bg-am-paper px-6 py-4 lg:block">
                   <PriceDisplay
                     estimate={priceEstimate}
+                    error={priceError}
+                    savedQuote={isEditMode ? savedQuote : null}
                     onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : validateConfiguration}
                     isAdmin={isAdmin}
                     isAdminCreateModel={isAdminCreateModel}
@@ -3109,9 +3167,19 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0">
                 <span className="eyebrow text-black/65">Prix estimé</span>
-                <div className="text-xl font-medium tracking-[-0.03em] text-black">
-                  {priceEstimate ? formatPriceRange(priceEstimate) : '…'}
-                </div>
+                {priceError ? (
+                  <div className="text-lg font-medium tracking-[-0.03em] text-am-wine">Prix indisponible</div>
+                ) : (
+                  <>
+                    <div className="text-xl font-medium tracking-[-0.03em] text-black">
+                      {priceEstimate ? formatPriceRange(priceEstimate) : '…'}
+                    </div>
+                    {/* La livraison n'est pas dans le prix du meuble : elle s'ajoute au panier */}
+                    {priceEstimate && priceEstimate.delivery !== null && priceEstimate.delivery > 0 && (
+                      <p className="text-[11px] text-black/65">+ livraison {formatPrice(priceEstimate.delivery)}</p>
+                    )}
+                  </>
+                )}
               </div>
               {(!isAdminCreateModel && !isAdminEditModel) ? (
                 <button
@@ -3179,7 +3247,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         open={showRequestDialog}
         onOpenChange={setShowRequestDialog}
         getShare={shareCurrentConfiguration}
-        price={price}
+        price={priceError ? null : priceEstimate?.price ?? null}
+        unavailableReason={priceError}
       />
 
       {showModelCreatedModal && (
@@ -3219,7 +3288,6 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                           name: '',
                           description: '',
                           category: 'dressing',
-                          price: 890,
                           imageUrl: ''
                         });
                         resetConfiguration();

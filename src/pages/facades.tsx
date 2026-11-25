@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { HOME_SECTION_NO_TOP } from '@/components/home/homeLayout';
 import FacadeControls from '@/components/facades/FacadeControls';
+import { useFacadeSettings } from '@/components/facades/facadePricing';
 import { FacadeConfig, FacadeDrilling, FacadeMaterial } from '@/types/facade';
 import type { FacadeViewerHandle } from '@/components/facades/FacadeViewer';
 
@@ -25,8 +26,11 @@ export default function FacadesPage() {
   const viewerRef = useRef<FacadeViewerHandle>(null);
   const [materials, setMaterials] = useState<FacadeMaterial[]>([]);
   const [loading, setLoading] = useState(true);
+  // Réglages publics de l'admin : prix des charnières, majoration, prix au m² par défaut, dimensions, épaisseur
+  const { settings: facadeSettings } = useFacadeSettings();
 
-  // Configuration par défaut
+  // Configuration par défaut. Matériau provisoire sans prix (remplacé par le premier matériau de l'admin) : s'il n'y
+  // en a aucun, le prix au m² par défaut des réglages s'applique, comme côté serveur.
   const [config, setConfig] = useState<FacadeConfig>({
     width: 600,
     height: 800,
@@ -37,17 +41,22 @@ export default function FacadesPage() {
       color_hex: '#D8C7A1',
       texture_url: '',
       price_modifier: 0,
-      price_per_m2: 150,
+      price_per_m2: 0,
       is_active: true,
     },
     hinges: {
       type: 'no-hole-no-hinge',
       count: 3,
       direction: 'right',
-      price: 0,
     },
     drillings: [],
   });
+
+  // Épaisseur fixe réglée dans l'admin
+  const fixedDepth = facadeSettings.fixedDepth;
+  useEffect(() => {
+    if (fixedDepth && fixedDepth > 0) setConfig((prev) => ({ ...prev, depth: fixedDepth }));
+  }, [fixedDepth]);
 
   // Charger les matériaux depuis l'API
   useEffect(() => {
@@ -138,6 +147,7 @@ export default function FacadesPage() {
               <FacadeControls
                 config={config}
                 materials={materials}
+                settings={facadeSettings}
                 onUpdateConfig={handleUpdateConfig}
                 onAddDrilling={handleAddDrilling}
                 onRemoveDrilling={handleRemoveDrilling}

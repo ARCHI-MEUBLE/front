@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
 import ZoneControls, { SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
-import { Zone, ZoneContent, HandleType } from './types';
+import { Zone, ZoneContent } from './types';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { selectionSizeMm } from '@/lib/configurator/zoneSelection';
 import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
@@ -45,7 +45,6 @@ interface ZoneEditorProps {
   onToggleDressing?: (zoneId: string) => void;
   onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
-  onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   onDeleteSection?: (zoneId: string) => void;
   isAdminCreateModel?: boolean;
   exposeActions?: (actions: {
@@ -83,7 +82,6 @@ export default function ZoneEditor({
   onToggleDressing,
   onApplyNoBack,
   onGroupZones,
-  onSetHandleType,
   onSetZoneContent,
   onSetDoorContent,
   onDeleteSection,
@@ -394,27 +392,6 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onToggleDressing]
   );
 
-  // Définir le type de poignée
-  const setHandleType = useCallback(
-    (zoneId: string, handleType: HandleType) => {
-      if (onSetHandleType) {
-        onSetHandleType(zoneId, handleType);
-      } else {
-        const updateZone = (z: Zone): Zone => {
-          if (z.id === zoneId) {
-            return { ...z, handleType };
-          }
-          if (z.children) {
-            return { ...z, children: z.children.map(updateZone) };
-          }
-          return z;
-        };
-        onRootZoneChange(updateZone(rootZone));
-      }
-    },
-    [rootZone, onRootZoneChange, onSetHandleType]
-  );
-
   // Réinitialiser une zone
   const resetZone = useCallback(
     (zoneId: string) => {
@@ -723,7 +700,6 @@ export default function ZoneEditor({
             onToggleDressing={onToggleDressing || toggleDressing}
             onApplyNoBack={onApplyNoBack || applyNoBack}
             onGroupZones={groupZones}
-            onSetHandleType={onSetHandleType || setHandleType}
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}
             depthMm={depth}

@@ -1,240 +1,194 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Composant DashboardPricingConfig
+ * « Prix & livraison » : la grille du prix des meubles sur mesure (pricing_config), rangée en onglets lisibles par un
+ * commerçant, les prix au m² des matières, la livraison et l'acompte par défaut. Une simulation à droite montre l'effet
+ * de chaque modification sur des meubles de référence.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { IconEdit, IconRefresh, IconCheck } from '@tabler/icons-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { ArrowRight, Info, Loader2, RefreshCw } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-
-interface PricingParam {
-  id: number;
-  category: string;
-  item_type: string;
-  param_name: string;
-  param_value: number;
-  unit: string;
-  description: string;
-  is_active: number;
-}
-
-// Grille lue par le calcul du backend (FurniturePriceCalculator), dans l'ordre où le prix se construit
-const CATEGORIES: { key: string; label: string; formula: string }[] = [
-  { key: 'workshop', label: 'Atelier', formula: 'Forfait fixe par meuble : conception, découpe, assemblage, finitions.' },
-  {
-    key: 'materials',
-    label: 'Matières',
-    formula: 'Panneaux = surface (2 côtés + dessus + dessous + fond × part du fond + étagères + montants) × prix au m² de la matière.',
-  },
-  { key: 'panels', label: 'Panneaux', formula: 'Le fond, plus fin, ne compte que pour une part de son prix au m².' },
-  {
-    key: 'fronts',
-    label: 'Portes et tiroirs',
-    formula: 'Façade = forfait (charnières ou coulisses) + surface × prix au m² de la matière × majoration façade. Une double porte compte deux forfaits.',
-  },
-  { key: 'handles', label: 'Poignées', formula: 'Une poignée par battant ou par tiroir, sauf en push (supplément push à la place).' },
-  { key: 'options', label: 'Options', formula: 'Penderie et LED au mètre de largeur de la case, passe-câble à l’unité.' },
-  { key: 'bases', label: 'Socles', formula: 'Pieds métal : une paire par écart maximal, deux paires au moins. Socle bois : au mètre de largeur.' },
-  { key: 'delivery', label: 'Livraison', formula: 'Au m² de façade du meuble (largeur × hauteur) : les grands meubles coûtent plus à livrer.' },
-  {
-    key: 'uncertainty',
-    label: 'Fourchette',
-    formula:
-      'Chaque poste a une incertitude relative. Écart type = √(Σ (montant du poste × incertitude)²). Le client voit prix ± écart type, arrondi à 10 €.',
-  },
-];
-
-const UNIT_LABELS: Record<string, string> = {
-  eur: '€',
-  eur_m2: '€/m²',
-  eur_linear_m: '€/m',
-  coefficient: 'coef.',
-  ratio: '',
-  mm: 'mm',
-};
-
-const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
-
-function formatValue(value: number, unit: string): string {
-  if (unit === 'eur') return euro.format(value);
-  if (unit === 'eur_m2' || unit === 'eur_linear_m') return `${euro.format(value)}${UNIT_LABELS[unit].slice(1)}`;
-  if (unit === 'ratio') return `${(value * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`;
-  if (unit === 'coefficient') return `× ${value.toLocaleString('fr-FR')}`;
-  return `${value.toLocaleString('fr-FR')} ${UNIT_LABELS[unit] ?? unit}`.trim();
-}
+import { pricingAdminApi, pricingErrorMessage, type PricingParam } from '@/lib/pricingAdminApi';
+import { GRID_TABS, OTHER_TAB, sortParams, tabForCategory, type GridTab, type GridTabKey } from './pricing/gridTabs';
+import { formatParamValue } from './pricing/gridUnits';
+import { goToSection } from './pricing/goToSection';
+import { MaterialPricesPanel } from './pricing/MaterialPricesPanel';
+import { ParamRow } from './pricing/ParamRow';
+import { PricingSimulation } from './pricing/PricingSimulation';
 
 export function DashboardPricingConfig() {
-  const [allParams, setAllParams] = useState<PricingParam[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingParam, setEditingParam] = useState<PricingParam | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [params, setParams] = useState<PricingParam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<GridTabKey>('workshop');
+  // Incrémenté après chaque modification enregistrée : la simulation se recalcule
+  const [version, setVersion] = useState(0);
 
-  useEffect(() => {
-    loadAllParams();
+  // silent : rechargement après une modification, sans remplacer la page par le chargement
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
+    try {
+      setParams(await pricingAdminApi.grid());
+      setError(null);
+    } catch (err) {
+      if (silent) toast.error(pricingErrorMessage(err, 'Grille non rechargée'));
+      else setError(pricingErrorMessage(err, 'Grille des prix indisponible'));
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
 
-  const loadAllParams = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/backend/api/pricing-config/index.php');
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error || 'Erreur lors du chargement');
-      setAllParams(data.data.map((param: PricingParam) => ({ ...param, param_value: Number(param.param_value) })));
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors du chargement des paramètres');
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const byTab = useMemo(() => {
+    const groups = new Map<GridTabKey, PricingParam[]>();
+    for (const param of params) {
+      const key = tabForCategory(param.category);
+      groups.set(key, [...(groups.get(key) ?? []), param]);
     }
-  };
+    return groups;
+  }, [params]);
 
-  const handleEdit = (param: PricingParam) => {
-    setEditingParam(param);
-    setEditValue(param.param_value.toString());
-  };
+  // L'onglet « Autres » n'apparaît que s'il contient quelque chose
+  const tabs: GridTab[] = (byTab.get('other')?.length ?? 0) > 0 ? [...GRID_TABS, OTHER_TAB] : GRID_TABS;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingParam) return;
-
-    const value = parseFloat(editValue);
-    if (isNaN(value) || value < 0) {
-      toast.error('La valeur doit être un nombre positif');
-      return;
-    }
-
-    try {
-      const response = await fetch('/backend/api/pricing-config/index.php', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingParam.id, param_value: value }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde');
-      toast.success('Paramètre mis à jour');
-      setEditingParam(null);
-      loadAllParams();
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la sauvegarde');
-    }
+  // Erreur remontée au champ (message en ligne) : pas de toast d'erreur ici
+  const saveParam = async (param: PricingParam, value: number) => {
+    await pricingAdminApi.updateParam(param.id, value);
+    const saved = { ...param, param_value: value };
+    toast.success(`${param.description ?? 'Paramètre'} : ${formatParamValue(saved)}`);
+    setParams((prev) => prev.map((p) => (p.id === param.id ? saved : p)));
+    setVersion((v) => v + 1);
+    await load(true);
   };
 
   return (
     <div className="px-4 lg:px-6 space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-xl font-semibold tracking-tight">Gestion des prix</h3>
-          <p className="text-sm text-muted-foreground">
-            Grille du prix estimé des meubles du configurateur. Le client voit une fourchette : prix ± écart type.
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h3 className="text-xl font-semibold tracking-tight">Prix & livraison</h3>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            Tous les prix sont TTC. Les devis déjà enregistrés gardent leur prix : vos changements s&apos;appliquent aux
+            nouvelles estimations du configurateur et aux nouveaux paniers. Chaque valeur s&apos;enregistre seule
+            (Entrée ou ✓).
           </p>
         </div>
-        <Button onClick={loadAllParams} variant="outline" className="flex-1 sm:flex-none">
-          <IconRefresh className="w-4 h-4 mr-2" />
+        <Button onClick={() => load()} variant="outline" className="shrink-0" disabled={loading}>
+          <RefreshCw className={loading ? 'animate-spin' : undefined} />
           Actualiser
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <IconRefresh className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <Tabs defaultValue={CATEGORIES[0].key} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-8 h-auto bg-muted/50 p-2">
-                {CATEGORIES.map((category) => (
-                  <TabsTrigger
-                    key={category.key}
-                    value={category.key}
-                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium"
-                  >
-                    {category.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Card className="min-w-0">
+          <CardContent>
+            {loading ? (
+              <div className="flex h-[320px] items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Chargement de la grille...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="space-y-3 py-6" role="alert">
+                <p className="font-medium text-destructive">Grille des prix indisponible</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
+                <Button variant="outline" onClick={() => load()}>
+                  Réessayer
+                </Button>
+              </div>
+            ) : (
+              <Tabs value={tab} onValueChange={(value) => setTab(value as GridTabKey)} className="w-full">
+                <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/50 p-1.5">
+                  {tabs.map((t) => (
+                    <TabsTrigger
+                      key={t.key}
+                      value={t.key}
+                      className="flex-none px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    >
+                      {t.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-              {CATEGORIES.map((category) => (
-                <TabsContent key={category.key} value={category.key} className="space-y-6">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Paramètre</TableHead>
-                        <TableHead className="text-right">Valeur</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {allParams
-                        .filter((param) => param.category === category.key)
-                        .map((param) => (
-                          <TableRow key={param.id}>
-                            <TableCell>
-                              <div className="font-medium">{param.description || param.param_name}</div>
-                              <div className="font-mono text-xs text-muted-foreground">
-                                {param.item_type}.{param.param_name}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right whitespace-nowrap">{formatValue(param.param_value, param.unit)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button onClick={() => handleEdit(param)} variant="ghost" size="sm" aria-label="Modifier">
-                                <IconEdit className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <h5 className="text-sm font-semibold mb-1">Calcul</h5>
-                    <p className="text-xs text-muted-foreground">{category.formula}</p>
-                  </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-          )}
+                {tabs.map((t) => {
+                  const tabParams = sortParams(byTab.get(t.key) ?? [], t);
+                  return (
+                    <TabsContent key={t.key} value={t.key} className="space-y-4">
+                      <div className="flex gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+                        <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                        <p className="text-muted-foreground">{t.intro}</p>
+                      </div>
+
+                      {t.key === 'handles' && (
+                        <Button variant="outline" size="sm" onClick={() => goToSection('handles')}>
+                          Régler le prix des modèles de poignées
+                          <ArrowRight />
+                        </Button>
+                      )}
+
+                      {t.key === 'materials' ? (
+                        <MaterialPricesPanel
+                          params={tabParams}
+                          onSaveParam={saveParam}
+                          onMaterialChanged={() => setVersion((v) => v + 1)}
+                        />
+                      ) : tabParams.length === 0 ? (
+                        <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                          Aucun paramètre dans cette rubrique : la mise à jour de la base de données n&apos;a sans
+                          doute pas encore été appliquée.
+                        </p>
+                      ) : (
+                        <ul className="divide-y" aria-label={t.label}>
+                          {tabParams.map((param) => (
+                            <ParamRow key={param.id} param={param} onSave={saveParam} />
+                          ))}
+                        </ul>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto">
+          <PricingSimulation version={version} />
+        </div>
+      </div>
+
+      <Card className="gap-3">
+        <CardHeader>
+          <CardTitle className="text-base">Les autres prix du site</CardTitle>
+          <CardDescription>Ils ne dépendent pas de cette grille et se règlent dans leur section.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => goToSection('samples')}>
+            Matières et prix des échantillons
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => goToSection('handles')}>
+            Modèles de poignées
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => goToSection('facades')}>
+            Façades sur mesure
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => goToSection('catalogue')}>
+            Catalogue & pièces
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => goToSection('configs')}>
+            Ajuster le prix d&apos;un devis
+          </Button>
         </CardContent>
       </Card>
-
-      <Dialog open={editingParam !== null} onOpenChange={(open) => !open && setEditingParam(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifier le paramètre</DialogTitle>
-            <DialogDescription>{editingParam?.description}</DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="value">
-                Valeur {editingParam?.unit === 'ratio' ? '(0,10 = 10 %)' : `(${UNIT_LABELS[editingParam?.unit || ''] ?? editingParam?.unit})`}{' '}
-                <span className="text-destructive">*</span>
-              </Label>
-              <Input id="value" type="number" step="0.01" min="0" value={editValue} onChange={(e) => setEditValue(e.target.value)} required />
-              <p className="text-xs text-muted-foreground">
-                Paramètre : <span className="font-mono">{editingParam?.item_type}.{editingParam?.param_name}</span>
-              </p>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditingParam(null)}>
-                Annuler
-              </Button>
-              <Button type="submit">
-                <IconCheck className="w-4 h-4 mr-2" />
-                Mettre à jour
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

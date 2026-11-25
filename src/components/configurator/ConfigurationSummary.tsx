@@ -2,10 +2,31 @@ import ZoneEditor, { Zone } from '@/components/configurator/ZoneEditor';
 import { Button } from '@/components/ui/button';
 import { IconEdit } from '@tabler/icons-react';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
-import { formatPriceRange } from '@/lib/pricing';
+import { formatPrice } from '@/lib/format';
+import {
+  currentEstimateIfDifferent,
+  deliveryLabel,
+  formatPriceRange,
+  type PriceEstimate,
+  type SavedQuote,
+} from '@/lib/pricing';
+import {
+  DEFAULT_HANDLE_DEFAULTS,
+  handleFacadeKind,
+  resolveZoneHandle,
+  summarizeHandles,
+  type HandleDefaults,
+  type HandleModel,
+} from '@/lib/configurator/handles';
 
-function analyzeConfiguration(zone: Zone) {
-  const handleTypes = new Set<string>();
+// Poignée propre à un compartiment ; celle du meuble est déjà dans la ligne « Poignées »
+function ownHandleLabel(zone: Zone, models: HandleModel[], defaults: HandleDefaults): string | null {
+  const kind = handleFacadeKind(zone);
+  if (!kind || !resolveZoneHandle(zone, kind, models, defaults).customized) return null;
+  return summarizeHandles(zone, models, defaults);
+}
+
+function analyzeConfiguration(zone: Zone, models: HandleModel[], defaults: HandleDefaults) {
   const leafZones: any[] = [];
 
   let leafCounter = 0;
@@ -17,17 +38,11 @@ function analyzeConfiguration(zone: Zone) {
         number: leafCounter,
         id: z.id,
         content: z.content || 'empty',
-        handleType: z.handleType,
+        handle: ownHandleLabel(z, models, defaults),
         hasLight: z.hasLight,
         hasCableHole: z.hasCableHole,
         color: z.zoneColor?.hex
       });
-
-      if (z.content && z.content !== 'empty') {
-        if (z.handleType) {
-          handleTypes.add(z.handleType);
-        }
-      }
     }
 
     if (z.children) z.children.forEach(traverse);
@@ -36,7 +51,8 @@ function analyzeConfiguration(zone: Zone) {
   traverse(zone);
 
   return {
-    handleTypes: Array.from(handleTypes),
+    // Portes de groupe comprises
+    handles: summarizeHandles(zone, models, defaults),
     leafZones
   };
 }
@@ -56,18 +72,68 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   cable_hole: 'Passe-câble',
 };
 
-const HANDLE_LABELS: Record<string, string> = {
-  vertical_bar: 'Barre verticale',
-  horizontal_bar: 'Barre horizontale',
-  knob: 'Bouton rond',
-  recessed: 'Poignée encastrée',
-};
+// Prix de la fiche. Une configuration enregistrée montre son devis (le prix enregistré, celui qui sera payé), et
+// l'estimation actuelle seulement si la grille de prix a changé depuis. Sans devis : l'estimation.
+function QuotePrice({
+  quote,
+  estimate,
+  error,
+  isAdmin,
+}: {
+  quote: SavedQuote | null;
+  estimate: PriceEstimate | null;
+  error: string | null;
+  isAdmin: boolean;
+}) {
+  const delivery = estimate ? deliveryLabel(estimate.delivery) : null;
+
+  if (!quote) {
+    return (
+      <div className="py-4 border-t border-black/10">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-black/65">Estimation</span>
+          <span className={`text-2xl font-medium tracking-[-0.03em] ${error ? 'text-am-wine' : ''}`}>
+            {error ? 'Prix indisponible' : estimate ? formatPriceRange(estimate) : '…'}
+          </span>
+        </div>
+        {error && <p className="mt-1 text-right text-xs text-am-wine">{error}</p>}
+        {!error && delivery && <p className="mt-1 text-right text-xs text-black/65">{delivery}</p>}
+      </div>
+    );
+  }
+
+  const current = currentEstimateIfDifferent(quote, estimate);
+  return (
+    <div className="py-4 border-t border-black/10 space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-black/65">Prix du devis</span>
+        <span className="flex items-center gap-2">
+          {quote.adjusted && (
+            <span className="px-1.5 py-0.5 bg-am-wine/10 text-am-wine text-[10px] font-medium">Prix ajusté</span>
+          )}
+          <span className="text-2xl font-medium tracking-[-0.03em]">{formatPrice(quote.price)}</span>
+        </span>
+      </div>
+      <p className="text-right text-xs text-black/65">
+        {quote.includesDelivery ? 'Livraison comprise dans ce prix' : delivery ?? 'Livraison ajoutée au panier'}
+      </p>
+      {isAdmin && quote.note && <p className="text-right text-xs italic text-black/65">Note : {quote.note}</p>}
+      {current !== null && (
+        <p className="text-right text-xs text-black/65">
+          Estimation actuelle de la grille : {formatPrice(current)}
+          {quote.includesDelivery ? ' livraison comprise' : ''}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function ConfigurationSummary({
-  width, height, depth, finish, color, socle, rootZone, priceEstimate, modelName,
-  isAdmin, onEdit, mountingStyle, colorLabel, isOwner, onEditOwn
+  width, height, depth, finish, color, socle, rootZone, priceEstimate, priceError = null, savedQuote = null, modelName,
+  isAdmin, onEdit, mountingStyle, colorLabel, isOwner, onEditOwn,
+  handleModels = [], handleDefaults = DEFAULT_HANDLE_DEFAULTS
 }: any) {
-  const analysis = analyzeConfiguration(rootZone);
+  const analysis = analyzeConfiguration(rootZone, handleModels, handleDefaults);
 
   const equipmentCount: Record<string, number> = {};
   analysis.leafZones.forEach((z: any) => {
@@ -157,9 +223,7 @@ export function ConfigurationSummary({
           <div className="flex justify-between py-1.5 border-b border-black/10">
             <span className="text-black/65">Poignées</span>
             <span className="font-medium">
-              {analysis.handleTypes.length > 0
-                ? analysis.handleTypes.map(h => HANDLE_LABELS[h] || h).join(', ')
-                : 'Push-to-open'}
+              {analysis.handles ?? 'Aucune'}
             </span>
           </div>
         </div>
@@ -196,19 +260,14 @@ export function ConfigurationSummary({
                   {z.color && (
                     <span className="h-3 w-3 border border-black/10" style={{ backgroundColor: z.color }}></span>
                   )}
-                  {z.handleType && <span className="italic">{HANDLE_LABELS[z.handleType]}</span>}
+                  {z.handle && <span className="italic">{z.handle}</span>}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center justify-between py-4 border-t border-black/10">
-          <span className="text-sm text-black/65">Estimation</span>
-          <div className="text-right">
-            <span className="text-2xl font-medium tracking-[-0.03em]">{priceEstimate ? formatPriceRange(priceEstimate) : '…'}</span>
-          </div>
-        </div>
+        <QuotePrice quote={savedQuote} estimate={priceEstimate} error={priceError} isAdmin={isAdmin} />
 
         <p className="text-xs text-black/65 text-center py-3 border-t border-black/10">
           Mode consultation — Cliquez sur Modifier pour éditer

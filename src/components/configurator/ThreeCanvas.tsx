@@ -8,7 +8,7 @@ import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 import { getSafeColor, getHingeYPositions } from './scene/utils';
 import { TexturedMaterial } from './scene/TexturedMaterial';
-import { PanelSegmentHitbox, StructuralPanel, Handle, DoorHinge } from './scene/StructuralElements';
+import { PanelSegmentHitbox, StructuralPanel, DoorHinge } from './scene/StructuralElements';
 import { AnimatedDoor, AnimatedMirrorDoor, AnimatedPushDoor } from './scene/AnimatedDoors';
 import { AnimatedPushDrawer, AnimatedDrawer } from './scene/AnimatedDrawers';
 import { BackPanelWithOpenings } from './scene/BackPanel';
@@ -28,8 +28,19 @@ import { getFurnitureBox, getFurnitureLayout, getZoneBox, unionBoxes, type Box }
 import { getZoneFacade } from '@/lib/configurator/zoneStats';
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
+import {
+    DEFAULT_HANDLE_DEFAULTS,
+    defaultHandleModel,
+    resolveZoneHandle,
+    type HandleDefaults,
+    type HandleModel,
+    type ResolvedHandle,
+} from '@/lib/configurator/handles';
 
 export type { ThreeCanvasHandle };
+
+// Référence stable : sans modèles fournis, la scène n'est pas recalculée à chaque rendu
+const NO_HANDLE_MODELS: HandleModel[] = [];
 
 interface ThreeViewerProps {
     width: number;
@@ -67,6 +78,9 @@ interface ThreeViewerProps {
     onCaptureReady?: (captureFunction: () => string | null) => void;
     // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
     onResizeDivider?: (zoneId: string, ratios: number[]) => void;
+    // Modèles de poignées de l'admin et choix pour tout le meuble (config_data.handles) ; sans eux, barres par défaut
+    handleModels?: HandleModel[];
+    handleDefaults?: HandleDefaults;
 }
 
 interface DividerEvents {
@@ -89,6 +103,8 @@ export function Furniture({
                        selectedPanelIds = new Set(),
                        onSelectPanel,
                        deletedPanelIds = new Set(),
+                       handleModels = NO_HANDLE_MODELS,
+                       handleDefaults,
                        dividerEvents
                    }: ThreeViewerProps & { dividerEvents?: DividerEvents }) {
     const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
@@ -258,6 +274,26 @@ export function Furniture({
 
     const separatorColor = finalStructureColor;
     const separatorImageUrl = finalStructureImageUrl;
+
+    // Choix de poignée du meuble, recomposé à partir de ses champs : un objet recréé à chaque rendu par la page ne
+    // reconstruit pas toute la scène
+    const furnitureHandleModelId = handleDefaults?.modelId ?? null;
+    const doorHandleOrientation = handleDefaults?.doorOrientation ?? DEFAULT_HANDLE_DEFAULTS.doorOrientation;
+    const drawerHandleOrientation = handleDefaults?.drawerOrientation ?? DEFAULT_HANDLE_DEFAULTS.drawerOrientation;
+    const furnitureHandles = useMemo<HandleDefaults>(
+        () => ({ modelId: furnitureHandleModelId, doorOrientation: doorHandleOrientation, drawerOrientation: drawerHandleOrientation }),
+        [furnitureHandleModelId, doorHandleOrientation, drawerHandleOrientation]
+    );
+    // Porte globale (ancien format) : pas de zone à elle, elle suit le choix du meuble
+    const rootDoorHandle = useMemo<ResolvedHandle>(
+        () => ({
+            model: defaultHandleModel(handleModels, furnitureHandles),
+            legacyType: null,
+            orientation: furnitureHandles.doorOrientation,
+            customized: false,
+        }),
+        [handleModels, furnitureHandles]
+    );
 
     const hasZoneSpecificDoors = useMemo(() => {
         if (!rootZone) return false;
@@ -882,7 +918,7 @@ export function Furniture({
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
-                            handleType={zone.handleType}
+                            handle={resolveZoneHandle(zone, 'drawer', handleModels, furnitureHandles)}
                             isOpen={openCompartments[zone.id]}
                             />
                         </group>
@@ -945,6 +981,8 @@ export function Furniture({
 
                     const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
                     const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
+                    // Poignée de la porte (les deux battants d'une double en portent une chacun)
+                    const doorHandle = isPush ? null : resolveZoneHandle(zone, 'door', handleModels, furnitureHandles);
 
                     if (isMirror) {
                         items.push(
@@ -954,7 +992,7 @@ export function Furniture({
                                     position={[isMirrorRight ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
                                     width={doorZoneWidth - compartmentGap}
                                     height={height - compartmentGap + totalDoorOverlap}
-                                    handleType={zone.handleType}
+                                    handle={doorHandle}
                                     isOpen={openCompartments[zone.id]}
                                 />
                             </group>
@@ -984,7 +1022,7 @@ export function Furniture({
                                         height={height - compartmentGap + totalDoorOverlap}
                                         hexColor={doorHexColor}
                                         imageUrl={doorImageUrl}
-                                        handleType={zone.handleType}
+                                        handle={doorHandle}
                                         isOpen={openCompartments[zone.id]}
                                     />
                                 )}
@@ -996,7 +1034,7 @@ export function Furniture({
                                         height={height - compartmentGap + totalDoorOverlap}
                                         hexColor={doorHexColor}
                                         imageUrl={doorImageUrl}
-                                        handleType={zone.handleType}
+                                        handle={doorHandle}
                                         isOpen={openCompartments[zone.id]}
                                     />
                                 )}
@@ -1036,6 +1074,7 @@ export function Furniture({
 
                 const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
                 const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
+                const groupDoorHandle = isPush ? null : resolveZoneHandle(zone, 'door', handleModels, furnitureHandles);
 
                 if (isMirror) {
                     items.push(
@@ -1045,7 +1084,7 @@ export function Furniture({
                                 position={[isMirrorRightGroup ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
                                 width={doorZoneWidth - compartmentGap}
                                 height={height - compartmentGap + totalDoorOverlap}
-                                handleType={zone.handleType}
+                                handle={groupDoorHandle}
                                 isOpen={openCompartments[zone.id]}
                             />
                         </group>
@@ -1075,7 +1114,7 @@ export function Furniture({
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
-                                    handleType={zone.handleType}
+                                    handle={groupDoorHandle}
                                     isOpen={openCompartments[zone.id]}
                                 />
                             )}
@@ -1087,7 +1126,7 @@ export function Furniture({
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
-                                    handleType={zone.handleType}
+                                    handle={groupDoorHandle}
                                     isOpen={openCompartments[zone.id]}
                                 />
                             )}
@@ -1160,7 +1199,8 @@ export function Furniture({
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
         openCompartments, showDecorations, hideFacades, zoneHandlers,
-        selectedPanelIds, onSelectPanel
+        selectedPanelIds, onSelectPanel,
+        handleModels, furnitureHandles
     ]);
 
 
@@ -1460,6 +1500,7 @@ export function Furniture({
                             height={sideHeight}
                             hexColor={finalDoorColor}
                             imageUrl={finalDoorImageUrl}
+                            handle={rootDoorHandle}
                             isOpen={doorsOpen}
                         />
                     )}
@@ -1471,6 +1512,7 @@ export function Furniture({
                             height={sideHeight}
                             hexColor={finalDoorColor}
                             imageUrl={finalDoorImageUrl}
+                            handle={rootDoorHandle}
                             isOpen={doorsOpen}
                         />
                     )}

@@ -58,6 +58,40 @@ describe('removeSection', () => {
     expect(result.keptId).toBe('root');
   });
 
+  it('keeps the handle chosen for the group door on the part that replaces the group', () => {
+    const root: Zone = {
+      id: 'root',
+      type: 'vertical',
+      children: [
+        {
+          id: 'g',
+          type: 'horizontal',
+          doorContent: 'door',
+          handleModelId: 2,
+          handleOrientation: 'horizontal',
+          handleType: 'knob',
+          children: [leaf('g-0'), leaf('g-1')],
+        },
+        leaf('other'),
+      ],
+    };
+    const kept = findZoneById(removeSection(root, 'g-1').root!, 'g')!;
+    expect(kept).toMatchObject({ content: 'door', handleModelId: 2, handleOrientation: 'horizontal', handleType: 'knob' });
+  });
+
+  it('keeps the own handle of the remaining part rather than mixing it with the group one', () => {
+    const root: Zone = {
+      id: 'root',
+      type: 'horizontal',
+      doorContent: 'door',
+      handleModelId: 2,
+      children: [leaf('root-0', { content: 'drawer', handleOrientation: 'vertical' }), leaf('root-1')],
+    };
+    const kept = removeSection(root, 'root-1').root!;
+    expect(kept.handleOrientation).toBe('vertical');
+    expect(kept.handleModelId).toBeUndefined();
+  });
+
   it('refuses to remove the whole furniture', () => {
     expect(removeSection(furniture(), 'root').error).toBe('root');
     expect(removeSection(furniture(), 'nope').error).toBe('not-found');

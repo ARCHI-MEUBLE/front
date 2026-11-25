@@ -7,13 +7,6 @@ export const MATERIAL_LABEL_BY_KEY: Record<string, string> = {
 export const DEFAULT_COLOR_HEX = '#D8C7A1';
 export const DEFAULT_COLOR_NAME = 'Chêne naturel';
 
-export const HANDLE_TYPE_CODE: Record<string, string> = {
-  'vertical_bar': '1',
-  'horizontal_bar': '2',
-  'knob': '3',
-  'recessed': '4',
-};
-
 export function normalizeMaterialKey(value: string | null | undefined): string {
   if (!value) return 'agglomere';
 

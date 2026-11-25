@@ -17,6 +17,7 @@ import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { DashboardPricingCombined } from '@/components/admin/DashboardPricingCombined';
 import { DashboardSamples } from '@/components/admin/DashboardSamples';
+import { DashboardHandles } from '@/components/admin/DashboardHandles';
 import { DashboardRealisations } from '@/components/admin/DashboardRealisations';
 import { DashboardFacades } from '@/components/admin/DashboardFacades';
 import { verifyAdminSession } from '@/lib/adminAuth';
@@ -47,10 +48,11 @@ const sectionTitles: Record<DashboardSection, { title: string; description: stri
   appointments: { title: 'Demandes de rendez-vous', description: 'Nouvelles demandes de rendez-vous' },
   calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
   avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
-  pricing: { title: 'Gestion des prix', description: 'Configurez tous les paramètres de tarification' },
+  pricing: { title: 'Prix & livraison', description: 'Grille du meuble sur mesure, matières, livraison et acompte' },
   catalogue: { title: 'Catalogue & Pièces', description: 'Gérez les articles et accessoires' },
-  facades: { title: 'Façades', description: 'Gérer les matériaux et types de perçages' },
-  samples: { title: 'Gestion des échantillons', description: 'Catalogue des finitions et matériaux' },
+  facades: { title: 'Façades', description: 'Matériaux, dimensions et tarification des façades sur mesure' },
+  samples: { title: 'Gestion des échantillons', description: 'Matières, couleurs, prix au m² et prix des échantillons' },
+  handles: { title: 'Modèles de poignées', description: 'Poignées proposées dans le configurateur, étape Finitions' },
   realisations: { title: 'Réalisations', description: 'Gérer les photos et détails des projets réels' },
   password: { title: 'Paramètres', description: 'Modifier le mot de passe' },
 };
@@ -232,6 +234,7 @@ export default function AdminDashboardPage() {
                 {selectedSection === 'avis' && <DashboardAvis />}
                 {selectedSection === 'pricing' && <DashboardPricingCombined />}
                 {selectedSection === 'samples' && <DashboardSamples />}
+                {selectedSection === 'handles' && <DashboardHandles />}
                 {selectedSection === 'realisations' && <DashboardRealisations />}
                 {selectedSection === 'password' && <DashboardPassword />}
               </div>
