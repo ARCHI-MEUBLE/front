@@ -95,6 +95,14 @@ export function configDataToRestore(data: any) {
     doorType: data.features?.doorType,
     doorSide: data.features?.doorSide,
     mountingStyle: data.features?.mountingStyle,
+    // Rétrocompatible : les meubles enregistrés avant qu'on sépare les deux côtés n'ont que
+    // features.roundedEdges (un seul bouton, les deux côtés à la fois, largeur/profondeur fixes).
+    roundedLeft: data.features?.roundedLeft ?? data.features?.roundedEdges ?? false,
+    roundedLeftWidth: data.features?.roundedLeftWidth,
+    roundedLeftDepth: data.features?.roundedLeftDepth,
+    roundedRight: data.features?.roundedRight ?? data.features?.roundedEdges ?? false,
+    roundedRightWidth: data.features?.roundedRightWidth,
+    roundedRightDepth: data.features?.roundedRightDepth,
     // Pose et montage chez le client : seulement si elle a été choisie (les modèles du catalogue ne l'ont pas)
     installation: data.features?.installation === true,
     deletedPanelIds: data.deletedPanelIds,

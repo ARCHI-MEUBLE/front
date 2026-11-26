@@ -272,7 +272,7 @@ export default function MaterialSelector({
                 )}
               </p>
             </div>
-            <div className="grid grid-cols-4 gap-x-3 gap-y-4 sm:grid-cols-5">
+            <div className="grid grid-cols-4 gap-x-3 gap-y-4 sm:grid-cols-6">
               {palette.map((color) => swatchButton(color, !!wholeColor && isSameColor(componentColors.structure, color), () => applyToAll(color), true))}
             </div>
           </div>

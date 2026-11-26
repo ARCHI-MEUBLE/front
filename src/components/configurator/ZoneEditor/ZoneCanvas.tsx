@@ -1,19 +1,94 @@
-import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, useId, SyntheticEvent, KeyboardEvent } from 'react';
 import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, SquareDashed, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { moveDivider } from '@/lib/configurator/zoneResize';
-import { DIMENSION_LIMITS } from '@/lib/configurator/constraints';
+import { getZoneInteriorSizeMm, PLINTH_HEIGHT_M } from '@/lib/configurator/zoneBounds';
 import { layoutLeafText } from './leafLayout';
 
 // Jamais plus large que ça, même sur un très grand écran
 const MAX_CANVAS_WIDTH = 1100;
-// Place des cotes (px) : largeur au-dessus du dessin, hauteur sur le côté
-const COTE_TOP = 28;
-const COTE_SIDE = 30;
-// Quand le meuble ne tient plus pendant une modification, il n'occupe plus que cette part de la place
-const HEADROOM = 0.85;
-// Après une modification des dimensions, délai avant que le dessin revienne remplir toute la place
-const REFIT_DELAY_MS = 2500;
+
+// Place réservée à la ligne de cote globale (largeur en haut, hauteur sur le côté)
+const DIMENSION_GUTTER_PX = 28;
+const DIMENSION_ARROW_PX = 7;
+
+// Hauteur (mm) du socle quand il est actif
+const PLINTH_HEIGHT_MM = PLINTH_HEIGHT_M * 1000;
+
+// Ligne de cote « à l'architecte » : traits de rappel depuis les bords du plan, puis ligne à
+// double flèche portant la mesure, comme sur un plan technique
+function DimensionLine({
+    length,
+    label,
+    orientation,
+}: {
+    length: number;
+    label: string;
+    orientation: 'horizontal' | 'vertical';
+}) {
+    const markerId = `dim-arrow-${orientation}-${useId()}`;
+    const axisLength = Math.max(1, length);
+    const arrow = DIMENSION_ARROW_PX;
+
+    const arrowMarker = (
+        <marker id={markerId} markerWidth={arrow} markerHeight={arrow} refX={arrow / 2} refY={arrow / 2} orient="auto-start-reverse">
+            <path d={`M0,0 L${arrow},${arrow / 2} L0,${arrow} Z`} className="fill-current" />
+        </marker>
+    );
+
+    if (orientation === 'horizontal') {
+        const lineY = DIMENSION_GUTTER_PX - 6;
+        return (
+            <svg width={axisLength} height={DIMENSION_GUTTER_PX} className="block text-black/55" style={{ overflow: 'visible' }}>
+                <defs>{arrowMarker}</defs>
+                <line x1={0} y1={0} x2={0} y2={lineY} className="stroke-current" strokeWidth={1} />
+                <line x1={axisLength} y1={0} x2={axisLength} y2={lineY} className="stroke-current" strokeWidth={1} />
+                <line
+                    x1={1}
+                    y1={lineY}
+                    x2={axisLength - 1}
+                    y2={lineY}
+                    className="stroke-current"
+                    strokeWidth={1}
+                    markerStart={`url(#${markerId})`}
+                    markerEnd={`url(#${markerId})`}
+                />
+                <text x={axisLength / 2} y={lineY - 5} textAnchor="middle" className="fill-current font-mono" style={{ fontSize: 11 }}>
+                    {label}
+                </text>
+            </svg>
+        );
+    }
+
+    const lineX = DIMENSION_GUTTER_PX - 6;
+    return (
+        <svg width={DIMENSION_GUTTER_PX} height={axisLength} className="block text-black/55" style={{ overflow: 'visible' }}>
+            <defs>{arrowMarker}</defs>
+            <line x1={0} y1={0} x2={lineX} y2={0} className="stroke-current" strokeWidth={1} />
+            <line x1={0} y1={axisLength} x2={lineX} y2={axisLength} className="stroke-current" strokeWidth={1} />
+            <line
+                x1={lineX}
+                y1={1}
+                x2={lineX}
+                y2={axisLength - 1}
+                className="stroke-current"
+                strokeWidth={1}
+                markerStart={`url(#${markerId})`}
+                markerEnd={`url(#${markerId})`}
+            />
+            <text
+                x={lineX - 5}
+                y={axisLength / 2}
+                textAnchor="middle"
+                className="fill-current font-mono"
+                style={{ fontSize: 11 }}
+                transform={`rotate(-90 ${lineX - 5} ${axisLength / 2})`}
+            >
+                {label}
+            </text>
+        </svg>
+    );
+}
 
 interface LeafVisual {
     // Même icône que dans le panneau de réglage : on reconnaît le contenu d'un coup d'œil
@@ -56,6 +131,9 @@ interface ZoneNodeProps {
     realHeight: number;
     showNumbers?: boolean;
     leafNumbers?: Record<string, number>;
+    // Taille intérieure utile (mm, planches déduites) de chaque compartiment, pour l'afficher à la place
+    // de sa taille nominale (voir getZoneInteriorSizeMm)
+    leafInteriorSizes?: Record<string, { width: number; height: number }>;
     // Pixels par millimètre : permet d'adapter le texte à la taille de la case à l'écran
     pxPerMm?: number;
     // Planches retirées avec l'outil 3D, et chemin de la zone au format des identifiants de ThreeCanvas
@@ -74,6 +152,7 @@ function ZoneNode({
                       realHeight,
                       showNumbers = false,
                       leafNumbers,
+                      leafInteriorSizes,
                       pxPerMm,
                       deletedPanelIds,
                       panelPath = '',
@@ -178,9 +257,11 @@ function ZoneNode({
         const zoneNumber = leafNumbers?.[zone.id];
         const isOpenSpace = zone.isOpenSpace;
         const visual = getLeafVisual(zone.content);
-        const widthMm = Math.round(realWidth);
-        const heightMm = Math.round(realHeight);
-        const description = isOpenSpace ? `Espace ouvert, ${widthMm} × ${heightMm} mm` : `${meta.label}, ${widthMm} × ${heightMm} mm`;
+        // Taille intérieure utile (planches déduites) quand elle est connue, sinon la taille nominale de la case
+        const interior = leafInteriorSizes?.[zone.id];
+        const widthMm = Math.round(interior?.width ?? realWidth);
+        const heightMm = Math.round(interior?.height ?? realHeight);
+        const description = isOpenSpace ? `Espace ouvert, ${heightMm} × ${widthMm} mm` : `${meta.label}, ${heightMm} × ${widthMm} mm`;
 
         // Ce que la case peut afficher selon sa taille réelle à l'écran : le contenu reste toujours
         // reconnaissable (couleur et icône), même dans une case minuscule d'un très grand meuble
@@ -330,6 +411,7 @@ function ZoneNode({
                             realHeight={dims.h}
                             showNumbers={showNumbers}
                             leafNumbers={leafNumbers}
+                            leafInteriorSizes={leafInteriorSizes}
                             pxPerMm={pxPerMm}
                             deletedPanelIds={deletedPanelIds}
                             panelPath={childPath}
@@ -399,6 +481,14 @@ interface ZoneCanvasProps {
     maxCanvasHeight?: number;
     // Planches retirées avec l'outil 3D « Retirer planches »
     deletedPanelIds?: ReadonlySet<string>;
+    // Le meuble a des pieds/un socle : réduit la hauteur intérieure utile affichée dans chaque compartiment,
+    // et ajoute une bande sous le plan représentant le socle
+    hasSocle?: boolean;
+    // Bords avant arrondis actifs : ajoute un repère schématique sur le bord gauche/droit du plan
+    roundedLeft?: boolean;
+    roundedLeftWidthMm?: number;
+    roundedRight?: boolean;
+    roundedRightWidthMm?: number;
 }
 
 export default function ZoneCanvas({
@@ -411,48 +501,53 @@ export default function ZoneCanvas({
                                        showNumbers = false,
                                        maxCanvasHeight = 400,
                                        deletedPanelIds,
+                                       hasSocle = false,
+                                       roundedLeft = false,
+                                       roundedLeftWidthMm = 0,
+                                       roundedRight = false,
+                                       roundedRightWidthMm = 0,
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
-    // Place réservée autour du dessin pour les cotes (largeur au-dessus, hauteur à gauche ; la marge de
-    // droite est la même que celle de gauche pour garder le dessin centré)
-    const boxWidth = availableWidth === null ? 500 : Math.max(1, Math.min(availableWidth - 32 - 2 * COTE_SIDE, MAX_CANVAS_WIDTH));
-    const boxHeight = Math.max(1, maxCanvasHeight - COTE_TOP);
+    // Largeur déclarée d'origine (bords arrondis compris) : `width` reçu ici est déjà réduit des
+    // extensions actives (voir getUsableWidthMm). On reconstruit le total pour que la ligne de cote et
+    // la mise à l'échelle portent sur l'enveloppe complète, comme `height` le fait déjà pour le socle.
+    const declaredWidthMm = width + (roundedLeft ? roundedLeftWidthMm : 0) + (roundedRight ? roundedRightWidthMm : 0);
 
-    // Au repos, le meuble remplit toute la place. Quand on change la largeur ou la hauteur, l'échelle reste
-    // un moment figée : le dessin grandit ou rétrécit sous les yeux (sinon il se recadre aussitôt et on ne
-    // voit pas ce qu'on modifie), puis il revient remplir la place après REFIT_DELAY_MS sans changement.
-    const fitScale = Math.min(boxWidth / width, boxHeight / height);
-    const boxKey = `${boxWidth}x${boxHeight}`;
-    // Le meuble ne tient plus : on recule en lui laissant de quoi grandir encore à l'écran
-    const roomyScale = () =>
-        Math.min(
-            boxWidth / Math.max(width, Math.min(width / HEADROOM, DIMENSION_LIMITS.width.max)),
-            boxHeight / Math.max(height, Math.min(height / HEADROOM, DIMENSION_LIMITS.height.max))
-        );
-    const [view, setView] = useState(() => ({ scale: fitScale, boxKey }));
-    let scale = view.scale;
-    if (view.boxKey !== boxKey) {
-        // La place disponible a changé (fenêtre, ouverture du plan) : on remplit tout de suite
-        scale = fitScale;
-        setView({ scale, boxKey });
-    } else if (scale > fitScale) {
-        scale = roomyScale();
-        setView({ scale, boxKey });
+    // Calcul du ratio réel du meuble (identique au modèle 3D), dans la boîte disponible. La boîte
+    // réserve en plus la place des lignes de cote (gutter) pour que l'ensemble tienne dans l'espace alloué.
+    const aspectRatio = declaredWidthMm / height;
+    const boxWidth = availableWidth === null ? 500 : Math.max(1, Math.min(availableWidth - 32, MAX_CANVAS_WIDTH));
+    const boxHeight = Math.max(1, maxCanvasHeight);
+    const drawableWidth = Math.max(1, boxWidth - DIMENSION_GUTTER_PX);
+    const drawableHeight = Math.max(1, boxHeight - DIMENSION_GUTTER_PX);
+
+    let canvasWidth: number;
+    let canvasHeight: number;
+
+    if (aspectRatio > drawableWidth / drawableHeight) {
+        canvasWidth = drawableWidth;
+        canvasHeight = drawableWidth / aspectRatio;
+    } else {
+        canvasHeight = drawableHeight;
+        canvasWidth = drawableHeight * aspectRatio;
     }
 
-    useEffect(() => {
-        if (Math.abs(view.scale - fitScale) < 1e-9) return;
-        const timer = setTimeout(() => setView({ scale: fitScale, boxKey }), REFIT_DELAY_MS);
-        return () => clearTimeout(timer);
-    }, [view.scale, fitScale, boxKey]);
+    canvasWidth = Math.max(1, canvasWidth);
+    canvasHeight = Math.max(1, canvasHeight);
 
-    const canvasWidth = Math.max(1, width * scale);
-    const canvasHeight = Math.max(1, height * scale);
+    // Le caisson occupe la hauteur totale moins le socle (comme la scène 3D) ; le socle est redessiné
+    // en-dessous sous forme de bande, à la même échelle, pour que les deux se recollent à la hauteur totale
+    const mmToPx = canvasHeight / height;
+    const sideHeightMm = hasSocle ? Math.max(1, height - PLINTH_HEIGHT_MM) : height;
+    const socleCanvasHeight = hasSocle ? PLINTH_HEIGHT_MM * mmToPx : 0;
+    const carcassCanvasHeight = canvasHeight - socleCanvasHeight;
 
-    // Dimensions à l'ouverture : seules les cotes modifiées ensuite s'allument
-    const [initialSize] = useState({ width, height });
-    const flash = (changed: boolean) => (changed ? { animation: 'am-cote-flash 1.4s ease-out' } : undefined);
+    // Même principe sur la largeur : le caisson occupe la largeur utile, les bords arrondis actifs sont
+    // redessinés en bandes de part et d'autre, à la même échelle, pour recoller à la largeur totale
+    const carcassCanvasWidth = width * mmToPx;
+    const roundedLeftCanvasWidth = roundedLeft ? roundedLeftWidthMm * mmToPx : 0;
+    const roundedRightCanvasWidth = roundedRight ? roundedRightWidthMm * mmToPx : 0;
 
     useEffect(() => {
         const element = canvasContainerRef.current;
@@ -465,13 +560,17 @@ export default function ZoneCanvas({
         return () => observer.disconnect();
     }, []);
 
-    // ✅ Calculer les numéros de feuilles de manière pure
+    // ✅ Calculer les numéros de feuilles, et la taille intérieure utile de chacune (planches déduites),
+    // de manière pure
     const leafNumbers: Record<string, number> = {};
+    const leafInteriorSizes: Record<string, { width: number; height: number }> = {};
     let count = 0;
     const computeNumbers = (z: Zone) => {
         if (z.type === 'leaf') {
             count++;
             leafNumbers[z.id] = count;
+            const interior = getZoneInteriorSizeMm(zone, z.id, width, height, hasSocle);
+            if (interior) leafInteriorSizes[z.id] = interior;
         }
         if (z.children) {
             z.children.forEach(computeNumbers);
@@ -481,81 +580,100 @@ export default function ZoneCanvas({
 
     return (
         <div className="border border-black/10 bg-white p-5" style={{ borderRadius: '4px' }}>
-            {/* Header - Titre et dimensions */}
+            {/* Header - Titre seul : les dimensions sont maintenant portées par les lignes de cote */}
             <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-black">Plan du meuble</h3>
-                <span className="font-mono text-base font-medium text-black">
-                    {width} × {height} mm
-                </span>
             </div>
 
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
             <div
                 ref={canvasContainerRef}
-                className="mx-auto flex w-full items-end justify-center overflow-hidden bg-am-mist/15 p-2 cursor-default sm:p-4"
+                className="mx-auto flex w-full items-center justify-center overflow-hidden bg-am-mist/15 p-2 cursor-default sm:p-4"
                 onClick={() => onSelect(null)}
                 style={{
                     borderRadius: '4px',
-                    // Hauteur fixe : le meuble reste posé au même « sol » quand ses dimensions changent
-                    height: boxHeight + COTE_TOP,
-                    boxSizing: 'content-box',
                 }}
             >
-                <div
-                    className="relative transition-[width,height] duration-500 ease-out motion-reduce:transition-none"
-                    style={{
-                        width: canvasWidth,
-                        height: canvasHeight,
-                    }}
-                >
-                    {/* Cote de largeur, au-dessus du meuble */}
-                    <div
-                        className="pointer-events-none absolute left-0 right-0 flex items-center justify-center text-black/60"
-                        style={{ top: -COTE_TOP, height: COTE_TOP - 6 }}
-                        aria-hidden="true"
-                    >
-                        <div className="absolute inset-x-0 top-1/2 border-t border-current" />
-                        <div className="absolute left-0 top-1/2 h-2.5 -translate-y-1/2 border-l border-current" />
-                        <div className="absolute right-0 top-1/2 h-2.5 -translate-y-1/2 border-l border-current" />
-                        <span
-                            key={width}
-                            className="relative whitespace-nowrap bg-white px-1.5 font-mono text-xs font-medium text-black"
-                            style={{ borderRadius: '3px', ...flash(width !== initialSize.width) }}
-                        >
-                            {width} mm
-                        </span>
+                <div className="inline-flex flex-col">
+                    {/* Cote de largeur : alignée sur le plan, décalée de la gouttière réservée à la cote de hauteur.
+                        Porte la largeur totale déclarée, bords arrondis compris. */}
+                    <div className="flex" style={{ paddingLeft: DIMENSION_GUTTER_PX }}>
+                        <DimensionLine orientation="horizontal" length={canvasWidth} label={`${Math.round(declaredWidthMm)} mm`} />
                     </div>
+                    <div className="flex">
+                        <DimensionLine orientation="vertical" length={canvasHeight} label={`${Math.round(height)} mm`} />
+                        <div className="flex flex-col">
+                            {/* Caisson, flanqué des bandes de bord arrondi actives : même principe que le socle,
+                                juste des rectangles à l'échelle, de part et d'autre plutôt qu'en dessous */}
+                            <div className="flex" style={{ height: carcassCanvasHeight }}>
+                                {roundedLeft && (
+                                    <div
+                                        className="flex flex-col items-center justify-center gap-0.5 overflow-hidden border border-black/15 bg-am-mist/50"
+                                        style={{ width: roundedLeftCanvasWidth, height: carcassCanvasHeight }}
+                                        title={`Bord gauche arrondi : ${Math.round(roundedLeftWidthMm)} mm`}
+                                    >
+                                        <span className="whitespace-nowrap font-semibold leading-tight text-black/65" style={{ fontSize: 18 }}>
+                                            Arrondis
+                                        </span>
+                                        <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
+                                            {Math.round(sideHeightMm)} × {Math.round(roundedLeftWidthMm)} mm
+                                        </span>
+                                    </div>
+                                )}
+                                <div
+                                    className="relative"
+                                    style={{
+                                        width: carcassCanvasWidth,
+                                        height: carcassCanvasHeight,
+                                    }}
+                                >
+                                    <ZoneNode
+                                        zone={zone}
+                                        selectedZoneIds={selectedZoneIds}
+                                        onSelect={onSelect}
+                                        onRatioChange={onRatioChange}
+                                        realWidth={width}
+                                        realHeight={sideHeightMm}
+                                        showNumbers={showNumbers}
+                                        leafNumbers={leafNumbers}
+                                        leafInteriorSizes={leafInteriorSizes}
+                                        pxPerMm={mmToPx}
+                                        deletedPanelIds={deletedPanelIds}
+                                    />
+                                </div>
+                                {roundedRight && (
+                                    <div
+                                        className="flex flex-col items-center justify-center gap-0.5 overflow-hidden border border-black/15 bg-am-mist/50"
+                                        style={{ width: roundedRightCanvasWidth, height: carcassCanvasHeight }}
+                                        title={`Bord droit arrondi : ${Math.round(roundedRightWidthMm)} mm`}
+                                    >
+                                        <span className="whitespace-nowrap font-semibold leading-tight text-black/65" style={{ fontSize: 18 }}>
+                                            Arrondis
+                                        </span>
+                                        <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
+                                            {Math.round(sideHeightMm)} × {Math.round(roundedRightWidthMm)} mm
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
 
-                    {/* Cote de hauteur, à gauche du meuble */}
-                    <div
-                        className="pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-black/60"
-                        style={{ left: -COTE_SIDE, width: COTE_SIDE - 6 }}
-                        aria-hidden="true"
-                    >
-                        <div className="absolute inset-y-0 left-1/2 border-l border-current" />
-                        <div className="absolute top-0 left-1/2 w-2.5 -translate-x-1/2 border-t border-current" />
-                        <div className="absolute bottom-0 left-1/2 w-2.5 -translate-x-1/2 border-t border-current" />
-                        <span
-                            key={height}
-                            className="relative -rotate-90 whitespace-nowrap bg-white px-1.5 font-mono text-xs font-medium text-black"
-                            style={{ borderRadius: '3px', ...flash(height !== initialSize.height) }}
-                        >
-                            {height} mm
-                        </span>
+                            {/* Socle : bande pleine largeur sous le caisson, à la même échelle que le reste du plan */}
+                            {hasSocle && (
+                                <div
+                                    className="flex items-center justify-center gap-2 overflow-hidden border border-black/15 bg-am-mist/50"
+                                    style={{ width: canvasWidth, height: socleCanvasHeight }}
+                                    title={`Socle : ${Math.round(PLINTH_HEIGHT_MM)} mm`}
+                                >
+                                    <span className="whitespace-nowrap font-semibold leading-tight text-black/65" style={{ fontSize: 18 }}>
+                                        Socle
+                                    </span>
+                                    <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
+                                        {Math.round(PLINTH_HEIGHT_MM)} × {Math.round(declaredWidthMm)} mm
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-
-                    <ZoneNode
-                        zone={zone}
-                        selectedZoneIds={selectedZoneIds}
-                        onSelect={onSelect}
-                        onRatioChange={onRatioChange}
-                        realWidth={width}
-                        realHeight={height}
-                        showNumbers={showNumbers}
-                        leafNumbers={leafNumbers}
-                        pxPerMm={scale}
-                        deletedPanelIds={deletedPanelIds}
-                    />
                 </div>
             </div>
 

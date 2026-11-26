@@ -39,6 +39,7 @@ import {
 import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
+import RoundedEdgesSelector from '@/components/configurator/RoundedEdgesSelector';
 import InstallationToggle from '@/components/configurator/InstallationToggle';
 import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
@@ -100,6 +101,11 @@ import HandleSelector from '@/components/configurator/HandleSelector';
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
+import { getUsableWidthMm, ROUNDED_EDGE_DEFAULT_WIDTH_MM, ROUNDED_EDGE_DEFAULT_DEPTH_MM } from '@/lib/configurator/zoneBounds';
+
+// Défonce pour plinthe (mm) : valeurs de départ, ajustables à la main dans l'étape Base & bords
+const PLINTHE_DEFONCE_DEFAULT_HEIGHT_MM = 80;
+const PLINTHE_DEFONCE_DEFAULT_WIDTH_MM = 40;
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { displayColorName } from '@/lib/displayNames';
 import { findConstraintIssues, type ConstraintIssue, type IssueKind } from '@/lib/configurator/constraints';
@@ -361,6 +367,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     height: number;
     depth: number;
     socle: string;
+    roundedLeft?: boolean;
+    roundedLeftWidth?: number;
+    roundedLeftDepth?: number;
+    roundedRight?: boolean;
+    roundedRightWidth?: number;
+    roundedRightDepth?: number;
     rootZone: Zone;
     finish: string;
     doorType?: 'none' | 'single' | 'double';
@@ -386,6 +398,25 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const [height, setHeight] = useState(730);
   const [depth, setDepth] = useState(500);
   const [socle, setSocle] = useState('none');
+  const [roundedLeft, setRoundedLeft] = useState(false);
+  const [roundedLeftWidth, setRoundedLeftWidth] = useState(ROUNDED_EDGE_DEFAULT_WIDTH_MM);
+  const [roundedLeftDepth, setRoundedLeftDepth] = useState(ROUNDED_EDGE_DEFAULT_DEPTH_MM);
+  const [roundedRight, setRoundedRight] = useState(false);
+  const [roundedRightWidth, setRoundedRightWidth] = useState(ROUNDED_EDGE_DEFAULT_WIDTH_MM);
+  const [roundedRightDepth, setRoundedRightDepth] = useState(ROUNDED_EDGE_DEFAULT_DEPTH_MM);
+  // Défonce pour plinthe (mm) : seulement affichée/utile pour un caisson bois (socle === 'wood')
+  const [plintheDefonceHeight, setPlintheDefonceHeight] = useState(PLINTHE_DEFONCE_DEFAULT_HEIGHT_MM);
+  const [plintheDefonceWidth, setPlintheDefonceWidth] = useState(PLINTHE_DEFONCE_DEFAULT_WIDTH_MM);
+  // Largeur réellement disponible pour poser portes/cloisons : la largeur déclarée (width), réduite
+  // du côté gauche et/ou droit selon les bords avant arrondis actifs. À utiliser pour toute
+  // disposition interne (ZoneEditor, DivisionSteps, taille affichée d'un compartiment...), jamais
+  // pour l'enveloppe extérieure (récap, prix, export) qui reste sur `width`.
+  const usableWidthMm = getUsableWidthMm(width, roundedLeft ? roundedLeftWidth : 0, roundedRight ? roundedRightWidth : 0);
+  // Code DSL pour les bords arrondis (voir char=="Z" dans procedure_real.py) : "Zg(largeur,profondeur)"
+  // et/ou "Zd(largeur,profondeur)", chacun avec ses propres réglages.
+  const roundedFlag =
+    (roundedLeft ? `Zg(${Math.round(roundedLeftWidth)},${Math.round(roundedLeftDepth)})` : '') +
+    (roundedRight ? `Zd(${Math.round(roundedRightWidth)},${Math.round(roundedRightDepth)})` : '');
   const [finish, setFinish] = useState('Aggloméré');
   const [color, setColor] = useState(DEFAULT_COLOR_HEX);
   const [colorLabel, setColorLabel] = useState('Aggloméré naturel');
@@ -790,6 +821,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     imageUrl: selectedColorImage,
     hasSocle: socle !== 'none',
     socle,
+    roundedLeft,
+    roundedLeftWidth,
+    roundedLeftDepth,
+    roundedRight,
+    roundedRightWidth,
+    roundedRightDepth,
     rootZone,
     isBuffet: templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3'),
     componentColors,
@@ -801,7 +838,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     // Poignées : dans configKey aussi, un autre modèle ou sens de pose refait l'export
     handleModels,
     handleDefaults,
-  }), [width, height, depth, color, selectedColorImage, socle, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds, handleModels, handleDefaults]);
+  }), [width, height, depth, color, selectedColorImage, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds, handleModels, handleDefaults]);
   const arConfigKey = useMemo(
     () => JSON.stringify({ ...arFurniture, deletedPanelIds: Array.from(deletedPanelIds) }),
     [arFurniture, deletedPanelIds]
@@ -876,7 +913,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Les étapes Portes et Finitions agissent sur un compartiment précis : on en présélectionne un
+    // Les étapes Portes, Tiroirs et Finitions agissent sur un compartiment précis : on en présélectionne un
     const firstLeafId = (zone: Zone | null) => (zone ? listLeafZones(zone)[0]?.id : undefined);
     if (step === STEP.DOORS) {
       const keepSelection =
@@ -884,6 +921,14 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         (selectedZone !== null && !(selectedZone.id === 'root' && selectedZone.type !== 'leaf'));
       if (!keepSelection) {
         const leafId = firstLeafId(rootZone);
+        if (leafId) {
+          setSelectedZoneIds([leafId]);
+          setZoneTouched(true);
+        }
+      }
+    } else if (step === STEP.DRAWERS) {
+      if (!(selectedZoneIds.length === 1 && selectedZone?.type === 'leaf')) {
+        const leafId = firstLeafId(selectedZone ?? rootZone);
         if (leafId) {
           setSelectedZoneIds([leafId]);
           setZoneTouched(true);
@@ -959,8 +1004,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
   // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
   const constraintIssues = useMemo(
-    () => findConstraintIssues(rootZone, { width, height, depth }),
-    [rootZone, width, height, depth]
+    () => findConstraintIssues(rootZone, { width, height, depth, usableWidth: usableWidthMm }),
+    [rootZone, width, height, depth, usableWidthMm]
   );
   const hasZoneIssues = constraintIssues.length > 0;
 
@@ -1034,12 +1079,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
     return {
       title,
-      size: isMulti ? null : getZoneSize(rootZone, selectedZone.id, width, height),
+      size: isMulti ? null : getZoneSize(rootZone, selectedZone.id, usableWidthMm, height),
       neighbours,
       parentId: parent?.id ?? null,
       canDelete: !isMulti && !!parent,
     };
-  }, [selectedZone, selectedZoneIds, leafZones, rootZone, width, height]);
+  }, [selectedZone, selectedZoneIds, leafZones, rootZone, usableWidthMm, height]);
 
   // Menu de la planche choisie dans la vue 3D : son nom et de quoi la retirer (ou la remettre)
   const panelMenu = useMemo(() => {
@@ -1093,7 +1138,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   );
 
   // Le menu reste affiché à toutes les étapes, sauf pour la sélection par défaut (meuble entier) aux étapes
-  // Dimensions et Matières où il n'apporte rien tant qu'aucune zone n'a été choisie
+  // Dimensions, Base & bords et Matières où il n'apporte rien tant qu'aucune zone n'a été choisie
   const showQuickMenu =
     !!quickMenu &&
     !panelMenu &&
@@ -1101,7 +1146,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       !zoneTouched &&
       selectedZoneIds.length === 1 &&
       selectedZoneIds[0] === 'root' &&
-      (activeStep === STEP.DIMENSIONS || activeStep === STEP.MATERIALS)
+      (activeStep === STEP.DIMENSIONS || activeStep === STEP.BASE_AND_EDGES || activeStep === STEP.MATERIALS)
     );
 
   // Couleur de chaque partie du meuble telle qu'affichée : en couleur unique, toutes les parties la partagent
@@ -1193,6 +1238,14 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       height,
       depth,
       socle,
+      roundedLeft,
+      roundedLeftWidth,
+      roundedLeftDepth,
+      roundedRight,
+      roundedRightWidth,
+      roundedRightDepth,
+      plintheDefonceHeight,
+      plintheDefonceWidth,
       rootZone,
       finish,
       color,
@@ -1217,7 +1270,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, installation, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds, handleDefaults]);
+  }, [id, loading, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, plintheDefonceHeight, plintheDefonceWidth, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, installation, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds, handleDefaults]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1323,6 +1376,26 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     else setSocle('none');
 
     const flagsPart = compact.match(/M\d+\([^)]+\)([A-Za-z0-9]*)/)?.[1] || '';
+    // "Zg(largeur,profondeur)"/"Zd(largeur,profondeur)" par côté (voir char=="Z" dans
+    // procedure_real.py) ; paramètres optionnels (-> valeurs par défaut) ; "Z" seul (rétrocompatible,
+    // sans Zg/Zd à proximité) = les deux côtés avec les mêmes réglages. On relit le reste complet du
+    // prompt (pas flagsPart, qui s'arrête aux lettres/chiffres et couperait les parenthèses).
+    const afterDims = compact.match(/M\d+\([^)]+\)(.*)/)?.[1] || '';
+    const zgMatch = afterDims.match(/Zg(?:\(([\d.]+),([\d.]+)\))?/);
+    const zdMatch = afterDims.match(/Zd(?:\(([\d.]+),([\d.]+)\))?/);
+    const zBothMatch = !zgMatch && !zdMatch ? afterDims.match(/Z(?:\(([\d.]+),([\d.]+)\))?(?![gd])/) : null;
+    const applySide = (
+      match: RegExpMatchArray | null,
+      setEnabled: (v: boolean) => void,
+      setWidth: (v: number) => void,
+      setDepth: (v: number) => void
+    ) => {
+      setEnabled(!!match);
+      setWidth(match?.[1] ? parseFloat(match[1]) : ROUNDED_EDGE_DEFAULT_WIDTH_MM);
+      setDepth(match?.[2] ? parseFloat(match[2]) : ROUNDED_EDGE_DEFAULT_DEPTH_MM);
+    };
+    applySide(zgMatch || zBothMatch, setRoundedLeft, setRoundedLeftWidth, setRoundedLeftDepth);
+    applySide(zdMatch || zBothMatch, setRoundedRight, setRoundedRightWidth, setRoundedRightDepth);
     if (/P2/.test(flagsPart)) setDoorType('double');
     else if (/P/.test(flagsPart)) {
       setDoorType('single');
@@ -1539,6 +1612,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
               height: configToRestore.height || (dims ? parseInt(dims[3]) : 2000),
               depth: configToRestore.depth || (dims ? parseInt(dims[2]) : 400),
               socle: configToRestore.socle || 'none',
+              roundedLeft: configToRestore.roundedLeft || false,
+              roundedLeftWidth: configToRestore.roundedLeftWidth || ROUNDED_EDGE_DEFAULT_WIDTH_MM,
+              roundedLeftDepth: configToRestore.roundedLeftDepth || ROUNDED_EDGE_DEFAULT_DEPTH_MM,
+              roundedRight: configToRestore.roundedRight || false,
+              roundedRightWidth: configToRestore.roundedRightWidth || ROUNDED_EDGE_DEFAULT_WIDTH_MM,
+              roundedRightDepth: configToRestore.roundedRightDepth || ROUNDED_EDGE_DEFAULT_DEPTH_MM,
               rootZone: JSON.parse(JSON.stringify(configToRestore.rootZone)),
               finish: configToRestore.finish || 'Aggloméré',
               doorType: configToRestore.doorType || 'none',
@@ -1683,6 +1762,14 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         if (configToRestore.height) setHeight(configToRestore.height);
         if (configToRestore.depth) setDepth(configToRestore.depth);
         if (configToRestore.socle) setSocle(configToRestore.socle);
+        if (configToRestore.roundedLeft !== undefined) setRoundedLeft(configToRestore.roundedLeft);
+        if (configToRestore.roundedLeftWidth !== undefined) setRoundedLeftWidth(configToRestore.roundedLeftWidth);
+        if (configToRestore.roundedLeftDepth !== undefined) setRoundedLeftDepth(configToRestore.roundedLeftDepth);
+        if (configToRestore.roundedRight !== undefined) setRoundedRight(configToRestore.roundedRight);
+        if (configToRestore.roundedRightWidth !== undefined) setRoundedRightWidth(configToRestore.roundedRightWidth);
+        if (configToRestore.roundedRightDepth !== undefined) setRoundedRightDepth(configToRestore.roundedRightDepth);
+        if (configToRestore.plintheDefonceHeight !== undefined) setPlintheDefonceHeight(configToRestore.plintheDefonceHeight);
+        if (configToRestore.plintheDefonceWidth !== undefined) setPlintheDefonceWidth(configToRestore.plintheDefonceWidth);
         if (configToRestore.rootZone) setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
         if (configToRestore.finish) setFinish(configToRestore.finish);
         if (configToRestore.color) setColor(configToRestore.color);
@@ -1751,6 +1838,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     setHeight(initialConfig.height);
     setDepth(initialConfig.depth);
     setSocle(initialConfig.socle);
+    setRoundedLeft(initialConfig.roundedLeft || false);
+    setRoundedLeftWidth(initialConfig.roundedLeftWidth || ROUNDED_EDGE_DEFAULT_WIDTH_MM);
+    setRoundedLeftDepth(initialConfig.roundedLeftDepth || ROUNDED_EDGE_DEFAULT_DEPTH_MM);
+    setRoundedRight(initialConfig.roundedRight || false);
+    setRoundedRightWidth(initialConfig.roundedRightWidth || ROUNDED_EDGE_DEFAULT_WIDTH_MM);
+    setRoundedRightDepth(initialConfig.roundedRightDepth || ROUNDED_EDGE_DEFAULT_DEPTH_MM);
     setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(initialConfig.rootZone))));
     setFinish(initialConfig.finish);
     setDoorType(initialConfig.doorType || 'none');
@@ -1777,6 +1870,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     if (c.height) setHeight(c.height);
     if (c.depth) setDepth(c.depth);
     if (c.socle) setSocle(c.socle);
+    if (c.roundedLeft !== undefined) setRoundedLeft(c.roundedLeft);
+    if (c.roundedLeftWidth !== undefined) setRoundedLeftWidth(c.roundedLeftWidth);
+    if (c.roundedLeftDepth !== undefined) setRoundedLeftDepth(c.roundedLeftDepth);
+    if (c.roundedRight !== undefined) setRoundedRight(c.roundedRight);
+    if (c.roundedRightWidth !== undefined) setRoundedRightWidth(c.roundedRightWidth);
+    if (c.roundedRightDepth !== undefined) setRoundedRightDepth(c.roundedRightDepth);
     if (c.rootZone) {
       setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(c.rootZone))));
     }
@@ -1816,7 +1915,11 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     const { door: doorCode, leaf: leafChar } = zoneFacadeCodes(zone, handleModels, handleDefaults);
 
     if (zone.type === 'leaf') {
-      let finalLeaf = doorCode + leafChar;
+      // n(décalage signé en mm) : 0/absent = affleurante (par défaut, au nu de la façade),
+      // négatif = encastrée, positif = débordante — voir le bloc char=="n" dans procedure_real.py
+      // (glass_shelf et le chiffre de poignée du tiroir sont gérés par zoneFacadeCodes, ci-dessus)
+      const nicheChar = zone.content === 'niche' ? (zone.nicheOffset ? `n(${Math.round(zone.nicheOffset)})` : 'n') : '';
+      let finalLeaf = doorCode + leafChar + nicheChar;
 
       if (zone.hasCableHole) {
         finalLeaf += 'c';
@@ -1947,10 +2050,15 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     const flagsMatch = rest.match(/^([^HV\[]*)/);
     const originalFlags = flagsMatch ? flagsMatch[1] : '';
     let flags = originalFlags.replace(/[PTD]/g, '');
-    
+
     flags = flags.replace(/S2?/g, '');
     if (socle === 'metal') flags += 'S';
     else if (socle === 'wood') flags += 'S2';
+
+    // Z (bords arrondis) doit précéder tout ce qui pose les planches latérales (E, déjà dans
+    // originalFlags le cas échéant) — voir char=="Z" dans procedure_real.py
+    flags = flags.replace(/Z[gd]?(\([^)]*\))?/g, '');
+    flags = `${roundedFlag}${flags}`;
 
     if (!hasZoneSpecificDoors) {
       if (doorType === 'double') flags += 'P2';
@@ -1968,7 +2076,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
+  }, [templatePrompt, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
 
   const handleToggleDoors = useCallback(() => {
     setDoorsOpen(prev => !prev);
@@ -2022,10 +2130,10 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       const match = templatePrompt?.match(regex);
       const meubleType = match?.[1] || (id as string)?.split('(')[0] || 'M1';
 
-      let fullPrompt = `${meubleType}(${width},${depth},${height})bF`;
+      let fullPrompt = `${meubleType}(${width},${depth},${height})${roundedFlag}bF`;
       if (socle === 'metal') fullPrompt += 'S';
       else if (socle === 'wood') fullPrompt += 'S2';
-      
+
       const zonePrompt = buildPromptFromZoneTree(rootZone);
       if (zonePrompt) {
         fullPrompt += zonePrompt;
@@ -2044,7 +2152,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
           selectedColorId,
           socle,
         },
-        features: { doorsOpen, doorType, doorSide, mountingStyle },
+        features: { doorsOpen, doorType, doorSide, mountingStyle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth },
         advancedZones: JSON.parse(JSON.stringify(rootZone)),
         handles: handleDefaults,
         useMultiColor,
@@ -2119,7 +2227,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     const match = templatePrompt?.match(regex);
     const meubleType = match?.[1] || 'M1';
 
-    let fullPrompt = `${meubleType}(${width},${depth},${height})EbF`;
+    let fullPrompt = `${meubleType}(${width},${depth},${height})${roundedFlag}EbF`;
     if (socle === 'metal') fullPrompt += 'S';
     else if (socle === 'wood') fullPrompt += 'S2';
     fullPrompt += buildPromptFromZoneTree(rootZone);
@@ -2137,7 +2245,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         selectedColorId,
         socle,
       },
-      features: { doorsOpen, doorType, doorSide, mountingStyle, installation },
+      features: { doorsOpen, doorType, doorSide, mountingStyle, installation, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth },
       advancedZones: rootZone,
       // Poignée du meuble ; celle d'une porte ou d'un tiroir est dans sa zone
       handles: handleDefaults,
@@ -2356,9 +2464,10 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     onSetZoneContent: setZoneContent,
     onSetDoorContent: setZoneDoorContent,
     onDeleteSection: deleteSection,
-    width,
+    width: usableWidthMm,
     height,
     depth,
+    hasSocle: socle !== 'none',
     onSelectZone: handleZoneClick,
     isAdminCreateModel,
     hideCanvas: true,
@@ -2560,8 +2669,13 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                       selectedZoneIds={selectedZoneIds}
                       onRootZoneChange={setRootZone}
                       onSelectedZoneIdsChange={setSelectedZoneIds}
-                      width={width}
+                      width={usableWidthMm}
                       height={height}
+                      hasSocle={socle !== 'none'}
+                      roundedLeft={roundedLeft}
+                      roundedLeftWidthMm={roundedLeftWidth}
+                      roundedRight={roundedRight}
+                      roundedRightWidthMm={roundedRightWidth}
                       onSelectZone={isViewMode ? undefined : handleZoneClick}
                       canvasMaxHeight={isMobile ? 190 : planViewportHeight ? Math.min(720, Math.max(240, planViewportHeight - 230)) : undefined}
                       hideControls
@@ -2577,6 +2691,12 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                     imageUrl={selectedColorImage}
                     hasSocle={socle !== 'none'}
                     socle={socle}
+                    roundedLeft={roundedLeft}
+                    roundedLeftWidth={roundedLeftWidth}
+                    roundedLeftDepth={roundedLeftDepth}
+                    roundedRight={roundedRight}
+                    roundedRightWidth={roundedRightWidth}
+                    roundedRightDepth={roundedRightDepth}
                     rootZone={rootZone}
                     selectedZoneIds={highlightedZoneIds}
                     selectionTint={activeStep !== STEP.MATERIALS}
@@ -2971,11 +3091,44 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                       </div>
                     )}
 
+                    {activeStep === STEP.BASE_AND_EDGES && (
+                      <>
+                        <StepSection title="Pieds & socle" aside="Pour tout le meuble">
+                          <SocleSelector
+                            value={socle}
+                            onChange={setSocle}
+                            defonceHeight={plintheDefonceHeight}
+                            defonceWidth={plintheDefonceWidth}
+                            onDefonceHeightChange={setPlintheDefonceHeight}
+                            onDefonceWidthChange={setPlintheDefonceWidth}
+                          />
+                        </StepSection>
+
+                        <StepSection title="Coins avant" aside="Pour tout le meuble">
+                          <RoundedEdgesSelector
+                            left={roundedLeft}
+                            leftWidth={roundedLeftWidth}
+                            leftDepth={roundedLeftDepth}
+                            onLeftChange={setRoundedLeft}
+                            onLeftWidthChange={setRoundedLeftWidth}
+                            onLeftDepthChange={setRoundedLeftDepth}
+                            right={roundedRight}
+                            rightWidth={roundedRightWidth}
+                            rightDepth={roundedRightDepth}
+                            onRightChange={setRoundedRight}
+                            onRightWidthChange={setRoundedRightWidth}
+                            onRightDepthChange={setRoundedRightDepth}
+                            furnitureDepthMm={depth}
+                          />
+                        </StepSection>
+                      </>
+                    )}
+
                     {activeStep === STEP.DIVISION && (
                       <DivisionSteps
                         rootZone={rootZone}
                         selectedZoneIds={selectedZoneIds}
-                        width={width}
+                        width={usableWidthMm}
                         height={height}
                         onRootZoneChange={setRootZone}
                         onSelectedZoneIdsChange={setSelectedZoneIds}
@@ -2990,16 +3143,16 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                           <MountingStyleSelector value={mountingStyle} onChange={setMountingStyle} />
                         </StepSection>
 
-                        <StepSection title="Portes & tiroirs" aside="Pour le compartiment sélectionné">
+                        <StepSection title="Portes" aside="Pour le compartiment sélectionné">
                           {selectedZoneIds.length === 0 ? (
                             <ZoneEmptyState>
-                              Cliquez sur un compartiment du meuble pour lui poser une porte ou un tiroir.
+                              Cliquez sur un compartiment du meuble pour lui poser une porte.
                             </ZoneEmptyState>
                           ) : (
                             <ZoneEditor
                               {...zoneEditorProps}
                               hideDimensions
-                              controlSections={['facades', 'storage']}
+                              controlSections={['facades']}
                             />
                           )}
                           <p className="text-[11px] leading-relaxed text-black/65">
@@ -3007,6 +3160,22 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                           </p>
                         </StepSection>
                       </>
+                    )}
+
+                    {activeStep === STEP.DRAWERS && (
+                      <StepSection title="Tiroirs, niches & rangements" aside="Pour le compartiment sélectionné">
+                        {selectedZoneIds.length === 0 ? (
+                          <ZoneEmptyState>
+                            Cliquez sur un compartiment du meuble pour lui poser un tiroir ou une niche.
+                          </ZoneEmptyState>
+                        ) : (
+                          <ZoneEditor
+                            {...zoneEditorProps}
+                            hideDimensions
+                            controlSections={['storage']}
+                          />
+                        )}
+                      </StepSection>
                     )}
 
                     {activeStep === STEP.MATERIALS && (
@@ -3067,10 +3236,6 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
                     {activeStep === STEP.FINISHES && (
                       <>
-                        <StepSection title="Pieds & socle" aside="Pour tout le meuble">
-                          <SocleSelector value={socle} onChange={setSocle} />
-                        </StepSection>
-
                         {hasHandleFacades && (
                           <StepSection title="Poignées" aside="Tout le meuble ou une façade">
                             <HandleSelector

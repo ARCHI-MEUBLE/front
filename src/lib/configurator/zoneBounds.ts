@@ -12,8 +12,15 @@ export interface Box {
 }
 
 export interface FurnitureLayout {
-  // Largeur et profondeur extérieures
+  // Largeur dispo pour poser portes/cloisons/planches latérales (réduite de la largeur de chaque
+  // bord avant arrondi actif, voir getUsableWidthMm) : c'est elle qu'il faut utiliser pour tout
+  // calcul de disposition interne (compartiments, séparateurs, tailles affichées...). C'est une
+  // grandeur relative (une largeur dispo, pas une position absolue) : le décalage visuel quand un
+  // seul côté est arrondi est géré séparément, côté 3D (ThreeCanvas).
   width: number;
+  // Largeur totale réelle du meuble (ce que la personne a saisi), socle et bords arrondis compris :
+  // à utiliser seulement pour l'enveloppe extérieure visuelle (caméra, boîte englobante).
+  declaredWidth: number;
   depth: number;
   // Hauteur du caisson, socle exclu, et hauteur du socle
   sideHeight: number;
@@ -26,11 +33,25 @@ export interface FurnitureLayout {
 export const PANEL_THICKNESS_M = 0.019;
 export const PLINTH_HEIGHT_M = 0.1;
 
+// Largeur (mm) par défaut d'un bord avant arrondi quand on l'active (voir ThreeCanvas RoundedCorner
+// / char=="Z" dans procedure_real.py — les deux doivent rester synchronisés), avant que la personne
+// l'ajuste avec les sliders.
+export const ROUNDED_EDGE_DEFAULT_WIDTH_MM = 60;
+export const ROUNDED_EDGE_DEFAULT_DEPTH_MM = 60;
+
+// Largeur (mm) réellement disponible pour la disposition interne du meuble : la largeur déclarée,
+// réduite de la largeur de chaque bord avant arrondi actif (0 si inactif).
+export function getUsableWidthMm(widthMm: number, leftExtensionMm = 0, rightExtensionMm = 0): number {
+  const declared = widthMm || 1500;
+  return Math.max(100, declared - leftExtensionMm - rightExtensionMm);
+}
+
 // Dimensions du meuble dans la scène : le socle est compris dans la hauteur totale
-export function getFurnitureLayout(widthMm: number, heightMm: number, depthMm: number, hasSocle: boolean): FurnitureLayout {
+export function getFurnitureLayout(widthMm: number, heightMm: number, depthMm: number, hasSocle: boolean, leftExtensionMm = 0, rightExtensionMm = 0): FurnitureLayout {
   const height = (heightMm || 730) / 1000;
   return {
-    width: (widthMm || 1500) / 1000,
+    width: getUsableWidthMm(widthMm, leftExtensionMm, rightExtensionMm) / 1000,
+    declaredWidth: (widthMm || 1500) / 1000,
     depth: (depthMm || 500) / 1000,
     sideHeight: hasSocle ? height - PLINTH_HEIGHT_M : height,
     yOffset: hasSocle ? PLINTH_HEIGHT_M : 0,
@@ -74,6 +95,44 @@ export function getZoneBox(root: Zone, zoneId: string, layout: FurnitureLayout):
   );
 }
 
+// Taille intérieure utile (mm) d'un compartiment : la largeur/hauteur réellement disponible une fois
+// déduite l'épaisseur des panneaux (côtés, dessus/dessous, séparateurs) — contrairement à getZoneSize
+// (zoneStats.ts), purement proportionnel, qui donne la taille nominale du compartiment, planches
+// comprises. Reproduit le découpage de collectGridCells (ThreeCanvas) : chaque niveau de division
+// retire l'épaisseur des séparateurs entre ses enfants avant de répartir au prorata.
+// `usableWidthMm` est déjà réduite des bords arrondis actifs (voir getUsableWidthMm) ; `heightMm` est
+// la hauteur totale déclarée (socle compris), réduite ici de la hauteur du socle s'il y en a un.
+export function getZoneInteriorSizeMm(
+  root: Zone,
+  zoneId: string,
+  usableWidthMm: number,
+  heightMm: number,
+  hasSocle: boolean
+): { width: number; height: number } | null {
+  const thicknessMm = PANEL_THICKNESS_M * 1000;
+  const sideHeightMm = hasSocle ? (heightMm || 730) - PLINTH_HEIGHT_M * 1000 : heightMm || 730;
+
+  const visit = (zone: Zone, width: number, height: number): { width: number; height: number } | null => {
+    if (zone.id === zoneId) return { width, height };
+
+    const children = zone.children;
+    if (!children?.length) return null;
+
+    const ratios = getChildRatios(zone);
+    const isVertical = zone.type === 'vertical';
+    const available = (isVertical ? width : height) - (children.length - 1) * thicknessMm;
+
+    for (let i = 0; i < children.length; i++) {
+      const childSize = (available * ratios[i]) / 100;
+      const found = isVertical ? visit(children[i], childSize, height) : visit(children[i], width, childSize);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  return visit(root, usableWidthMm - 2 * thicknessMm, sideHeightMm - 2 * thicknessMm);
+}
+
 // Plus petite boîte contenant toutes les boîtes données
 export function unionBoxes(boxes: Box[]): Box | null {
   if (boxes.length === 0) return null;
@@ -91,10 +150,10 @@ export function unionBoxes(boxes: Box[]): Box | null {
   };
 }
 
-// Enveloppe extérieure du meuble, socle compris (du sol à sa hauteur totale)
+// Enveloppe extérieure du meuble, socle et bords arrondis compris (du sol à sa hauteur totale)
 export function getFurnitureBox(layout: FurnitureLayout): Box {
   const height = layout.sideHeight + layout.yOffset;
-  return { center: [0, height / 2, 0], size: [layout.width, height, layout.depth] };
+  return { center: [0, height / 2, 0], size: [layout.declaredWidth, height, layout.depth] };
 }
 
 // Une limite entre deux enfants d'un groupe, telle que la scène 3D la dessine (cloison ou étagère)

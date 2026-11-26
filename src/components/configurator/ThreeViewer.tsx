@@ -50,6 +50,13 @@ export interface ThreeViewerProps {
   doorType?: 'none' | 'single' | 'double';
   doorSide?: 'left' | 'right';
   mountingStyle?: 'applique' | 'encastre';
+  // Bords avant arrondis, pleine hauteur (voir char=="Z" côté back), indépendants l'un de l'autre
+  roundedLeft?: boolean;
+  roundedLeftWidth?: number;
+  roundedLeftDepth?: number;
+  roundedRight?: boolean;
+  roundedRightWidth?: number;
+  roundedRightDepth?: number;
   onCaptureReady?: (captureFunction: () => string | null) => void;
   // Panel selection and deletion
   selectedPanelIds?: Set<string>;

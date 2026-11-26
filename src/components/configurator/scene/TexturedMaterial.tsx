@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { getSafeColor } from './utils';
 
-export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; imageUrl?: string | null }) {
+export function TexturedMaterial({ hexColor, imageUrl, side }: { hexColor: string; imageUrl?: string | null; side?: THREE.Side }) {
     const [texture, setTexture] = useState<THREE.Texture | null>(null);
     const textureRef = useRef<THREE.Texture | null>(null);
     const currentImageUrlRef = useRef<string | null>(null);
@@ -85,6 +85,7 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
                 polygonOffset
                 polygonOffsetFactor={1}
                 polygonOffsetUnits={1}
+                side={side}
             />
         );
     }
@@ -99,6 +100,7 @@ export function TexturedMaterial({ hexColor, imageUrl }: { hexColor: string; ima
             polygonOffset
             polygonOffsetFactor={1}
             polygonOffsetUnits={1}
+            side={side}
         />
     );
 }

@@ -36,15 +36,16 @@ export function layoutLeafText({ pxWidth, pxHeight, label, widthMm, heightMm, ha
   const layout: LeafLayout = { icon: 0, label: null, dims: null };
   let remaining = pxHeight - PADDING;
 
-  const fullDims = `${widthMm} × ${heightMm} mm`;
-  const shortDims = `${widthMm}×${heightMm}`;
-  const labelOptions: TextRow[] = [18, 14, 12].map((size) => ({ text: label, size }));
+  // Cote au format « hauteur × largeur », hauteur en premier (convention meuble)
+  const fullDims = `${heightMm} × ${widthMm} mm`;
+  const shortDims = `${heightMm}×${widthMm}`;
   const dimsOptions: TextRow[] = [
     { text: fullDims, size: 16 },
     { text: fullDims, size: 12 },
     { text: shortDims, size: 11 },
     { text: shortDims, size: 9 },
   ];
+  const labelOptions: TextRow[] = [18, 14, 12].map((size) => ({ text: label, size }));
 
   const pick = (options: TextRow[], charWidth: number): TextRow | null =>
     options.find(
