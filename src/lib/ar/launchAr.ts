@@ -15,31 +15,78 @@ export interface BrowserTraits {
   userAgent: string;
   platform: string;
   maxTouchPoints: number;
+  // Écran tactile d'après les événements et les media queries (pointeur grossier, pas de survol). Sert quand
+  // maxTouchPoints est masqué : la protection contre le pistage de Safari peut faire passer un iPad pour un Mac en
+  // entier, maxTouchPoints compris, mais pas sans casser les sites qui adaptent leur interface au doigt.
+  touchScreen: boolean;
   // Vue web d'application (WKWebView) : sur iPhone, Chrome, Edge et Firefox en sont aussi
   inWebView: boolean;
   // Le lien <a rel="ar"> de Quick Look est reconnu (Safari)
   supportsArLinks: boolean;
 }
 
-// iPadOS se présente comme un Mac : on le reconnaît à son écran tactile
-const isIOSDevice = ({ userAgent, platform, maxTouchPoints }: BrowserTraits) =>
-  /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1);
+// iPadOS se présente comme un Mac (« Macintosh », platform « MacIntel ») : on le reconnaît à son écran tactile, aucun
+// Mac n'en a. navigator.platform ne suffit pas : déprécié, il peut valoir autre chose sur iPad ; l'identifiant
+// « Macintosh » prend alors le relais.
+const isIOSDevice = ({ userAgent, platform, maxTouchPoints, touchScreen }: BrowserTraits) =>
+  /iPad|iPhone|iPod/.test(userAgent) ||
+  ((platform === 'MacIntel' || /Macintosh/.test(userAgent)) && (maxTouchPoints > 1 || touchScreen));
 
-const isAndroidDevice = ({ userAgent }: BrowserTraits) => /android/i.test(userAgent);
+const hasTouchScreen = ({ maxTouchPoints, touchScreen }: BrowserTraits) => maxTouchPoints > 0 || touchScreen;
 
-// iPhone et iPad : mêmes règles que <model-viewer>. Quick Look s'ouvre dans Safari et dans les navigateurs connus
-// (Chrome, Edge, Firefox, DuckDuckGo), pas dans les vues web des applications (Instagram, Facebook…) ni dans
-// l'application Google. Android : Scene Viewer depuis tous les navigateurs. <model-viewer> écarte encore Firefox, qui
-// ouvre pourtant les liens intent:// après avoir demandé la permission d'ouvrir l'application Google.
+// Identifiant de Chrome, Firefox ou Samsung Internet pour Linux, sans « Android » ni ChromeOS
+const looksLikeLinuxComputer = ({ userAgent }: BrowserTraits) => /X11; Linux/.test(userAgent) && !/CrOS|Android/.test(userAgent);
+
+// Android en « version pour ordinateur » : Chrome l'active d'office sur les tablettes haut de gamme (écran de 10" et
+// 8 Go de mémoire, Galaxy Tab S, Pixel Tablet…), et chacun peut l'activer sur un téléphone. L'identifiant devient
+// celui d'un ordinateur sous Linux, sans « Android ». navigator.platform garde la valeur d'Android (« Linux armv81 ») :
+// un écran tactile et un processeur ARM le trahissent. Les ordinateurs Android (Googlebook) annoncent « Linux x86_64 ».
+const isAndroidInDesktopMode = (traits: BrowserTraits) =>
+  looksLikeLinuxComputer(traits) && hasTouchScreen(traits) && /arm|aarch64/i.test(traits.platform);
+
+const isAndroidDevice = (traits: BrowserTraits) => /android/i.test(traits.userAgent) || isAndroidInDesktopMode(traits);
+
+// Casques de réalité virtuelle (Quest, Pico…) : leur navigateur se dit Android ou Linux, sans réalité augmentée de téléphone
+const HEADSET = /OculusBrowser|PicoBrowser|Wolvic|Quest/;
+// Téléphones et tablettes HarmonyOS (Huawei) : ni Quick Look ni ARCore
+const OTHER_MOBILE_OS = /OpenHarmony|HarmonyOS|ArkWeb/;
+
+// Navigateurs iOS dont on sait qu'ils ouvrent Quick Look bien qu'ils soient des vues web
+const IOS_BROWSERS = /CriOS\/|EdgiOS\/|FxiOS\/|DuckDuckGo\//;
+// Vues web d'applications où Quick Look ne s'ouvre souvent pas
+const IN_APP_VIEWS = /GSA\/|FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Snapchat|Twitter|Line\/|MicroMessenger|Pinterest/;
+
+// Tous les navigateurs d'iPhone et d'iPad tentent Quick Look : sur iOS, ils reposent tous sur le même moteur (WebKit),
+// et ceux qu'on ne connaît pas (Brave, Opera, Vivaldi, vues web d'applications…) l'ouvrent souvent quand même. Bloquer
+// le bouton laissait ces visiteurs sans rien ; quickLookIsReliable dit quand ajouter « sinon, ouvrez dans Safari ».
+// Android : Scene Viewer ou WebXR depuis tous les navigateurs. Firefox ouvre les liens intent:// après avoir demandé la
+// permission d'ouvrir l'application Google. Seuls les casques et HarmonyOS n'ont pas de réalité augmentée de téléphone.
 export function arPlatformFor(traits: BrowserTraits): ArPlatform | null {
-  const { userAgent } = traits;
-  if (isIOSDevice(traits)) {
-    if (/GSA\//.test(userAgent)) return null;
-    if (traits.inWebView) return /CriOS\/|EdgiOS\/|FxiOS\/|DuckDuckGo\//.test(userAgent) ? 'quick-look' : null;
-    return traits.supportsArLinks ? 'quick-look' : null;
-  }
-  if (isAndroidDevice(traits) && !/OculusBrowser/i.test(userAgent)) return 'scene-viewer';
+  if (HEADSET.test(traits.userAgent)) return null;
+  if (isIOSDevice(traits)) return 'quick-look';
+  if (isAndroidDevice(traits)) return 'scene-viewer';
   return null;
+}
+
+// Téléphone, tablette ou casque : le QR code, fait pour l'ordinateur, n'y sert à rien
+export function isMobileDeviceFor(traits: BrowserTraits): boolean {
+  return isIOSDevice(traits) || isAndroidDevice(traits) || HEADSET.test(traits.userAgent) || OTHER_MOBILE_OS.test(traits.userAgent);
+}
+
+// Android en version pour ordinateur dont navigator.platform serait masqué : seule la réalité augmentée WebXR (Chrome,
+// Samsung Internet) peut alors le révéler. Un ordinateur sous Linux n'a pas d'ARCore et répond « non ».
+export function mayBeHiddenAndroidFor(traits: BrowserTraits): boolean {
+  return arPlatformFor(traits) === null && looksLikeLinuxComputer(traits) && hasTouchScreen(traits) && !HEADSET.test(traits.userAgent);
+}
+
+// Quick Look s'ouvre à coup sûr : Safari (lien rel="ar" reconnu) et les navigateurs iOS connus. Sur iPad en « version
+// ordinateur » (réglage par défaut), Chrome et les autres envoient l'identifiant de Safari pour Mac, sans leur nom :
+// une vue web sans « Mobile/ » ni nom d'application est alors un navigateur.
+export function quickLookIsReliable(traits: BrowserTraits): boolean {
+  const { userAgent } = traits;
+  if (IN_APP_VIEWS.test(userAgent)) return false;
+  if (traits.inWebView) return IOS_BROWSERS.test(userAgent) || !/Mobile\//.test(userAgent);
+  return traits.supportsArLinks;
 }
 
 type WebKitWindow = Window & { webkit?: { messageHandlers?: unknown } };
@@ -51,23 +98,38 @@ function browserTraits(): BrowserTraits {
   } catch {
     // relList.supports lève une erreur dans les navigateurs qui ne connaissent aucune valeur de rel
   }
+  const media = (query: string) => {
+    try {
+      return window.matchMedia?.(query).matches ?? false;
+    } catch {
+      return false;
+    }
+  };
   return {
     userAgent: navigator.userAgent,
     platform: navigator.platform,
     maxTouchPoints: navigator.maxTouchPoints,
+    touchScreen: 'ontouchend' in document || media('(any-pointer: coarse)') || media('(hover: none) and (pointer: coarse)'),
     inWebView: Boolean((window as WebKitWindow).webkit?.messageHandlers),
     supportsArLinks,
   };
 }
 
 export function isPhoneOrTablet(): boolean {
-  const traits = browserTraits();
-  return isIOSDevice(traits) || isAndroidDevice(traits);
+  return isMobileDeviceFor(browserTraits());
+}
+
+export function mayBeHiddenAndroid(): boolean {
+  return typeof window !== 'undefined' && mayBeHiddenAndroidFor(browserTraits());
 }
 
 export function getArPlatform(): ArPlatform | null {
   if (typeof window === 'undefined') return null;
   return arPlatformFor(browserTraits());
+}
+
+export function isQuickLookReliable(): boolean {
+  return typeof window === 'undefined' || quickLookIsReliable(browserTraits());
 }
 
 // GLB → USDZ pour Quick Look (adresse blob: à libérer avec URL.revokeObjectURL)
@@ -92,7 +154,8 @@ export async function createUsdzUrl(glbPath: string): Promise<string> {
   return URL.createObjectURL(new Blob([usdz], { type: 'model/vnd.usdz+zip' }));
 }
 
-// À appeler directement dans le clic : iOS n'ouvre Quick Look que sur une action de l'utilisateur
+// À appeler directement dans le clic : iOS n'ouvre Quick Look que sur une action de l'utilisateur. Dans un navigateur
+// qui ignore rel="ar", l'attribut download enregistre le fichier : ouvert depuis Fichiers, il passe aussi en AR.
 export function openQuickLook(usdzUrl: string) {
   const anchor = document.createElement('a');
   anchor.setAttribute('rel', 'ar');
@@ -106,12 +169,14 @@ export function openQuickLook(usdzUrl: string) {
   anchor.remove();
 }
 
-// Ce qui a empêché Scene Viewer de s'ouvrir :
+// Ce qui a empêché Scene Viewer de montrer le meuble :
+// - needs-https : page ouverte en http (adresse locale de l'ordinateur). Scene Viewer ne télécharge qu'en https :
+//   il s'ouvrirait et se refermerait aussitôt, on ne le lance pas ;
 // - unavailable : le navigateur est revenu sur la page, faute d'application Google pour l'ouvrir ;
 // - not-opened : la page est restée affichée (vue web d'une application qui ignore le lien, ouverture refusée) ;
 // - closed-quickly : Scene Viewer s'est ouvert puis refermé aussitôt (appli Google sans accès à l'appareil photo,
 //   Services Google Play pour la RA absents ou périmés, modèle illisible).
-export type SceneViewerIssue = 'unavailable' | 'not-opened' | 'closed-quickly';
+export type SceneViewerIssue = 'needs-https' | 'unavailable' | 'not-opened' | 'closed-quickly';
 
 // ar_preferred : la caméra, ou la vue 3D si le téléphone n'a pas ARCore. 3d_only : le meuble en 3D, sans caméra.
 export type SceneViewerMode = 'ar_preferred' | '3d_only';
@@ -123,7 +188,7 @@ const NOT_OPENED_DELAY_MS = 4000;
 // Le retour de secours suit de près le clic (Firefox attend la réponse à sa question) ; plus tard, ce n'est plus lui
 const FALLBACK_WATCH_MS = 60000;
 // Retour sur la page moins de 4 s après l'ouverture : personne n'a eu le temps de poser le meuble, Scene Viewer s'est fermé seul
-const QUICK_CLOSE_MS = 4000;
+export const QUICK_CLOSE_MS = 4000;
 
 let stopWatchingLaunch: (() => void) | null = null;
 
@@ -139,10 +204,16 @@ export function openSceneViewer(
   // Un seul lancement suivi à la fois : sinon un retour de secours tardif reviendrait plusieurs fois en arrière
   stopWatchingLaunch?.();
 
+  const fileUrl = new URL(glbPath, window.location.href);
+  if (fileUrl.protocol !== 'https:') {
+    onIssue('needs-https');
+    return;
+  }
+
   const fallback = new URL(window.location.href);
   fallback.hash = NO_AR_HASH;
   const params = new URLSearchParams({
-    file: new URL(glbPath, window.location.href).toString(),
+    file: fileUrl.toString(),
     mode,
     resizable: 'false',
     // Comme <model-viewer> : l'occlusion par la profondeur estimée fait clignoter les bords du meuble contre le mur

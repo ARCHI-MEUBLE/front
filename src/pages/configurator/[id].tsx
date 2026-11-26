@@ -1,9 +1,12 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import Head from 'next/head';
+import type { GetServerSideProps } from 'next';
+import { Seo } from '@/components/Seo';
+import { breadcrumbJsonLd } from '@/lib/seo';
+import { PUBLIC_PAGE_CACHE, fetchBackend } from '@/lib/backendServer';
 import Link from 'next/link';
-import { adminUrl } from '@/lib/adminPath';
+import { goToAdmin } from '@/lib/adminPath';
 
 const ThreeViewer = dynamic(() => import('@/components/configurator/ThreeViewer'), {
   ssr: false,
@@ -37,8 +40,11 @@ import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META }
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
 import RoundedEdgesSelector from '@/components/configurator/RoundedEdgesSelector';
+import InstallationToggle from '@/components/configurator/InstallationToggle';
 import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
+import { fetchPriceEstimate, formatPriceRange, savedQuoteFrom, type PriceEstimate } from '@/lib/pricing';
+import { formatPrice } from '@/lib/format';
 import ShareButton from '@/components/configurator/ShareButton';
 import ProjectRequestDialog from '@/components/configurator/ProjectRequestDialog';
 import {
@@ -77,9 +83,21 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   DEFAULT_COLOR_HEX,
-  HANDLE_TYPE_CODE,
+  DEFAULT_COLOR_NAME,
   normalizeMaterialKey,
 } from '@/lib/configurator/materials';
+import {
+  DEFAULT_HANDLE_DEFAULTS,
+  handleFacadeKind,
+  listHandleFacades,
+  parseHandleDefaults,
+  summarizeHandles,
+  type HandleDefaults,
+  type HandleModel,
+} from '@/lib/configurator/handles';
+import { leafHandleFromPrompt, matchGroupDoor, zoneFacadeCodes } from '@/lib/configurator/promptHandles';
+import { handleModelsApi } from '@/lib/handleModelsApi';
+import HandleSelector from '@/components/configurator/HandleSelector';
 import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
@@ -89,7 +107,9 @@ import { getUsableWidthMm, ROUNDED_EDGE_DEFAULT_WIDTH_MM, ROUNDED_EDGE_DEFAULT_D
 const PLINTHE_DEFONCE_DEFAULT_HEIGHT_MM = 80;
 const PLINTHE_DEFONCE_DEFAULT_WIDTH_MM = 40;
 import { nicheDefaultColor } from '@/lib/configurator/niche';
-import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
+import { displayColorName } from '@/lib/displayNames';
+import { findConstraintIssues, type ConstraintIssue, type IssueKind } from '@/lib/configurator/constraints';
+import { fixConstraintIssues } from '@/lib/configurator/constraintFix';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { extendSelection, groupSelection, selectableNeighborIds } from '@/lib/configurator/zoneSelection';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
@@ -171,7 +191,67 @@ function notifyRemovedFacades(removed: number) {
   else if (removed > 1) toast(`${removed} portes ou tiroirs qui se superposaient ont été retirés.`);
 }
 
-export default function ConfiguratorPage() {
+type SeoModel = Pick<FurnitureModel, 'id' | 'name' | 'description' | 'image_url'>;
+
+// Titre et description d'un modèle, pour Google et les aperçus de partage
+function modelSeo(model: SeoModel) {
+  return {
+    title: `${model.name} sur mesure, à configurer en 3D — ArchiMeuble`,
+    description:
+      model.description ||
+      `Configurez votre ${model.name.toLowerCase()} sur mesure en 3D : dimensions, matériaux, couleurs et façades. Fabriqué et posé par nos menuisiers à Lille.`,
+  };
+}
+
+interface ConfiguratorRouteProps {
+  // Modèle lu par le serveur : titre, description et image sont dans la page dès son arrivée, ce que lisent Google
+  // et les aperçus de liens partagés (WhatsApp, Facebook… n'exécutent pas le JavaScript). null : backend
+  // injoignable ou adresse sans modèle, la page garde son titre calculé dans le navigateur.
+  seoModel: SeoModel | null;
+  noindex: boolean;
+}
+
+export const getServerSideProps: GetServerSideProps<ConfiguratorRouteProps> = async ({ params, query, res }) => {
+  const fromAdmin = Boolean(query.adminMode || query.fromAdmin);
+  const id = Number(params?.id);
+  if (!Number.isInteger(id) || id <= 0) return { props: { seoModel: null, noindex: true } };
+
+  const result = await fetchBackend(`/backend/api/models.php?id=${id}`);
+  // Modèle supprimé : vraie 404, Google le retire de son index (l'administration garde son propre affichage d'erreur)
+  if (result.status === 'not-found' && !fromAdmin) return { notFound: true };
+  const data = result.status === 'ok' ? (result.data as Partial<SeoModel>) : null;
+  const seoModel =
+    data && typeof data.name === 'string'
+      ? { id, name: data.name, description: data.description ?? null, image_url: data.image_url ?? null }
+      : null;
+
+  // Page publique sans réglage propre à un visiteur (seul ?partage= peut s'ajouter) : mise en cache par le CDN
+  const publicUrl = Object.keys(query).every((key) => key === 'id' || key === SHARE_QUERY_PARAM);
+  if (seoModel && publicUrl && !fromAdmin) res.setHeader('Cache-Control', PUBLIC_PAGE_CACHE);
+  return { props: { seoModel, noindex: fromAdmin } };
+};
+
+export default function ConfiguratorRoute({ seoModel, noindex }: ConfiguratorRouteProps) {
+  return (
+    <>
+      {seoModel && (
+        <Seo
+          {...modelSeo(seoModel)}
+          image={seoModel.image_url}
+          noindex={noindex}
+          jsonLd={breadcrumbJsonLd([
+            { name: 'Accueil', path: '/' },
+            { name: 'Nos modèles', path: '/models' },
+            { name: seoModel.name, path: `/configurator/${seoModel.id}` },
+          ])}
+        />
+      )}
+      <ConfiguratorPage serverSeo={seoModel !== null} />
+    </>
+  );
+}
+
+function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const router = useRouter();
   const { id, mode, configId: queryConfigId, adminMode, modelId, fromAdmin } = router.query;
   const { customer, isAuthenticated } = useCustomer();
@@ -207,11 +287,11 @@ export default function ConfiguratorPage() {
     fetchCategories();
   }, [isAdminCreateModel]);
 
+  // Pas de prix dans le formulaire : le backend calcule celui du modèle depuis sa configuration
   const [modelForm, setModelForm] = useState({
     name: '',
     description: '',
     category: 'dressing',
-    price: 890,
     imageUrl: ''
   });
 
@@ -224,14 +304,12 @@ export default function ConfiguratorPage() {
 
     try {
       setIsUploading(true);
-      console.log('📤 Début de l\'upload de l\'image...', file.name);
       const response = await fetch('/api/admin/upload-model-image', {
         method: 'POST',
         credentials: 'include',
         body: formData,
       });
 
-      console.log('📥 Réponse du serveur (status):', response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur serveur upload:', errorText);
@@ -239,7 +317,6 @@ export default function ConfiguratorPage() {
       }
 
       const data = await response.json();
-      console.log('✅ Données upload reçues:', data);
       if (data.success) {
         setModelForm({ ...modelForm, imageUrl: data.url });
         toast.success('Image mise en ligne !');
@@ -260,24 +337,16 @@ export default function ConfiguratorPage() {
     const checkAdmin = async () => {
       if (fromAdmin === 'true') {
         setIsAdmin(true);
-        console.log('👑 Accès depuis le dashboard admin (fromAdmin=true)');
         return;
       }
 
       try {
-        console.log('🔍 Vérification session admin...');
         const data = await apiClient.adminAuth.getSession();
-        console.log('🔍 Réponse getSession:', data);
         if (data.admin) {
           setIsAdmin(true);
-          console.log('👑 Session administrateur détectée');
-        } else {
-          console.log('❌ Pas de session admin (data.admin = false ou undefined)');
         }
       } catch (e) {
-        if (e instanceof Error && 'statusCode' in e && e.statusCode === 401) {
-          console.info('ℹ️ Aucune session administrateur active');
-        } else {
+        if (!(e instanceof Error && 'statusCode' in e && e.statusCode === 401)) {
           console.error('❌ Erreur lors de la vérification admin:', e);
         }
       }
@@ -355,15 +424,14 @@ export default function ConfiguratorPage() {
   const [selectedColorImage, setSelectedColorImage] = useState<string | null>(null);
   const [materialsMap, setMaterialsMap] = useState<Record<string, SampleType[]>>({});
   const [materialsLoading, setMaterialsLoading] = useState(false);
-  const [price, setPrice] = useState(899);
-
-  useEffect(() => {
-    if (isCreateModelDialogOpen && price > 0) {
-      setModelForm(prev => ({ ...prev, price: Math.round(price) }));
-    }
-  }, [isCreateModelDialogOpen, price]);
-
-  const [pricingParams, setPricingParams] = useState<any>(null);
+  const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
+  // Message du backend quand le prix ne peut pas être calculé : on affiche « Prix indisponible », jamais l'ancien prix
+  const [priceError, setPriceError] = useState<string | null>(null);
+  // Modèles de poignées de l'admin, et le choix pour tout le meuble (config_data.handles). Le choix d'une porte ou
+  // d'un tiroir vit dans sa zone (handleModelId, handleOrientation).
+  const [handleModels, setHandleModels] = useState<HandleModel[]>([]);
+  const [handleModelsLoading, setHandleModelsLoading] = useState(true);
+  const [handleDefaults, setHandleDefaults] = useState<HandleDefaults>(DEFAULT_HANDLE_DEFAULTS);
 
   const [doorsOpen, setDoorsOpen] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
@@ -389,6 +457,8 @@ export default function ConfiguratorPage() {
   const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
   const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
   const [mountingStyle, setMountingStyle] = useState<'applique' | 'encastre'>('applique');
+  // Pose et montage chez le client (Finitions) : ajoutés au prix du meuble par le backend
+  const [installation, setInstallation] = useState(false);
 
   useEffect(() => {
     doorsOpenRef.current = doorsOpen;
@@ -684,19 +754,6 @@ export default function ConfiguratorPage() {
     notifyRemovedFacades(removed);
   }, [rootZone]);
 
-  const setZoneHandleType = useCallback((zoneId: string, handleType: 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed') => {
-    const updateZone = (z: Zone): Zone => {
-      if (z.id === zoneId) {
-        return { ...z, handleType };
-      }
-      if (z.children) {
-        return { ...z, children: z.children.map(updateZone) };
-      }
-      return z;
-    };
-    setRootZone(updateZone(rootZone));
-  }, [rootZone]);
-
   const setZoneColor = useCallback((zoneId: string, zoneColor: ZoneColor) => {
     const updateZone = (z: Zone): Zone => {
       if (z.id === zoneId) {
@@ -778,7 +835,10 @@ export default function ConfiguratorPage() {
     doorSide,
     mountingStyle,
     deletedPanelIds,
-  }), [width, height, depth, color, selectedColorImage, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds]);
+    // Poignées : dans configKey aussi, un autre modèle ou sens de pose refait l'export
+    handleModels,
+    handleDefaults,
+  }), [width, height, depth, color, selectedColorImage, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, rootZone, templatePrompt, componentColors, useMultiColor, doorType, doorSide, mountingStyle, deletedPanelIds, handleModels, handleDefaults]);
   const arConfigKey = useMemo(
     () => JSON.stringify({ ...arFurniture, deletedPanelIds: Array.from(deletedPanelIds) }),
     [arFurniture, deletedPanelIds]
@@ -866,8 +926,21 @@ export default function ConfiguratorPage() {
           setZoneTouched(true);
         }
       }
-    } else if (step === STEP.DRAWERS || step === STEP.FINISHES) {
+    } else if (step === STEP.DRAWERS) {
       if (!(selectedZoneIds.length === 1 && selectedZone?.type === 'leaf')) {
+        const leafId = firstLeafId(selectedZone ?? rootZone);
+        if (leafId) {
+          setSelectedZoneIds([leafId]);
+          setZoneTouched(true);
+        }
+      }
+    } else if (step === STEP.FINISHES) {
+      // Une seule zone choisie reste choisie : un compartiment, ou une porte de groupe dont on règle la poignée
+      const keepSelection =
+        selectedZoneIds.length === 1 &&
+        !!selectedZone &&
+        (selectedZone.type === 'leaf' || handleFacadeKind(selectedZone) !== null);
+      if (!keepSelection) {
         const leafId = firstLeafId(selectedZone ?? rootZone);
         if (leafId) {
           setSelectedZoneIds([leafId]);
@@ -912,6 +985,12 @@ export default function ConfiguratorPage() {
 
   const leafZones = useMemo(() => listLeafZones(rootZone), [rootZone]);
   const zoneStats = useMemo(() => computeZoneStats(rootZone), [rootZone]);
+  // Section « Poignées » de l'étape Finitions : seulement s'il y a une porte ou un tiroir à poignée
+  const hasHandleFacades = useMemo(() => listHandleFacades(rootZone).length > 0, [rootZone]);
+  const handlesSummary = useMemo(
+    () => summarizeHandles(rootZone, handleModels, handleDefaults),
+    [rootZone, handleModels, handleDefaults]
+  );
 
   // Une porte ou un tiroir ajouté pendant qu'ils sont cachés doit se voir : on les réaffiche
   const facadeCount = zoneStats.drawers + zoneStats.doors;
@@ -930,9 +1009,8 @@ export default function ConfiguratorPage() {
   );
   const hasZoneIssues = constraintIssues.length > 0;
 
-  // Ouvre l'étape où se corrige le premier problème, avec la zone concernée sélectionnée
-  const focusZoneIssue = useCallback(() => {
-    const issue = constraintIssues[0];
+  // Ouvre l'étape où se corrige un problème, avec la zone concernée sélectionnée
+  const focusIssue = useCallback((issue: ConstraintIssue | undefined) => {
     if (!issue) return;
     const stepByKind: Record<IssueKind, ConfigStep> = {
       dimensions: STEP.DIMENSIONS,
@@ -942,7 +1020,29 @@ export default function ConfiguratorPage() {
     };
     goToStep(stepByKind[issue.kind]);
     if (issue.zoneId) setSelectedZoneIds([issue.zoneId]);
-  }, [constraintIssues, goToStep]);
+  }, [goToStep]);
+
+  const focusZoneIssue = useCallback(() => focusIssue(constraintIssues[0]), [constraintIssues, focusIssue]);
+
+  // Bouton « Corriger » : rend le meuble fabricable en gardant au mieux ce qui a été dessiné (annulable comme
+  // toute modification) ; ce qui ne peut pas être corrigé seul ouvre l'étape concernée
+  const fixZoneIssues = useCallback(() => {
+    const fix = fixConstraintIssues(rootZone, { width, height, depth });
+    if (fix.root !== rootZone) setRootZone(fix.root);
+    if (fix.dims.width !== width) setWidth(fix.dims.width);
+    if (fix.dims.height !== height) setHeight(fix.dims.height);
+    if (fix.dims.depth !== depth) setDepth(fix.dims.depth);
+
+    if (fix.remaining.length > 0) {
+      toast.error(`À corriger à la main : ${fix.remaining[0].message}`);
+      focusIssue(fix.remaining[0]);
+      return;
+    }
+    const [first, ...others] = fix.changes;
+    toast.success(others.length > 0 ? `Meuble corrigé : ${first} (et ${others.length} autre${others.length > 1 ? 's' : ''} modification${others.length > 1 ? 's' : ''})` : `Meuble corrigé : ${first}`, {
+      duration: 6000,
+    });
+  }, [rootZone, width, height, depth, setRootZone, focusIssue]);
 
   // Menu de la zone sélectionnée : son titre, sa taille, ses voisines et son groupe parent
   const quickMenu = useMemo(() => {
@@ -1082,13 +1182,53 @@ export default function ConfiguratorPage() {
     ? null
     : colorsForMaterial.find((option) => option.id === componentColors.doors.colorId)?.name || 'Personnalisée';
 
-  const priceDisplaySettings = useMemo(() => {
-    const displayConfig = pricingParams?.display?.price;
-    return {
-      mode: Number(displayConfig?.display_mode) || 0,
-      range: Number(displayConfig?.deviation_range) || 0
+  // Prix : estimé par le backend, qui refait le même calcul à l'enregistrement. Un quart de seconde après le dernier
+  // changement ; la requête précédente est annulée pour qu'une réponse lente n'écrase pas une plus récente. On envoie
+  // tout ce que config_data enregistre et qui compte dans le prix : la couleur de chaque partie (chaque partie est
+  // comptée au prix de sa matière), le montage, les panneaux retirés. En cas d'échec, le prix précédent est effacé.
+  useEffect(() => {
+    if (!initialConfigApplied) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchPriceEstimate(
+        {
+          dimensions: { width, height, depth },
+          styling: { materialKey: selectedMaterialKey, finish, socle, colorId: selectedColorId },
+          features: { doorType, mountingStyle, installation },
+          advancedZones: rootZone,
+          handles: handleDefaults,
+          useMultiColor,
+          componentColors,
+          deletedPanelIds: Array.from(deletedPanelIds),
+        },
+        controller.signal,
+      )
+        .then((estimate) => {
+          setPriceEstimate(estimate);
+          setPriceError(null);
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) return;
+          setPriceEstimate(null);
+          setPriceError(error instanceof Error ? error.message : 'Estimation du prix impossible');
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
     };
-  }, [pricingParams]);
+  }, [initialConfigApplied, width, height, depth, selectedMaterialKey, finish, socle, selectedColorId, doorType, mountingStyle, installation, rootZone, handleDefaults, useMultiColor, componentColors, deletedPanelIds]);
+
+  // Devis de la configuration ouverte (prix enregistré, éventuellement ajusté par l'atelier) : c'est lui qui est payé
+  const savedQuote = useMemo(() => (editingConfiguration ? savedQuoteFrom(editingConfiguration) : null), [editingConfiguration]);
+
+  // Prix à joindre à une demande ou à un enregistrement : jamais un ancien prix. null si le calcul a échoué ou n'est
+  // pas encore arrivé, avec le message à montrer au client.
+  const currentPriceOrReason = (): { price: number } | { reason: string } => {
+    if (priceError) return { reason: `Le prix de ce meuble ne peut pas être calculé : ${priceError}` };
+    if (!priceEstimate) return { reason: 'Le prix est en cours de calcul, réessayez dans un instant.' };
+    return { price: priceEstimate.price };
+  };
 
   useEffect(() => {
     if (!id || loading || isViewMode || !initialConfigApplied || showRestoreDialog) return;
@@ -1117,9 +1257,11 @@ export default function ConfiguratorPage() {
       doorType,
       doorSide,
       mountingStyle,
+      installation,
       doorsOpen,
       showDecorations,
       deletedPanelIds: Array.from(deletedPanelIds),
+      handles: handleDefaults,
       timestamp: Date.now(),
     };
 
@@ -1128,7 +1270,7 @@ export default function ConfiguratorPage() {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, plintheDefonceHeight, plintheDefonceWidth, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
+  }, [id, loading, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, plintheDefonceHeight, plintheDefonceWidth, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, installation, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds, handleDefaults]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1147,6 +1289,31 @@ export default function ConfiguratorPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Modèles de poignées : sans eux, l'étape Finitions le dit et la vue 3D garde sa poignée par défaut
+  useEffect(() => {
+    let cancelled = false;
+    handleModelsApi
+      .listPublic()
+      .then((models) => {
+        if (!cancelled) setHandleModels(models);
+      })
+      .catch((error) => {
+        console.warn('Impossible de récupérer les modèles de poignées', error);
+        if (!cancelled) setHandleModels([]);
+      })
+      .finally(() => {
+        if (!cancelled) setHandleModelsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Modèle du meuble absent (nouvelle configuration) ou retiré par l'admin : le premier modèle proposé
+  useEffect(() => {
+    if (handleModels.length === 0) return;
+    if (handleDefaults.modelId !== null && handleModels.some((model) => model.id === handleDefaults.modelId)) return;
+    setHandleDefaults((prev) => ({ ...prev, modelId: handleModels[0].id }));
+  }, [handleModels, handleDefaults.modelId]);
+
   useEffect(() => {
     const materialKeys = Object.keys(materialsMap);
     if (materialKeys.length === 0) return;
@@ -1162,79 +1329,23 @@ export default function ConfiguratorPage() {
 
     if (!bestMatch) {
       const firstMaterial = materialKeys[0];
-      console.log('[DEBUG] Matériau actuel non trouvé, sélection du premier disponible:', firstMaterial);
       setFinish(firstMaterial);
     } else if (bestMatch !== finish) {
-      console.log('[DEBUG] Alignement du matériau sur la clé API:', bestMatch);
       setFinish(bestMatch);
     }
   }, [materialsMap, finish]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadPricing = async () => {
-      try {
-        const paramsResponse = await fetch('/backend/api/pricing-config/index.php');
-        const paramsData = await paramsResponse.json();
-
-        if (!cancelled && paramsData.success && paramsData.data) {
-          const params: any = {
-            materials: {},
-            drawers: {},
-            shelves: {},
-            lighting: {},
-            cables: {},
-            bases: {},
-            hinges: {},
-            doors: {},
-            columns: {},
-            casing: {},
-            wardrobe: {},
-            handles: {},
-          };
-
-          paramsData.data.forEach((param: any) => {
-            if (!params[param.category]) params[param.category] = {};
-            if (!params[param.category][param.item_type]) {
-              params[param.category][param.item_type] = {};
-            }
-            params[param.category][param.item_type][param.param_name] = param.param_value;
-          });
-
-          setPricingParams(params);
-          console.log('✅ Paramètres de pricing chargés:', params);
-        }
-      } catch (error) {
-        console.warn('Impossible de récupérer les paramètres de pricing, utilisation des valeurs par défaut', error);
-      }
-    };
-    loadPricing();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (!colorsForMaterial.length || !initialConfigApplied) {
       return;
     }
     if (selectedColorId !== null && colorsForMaterial.some((o) => o.id === selectedColorId)) return;
-    const fallback = colorsForMaterial.find((o) => o.name?.toLowerCase() === colorLabel.toLowerCase());
+    // Garde la teinte en cours si la matière la propose, sinon le chêne naturel, sinon la première
+    const fallback = colorsForMaterial.find((o) => o.name?.toLowerCase() === colorLabel.toLowerCase())
+      || colorsForMaterial.find((o) => displayColorName(o.name) === DEFAULT_COLOR_NAME);
     const nextColor = fallback || colorsForMaterial[0];
     setSelectedColorId(nextColor.id);
   }, [colorsForMaterial, selectedColorId, colorLabel, initialConfigApplied]);
-
-  const samplePricesMap = useMemo(() => {
-    const map: Record<number, number> = {};
-    Object.values(materialsMap).forEach(types => {
-      types.forEach(type => {
-        type.colors?.forEach(color => {
-          if (color.id !== null && color.id !== undefined) {
-            map[color.id] = color.price_per_m2 || 0;
-          }
-        });
-      });
-    });
-    return map;
-  }, [materialsMap]);
 
   useEffect(() => {
     if (!initialConfigApplied || !colorsForMaterial.length) return;
@@ -1297,23 +1408,25 @@ export default function ConfiguratorPage() {
     const parseZones = (str: string, idPrefix: string): Zone => {
       const hMatch = str.match(/^H(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
       const vMatch = str.match(/^V(?:\[([^\]]+)\]|(\d+))\((.*)\)$/);
-      const gMatch = str.match(/^(G|P|P2|Pm|Po|Pd|Pg)(?:\[([^\]]+)\])?\((.*)\)$/);
-      
+      // Porte de groupe, avec son chiffre de poignée éventuel (« Pg1( », « P21( ») ; « P2( » reste une double porte
+      const gMatch = matchGroupDoor(str);
+
       if (hMatch || vMatch || gMatch) {
         const isH = !!hMatch;
         const isV = !!vMatch;
         const isG = !!gMatch && !isH && !isV;
-        
-        const match = hMatch || vMatch || gMatch;
-        const ratiosStr = match![1] && (isH || isV) ? match![1] : (isG ? match![2] : undefined);
-        const inner = isG ? match![3] : match![3];
+
+        const match = hMatch || vMatch;
+        const ratiosStr = isH || isV ? match![1] : gMatch!.ratios;
+        const inner = isH || isV ? match![3] : gMatch!.inner;
         
         const parts: string[] = [];
         let current = '';
         let depth = 0;
         for (let i = 0; i < inner.length; i++) {
-          if (inner[i] === '(') depth++;
-          if (inner[i] === ')') depth--;
+          // Les virgules des ratios `[25,50,25]` ne séparent pas des enfants
+          if (inner[i] === '(' || inner[i] === '[') depth++;
+          if (inner[i] === ')' || inner[i] === ']') depth--;
           if (inner[i] === ',' && depth === 0) {
             parts.push(current);
             current = '';
@@ -1340,23 +1453,13 @@ export default function ConfiguratorPage() {
         return {
           id: idPrefix,
           type: detectedType,
-          doorContent: isG ? (
-            str.startsWith('P2') ? 'door_double' : 
-            str.startsWith('Pm') ? 'mirror_door' :
-            str.startsWith('Po') ? 'push_door' :
-            str.startsWith('Pd') ? 'door_right' : 
-            (str.startsWith('P') || str.startsWith('Pg')) ? 'door' : 
-            undefined
-          ) : undefined,
+          doorContent: isG ? gMatch!.doorContent : undefined,
+          ...(isG ? gMatch!.handle : {}),
           children: orderedParts.map((p, idx) => parseZones(p, `${idPrefix}-${idx}`)),
           splitRatio: (orderedRatios && orderedRatios.length === 2) ? orderedRatios[0] : undefined,
           splitRatios: (orderedRatios && orderedRatios.length > 2) ? orderedRatios : undefined,
         };
       }
-
-      const isGlassShelf = str.includes('v');
-      const glassShelfMatch = str.match(/v(\d+)/);
-      const glassShelfCount = glassShelfMatch ? parseInt(glassShelfMatch[1]) : (isGlassShelf ? 1 : undefined);
 
       return {
         id: idPrefix,
@@ -1370,16 +1473,11 @@ export default function ConfiguratorPage() {
           str.includes('Po') ? 'push_door' :
           str.includes('Pd') ? 'door_right' :
           (str.includes('P') || str.includes('Pg')) ? 'door' :
-          isGlassShelf ? 'glass_shelf' :
           str.includes('p') ? 'pegboard' :
           'empty'
         ) as ZoneContent,
-        handleType: (() => {
-          const m = str.match(/(?:T|Pg|Pd|P2|Pm)(\d)/);
-          if (!m) return undefined;
-          return Object.keys(HANDLE_TYPE_CODE).find(k => HANDLE_TYPE_CODE[k] === m[1]) as any;
-        })(),
-        glassShelfCount,
+        // Chiffre de poignée : un sens de pose (le modèle reste celui du meuble), ou l'ancien bouton / encastrée
+        ...leafHandleFromPrompt(str),
       };
     };
 
@@ -1398,23 +1496,18 @@ export default function ConfiguratorPage() {
       let configToRestore: any = null;
 
       if ((isEditMode || isViewMode) && configIdToEdit) {
-        console.log(`🔄 Mode ${isViewMode ? 'vue' : 'édition'} détecté, chargement de la configuration #${configIdToEdit}`);
-
         const savedConfigKey = `archimeuble:configuration:${configIdToEdit}`;
         const savedConfigStr = (!isViewMode && fromAdmin !== 'true') ? localStorage.getItem(savedConfigKey) : null;
 
         if (savedConfigStr) {
           configDataToUse = JSON.parse(savedConfigStr);
-          console.log('📦 Configuration trouvée dans localStorage:', configDataToUse);
         } else {
-          console.log('📡 Chargement de la configuration via l\'API...');
           try {
             const response = await fetch(`/backend/api/admin/configurations.php?id=${configIdToEdit}`, { credentials: 'include' });
             if (response.ok) {
               const data = await response.json();
               if (data.configuration) {
                 configDataToUse = data.configuration;
-                console.log('📦 Configuration chargée via l\'API admin:', configDataToUse);
               }
             } else {
               const resClient = await fetch(`/backend/api/configurations/list.php?id=${configIdToEdit}`, { credentials: 'include' });
@@ -1422,7 +1515,6 @@ export default function ConfiguratorPage() {
                 const data = await resClient.json();
                 if (data.configuration) {
                   configDataToUse = data.configuration;
-                  console.log('📦 Configuration chargée via l\'API client:', configDataToUse);
                 }
               }
             }
@@ -1436,7 +1528,6 @@ export default function ConfiguratorPage() {
           if (typeof configDataObj === 'string') {
             try {
               configDataObj = JSON.parse(configDataObj);
-              console.log('📦 config_data était une chaîne, parsé en objet:', configDataObj);
             } catch (e) {
               console.warn('❌ Impossible de parser config_data:', e);
             }
@@ -1472,7 +1563,6 @@ export default function ConfiguratorPage() {
 
       let modelData = null;
       if (isAdminEditModel && modelId) {
-        console.log(`🛠️ Mode édition de modèle détecté, chargement du modèle #${modelId}`);
         modelData = await apiClient.models.getById(Number(modelId));
       } else if (id && !isNaN(Number(id))) {
         modelData = await apiClient.models.getById(Number(id));
@@ -1486,7 +1576,6 @@ export default function ConfiguratorPage() {
             name: modelData.name || '',
             description: modelData.description || '',
             category: modelData.category || 'dressing',
-            price: modelData.price || 890,
             imageUrl: modelData.image_url || ''
           });
         }
@@ -1499,7 +1588,6 @@ export default function ConfiguratorPage() {
               prompt: modelData.prompt,
               name: modelData.name
             };
-            console.log('💎 Configuration riche restaurée depuis le modèle catalogue');
             
             if (configToRestore.rootZone) {
               setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
@@ -1670,7 +1758,6 @@ export default function ConfiguratorPage() {
       }
 
       if (configToRestore) {
-        console.log('🔧 Application de la configuration restaurée:', configToRestore);
         if (configToRestore.width) setWidth(configToRestore.width);
         if (configToRestore.height) setHeight(configToRestore.height);
         if (configToRestore.depth) setDepth(configToRestore.depth);
@@ -1694,8 +1781,9 @@ export default function ConfiguratorPage() {
         if (configToRestore.doorType) setDoorType(configToRestore.doorType);
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
+        if (configToRestore.installation !== undefined) setInstallation(configToRestore.installation === true);
         if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
-        console.log('✅ Configuration restaurée avec succès');
+        if (configToRestore.handleDefaults) setHandleDefaults(configToRestore.handleDefaults);
         setInitialConfigApplied(true);
       } else {
         let restoreFound = false;
@@ -1746,8 +1834,6 @@ export default function ConfiguratorPage() {
       return;
     }
 
-    console.log('🔄 Réinitialisation à la configuration par défaut...');
-
     setWidth(initialConfig.width);
     setHeight(initialConfig.height);
     setDepth(initialConfig.depth);
@@ -1768,7 +1854,6 @@ export default function ConfiguratorPage() {
 
     try {
       localStorage.removeItem(localStorageKey);
-      console.log('✅ Configuration réinitialisée et sauvegarde supprimée');
     } catch (e) {
       console.warn('❌ Erreur lors de la suppression de localStorage', e);
     }
@@ -1777,7 +1862,6 @@ export default function ConfiguratorPage() {
   const applyPendingRestore = () => {
     if (!pendingRestoreConfig) return;
     const c = pendingRestoreConfig;
-    console.log('🔄 Application de la configuration restaurée depuis localStorage:', c);
     
     setSkipNextAutoGenerate(false); 
     setInitialConfigApplied(false);
@@ -1793,7 +1877,6 @@ export default function ConfiguratorPage() {
     if (c.roundedRightWidth !== undefined) setRoundedRightWidth(c.roundedRightWidth);
     if (c.roundedRightDepth !== undefined) setRoundedRightDepth(c.roundedRightDepth);
     if (c.rootZone) {
-      console.log('📦 Restauration de la zone racine:', c.rootZone);
       setRootZone(normalizeZoneSplitRatios(JSON.parse(JSON.stringify(c.rootZone))));
     }
     if (c.finish) setFinish(c.finish);
@@ -1806,10 +1889,12 @@ export default function ConfiguratorPage() {
     if (c.doorType) setDoorType(c.doorType);
     if (c.doorSide) setDoorSide(c.doorSide);
     if (c.mountingStyle) setMountingStyle(c.mountingStyle);
+    if (c.installation !== undefined) setInstallation(c.installation === true);
     if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
     if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
     if (c.deletedPanelIds) setDeletedPanelIds(new Set(c.deletedPanelIds));
-    
+    if (c.handles) setHandleDefaults(parseHandleDefaults(c.handles));
+
     setTimeout(() => {
       setInitialConfigApplied(true);
       setShowRestoreDialog(false);
@@ -1826,55 +1911,15 @@ export default function ConfiguratorPage() {
   };
 
   const buildPromptFromZoneTree = useCallback((zone: Zone, currentPath: string = ''): string => {
-    let doorCode = '';
-    const currentDoor = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
-
-    if (currentDoor) {
-      switch (currentDoor) {
-        case 'door': doorCode = zone.id === 'root' ? '' : 'Pg'; break;
-        case 'door_right': doorCode = 'Pd'; break;
-        case 'door_double': doorCode = 'P2'; break;
-        // Le format n'a pas de côté pour les portes vitrées et Push : la porte est transmise sans son sens d'ouverture
-        case 'mirror_door':
-        case 'mirror_door_right': doorCode = 'Pm'; break;
-        case 'push_door':
-        case 'push_door_right': doorCode = 'Po'; break;
-      }
-      
-      if (doorCode && ['door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right'].includes(currentDoor)) {
-        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
-        if (hCode) doorCode += hCode;
-      }
-    }
+    // Code de la porte (Pg, Pd, P2, Pm, Po) et du contenu (T, To, D), chiffre de poignée compris
+    const { door: doorCode, leaf: leafChar } = zoneFacadeCodes(zone, handleModels, handleDefaults);
 
     if (zone.type === 'leaf') {
-      let leafChar = '';
-      switch (zone.content) {
-        case 'drawer': leafChar = 'T'; break;
-        case 'push_drawer': leafChar = 'To'; break;
-        case 'dressing': leafChar = 'D'; break;
-        case 'glass_shelf':
-          const shelfCount = zone.glassShelfCount || 1;
-          leafChar = shelfCount > 1 ? `v${shelfCount}` : 'v';
-          break;
-        case 'niche':
-          // n(décalage signé en mm) : 0/absent = affleurante (par défaut, au nu de la façade),
-          // négatif = encastrée, positif = débordante — voir le bloc char=="n" dans procedure_real.py
-          leafChar = zone.nicheOffset ? `n(${Math.round(zone.nicheOffset)})` : 'n';
-          break;
-        case 'shelf': leafChar = ''; break;
-        default: leafChar = '';
-      }
-
-      if (zone.content === 'drawer') {
-        const hCode = zone.handleType ? HANDLE_TYPE_CODE[zone.handleType] : '';
-        if (hCode) leafChar += hCode;
-      }
-
-      let finalLeaf = leafChar;
-      if (doorCode) {
-        finalLeaf = doorCode + leafChar;
-      }
+      // n(décalage signé en mm) : 0/absent = affleurante (par défaut, au nu de la façade),
+      // négatif = encastrée, positif = débordante — voir le bloc char=="n" dans procedure_real.py
+      // (glass_shelf et le chiffre de poignée du tiroir sont gérés par zoneFacadeCodes, ci-dessus)
+      const nicheChar = zone.content === 'niche' ? (zone.nicheOffset ? `n(${Math.round(zone.nicheOffset)})` : 'n') : '';
+      let finalLeaf = doorCode + leafChar + nicheChar;
 
       if (zone.hasCableHole) {
         finalLeaf += 'c';
@@ -1941,385 +1986,7 @@ export default function ConfiguratorPage() {
     }
 
     return zoneCode;
-  }, [deletedPanelIds]);
-
-  const calculatePrice = useCallback((config: {
-    width: number;
-    height: number;
-    depth: number;
-    finish: string;
-    socle: string;
-    rootZone: Zone;
-    doorType?: 'none' | 'single' | 'double';
-    selectedSample?: SampleColor | null;
-    selectedColorId?: number | null;
-    useMultiColor?: boolean;
-    componentColors?: ComponentColors;
-  }): number => {
-    let p = 0;
-
-    const normalizedFinish = config.finish.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '_');
-    
-
-    let samplePriceUnie = 0;
-    if (config.selectedSample && config.selectedSample.price_per_m2 !== undefined) {
-      samplePriceUnie = Number(config.selectedSample.price_per_m2);
-    } else if (config.selectedColorId && samplePricesMap[config.selectedColorId] !== undefined) {
-      samplePriceUnie = Number(samplePricesMap[config.selectedColorId]);
-    }
-
-    console.log(`[PRICING] Calcul en cours: ${config.finish} (${normalizedFinish})`, {
-      samplePriceUnie,
-      selectedColorId: config.selectedColorId,
-      hasSample: !!config.selectedSample,
-      useMultiColor: config.useMultiColor
-    });
-
-    let samplePriceStructure = 0;
-    let samplePriceBack = 0;
-    let samplePriceDoors = 0;
-    let samplePriceDrawers = 0;
-
-    if (pricingParams?.casing?.full) {
-      const w = config.width / 1000;
-      const h = config.height / 1000;
-      const d = config.depth / 1000;
-
-      const backSurface = w * h;
-      const sidesSurface = (d * h) * 2;
-      const topBottomSurface = (w * d) * 2;
-      const casingSurface = sidesSurface + topBottomSurface;
-
-      const casingCoefficient = Number(pricingParams.casing.full.coefficient) || 1.2;
-
-      if (config.useMultiColor && config.componentColors) {
-        const structColorId = config.componentColors.structure.colorId;
-        const backColorId = config.componentColors.back.colorId;
-        const doorsColorId = config.componentColors.doors?.colorId;
-        const drawersColorId = config.componentColors.drawers?.colorId;
-        samplePriceStructure = structColorId ? (Number(samplePricesMap[structColorId]) || 0) : 0;
-        samplePriceBack = backColorId ? (Number(samplePricesMap[backColorId]) || 0) : 0;
-        samplePriceDoors = doorsColorId ? (Number(samplePricesMap[doorsColorId]) || 0) : samplePriceStructure;
-        samplePriceDrawers = drawersColorId ? (Number(samplePricesMap[drawersColorId]) || 0) : samplePriceStructure;
-      } else {
-        samplePriceStructure = samplePriceUnie;
-        samplePriceBack = samplePriceUnie;
-        samplePriceDoors = samplePriceUnie;
-        samplePriceDrawers = samplePriceUnie;
-      }
-
-      const priceCasing = samplePriceStructure * casingSurface * casingCoefficient;
-      const priceBack = samplePriceBack * backSurface * casingCoefficient;
-
-      p = priceCasing + priceBack;
-
-      console.log('💰 [STRUCTURE] Calcul détaillé:', {
-        mode: config.useMultiColor ? 'multi' : 'single',
-        surfaceCasing: `${casingSurface.toFixed(3)} m²`,
-        surfaceBack: `${backSurface.toFixed(3)} m²`,
-        prixM2Structure: `${samplePriceStructure}€/m²`,
-        prixM2Back: `${samplePriceBack}€/m²`,
-        coefficient: casingCoefficient,
-        total: `${p.toFixed(2)}€`
-      });
-    } else {
-      const volumeM3 = (config.width * config.height * config.depth) / 1000000000;
-      p = volumeM3 * 1500;
-      samplePriceStructure = samplePriceUnie;
-      samplePriceBack = samplePriceUnie;
-      samplePriceDoors = samplePriceUnie;
-      samplePriceDrawers = samplePriceUnie;
-      console.log('⚠️ Fallback prix structure (Volume):', p);
-    }
-
-
-    if (pricingParams?.bases) {
-      if (config.socle === 'none') {
-        const nonePrice = Number(pricingParams.bases.none?.fixed_price) || 0;
-        p += nonePrice;
-        if (nonePrice > 0) console.log('👞 [SOCLE] Aucun:', nonePrice + '€');
-      } else if (config.socle === 'metal') {
-        const pricePerFoot = Number(pricingParams.bases.metal?.price_per_foot) || 20;
-        const footInterval = Number(pricingParams.bases.metal?.foot_interval) || 2000;
-        const totalFeet = Math.ceil(config.width / footInterval) * 2;
-        const metalPrice = pricePerFoot * totalFeet;
-        p += metalPrice;
-        console.log('👞 [SOCLE] Métal:', {
-          pieds: totalFeet,
-          prixParPied: pricePerFoot,
-          total: metalPrice + '€'
-        });
-      } else if (config.socle === 'wood') {
-        const woodParams = pricingParams.bases.wood;
-        if (woodParams?.price_per_m3 && woodParams?.height) {
-          const h = Number(woodParams.height);
-          const volumeM3 = (config.width * config.depth * h) / 1_000_000_000;
-          const woodPrice = Number(woodParams.price_per_m3) * volumeM3;
-
-          p += woodPrice;
-          console.log('👞 [SOCLE] Bois:', {
-            volume: volumeM3.toFixed(4) + ' m³',
-            prixM3: woodParams.price_per_m3 + '€/m³',
-            total: woodPrice.toFixed(2) + '€'
-          });
-        } else if (woodParams?.coefficient) {
-          const woodPrice = Number(woodParams.coefficient) * config.width * config.depth;
-          p += woodPrice;
-          console.log('👞 [SOCLE] Bois (Coef):', woodPrice.toFixed(2) + '€');
-        } else {
-          p += 60;
-        }
-      }
-    } else {
-      const soclePrices: Record<string, number> = { none: 0, metal: 40, wood: 60 };
-      p += Number(soclePrices[config.socle] || 0);
-    }
-
-    const countExtraPrice = (zone: Zone, zoneWidth: number, zoneHeight: number, currentPath: string = ''): number => {
-      let extra = 0;
-
-      const isDrawer = (z: Zone) => z.content === 'drawer' || z.content === 'push_drawer';
-      const shouldHideHorizontalSeparators = (z: Zone) => {
-        return z.type === 'horizontal' && z.children && z.children.length >= 2 && z.children.every(isDrawer);
-      };
-
-      const door = zone.doorContent || (zone.type === 'leaf' ? zone.content : null);
-      if (door && pricingParams?.doors) {
-        const getDoorPrice = (doorType: string, w: number, h: number) => {
-          const isDoor = [
-            'door', 'door_right', 'door_double', 'mirror_door', 'mirror_door_right', 'glass_door', 'push_door', 'push_door_right'
-          ].includes(doorType);
-
-          if (!isDoor) return 0;
-
-          let typeKey = 'simple';
-          if (pricingParams.doors[doorType]) {
-            typeKey = doorType;
-          } else if (doorType === 'door_double') {
-            typeKey = 'double';
-          } else if (doorType === 'mirror_door' || doorType === 'mirror_door_right' || doorType === 'glass_door') {
-            typeKey = 'glass';
-          } else if (doorType === 'push_door' || doorType === 'push_door_right') {
-            typeKey = 'push';
-          } else {
-            typeKey = 'simple';
-          }
-
-          const doorConfig = pricingParams.doors[typeKey];
-          if (!doorConfig) return 0;
-
-          const coefficient = Number(doorConfig.coefficient) || 0.00004;
-          const hingeCount = Number(doorConfig.hinge_count) || 2;
-          const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
-          const surfaceDoorM2 = (w * h) / 1_000_000;
-
-          const doorPrice = (coefficient * w * h) + (hingePrice * hingeCount) + (samplePriceDoors * surfaceDoorM2);
-
-          console.log(`🚪 [PORTE] Calcul (${doorType} -> ${typeKey}):`, {
-            dimensions: `${w.toFixed(0)}x${h.toFixed(0)}mm`,
-            surface: `${surfaceDoorM2.toFixed(4)}m²`,
-            prixEchantillon: `${samplePriceDoors}€/m²`,
-            formule: `(${coefficient} × ${w.toFixed(0)} × ${h.toFixed(0)}) + (${hingePrice} × ${hingeCount}) + (${samplePriceDoors} × ${surfaceDoorM2.toFixed(4)})`,
-            total: `${doorPrice.toFixed(2)}€`
-          });
-
-          return doorPrice;
-        };
-
-        extra += getDoorPrice(door, zoneWidth, zoneHeight);
-      } else if (door) {
-        switch (door) {
-          case 'door':
-          case 'door_right': extra += 40; break;
-          case 'push_door': extra += 50; break;
-          case 'door_double': extra += 80; break;
-          case 'mirror_door': extra += 95; break;
-        }
-      }
-
-      if (door && zone.handleType && pricingParams?.handles) {
-        const handleConfig = pricingParams.handles[zone.handleType];
-        if (handleConfig) {
-          extra += Number(handleConfig.price_per_unit) || 0;
-        }
-      }
-
-      if (zone.type === 'leaf') {
-        if (pricingParams?.drawers && (zone.content === 'drawer' || zone.content === 'push_drawer')) {
-          const drawerType = zone.content === 'push_drawer' ? 'push' : 'standard';
-          const drawerConfig = pricingParams.drawers[drawerType];
-          if (drawerConfig) {
-            const basePrice = Number(drawerConfig.base_price) || 35;
-            const coefficient = Number(drawerConfig.coefficient) || 0.0001;
-            const surfaceFacadeM2 = (zoneWidth * zoneHeight) / 1_000_000;
-            const drawerPrice = basePrice + (coefficient * zoneWidth * config.depth) + (samplePriceDrawers * surfaceFacadeM2);
-            extra += drawerPrice;
-
-            console.log(`📥 [TIROIR] Calcul détaillé (${drawerType}):`, {
-              dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
-              facade: `${zoneWidth.toFixed(0)}x${zoneHeight.toFixed(0)}mm = ${surfaceFacadeM2.toFixed(4)}m²`,
-              prixEchantillon: `${samplePriceDrawers}€/m²`,
-              formule: `${basePrice} + (${coefficient} × ${zoneWidth.toFixed(0)} × ${config.depth.toFixed(0)}) + (${samplePriceDrawers} × ${surfaceFacadeM2.toFixed(4)})`,
-              total: `${drawerPrice.toFixed(2)}€`
-            });
-          } else {
-            extra += zone.content === 'drawer' ? 35 : 45;
-          }
-        } else if (zone.content === 'glass_shelf' && pricingParams?.shelves?.glass) {
-          const pricePerM2 = Number(pricingParams.shelves.glass.price_per_m2) || 250;
-          const shelfSurfaceM2 = (zoneWidth * config.depth) / 1000000;
-          const shelfCount = zone.glassShelfCount || 1;
-          const shelfPrice = pricePerM2 * shelfSurfaceM2 * shelfCount;
-
-          console.log('💎 [ETAGERE VERRE] Calcul détaillée:', {
-            dimensions: `${zoneWidth.toFixed(0)}x${config.depth.toFixed(0)}mm`,
-            surface: `${shelfSurfaceM2.toFixed(3)} m²`,
-            nombre: shelfCount,
-            prixUnitaire: `${(pricePerM2 * shelfSurfaceM2).toFixed(2)}€`,
-            total: `${shelfPrice.toFixed(2)}€`
-          });
-
-          extra += shelfPrice;
-        } else if (zone.content === 'glass_shelf') {
-          const shelfCount = zone.glassShelfCount || 1;
-          extra += 25 * shelfCount;
-        } else if (zone.content === 'dressing') {
-          if (pricingParams?.wardrobe?.rod) {
-            const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
-            const widthInMeters = zoneWidth / 1000;
-            extra += pricePerMeter * widthInMeters;
-          } else {
-            extra += 20;
-          }
-        }
-
-        if (zone.hasDressing && zone.content !== 'dressing') {
-          if (pricingParams?.wardrobe?.rod) {
-            const pricePerMeter = Number(pricingParams.wardrobe.rod.price_per_linear_meter) || 20;
-            const widthInMeters = zoneWidth / 1000;
-            extra += pricePerMeter * widthInMeters;
-          } else {
-            extra += 20;
-          }
-        }
-
-        if (zone.hasCableHole) {
-          if (pricingParams?.cables?.pass_cable) {
-            extra += Number(pricingParams.cables.pass_cable.fixed_price) || 10;
-          } else {
-            extra += 10;
-          }
-        }
-
-        if (zone.hasLight) {
-          if (pricingParams?.lighting?.led) {
-            const pricePerMeter = Number(pricingParams.lighting.led.price_per_linear_meter) || 15;
-            const widthInMeters = zoneWidth / 1000;
-            extra += pricePerMeter * widthInMeters;
-          } else {
-            extra += (zoneWidth / 1000) * 15;
-          }
-        }
-      } else if (zone.children) {
-        zone.children.forEach((child, index) => {
-          let childWidth = zoneWidth;
-          let childHeight = zoneHeight;
-
-          let ratio: number;
-          if (zone.splitRatios && zone.splitRatios.length === zone.children!.length) {
-            ratio = zone.splitRatios[index] / 100;
-          } else if (zone.children!.length === 2 && zone.splitRatio !== undefined) {
-            ratio = (index === 0 ? zone.splitRatio : 100 - zone.splitRatio) / 100;
-          } else {
-            ratio = 1 / zone.children!.length;
-          }
-
-          let nextPath = currentPath;
-
-          if (zone.type === 'horizontal') {
-            childHeight = zoneHeight * ratio;
-            const childIdx = zone.children!.length - 1 - index;
-            nextPath = `${currentPath}r${childIdx}-`;
-
-            if (index < zone.children!.length - 1) {
-              const sepId = `separator-h-${currentPath}h${index}-0`;
-              const isAutomaticInvisible = shouldHideHorizontalSeparators(zone);
-              const isDeleted = deletedPanelIds.has(sepId);
-
-              if (!isDeleted && !isAutomaticInvisible) {
-                const surfaceShelfM2 = (zoneWidth * config.depth) / 1_000_000;
-                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-                const shelfPrice = pricePerM2 * surfaceShelfM2;
-                extra += shelfPrice;
-                console.log(`📏 [ETAGERE BOIS] Calcul: ${pricePerM2}€/m² × ${surfaceShelfM2.toFixed(3)}m² = ${shelfPrice.toFixed(2)}€`);
-              } else {
-                console.log(`📏 [ETAGERE BOIS] Ignorée car ${isDeleted ? 'supprimée' : 'automatiquement invisible (tiroirs)'}`);
-              }
-            }
-          } else if (zone.type === 'vertical') {
-            childWidth = zoneWidth * ratio;
-            nextPath = `${currentPath}c${index}-`;
-
-            if (index < zone.children!.length - 1) {
-              const sepId = `separator-v-${currentPath}v${index}-0`;
-              if (!deletedPanelIds.has(sepId)) {
-                const surfaceVerticalM2 = (zoneHeight * config.depth) / 1_000_000;
-                const pricePerM2 = Number(pricingParams?.shelves?.wood?.price_per_m2) || 80;
-                const verticalPrice = pricePerM2 * surfaceVerticalM2;
-                extra += verticalPrice;
-                console.log(`📏 [MONTANT VERTICAL] Calcul: ${pricePerM2}€/m² × ${surfaceVerticalM2.toFixed(3)}m² = ${verticalPrice.toFixed(2)}€`);
-              } else {
-                console.log(`📏 [MONTANT VERTICAL] Ignoré car supprimé`);
-              }
-            }
-          }
-
-          extra += countExtraPrice(child, childWidth, childHeight, nextPath);
-        });
-      }
-
-      return extra;
-    };
-    p += countExtraPrice(config.rootZone, config.width, config.height);
-
-    if (pricingParams?.doors && config.doorType && config.doorType !== 'none') {
-      const doorTypeKey = config.doorType === 'double' ? 'double' : 'simple';
-      const doorConfig = pricingParams.doors[doorTypeKey];
-      if (doorConfig) {
-        const coefficient = Number(doorConfig.coefficient) || 0.00004;
-        const hingeCount = Number(doorConfig.hinge_count) || 2;
-        const hingePrice = Number(pricingParams.hinges?.standard?.price_per_unit) || 5;
-        const surfaceGlobalDoorM2 = (config.width * config.height) / 1_000_000;
-
-        let globalDoorSamplePrice = samplePriceUnie;
-        if (config.useMultiColor && config.componentColors?.doors?.colorId) {
-          globalDoorSamplePrice = Number(samplePricesMap[config.componentColors.doors.colorId]) || samplePriceUnie;
-        }
-
-        const globalDoorPrice = (coefficient * config.width * config.height) + (hingePrice * hingeCount) + (globalDoorSamplePrice * surfaceGlobalDoorM2);
-        p += globalDoorPrice;
-        console.log(`🚪 Prix porte globale (${config.doorType}):`, {
-          dimensions: `${config.width}x${config.height}mm`,
-          surface: `${surfaceGlobalDoorM2.toFixed(4)}m²`,
-          prixEchantillon: `${globalDoorSamplePrice}€/m²`,
-          formule: `(${coefficient} × ${config.width} × ${config.height}) + (${hingePrice} × ${hingeCount}) + (${globalDoorSamplePrice} × ${surfaceGlobalDoorM2.toFixed(4)})`,
-          total: `${globalDoorPrice.toFixed(2)}€`
-        });
-      } else {
-        const fallbackPrice = config.doorType === 'single' ? 40 : 80;
-        p += fallbackPrice;
-        console.log(`🚪 Prix porte globale (Fallback ${config.doorType}):`, fallbackPrice + '€');
-      }
-    }
-
-    if (isNaN(p)) {
-      console.warn('⚠️ Le calcul du prix a retourné NaN, retour à 0');
-      p = 0;
-    }
-
-    console.log('💰 PRIX TOTAL CALCULÉ:', Math.round(p) + '€');
-    return Math.round(p);
-  }, [pricingParams, samplePricesMap]);
+  }, [deletedPanelIds, handleModels, handleDefaults]);
 
   const generateModel = useCallback(async (prompt: string) => {
     setGenerating(true);
@@ -2405,44 +2072,19 @@ export default function ConfiguratorPage() {
       prompt += zonePrompt;
     }
 
-    console.log('🚀 Génération du modèle avec le prompt:', prompt);
-
-    setPrice(calculatePrice({ 
-      width, height, depth, finish, socle, rootZone, doorType, 
-      selectedSample: selectedColorOption,
-      selectedColorId,
-      useMultiColor,
-      componentColors
-    }));
-
     if (hasZoneIssues) return;
 
     const timer = setTimeout(() => generateModel(prompt), 300);
     return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, calculatePrice, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
+  }, [templatePrompt, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
 
   const handleToggleDoors = useCallback(() => {
     setDoorsOpen(prev => !prev);
   }, []);
 
   const handleMaterialChange = (key: string) => {
+    // Les couleurs déjà choisies sont conservées : le meuble peut mélanger plusieurs matières
     setFinish(key);
-    setSelectedColorId(null);
-    setSelectedColorImage(null);
-
-    // Les couleurs appartiennent à une matière : celles choisies pour l'ancienne ne sont plus valables
-    const hasZoneColors = (zone: Zone): boolean => !!zone.zoneColor || !!zone.children?.some(hasZoneColors);
-    const clearZoneColors = (zone: Zone): Zone => {
-      const { zoneColor: _removed, ...rest } = zone;
-      return rest.children ? { ...rest, children: rest.children.map(clearZoneColors) } : rest;
-    };
-    const resetZoneColors = hasZoneColors(rootZone);
-
-    if (useMultiColor || resetZoneColors) {
-      if (useMultiColor) setUseMultiColor(false);
-      if (resetZoneColors) setRootZone(clearZoneColors(rootZone));
-      toast('Couleurs réinitialisées : choisissez-les dans la nouvelle matière.');
-    }
   };
 
   const applySingleColor = (option: SampleColor) => {
@@ -2474,12 +2116,6 @@ export default function ConfiguratorPage() {
       return;
     }
 
-    console.log('🔵 FONCTION saveAsModel APPELEE !');
-    console.log('🔵 isAdmin:', isAdmin);
-    console.log('🔵 isAdminCreateModel:', isAdminCreateModel);
-    console.log('🔵 isAdminEditModel:', isAdminEditModel);
-    console.log('🔵 modelForm:', modelForm);
-
     if (!isAdminCreateModel && !isAdminEditModel) {
       toast.error("Vous devez être en mode administration pour effectuer cette action.");
       return;
@@ -2487,10 +2123,8 @@ export default function ConfiguratorPage() {
 
     try {
       setIsSavingModel(true);
-      console.log('--- DEBUT SAUVEGARDE MODELE ---');
 
       const finalImageUrl = modelForm.imageUrl;
-      console.log('URL Image:', finalImageUrl);
 
       const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
       const match = templatePrompt?.match(regex);
@@ -2504,7 +2138,6 @@ export default function ConfiguratorPage() {
       if (zonePrompt) {
         fullPrompt += zonePrompt;
       }
-      console.log('Prompt généré:', fullPrompt);
 
       const currentConfigData = {
         dimensions: { width, depth, height },
@@ -2521,34 +2154,32 @@ export default function ConfiguratorPage() {
         },
         features: { doorsOpen, doorType, doorSide, mountingStyle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth },
         advancedZones: JSON.parse(JSON.stringify(rootZone)),
+        handles: handleDefaults,
         useMultiColor,
         componentColors,
+        // Comme buildConfigPayload : le prix du modèle, calculé par le backend, suit les panneaux retirés
+        deletedPanelIds: Array.from(deletedPanelIds),
       };
 
+      // Sans prix : le backend estime celui du modèle depuis config_data, et le recalcule à chaque affichage
       const payload = {
         name: modelForm.name,
         description: modelForm.description,
         prompt: fullPrompt,
         category: modelForm.category,
-        price: modelForm.price,
         image_url: finalImageUrl || '/images/accueil image/meubletv.jpg',
         config_data: currentConfigData,
       };
-      
-      console.log('Payload prêt pour envoi:', payload);
 
       const url = isAdminEditModel ? `/backend/api/models.php?id=${modelId}` : '/backend/api/models.php';
       const method = isAdminEditModel ? 'PUT' : 'POST';
 
-      console.log(`Appel API ${method} ${url}...`);
       const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
-
-      console.log('Réponse API (Status):', response.status);
 
       if (response.status === 401 || response.status === 403) {
         toast.error("Session admin expirée ou accès refusé (Status: " + response.status + ")");
@@ -2570,14 +2201,9 @@ export default function ConfiguratorPage() {
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      console.log('Résultat final API:', result);
-
       toast.success(isAdminEditModel ? 'Le modèle a été mis à jour avec succès !' : 'Le modèle a été ajouté au catalogue avec succès !');
       setIsCreateModelDialogOpen(false);
       setShowModelCreatedModal(true);
-      console.log('--- FIN SAUVEGARDE MODELE (SUCCES) ---');
-      
     } catch (err: any) {
       console.error('CRITICAL ERROR saveAsModel:', err);
       toast.error(err.message || 'Erreur lors de l\'enregistrement du modèle');
@@ -2619,8 +2245,10 @@ export default function ConfiguratorPage() {
         selectedColorId,
         socle,
       },
-      features: { doorsOpen, doorType, doorSide, mountingStyle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth },
+      features: { doorsOpen, doorType, doorSide, mountingStyle, installation, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth },
       advancedZones: rootZone,
+      // Poignée du meuble ; celle d'une porte ou d'un tiroir est dans sa zone
+      handles: handleDefaults,
       useMultiColor,
       componentColors,
       deletedPanelIds: Array.from(deletedPanelIds),
@@ -2645,11 +2273,24 @@ export default function ConfiguratorPage() {
       return;
     }
     if (reportZoneIssues()) return;
+    // Un meuble que le backend ne sait pas chiffrer ne peut pas partir en demande avec un prix faux ou ancien
+    const pricing = currentPriceOrReason();
+    if ('reason' in pricing) {
+      toast.error(pricing.reason);
+      return;
+    }
     setShowRequestDialog(true);
   };
 
   const saveConfiguration = async () => {
     if (reportZoneIssues()) return;
+    // Le backend recalcule le prix à l'enregistrement ; on n'envoie jamais un ancien prix
+    const pricing = currentPriceOrReason();
+    if ('reason' in pricing) {
+      setErrorMessage(pricing.reason);
+      setShowErrorModal(true);
+      return;
+    }
 
     const isAdminEditingConfig = isEditMode && editingConfigId;
 
@@ -2677,7 +2318,7 @@ export default function ConfiguratorPage() {
         config_data: configData,
         glb_url: glbUrl,
         dxf_url: dxfUrl,
-        price,
+        price: pricing.price,
         thumbnail_url: glbUrl,
         status: isAdmin ? (editingConfiguration?.status || 'en_attente_validation') : 'en_attente_validation',
       };
@@ -2822,7 +2463,6 @@ export default function ConfiguratorPage() {
     onGroupZones: groupZones,
     onSetZoneContent: setZoneContent,
     onSetDoorContent: setZoneDoorContent,
-    onSetHandleType: setZoneHandleType,
     onDeleteSection: deleteSection,
     width: usableWidthMm,
     height,
@@ -2835,9 +2475,8 @@ export default function ConfiguratorPage() {
 
   return (
     <>
-      <Head>
-        <title>Configurateur - {model.name} | ArchiMeuble</title>
-      </Head>
+      {/* Repli quand le serveur n'a pas pu lire le modèle */}
+      {!serverSeo && <Seo {...modelSeo(model)} image={model.image_url} noindex={isAdminCreateModel} />}
       <Toaster position="top-center" />
 
       <Dialog open={isCreateModelDialogOpen} onOpenChange={setIsCreateModelDialogOpen}>
@@ -2859,7 +2498,6 @@ export default function ConfiguratorPage() {
                 id="name"
                 value={modelForm.name}
                 onChange={(e) => {
-                  console.log('🟢 Changement du nom du modèle:', e.target.value);
                   setModelForm({ ...modelForm, name: e.target.value });
                 }}
                 placeholder="Ex: Dressing Élégance"
@@ -2883,22 +2521,19 @@ export default function ConfiguratorPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="price">Prix calculé (€)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="price"
-                  type="number"
-                  value={modelForm.price}
-                  readOnly
-                  className="bg-am-mist/15 font-semibold"
-                />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  Auto-calculé
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground italic">
-                Ce prix est calculé automatiquement selon les dimensions et options choisies.
+            <div className="grid gap-1">
+              <span className="text-sm font-medium">Prix estimé du modèle</span>
+              <p className={`text-lg font-semibold ${priceError ? 'text-am-wine' : ''}`}>
+                {priceError
+                  ? 'Prix indisponible'
+                  : priceEstimate
+                    ? `${formatPrice(priceEstimate.price)} (${formatPriceRange(priceEstimate)})`
+                    : '…'}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {priceError
+                  ? priceError
+                  : 'Calculé par le serveur avec la grille de prix actuelle, puis recalculé à chaque affichage du modèle : rien à saisir. Livraison en plus.'}
               </p>
             </div>
             <div className="grid gap-2">
@@ -2950,8 +2585,6 @@ export default function ConfiguratorPage() {
             <Button variant="outline" onClick={() => setIsCreateModelDialogOpen(false)}>Annuler</Button>
             <Button
               onClick={() => {
-                console.log('🟡 CLICK SUR BOUTON DIALOG - modelForm.name:', modelForm.name);
-                console.log('🟡 Bouton désactivé?', !modelForm.name);
                 saveAsModel();
               }}
               disabled={!modelForm.name}
@@ -3086,6 +2719,8 @@ export default function ConfiguratorPage() {
                     deletedPanelIds={deletedPanelIds}
                     // Poignées de glissement des planches : à l'étape Division seulement
                     onResizeDivider={!isViewMode && activeStep === STEP.DIVISION ? handleDividerResize : undefined}
+                    handleModels={handleModels}
+                    handleDefaults={handleDefaults}
                   />
                 )}
                 <div className="absolute right-3 top-3 z-20 flex overflow-hidden border border-black/10 bg-white shadow-sm lg:right-4 lg:top-4" style={{ borderRadius: '2px' }}>
@@ -3378,14 +3013,18 @@ export default function ConfiguratorPage() {
                 colorLabel={colorLabel}
                 socle={socle}
                 rootZone={rootZone}
-                price={price}
+                priceEstimate={priceEstimate}
+                priceError={priceError}
+                savedQuote={savedQuote}
                 modelName={model?.name}
                 isAdmin={isAdmin}
                 onEdit={handleAdminEdit}
-                priceDisplaySettings={priceDisplaySettings}
                 mountingStyle={mountingStyle}
+                installation={installation}
                 isOwner={isConfigOwner}
                 onEditOwn={handleOwnerEdit}
+                handleModels={handleModels}
+                handleDefaults={handleDefaults}
               />
             ) : (
               <>
@@ -3414,7 +3053,7 @@ export default function ConfiguratorPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={focusZoneIssue}
+                          onClick={fixZoneIssues}
                           className="flex-shrink-0 border border-am-wine px-3 py-1.5 text-[11px] font-medium text-am-wine transition-colors hover:bg-am-wine hover:text-white"
                           style={{ borderRadius: '2px' }}
                         >
@@ -3504,7 +3143,7 @@ export default function ConfiguratorPage() {
                           <MountingStyleSelector value={mountingStyle} onChange={setMountingStyle} />
                         </StepSection>
 
-                        <StepSection title="Portes & poignées" aside="Pour le compartiment sélectionné">
+                        <StepSection title="Portes" aside="Pour le compartiment sélectionné">
                           {selectedZoneIds.length === 0 ? (
                             <ZoneEmptyState>
                               Cliquez sur un compartiment du meuble pour lui poser une porte.
@@ -3513,7 +3152,7 @@ export default function ConfiguratorPage() {
                             <ZoneEditor
                               {...zoneEditorProps}
                               hideDimensions
-                              controlSections={['facades', 'handles']}
+                              controlSections={['facades']}
                             />
                           )}
                           <p className="text-[11px] leading-relaxed text-black/65">
@@ -3597,6 +3236,20 @@ export default function ConfiguratorPage() {
 
                     {activeStep === STEP.FINISHES && (
                       <>
+                        {hasHandleFacades && (
+                          <StepSection title="Poignées" aside="Tout le meuble ou une façade">
+                            <HandleSelector
+                              rootZone={rootZone}
+                              selectedZone={selectedZoneIds.length === 1 ? selectedZone : null}
+                              models={handleModels}
+                              loading={handleModelsLoading}
+                              defaults={handleDefaults}
+                              onDefaultsChange={setHandleDefaults}
+                              onRootZoneChange={setRootZone}
+                            />
+                          </StepSection>
+                        )}
+
                         <StepSection title="Accessoires" aside="Pour le compartiment sélectionné">
                           {selectedZoneIds.length === 0 ? (
                             <ZoneEmptyState>
@@ -3609,6 +3262,14 @@ export default function ConfiguratorPage() {
                               controlSections={['accessories']}
                             />
                           )}
+                        </StepSection>
+
+                        <StepSection title="Pose et montage" aside="Pour tout le meuble">
+                          <InstallationToggle
+                            checked={installation}
+                            onChange={setInstallation}
+                            price={priceEstimate?.installation ?? null}
+                          />
                         </StepSection>
 
                         <StepSection title="Récapitulatif">
@@ -3624,6 +3285,10 @@ export default function ConfiguratorPage() {
                             mountingStyle={mountingStyle}
                             socle={socle}
                             stats={zoneStats}
+                            handles={handlesSummary}
+                            installation={installation}
+                            estimate={priceEstimate}
+                            priceError={priceError}
                           />
                         </StepSection>
 
@@ -3664,13 +3329,13 @@ export default function ConfiguratorPage() {
 
                 <div className="hidden flex-shrink-0 border-t border-black/10 bg-am-paper px-6 py-4 lg:block">
                   <PriceDisplay
-                    price={price}
+                    estimate={priceEstimate}
+                    error={priceError}
+                    savedQuote={isEditMode ? savedQuote : null}
                     onAddToCart={(isAdminCreateModel || isAdminEditModel) ? () => setIsCreateModelDialogOpen(true) : validateConfiguration}
                     isAdmin={isAdmin}
                     isAdminCreateModel={isAdminCreateModel}
                     isAdminEditModel={isAdminEditModel}
-                    displayMode={priceDisplaySettings.mode}
-                    deviationRange={priceDisplaySettings.range}
                   />
                 </div>
               </>
@@ -3682,29 +3347,20 @@ export default function ConfiguratorPage() {
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-am-paper px-4 py-3 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0">
-                <span className="eyebrow text-black/65">Prix</span>
-                <div className="text-xl font-medium tracking-[-0.03em] text-black">
-                  {priceDisplaySettings.mode === 1 && priceDisplaySettings.range > 0 ? (
-                    `${new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(Math.max(0, price - priceDisplaySettings.range))} - ${new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(price + priceDisplaySettings.range)}`
-                  ) : (
-                    new Intl.NumberFormat('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(price)
-                  )}
-                </div>
+                <span className="eyebrow text-black/65">Prix estimé</span>
+                {priceError ? (
+                  <div className="text-lg font-medium tracking-[-0.03em] text-am-wine">Prix indisponible</div>
+                ) : (
+                  <>
+                    <div className="text-xl font-medium tracking-[-0.03em] text-black">
+                      {priceEstimate ? formatPriceRange(priceEstimate) : '…'}
+                    </div>
+                    {/* La livraison n'est pas dans le prix du meuble : elle s'ajoute au panier */}
+                    {priceEstimate && priceEstimate.delivery !== null && priceEstimate.delivery > 0 && (
+                      <p className="text-[11px] text-black/65">+ livraison {formatPrice(priceEstimate.delivery)}</p>
+                    )}
+                  </>
+                )}
               </div>
               {(!isAdminCreateModel && !isAdminEditModel) ? (
                 <button
@@ -3772,7 +3428,8 @@ export default function ConfiguratorPage() {
         open={showRequestDialog}
         onOpenChange={setShowRequestDialog}
         getShare={shareCurrentConfiguration}
-        price={price}
+        price={priceError ? null : priceEstimate?.price ?? null}
+        unavailableReason={priceError}
       />
 
       {showModelCreatedModal && (
@@ -3796,7 +3453,7 @@ export default function ConfiguratorPage() {
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => router.push(adminUrl('/dashboard?section=models'))}
+                  onClick={() => goToAdmin('/dashboard?section=models')}
                   className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                   style={{ borderRadius: '2px' }}
                 >
@@ -3812,7 +3469,6 @@ export default function ConfiguratorPage() {
                           name: '',
                           description: '',
                           category: 'dressing',
-                          price: 890,
                           imageUrl: ''
                         });
                         resetConfiguration();
@@ -3825,7 +3481,7 @@ export default function ConfiguratorPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push(adminUrl('/dashboard'))}
+                    onClick={() => goToAdmin('/dashboard')}
                     className="border-2 border-black/10 bg-white px-4 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                     style={{ borderRadius: '2px' }}
                   >
@@ -3900,7 +3556,8 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        router.push(isAdmin ? adminUrl('/dashboard?tab=configurations') : '/models');
+                        if (isAdmin) goToAdmin('/dashboard?tab=configurations');
+                        else router.push('/models');
                       }}
                       className="flex-1 bg-am-navy px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-am-navy/90"
                       style={{ borderRadius: '2px' }}
@@ -3921,7 +3578,8 @@ export default function ConfiguratorPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        router.push(isAdmin ? adminUrl('/dashboard') : '/models');
+                        if (isAdmin) goToAdmin('/dashboard');
+                        else router.push('/models');
                       }}
                       className="flex-1 border-2 border-black/10 bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:border-am-navy"
                       style={{ borderRadius: '2px' }}

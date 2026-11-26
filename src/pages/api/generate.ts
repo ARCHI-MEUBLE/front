@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { backendHeaders } from '@/lib/backendProxy';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
@@ -8,18 +9,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('[GENERATE PROXY] Calling backend generate.php with body:', req.body);
-
     const backendResponse = await fetch(`${BACKEND_URL}/backend/api/generate.php`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      // Adresse du visiteur : la limite de générations du backend est comptée par visiteur
+      headers: backendHeaders(req, { 'Content-Type': 'application/json' }),
       body: JSON.stringify(req.body),
     });
 
     const responseText = await backendResponse.text();
-    console.log('[GENERATE PROXY] Backend response:', responseText.substring(0, 500));
 
     let data;
     try {

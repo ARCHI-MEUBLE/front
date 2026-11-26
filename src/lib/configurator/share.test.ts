@@ -43,4 +43,30 @@ describe('configDataToRestore', () => {
   it('defaults to no base when the format has none', () => {
     expect(configDataToRestore({}).socle).toBe('none');
   });
+
+  it('restores the installation only when it was chosen', () => {
+    expect(configDataToRestore({ features: { installation: true } }).installation).toBe(true);
+    expect(configDataToRestore({ features: { installation: false } }).installation).toBe(false);
+    // Modèle du catalogue, configuration d'avant l'option, valeur illisible : sans pose
+    expect(configDataToRestore({ features: { doorType: 'none' } }).installation).toBe(false);
+    expect(configDataToRestore({}).installation).toBe(false);
+    expect(configDataToRestore({ features: { installation: 'true' } }).installation).toBe(false);
+  });
+
+  it('reads the handles chosen for the whole furniture', () => {
+    expect(configDataToRestore({ handles: { modelId: 2, doorOrientation: 'horizontal', drawerOrientation: 'vertical' } }).handleDefaults).toEqual({
+      modelId: 2,
+      doorOrientation: 'horizontal',
+      drawerOrientation: 'vertical',
+    });
+  });
+
+  it('falls back to the default handles for configurations saved before handle models', () => {
+    expect(configDataToRestore({}).handleDefaults).toEqual({ modelId: null, doorOrientation: 'vertical', drawerOrientation: 'horizontal' });
+    expect(configDataToRestore({ handles: { modelId: 'x', doorOrientation: 'sideways' } }).handleDefaults).toEqual({
+      modelId: null,
+      doorOrientation: 'vertical',
+      drawerOrientation: 'horizontal',
+    });
+  });
 });

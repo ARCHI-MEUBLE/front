@@ -1,11 +1,11 @@
 import type { GetServerSideProps } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
-import { adminUrl } from '@/lib/adminPath';
+import { serverAdminUrl } from '@/lib/adminPathServer';
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const destination = (await verifyAdminSession(req, res))
-    ? adminUrl('/dashboard')
-    : adminUrl('/login');
+    ? serverAdminUrl('/dashboard')
+    : serverAdminUrl('/login');
 
   return {
     redirect: {

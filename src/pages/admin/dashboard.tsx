@@ -17,10 +17,12 @@ import { DashboardAvis } from '@/components/admin/DashboardAvis';
 import { DashboardPassword } from '@/components/admin/DashboardPassword';
 import { DashboardPricingCombined } from '@/components/admin/DashboardPricingCombined';
 import { DashboardSamples } from '@/components/admin/DashboardSamples';
+import { DashboardHandles } from '@/components/admin/DashboardHandles';
 import { DashboardRealisations } from '@/components/admin/DashboardRealisations';
 import { DashboardFacades } from '@/components/admin/DashboardFacades';
 import { verifyAdminSession } from '@/lib/adminAuth';
 import { adminUrl } from '@/lib/adminPath';
+import { serverAdminUrl } from '@/lib/adminPathServer';
 import NotificationsModal from '@/components/admin/NotificationsModal';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
@@ -28,7 +30,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (!(await verifyAdminSession(req, res))) {
     return {
       redirect: {
-        destination: adminUrl('/login'),
+        destination: serverAdminUrl('/login'),
         permanent: false,
       },
     };
@@ -46,10 +48,11 @@ const sectionTitles: Record<DashboardSection, { title: string; description: stri
   appointments: { title: 'Demandes de rendez-vous', description: 'Nouvelles demandes de rendez-vous' },
   calendar: { title: 'Calendrier', description: 'Planning des rendez-vous' },
   avis: { title: 'Avis clients', description: 'Gérer les avis et témoignages' },
-  pricing: { title: 'Gestion des prix', description: 'Configurez tous les paramètres de tarification' },
+  pricing: { title: 'Prix & livraison', description: 'Grille du meuble sur mesure, matières, livraison et acompte' },
   catalogue: { title: 'Catalogue & Pièces', description: 'Gérez les articles et accessoires' },
-  facades: { title: 'Façades', description: 'Gérer les matériaux et types de perçages' },
-  samples: { title: 'Gestion des échantillons', description: 'Catalogue des finitions et matériaux' },
+  facades: { title: 'Façades', description: 'Matériaux, dimensions et tarification des façades sur mesure' },
+  samples: { title: 'Gestion des échantillons', description: 'Matières, couleurs, prix au m² et prix des échantillons' },
+  handles: { title: 'Modèles de poignées', description: 'Poignées proposées dans le configurateur, étape Finitions' },
   realisations: { title: 'Réalisations', description: 'Gérer les photos et détails des projets réels' },
   password: { title: 'Paramètres', description: 'Modifier le mot de passe' },
 };
@@ -62,6 +65,14 @@ export default function AdminDashboardPage() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const lastNotificationIdRef = useRef<number>(0);
   const [adminInfo, setAdminInfo] = useState<{ email: string; name: string } | null>(null);
+
+  // overflow-x: hidden sur html/body (globals.css) fait de body une zone de défilement et casse position: sticky.
+  // Cette classe le remplace par overflow-x: clip (voir styles/configurator.css) pour que les cadres restent collés à l'écran.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('configurator-sticky');
+    return () => root.classList.remove('configurator-sticky');
+  }, []);
 
   useEffect(() => {
     // Charger les infos de l'admin connecté
@@ -231,6 +242,7 @@ export default function AdminDashboardPage() {
                 {selectedSection === 'avis' && <DashboardAvis />}
                 {selectedSection === 'pricing' && <DashboardPricingCombined />}
                 {selectedSection === 'samples' && <DashboardSamples />}
+                {selectedSection === 'handles' && <DashboardHandles />}
                 {selectedSection === 'realisations' && <DashboardRealisations />}
                 {selectedSection === 'password' && <DashboardPassword />}
               </div>

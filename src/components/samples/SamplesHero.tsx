@@ -2,10 +2,10 @@ import Image from "next/image";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
 
 const FANNED_CARDS = [
-  { label: "Chêne blanchi", image: "https://images.unsplash.com/photo-1611072337226-1140ab367200?auto=format&fit=crop&w=500&q=70", left: "4%", top: "14%", rotate: -12, z: 1 },
-  { label: "Chêne naturel", image: "https://images.unsplash.com/photo-1737094662085-7e0db16198e3?auto=format&fit=crop&w=500&q=70", left: "24%", top: "6%", rotate: -3, z: 2 },
-  { label: "Chêne vieilli", image: "https://images.unsplash.com/photo-1644931551533-02906718127f?auto=format&fit=crop&w=500&q=70", left: "44%", top: "10%", rotate: 6, z: 3 },
-  { label: "Noisette caramélisée", image: "https://images.unsplash.com/photo-1564512533667-015a90133f04?auto=format&fit=crop&w=500&q=70", left: "62%", top: "20%", rotate: 14, z: 4 },
+  { label: "Chêne blanchi", image: "/images/stock/samples-chene-blanchi.jpg", left: "4%", top: "14%", rotate: -12, z: 1 },
+  { label: "Chêne naturel", image: "/images/stock/samples-chene-naturel.jpg", left: "24%", top: "6%", rotate: -3, z: 2 },
+  { label: "Chêne vieilli", image: "/images/stock/samples-chene-vieilli.jpg", left: "44%", top: "10%", rotate: 6, z: 3 },
+  { label: "Noisette caramélisée", image: "/images/stock/samples-noisette.jpg", left: "62%", top: "20%", rotate: 14, z: 4 },
 ];
 
 export function SamplesHero() {

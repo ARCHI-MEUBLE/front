@@ -8,6 +8,8 @@ import { IncomingForm, Files, Fields } from 'formidable';
 import fs from 'fs';
 import path from 'path';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000');
 
 export const config = {
@@ -112,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Prepare headers
     const headers: Record<string, string> = {
-      'Cookie': req.headers.cookie || '',
+      ...backendHeaders(req),
     };
 
     // Prepare fetch options

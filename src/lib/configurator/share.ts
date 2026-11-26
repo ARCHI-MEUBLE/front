@@ -2,6 +2,8 @@
 // Le backend garde le meuble seul sous un code de 8 caractères (aucune donnée sur la personne) ; le lien ouvre le
 // configurateur avec ?partage=<code>. La demande de projet part par e-mail chez ArchiMeuble sans être enregistrée.
 
+import { parseHandleDefaults } from './handles';
+
 export const SHARE_QUERY_PARAM = 'partage';
 
 const SHARE_ENDPOINT = '/backend/api/configurations/share.php';
@@ -101,6 +103,10 @@ export function configDataToRestore(data: any) {
     roundedRight: data.features?.roundedRight ?? data.features?.roundedEdges ?? false,
     roundedRightWidth: data.features?.roundedRightWidth,
     roundedRightDepth: data.features?.roundedRightDepth,
+    // Pose et montage chez le client : seulement si elle a été choisie (les modèles du catalogue ne l'ont pas)
+    installation: data.features?.installation === true,
     deletedPanelIds: data.deletedPanelIds,
+    // Poignées du meuble ; absentes des configurations d'avant les modèles : réglages par défaut
+    handleDefaults: parseHandleDefaults(data.handles),
   };
 }

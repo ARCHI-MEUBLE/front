@@ -20,7 +20,7 @@ export function RealisationsHero() {
         >
           <div className="absolute left-0 overflow-hidden rounded-[22px] bg-am-mist/25" style={{ top: "6%", width: "78%", height: "84%" }}>
             <Image
-              src="https://images.unsplash.com/photo-1679797850019-3d0d8659a695?auto=format&fit=crop&w=1100&q=75"
+              src="/images/stock/realisations-hero-1.jpg"
               alt=""
               fill
               unoptimized
@@ -47,7 +47,7 @@ export function RealisationsHero() {
           >
             <div className="relative overflow-hidden rounded-sm bg-am-mist/25" style={{ aspectRatio: "4/3" }}>
               <Image
-                src="https://images.unsplash.com/photo-1649361811423-a55616f7ab11?auto=format&fit=crop&w=1100&q=75"
+                src="/images/stock/realisations-hero-2.jpg"
                 alt=""
                 fill
                 unoptimized

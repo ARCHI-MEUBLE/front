@@ -27,6 +27,8 @@ import { Label } from '@/components/ui/label';
 import { CategoriesModal } from './CategoriesModal';
 import { DashboardCatalogue } from './DashboardCatalogue';
 import { Category } from '@/lib/apiClient';
+import { formatPrice } from '@/lib/format';
+import { isEstimable, parseConfigData } from '@/lib/pricingAdminApi';
 
 export interface AdminModel {
   id: number;
@@ -35,6 +37,10 @@ export interface AdminModel {
   prompt: string;
   image_url: string | null;
   hover_image_url: string | null;
+  category?: string | null;
+  // Estimation de la grille actuelle quand config_data le permet, sinon prix enregistré (DECIMAL : parfois en texte)
+  price?: number | string | null;
+  config_data?: string | null;
   created_at: string;
 }
 
@@ -45,7 +51,6 @@ type FormState = {
   imagePath: string;
   hoverImagePath: string;
   category: string;
-  price: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -55,8 +60,34 @@ const EMPTY_FORM: FormState = {
   imagePath: '',
   hoverImagePath: '',
   category: '',
-  price: '',
 };
+
+// Prix d'un modèle tel que l'API le renvoie : suivi de la grille seulement s'il a une configuration 3D estimable
+function modelPrice(model: AdminModel): { amount: number | null; live: boolean } {
+  const amount = Number(model.price);
+  return {
+    amount: model.price !== null && model.price !== undefined && Number.isFinite(amount) && amount > 0 ? amount : null,
+    live: isEstimable(parseConfigData(model.config_data)),
+  };
+}
+
+function ModelPriceLine({ model }: { model: AdminModel }) {
+  const { amount, live } = modelPrice(model);
+  if (live && amount !== null) {
+    return (
+      <p className="text-sm">
+        <span className="text-muted-foreground">Prix selon la grille actuelle : </span>
+        <span className="font-semibold tabular-nums">{formatPrice(amount)}</span>
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs text-muted-foreground">
+      {amount !== null ? `Prix enregistré : ${formatPrice(amount)}. ` : ''}
+      Sans configuration 3D, ce prix ne suit pas la grille : ouvrez « Modifier 3D » et enregistrez le modèle.
+    </p>
+  );
+}
 
 const PromptGuideContent = () => (
   <div className="space-y-8">
@@ -97,10 +128,6 @@ const PromptGuideContent = () => (
         </h5>
         <div className="grid grid-cols-1 gap-2">
           <div className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <code className="text-xs font-bold text-blue-600 dark:text-blue-400">v</code>
-              <span className="text-xs text-zinc-500">Étagère Verre</span>
-            </div>
             <div className="flex items-center gap-3">
               <code className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Pm</code>
               <span className="text-xs text-zinc-500">Porte vitrée</span>
@@ -203,16 +230,9 @@ export function DashboardModels() {
         credentials: 'include'
       });
       
-      console.log('--- DIAGNOSTIC CATEGORIES DASHBOARD ---');
-      console.log('Status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('Categories data:', data);
         setAvailableCategories(data.categories || []);
-      } else {
-        const text = await response.text();
-        console.log('Error response:', text);
       }
     } catch (error) {
       console.error("Erreur chargement categories:", error);
@@ -260,6 +280,7 @@ export function DashboardModels() {
   }, [preview, hoverPreview]);
 
   const sortedModels = useMemo(() => models, [models]);
+  const editingModel = editingId !== null ? models.find((m) => m.id === editingId) ?? null : null;
 
   const stats = {
     total: models.length,
@@ -415,7 +436,6 @@ export function DashboardModels() {
         description: formState.description,
         prompt: formState.prompt,
         category: formState.category,
-        price: parseFloat(formState.price) || null,
         imagePath,
         hoverImagePath,
       };
@@ -467,7 +487,7 @@ export function DashboardModels() {
     }
   };
 
-  const handleEdit = (model: AdminModel & { category?: string; price?: number }) => {
+  const handleEdit = (model: AdminModel) => {
     setEditingId(model.id);
     setFormState({
       name: model.name,
@@ -476,7 +496,6 @@ export function DashboardModels() {
       imagePath: model.image_url ?? '',
       hoverImagePath: model.hover_image_url ?? '',
       category: model.category ?? '',
-      price: model.price?.toString() ?? '',
     });
     setFile(null);
     setHoverFile(null);
@@ -667,6 +686,7 @@ export function DashboardModels() {
                 <CardHeader>
                   <CardTitle className="text-base">{model.name}</CardTitle>
                   <CardDescription className="line-clamp-2">{model.description}</CardDescription>
+                  <ModelPriceLine model={model} />
                 </CardHeader>
                 <CardFooter className="flex flex-col gap-2 p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 w-full gap-2">
@@ -778,13 +798,12 @@ export function DashboardModels() {
                   ))}
                 </select>
               </div>
-              {/* Prix calculé automatiquement - affiché en lecture seule */}
-              {parseFloat(formState.price) > 0 && (
+              {/* Prix en lecture seule : il vient de la grille, pas d'une saisie */}
+              {editingModel && (
                 <div className="space-y-2">
-                  <Label>Prix calculé</Label>
-                  <div className="flex items-center gap-2 h-10 px-3 py-2 rounded-md border bg-gray-50">
-                    <span className="font-semibold">{formState.price} €</span>
-                    <span className="text-xs text-muted-foreground">(auto-calculé)</span>
+                  <Label>Prix</Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2">
+                    <ModelPriceLine model={editingModel} />
                   </div>
                 </div>
               )}

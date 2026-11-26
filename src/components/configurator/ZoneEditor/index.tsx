@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import ZoneCanvas from './ZoneCanvas';
 import ZoneControls, { SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
-import { Zone, ZoneContent, HandleType } from './types';
+import { Zone, ZoneContent } from './types';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { selectionSizeMm } from '@/lib/configurator/zoneSelection';
 import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/configurator/constraints';
@@ -53,7 +53,6 @@ interface ZoneEditorProps {
   onToggleDressing?: (zoneId: string) => void;
   onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
-  onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
   onDeleteSection?: (zoneId: string) => void;
   isAdminCreateModel?: boolean;
   exposeActions?: (actions: {
@@ -96,7 +95,6 @@ export default function ZoneEditor({
   onToggleDressing,
   onApplyNoBack,
   onGroupZones,
-  onSetHandleType,
   onSetZoneContent,
   onSetDoorContent,
   onDeleteSection,
@@ -407,48 +405,6 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange, onToggleDressing]
   );
 
-  // Définir le type de poignée
-  const setHandleType = useCallback(
-    (zoneId: string, handleType: HandleType) => {
-      if (onSetHandleType) {
-        onSetHandleType(zoneId, handleType);
-      } else {
-        const updateZone = (z: Zone): Zone => {
-          if (z.id === zoneId) {
-            return { ...z, handleType };
-          }
-          if (z.children) {
-            return { ...z, children: z.children.map(updateZone) };
-          }
-          return z;
-        };
-        onRootZoneChange(updateZone(rootZone));
-      }
-    },
-    [rootZone, onRootZoneChange, onSetHandleType]
-  );
-
-  // Définir le nombre d'étagères en verre
-  const setGlassShelfCount = useCallback(
-    (zoneId: string, count: number) => {
-      const updateZone = (z: Zone): Zone => {
-        if (z.id === zoneId && z.type === 'leaf') {
-          // Réinitialiser les positions quand le nombre change
-          const defaultPositions = Array.from({ length: count }, (_, i) =>
-            Math.round(((i + 1) / (count + 1)) * 100)
-          );
-          return { ...z, glassShelfCount: count, glassShelfPositions: defaultPositions };
-        }
-        if (z.children) {
-          return { ...z, children: z.children.map(updateZone) };
-        }
-        return z;
-      };
-      onRootZoneChange(updateZone(rootZone));
-    },
-    [rootZone, onRootZoneChange]
-  );
-
   // Définir le décalage de la niche (mm, signé ; undefined/0 = affleurante)
   const setNicheOffset = useCallback(
     (zoneId: string, offsetMm: number | undefined) => {
@@ -466,22 +422,6 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange]
   );
 
-  // Définir les positions des étagères en verre
-  const setGlassShelfPositions = useCallback(
-    (zoneId: string, positions: number[]) => {
-      const updateZone = (z: Zone): Zone => {
-        if (z.id === zoneId && z.type === 'leaf') {
-          return { ...z, glassShelfPositions: positions };
-        }
-        if (z.children) {
-          return { ...z, children: z.children.map(updateZone) };
-        }
-        return z;
-      };
-      onRootZoneChange(updateZone(rootZone));
-    },
-    [rootZone, onRootZoneChange]
-  );
 
   // Réinitialiser une zone
   const resetZone = useCallback(
@@ -796,9 +736,6 @@ export default function ZoneEditor({
             onToggleDressing={onToggleDressing || toggleDressing}
             onApplyNoBack={onApplyNoBack || applyNoBack}
             onGroupZones={groupZones}
-            onSetHandleType={onSetHandleType || setHandleType}
-            onSetGlassShelfCount={setGlassShelfCount}
-            onSetGlassShelfPositions={setGlassShelfPositions}
             onSetNicheOffset={setNicheOffset}
             zoneHeightMm={selectedZoneHeightMm}
             zoneWidthMm={selectedZoneWidthMm}

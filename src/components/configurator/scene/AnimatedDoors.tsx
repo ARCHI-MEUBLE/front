@@ -4,6 +4,7 @@ import { getSafeColor } from './utils';
 import { TexturedMaterial } from './TexturedMaterial';
 import { Handle } from './StructuralElements';
 import { useSmoothedRotationY } from './useSmoothed';
+import type { ResolvedHandle } from '@/lib/configurator/handles';
 
 // Les portes ne gèrent pas elles-mêmes le pointeur : la scène les enveloppe dans un groupe qui s'en charge
 // (survol, sélection, ouverture), ce qui garde un comportement identique pour toutes les façades.
@@ -18,10 +19,13 @@ interface DoorProps {
     isOpen?: boolean;
     hexColor?: string | null;
     imageUrl?: string | null;
-    handleType?: string;
+    // Poignée de la porte ; absente : barre verticale par défaut
+    handle?: ResolvedHandle | null;
 }
 
 const DOOR_OPEN_ANGLE = Math.PI * 0.39;
+// Face avant du panneau (posé à z = 0.014, épais de 0.018), où se fixe la poignée
+const DOOR_FACE_Z = 0.023;
 
 function useDoorSwing(side: 'left' | 'right', isOpen?: boolean) {
     const groupRef = useRef<THREE.Group>(null);
@@ -29,7 +33,7 @@ function useDoorSwing(side: 'left' | 'right', isOpen?: boolean) {
     return groupRef;
 }
 
-export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, handleType }: DoorProps) {
+export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side, isOpen, handle }: DoorProps) {
     const groupRef = useDoorSwing(side, isOpen);
     const safeHexColor = getSafeColor(hexColor);
 
@@ -40,16 +44,15 @@ export function AnimatedDoor({ position, width, height, hexColor, imageUrl, side
                 <TexturedMaterial hexColor={safeHexColor} imageUrl={imageUrl} />
             </mesh>
             <Handle
-                type={handleType || 'vertical_bar'}
-                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
-                side={side}
-                height={height}
+                handle={handle}
+                facade={{ kind: 'door', hingeSide: side, width, height }}
+                origin={[side === 'left' ? width/2 : -width/2, 0, DOOR_FACE_Z]}
             />
         </group>
     );
 }
 
-export function AnimatedMirrorDoor({ position, width, height, side, isOpen, handleType }: Omit<DoorProps, 'hexColor' | 'imageUrl'>) {
+export function AnimatedMirrorDoor({ position, width, height, side, isOpen, handle }: Omit<DoorProps, 'hexColor' | 'imageUrl'>) {
     const groupRef = useDoorSwing(side, isOpen);
 
     return (
@@ -66,16 +69,15 @@ export function AnimatedMirrorDoor({ position, width, height, side, isOpen, hand
                 />
             </mesh>
             <Handle
-                type={handleType || 'vertical_bar'}
-                position={[side === 'left' ? width - 0.04 : -width + 0.04, 0, 0.024]}
-                side={side}
-                height={height}
+                handle={handle}
+                facade={{ kind: 'door', hingeSide: side, width, height }}
+                origin={[side === 'left' ? width/2 : -width/2, 0, DOOR_FACE_Z]}
             />
         </group>
     );
 }
 
-export function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen }: Omit<DoorProps, 'handleType'>) {
+export function AnimatedPushDoor({ position, width, height, hexColor, imageUrl, side, isOpen }: Omit<DoorProps, 'handle'>) {
     const groupRef = useDoorSwing(side, isOpen);
     const safeHexColor = getSafeColor(hexColor);
 

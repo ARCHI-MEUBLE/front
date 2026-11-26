@@ -1,7 +1,16 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { formatDate } from '@/lib/dateUtils';
+import { formatPrice } from '@/lib/format';
+import {
+  asBool,
+  isEstimable,
+  parseConfigData,
+  pricingAdminApi,
+  pricingErrorMessage,
+  type AdminPriceEstimate,
+} from '@/lib/pricingAdminApi';
 import toast from 'react-hot-toast';
 import {
   IconEye,
@@ -13,6 +22,7 @@ import {
   IconX,
   IconBox,
   IconEdit,
+  IconCurrencyEuro,
 } from '@tabler/icons-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +40,8 @@ import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface AdminConfiguration {
   id: number;
@@ -40,7 +52,15 @@ interface AdminConfiguration {
   customer_phone?: string | null;
   model_name: string | null;
   model_id?: number | null;
-  price: number;
+  // DECIMAL : parfois en texte
+  price: number | string;
+  // Prix fixé à la main par l'admin (remise, geste commercial), avec sa raison
+  price_adjusted?: boolean | string | number | null;
+  price_note?: string | null;
+  // Configuration enregistrée avant la séparation des frais de livraison : son prix les contient
+  price_includes_delivery?: boolean | string | number | null;
+  // config_data enregistré (texte JSON)
+  config_string?: string | null;
   created_at: string;
   status?: string;
   prompt?: string | null;
@@ -125,8 +145,25 @@ export function DashboardConfigs() {
     setFilteredConfigs(filtered);
   };
 
-  const viewDetails = (config: AdminConfiguration) => {
+  // La liste ne renvoie pas toutes les colonnes : le détail complète la fiche (prix ajusté, note, livraison)
+  const viewDetails = async (config: AdminConfiguration) => {
     setSelectedConfig(config);
+    try {
+      const res = await fetch(`/api/admin/configurations?id=${config.id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.configuration) {
+        setSelectedConfig((current) => (current && current.id === config.id ? { ...current, ...data.configuration } : current));
+      }
+    } catch {
+      // Détail indisponible : la fiche garde les données de la liste
+    }
+  };
+
+  const applyAdjustedPrice = (id: number, price: number, note: string) => {
+    const patch = { price, price_adjusted: true, price_note: note };
+    setConfigs((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    setSelectedConfig((current) => (current && current.id === id ? { ...current, ...patch } : current));
   };
 
   const updateStatus = async (id: number, newStatus: string) => {
@@ -332,7 +369,14 @@ export function DashboardConfigs() {
                                 </TableCell>
                               )}
                               {columnVisibility.price && (
-                                <TableCell className="font-semibold tabular-nums">{Math.round(config.price)}€</TableCell>
+                                <TableCell className="font-semibold tabular-nums whitespace-nowrap">
+                                  {formatPrice(Math.round(Number(config.price) || 0))}
+                                  {asBool(config.price_adjusted) && (
+                                    <Badge variant="secondary" className="ml-1.5 text-[10px]" title={config.price_note ?? 'Prix ajusté'}>
+                                      ajusté
+                                    </Badge>
+                                  )}
+                                </TableCell>
                               )}
                               {columnVisibility.status && (
                                 <TableCell>
@@ -488,6 +532,11 @@ export function DashboardConfigs() {
                   </Card>
                 )}
 
+                <ConfigPriceCard
+                  config={selectedConfig}
+                  onAdjusted={(price, note) => applyAdjustedPrice(selectedConfig.id, price, note)}
+                />
+
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm sm:text-base">Client</CardTitle>
@@ -506,15 +555,9 @@ export function DashboardConfigs() {
                     <CardTitle className="text-sm sm:text-base">Configuration</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
-                      <div>
-                        <p className="text-muted-foreground mb-1">Modèle</p>
-                        <p className="font-medium">{selectedConfig.model_name || (selectedConfig.model_id ? `M${selectedConfig.model_id}` : '—')}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground mb-1">Prix</p>
-                        <p className="font-semibold tabular-nums">{Math.round(selectedConfig.price)}€</p>
-                      </div>
+                    <div className="text-xs sm:text-sm">
+                      <p className="text-muted-foreground mb-1">Modèle</p>
+                      <p className="font-medium">{selectedConfig.model_name || (selectedConfig.model_id ? `M${selectedConfig.model_id}` : '—')}</p>
                     </div>
 
                     {selectedConfig.prompt && (
@@ -558,6 +601,275 @@ export function DashboardConfigs() {
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+// Prix d'une configuration : prix enregistré (payé par le client), ajustement éventuel, livraison incluse ou non,
+// et estimation actuelle de la grille quand elle diffère
+function ConfigPriceCard({ config, onAdjusted }: { config: AdminConfiguration; onAdjusted: (price: number, note: string) => void }) {
+  const [estimate, setEstimate] = useState<AdminPriceEstimate | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogKey, setDialogKey] = useState(0);
+
+  const recorded = Number(config.price) || 0;
+  const adjusted = asBool(config.price_adjusted);
+  const includesDelivery = asBool(config.price_includes_delivery);
+  const configData = parseConfigData(config.config_string);
+  const estimable = isEstimable(configData);
+  const configKey = config.config_string ?? '';
+
+  useEffect(() => {
+    setEstimate(null);
+    setEstimateError(null);
+    const data = parseConfigData(configKey);
+    if (!isEstimable(data)) return;
+    const controller = new AbortController();
+    setEstimating(true);
+    pricingAdminApi
+      .estimate(data, controller.signal)
+      .then(setEstimate)
+      .catch((err) => {
+        if (!controller.signal.aborted) setEstimateError(pricingErrorMessage(err, 'Estimation impossible'));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setEstimating(false);
+      });
+    return () => controller.abort();
+  }, [configKey]);
+
+  // Ancienne configuration : son prix contient la livraison, on compare à prix + livraison
+  const comparable = estimate ? estimate.price + (includesDelivery ? estimate.delivery ?? 0 : 0) : null;
+  const differs = comparable !== null && Math.abs(comparable - recorded) >= 1;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-base">Prix</CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setDialogKey((k) => k + 1);
+              setDialogOpen(true);
+            }}
+          >
+            <IconCurrencyEuro className="w-4 h-4" />
+            Ajuster le prix
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="text-2xl font-semibold tabular-nums">{formatPrice(recorded)}</span>
+          <span className="text-muted-foreground">prix enregistré, payé par le client</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {adjusted && <Badge variant="secondary">Prix ajusté</Badge>}
+          {includesDelivery ? (
+            <Badge variant="outline" title="Configuration enregistrée avant la séparation des frais de livraison">
+              Livraison incluse dans ce prix
+            </Badge>
+          ) : (
+            <Badge variant="outline">Livraison facturée à part</Badge>
+          )}
+        </div>
+        {adjusted && config.price_note && (
+          <p className="rounded-md border bg-muted/40 p-2 text-xs">
+            <span className="font-medium">Note : </span>
+            {config.price_note}
+          </p>
+        )}
+
+        <Separator />
+
+        {!estimable ? (
+          <p className="text-xs text-muted-foreground">
+            Pas de configuration 3D exploitable : impossible de la comparer à la grille actuelle.
+          </p>
+        ) : estimating ? (
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <IconRefresh className="w-3 h-3 animate-spin" />
+            Estimation avec la grille actuelle...
+          </p>
+        ) : estimateError ? (
+          <p className="text-xs text-destructive" role="alert">
+            Estimation actuelle indisponible : {estimateError}
+          </p>
+        ) : estimate && differs ? (
+          <div className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+            <p>
+              Avec la grille actuelle, ce meuble serait estimé{' '}
+              <span className="font-semibold tabular-nums">{formatPrice(estimate.price)}</span> (fourchette{' '}
+              {formatPrice(estimate.low)} – {formatPrice(estimate.high)})
+              {estimate.delivery !== null && <> + livraison {formatPrice(estimate.delivery)}</>}.
+            </p>
+            <p>
+              {adjusted
+                ? 'Le prix ajusté reste celui du devis.'
+                : 'Le devis garde son prix tant que le client ne le modifie pas, ou que vous ne l’ajustez pas.'}
+            </p>
+          </div>
+        ) : estimate ? (
+          <p className="text-xs text-muted-foreground">Conforme à la grille actuelle.</p>
+        ) : null}
+      </CardContent>
+
+      <AdjustPriceDialog
+        key={dialogKey}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        config={config}
+        suggestion={estimate ? estimate.price + (includesDelivery ? estimate.delivery ?? 0 : 0) : null}
+        onSaved={(price, note) => {
+          setDialogOpen(false);
+          onAdjusted(price, note);
+        }}
+      />
+    </Card>
+  );
+}
+
+const PRICE_MAX = 100000;
+const NOTE_MAX = 500;
+
+function AdjustPriceDialog({
+  open,
+  onOpenChange,
+  config,
+  suggestion,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  config: AdminConfiguration;
+  // Estimation actuelle, proposée en un clic
+  suggestion: number | null;
+  onSaved: (price: number, note: string) => void;
+}) {
+  const id = useId();
+  const [price, setPrice] = useState(String(Number(config.price) || 0));
+  const [note, setNote] = useState(asBool(config.price_adjusted) ? config.price_note ?? '' : '');
+  const [showErrors, setShowErrors] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const value = Number(price.trim().replace(',', '.'));
+  const priceError =
+    price.trim() === '' || !Number.isFinite(value)
+      ? 'Indiquez un prix.'
+      : value < 0
+        ? 'Le prix ne peut pas être négatif.'
+        : value > PRICE_MAX
+          ? `${formatPrice(PRICE_MAX)} au maximum.`
+          : null;
+  const noteError = note.trim().length < 3 ? 'Indiquez la raison (remise, geste commercial, devis validé par téléphone...).' : null;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowErrors(true);
+    if (priceError || noteError) return;
+    setSaving(true);
+    setServerError(null);
+    try {
+      const saved = await pricingAdminApi.adjustConfigurationPrice(config.id, Math.round(value * 100) / 100, note.trim());
+      toast.success(`Prix du devis #${config.id} : ${formatPrice(saved)}`);
+      onSaved(saved, note.trim());
+    } catch (err) {
+      setServerError(pricingErrorMessage(err, 'Prix non enregistré'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Ajuster le prix du devis #{config.id}</DialogTitle>
+          <DialogDescription>
+            Le client paiera ce prix au lieu de l&apos;estimation. S&apos;il modifie ensuite sa configuration, le prix est
+            recalculé avec la grille et l&apos;ajustement est perdu.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4" noValidate>
+          {config.status === 'en_commande' && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              Une commande existe déjà pour ce devis : son montant ne change pas.
+            </p>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor={`${id}-price`}>Nouveau prix TTC</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative w-40">
+                <Input
+                  id={`${id}-price`}
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={PRICE_MAX}
+                  step={0.01}
+                  value={price}
+                  autoFocus
+                  onChange={(e) => setPrice(e.target.value)}
+                  aria-invalid={showErrors && priceError ? true : undefined}
+                  aria-describedby={showErrors && priceError ? `${id}-price-error` : undefined}
+                  className="pr-7"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
+              </div>
+              {suggestion !== null && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setPrice(String(suggestion))}>
+                  Reprendre l&apos;estimation ({formatPrice(suggestion)})
+                </Button>
+              )}
+            </div>
+            {showErrors && priceError && (
+              <p id={`${id}-price-error`} className="text-xs text-destructive">
+                {priceError}
+              </p>
+            )}
+            {asBool(config.price_includes_delivery) && (
+              <p className="text-[11px] text-muted-foreground">
+                Ancienne configuration : ce prix comprend la livraison, aucun frais ne s&apos;y ajoutera au panier.
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${id}-note`}>Raison de l&apos;ajustement</Label>
+            <Textarea
+              id={`${id}-note`}
+              value={note}
+              maxLength={NOTE_MAX}
+              rows={3}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ex : remise de 5 % accordée par téléphone"
+              aria-invalid={showErrors && noteError ? true : undefined}
+              aria-describedby={`${id}-note-help`}
+            />
+            <p id={`${id}-note-help`} className={showErrors && noteError ? 'text-xs text-destructive' : 'text-[11px] text-muted-foreground'}>
+              {showErrors && noteError ? noteError : 'Gardée avec le devis, pour mémoire.'}
+            </p>
+          </div>
+          {serverError && (
+            <p className="text-xs text-destructive" role="alert">
+              {serverError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <IconRefresh className="w-4 h-4 animate-spin" />}
+              Enregistrer le prix
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

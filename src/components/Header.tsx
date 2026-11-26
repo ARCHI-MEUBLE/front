@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useId, useState } from "react";
 import { Menu, X, ShoppingBag, ChevronRight, ChevronDown, Layers, Package, DoorClosed, Palette } from "lucide-react";
-import { useCustomer } from "@/context/CustomerContext";
+import { useCartCount } from "@/hooks/useCartCount";
 import { NavDropdown, isPathActive, type NavDropdownItem } from "@/components/NavDropdown";
 
 interface NavGroup {
@@ -85,9 +85,8 @@ function DrawerGroup({ group, pathname, onNavigate }: { group: NavGroup; pathnam
 
 export function Header() {
   const router = useRouter();
-  const { customer } = useCustomer();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const cartCount = useCartCount();
 
 
   useEffect(() => {
@@ -104,22 +103,6 @@ export function Header() {
       document.body.style.overflow = "";
     };
   }, [isMenuOpen]);
-
-  useEffect(() => {
-    const loadCart = async () => {
-      if (!customer) return;
-      try {
-        const res = await fetch("/backend/api/cart/index.php", { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setCartCount(data.items?.length || 0);
-        }
-      } catch (err) {
-        console.error("Erreur panier:", err);
-      }
-    };
-    loadCart();
-  }, [customer]);
 
   return (
     <>

@@ -45,8 +45,8 @@ export const CONFIG_STEPS: StepDefinition[] = [
   {
     id: STEP.DOORS,
     label: 'Portes',
-    title: 'Portes, tiroirs & poignées',
-    hint: 'Habillez chaque compartiment, puis choisissez le montage et les poignées.',
+    title: 'Portes',
+    hint: 'Habillez chaque compartiment, puis choisissez le montage des façades.',
     view: '3d',
   },
   {
@@ -66,8 +66,8 @@ export const CONFIG_STEPS: StepDefinition[] = [
   {
     id: STEP.FINISHES,
     label: 'Finitions',
-    title: 'Pieds & accessoires',
-    hint: 'Dernières touches : pieds, éclairage, penderie, puis vérifiez le récapitulatif.',
+    title: 'Poignées, pieds & accessoires',
+    hint: 'Dernières touches : poignées, pieds, éclairage, penderie, puis vérifiez le récapitulatif.',
     view: '3d',
   },
 ];

@@ -4,6 +4,8 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,31 +13,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
     const url = `${API_URL}/backend/api/admin/configurations.php${queryString ? '?' + queryString : ''}`;
 
-    console.log('🔗 Proxy configurations vers:', url);
-    console.log('🍪 Cookies envoyés:', req.headers.cookie ? 'Oui' : 'Non');
-
     const response = await fetch(url, {
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
       credentials: 'include',
     });
 
-    console.log('📡 Réponse backend PHP:', response.status);
-
     const data = await response.json();
-    console.log('📦 Données du backend:', JSON.stringify(data).substring(0, 200));
 
-    const backendCookies = response.headers.getSetCookie?.() || [];
-    if (backendCookies.length > 0) {
-      backendCookies.forEach(cookie => {
-        res.setHeader('Set-Cookie', cookie);
-      });
-    }
-
+    forwardSetCookies(res, response);
     res.status(response.status).json(data);
   } catch (error) {
     console.error('❌ Configurations proxy error:', error);

@@ -1,74 +1,155 @@
+import { memo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Pencil, SlidersHorizontal } from "lucide-react";
 import type { ModelCardData } from "@/components/models/ModelCard";
 
-// Carte des carrousels de la page modèles : fond gris clair, image contenue, nom en pied.
-// En aperçu (rangées du dessus et du dessous) elle n'est ni cliquable ni focusable : seule la rangée centrale se navigue.
-export function ModelCarouselCard({
+// Images du site (public/images) : redimensionnées et converties par l'optimiseur de Next, au lieu de télécharger des
+// originaux de plusieurs Mo pour une carte de ~250 px. Les autres (uploads servis par le backend) restent telles quelles.
+const isOptimizable = (src: string) => src.startsWith("/images/");
+
+// Format commun de toutes les vignettes : les photos sont recadrées (object-cover, centrées) dans ce cadre, pour que
+// la grille reste régulière quelles que soient les images d'origine. À aligner sur le format des futures photos.
+export const MODEL_TILE_ASPECT = "6 / 5";
+export const MODEL_TILE_RATIO = 6 / 5;
+
+// Bandeau des cartes (≈ 190 à 450 px de large selon l'écran) : il suit la largeur de la carte elle-même (container
+// queries, la carte porte `@container`), pour que le nom tienne à toutes les tailles
+const BAR = {
+  radius: "rounded-[20px]",
+  bar: "h-[48px] pl-3.5 pr-1.5 @min-[300px]:h-[52px] @min-[300px]:pl-4 @min-[400px]:h-[56px] @min-[400px]:pl-5",
+  title: "text-[13px] @min-[300px]:text-[15px] @min-[400px]:text-[16px]",
+  button: "px-3 py-1.5 text-[12px] @min-[300px]:px-3.5 @min-[300px]:py-2 @min-[300px]:text-[13px] @min-[400px]:px-4",
+};
+
+const IMAGE_CLASS =
+  "object-cover object-center transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]";
+const CARD_SIZES = "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw";
+
+// Photo d'une vignette, recadrée dans le format commun (mêmes réglages pour les cartes et les aperçus)
+function TileImage({ model, sizes }: { model: ModelCardData; sizes: string }) {
+  return model.imagePath ? (
+    <Image src={model.imagePath} alt="" fill unoptimized={!isOptimizable(model.imagePath)} className={IMAGE_CLASS} sizes={sizes} />
+  ) : (
+    <div className="absolute inset-0 flex items-start justify-center pt-[18%]">
+      <span className="eyebrow text-black/40">Visuel à venir</span>
+    </div>
+  );
+}
+
+// Vignette d'un modèle : photo plein cadre, et en bas un bandeau bleu nuit arrondi avec le nom et le bouton
+// « Configurer ». Rien d'autre, pour que la photo du meuble porte la vignette.
+function ModelTile({
   model,
-  preview = false,
-  focusable = true,
+  showHoverImage = false,
+  children,
 }: {
   model: ModelCardData;
-  preview?: boolean;
-  focusable?: boolean;
+  // Monte l'image au survol (par-dessus la photo, visible au survol de la carte)
+  showHoverImage?: boolean;
+  children: (content: ReactNode, className: string) => ReactNode;
 }) {
+  const s = BAR;
   const content = (
     <>
-      <div className="flex items-center justify-between text-black/70">
-        <span className={`flex items-center gap-1.5 ${preview ? "text-[9px]" : "text-[11px]"}`}>
-          <Pencil aria-hidden="true" className={preview ? "h-2.5 w-2.5" : "h-3 w-3"} strokeWidth={1.75} />
-          Sur-mesure
-        </span>
-        <span
-          aria-hidden="true"
-          className={`flex items-center justify-center rounded-full border border-black/40 ${preview ? "h-4 w-4" : "h-6 w-6"}`}
-        >
-          <SlidersHorizontal className={preview ? "h-2 w-2" : "h-3 w-3"} strokeWidth={1.75} />
-        </span>
-      </div>
-      <div className="relative aspect-[4/3] w-full">
-        {model.imagePath ? (
-          <Image
-            src={model.imagePath}
-            alt={preview ? "" : model.name}
-            fill
-            unoptimized
-            className="object-contain transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-            sizes="(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 25vw"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center rounded-sm border border-dashed border-black/10">
-            <span className="eyebrow text-black/40">Visuel à venir</span>
-          </div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-col items-center gap-0.5 text-center">
-        <h3 className={`m-0 w-full truncate text-black ${preview ? "text-[11px]" : "text-[15px] font-medium"}`}>
+      <TileImage model={model} sizes={CARD_SIZES} />
+      {showHoverImage && model.hoverImagePath && (
+        // Fondu vers l'image au survol ; même cadrage et même zoom que la photo, sous le bandeau
+        <Image
+          src={model.hoverImagePath}
+          alt=""
+          fill
+          unoptimized={!isOptimizable(model.hoverImagePath)}
+          className={`${IMAGE_CLASS} opacity-0 transition-[opacity,transform] group-hover:opacity-100`}
+          sizes={CARD_SIZES}
+        />
+      )}
+      <div className={`absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-am-navy ${s.radius} ${s.bar}`}>
+        {/* Nom trop long pour la carte : coupé par des points de suspension, complet au survol */}
+        <h3 title={model.name} className={`m-0 min-w-0 truncate font-medium tracking-[-0.02em] text-white ${s.title}`}>
           {model.name}
         </h3>
-        {!preview && (
-          <span className="text-[12px] text-black/60 underline decoration-black/20 underline-offset-4 transition-colors group-hover:decoration-black">
-            Configurer ce modèle
-          </span>
-        )}
+        {/* S'éclaircit seulement quand la souris est sur le bouton lui-même, pas sur le reste de la carte */}
+        <span
+          aria-hidden="true"
+          className={`flex-none whitespace-nowrap rounded-full bg-am-mist text-am-navy transition-colors duration-200 hover:bg-white ${s.button}`}
+        >
+          Configurer →
+        </span>
       </div>
     </>
   );
-
-  const cardClass = `group flex flex-col rounded-md bg-[#efefef] ${preview ? "gap-2 p-2" : "gap-4 p-3 sm:p-4"}`;
-
-  if (preview) return <div className={cardClass}>{content}</div>;
-
-  return (
-    <Link
-      href={`/configurator/${model.id}`}
-      aria-label={`Configurer : ${model.name}`}
-      tabIndex={focusable ? undefined : -1}
-      className={`${cardClass} transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
-    >
-      {content}
-    </Link>
+  return children(
+    content,
+    `@container group relative block overflow-hidden bg-[#e9e7e2] shadow-[0_10px_24px_-8px_rgba(31,34,56,0.35)] ${s.radius}`,
   );
 }
+
+// Carte des carrousels de la page modèles (ordinateur et tablette), au format commun MODEL_TILE_ASPECT.
+// Au survol : l'image au survol du modèle apparaît en fondu (chargée au premier survol seulement, pour ne pas
+// télécharger d'avance une seconde image par carte), et la carte grossit très légèrement pendant que ses voisines
+// de la rangée (`group/row`, posé par ProductCarousel) rétrécissent très légèrement.
+// Mémorisée : un pas du carrousel ne redessine que les cartes dont les props changent.
+export const ModelCarouselCard = memo(function ModelCarouselCard({
+  model,
+  focusable = true,
+}: {
+  model: ModelCardData;
+  focusable?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <ModelTile model={model} showHoverImage={hovered}>
+      {(content, className) => (
+        <Link
+          href={`/configurator/${model.id}`}
+          aria-label={`Configurer : ${model.name}`}
+          tabIndex={focusable ? undefined : -1}
+          onPointerEnter={() => setHovered(true)}
+          onFocus={() => setHovered(true)}
+          style={{ aspectRatio: MODEL_TILE_ASPECT }}
+          className={`${className} transition-[scale] duration-300 ease-out group-has-[a:hover]/row:scale-[0.97] hover:!scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
+        >
+          {content}
+        </Link>
+      )}
+    </ModelTile>
+  );
+});
+
+// Vignette des aperçus (catégories précédente et suivante) : la photo seule, au format commun, ni cliquable ni
+// focusable — seule la rangée centrale se navigue. La rangée d'aperçu la coupe et la fond (ProductCarousel).
+export const ModelPreviewTile = memo(function ModelPreviewTile({ model }: { model: ModelCardData | null }) {
+  return (
+    <div className="relative overflow-hidden rounded-[14px] bg-[#e9e7e2]" style={{ aspectRatio: MODEL_TILE_ASPECT }}>
+      {model && <TileImage model={model} sizes="(max-width: 1024px) 22vw, 15vw" />}
+    </div>
+  );
+});
+
+// Vignette de la liste des modèles sur téléphone : même vignette et même format (MODEL_TILE_ASPECT) que sur
+// ordinateur, donc photo cadrée à l'identique ; sa hauteur est calculée par la liste pour que trois tiennent à l'écran.
+export const ModelRowCard = memo(function ModelRowCard({
+  model,
+  height,
+  focusable = true,
+}: {
+  model: ModelCardData;
+  height: number;
+  focusable?: boolean;
+}) {
+  return (
+    <ModelTile model={model}>
+      {(content, className) => (
+        <Link
+          href={`/configurator/${model.id}`}
+          aria-label={`Configurer : ${model.name}`}
+          tabIndex={focusable ? undefined : -1}
+          style={{ height, width: Math.round(height * MODEL_TILE_RATIO) }}
+          className={`${className} mx-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-am-navy`}
+        >
+          {content}
+        </Link>
+      )}
+    </ModelTile>
+  );
+});

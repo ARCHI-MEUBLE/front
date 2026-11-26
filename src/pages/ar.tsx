@@ -5,10 +5,11 @@ import { useRouter } from 'next/router';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import SceneViewerLauncher from '@/components/ar/SceneViewerLauncher';
+import AndroidArLauncher from '@/components/ar/AndroidArLauncher';
 import { AR_MESSAGES } from '@/components/ar/arMessages';
 import { useArDevice, useArModel, useArModelAvailability } from '@/components/ar/useArViewer';
 import { arModelPath, isArModelFile } from '@/lib/ar/arModelFile';
+import { isQuickLookReliable } from '@/lib/ar/launchAr';
 
 // Aperçu 3D (WebGL : navigateur seulement)
 const ArModelPreview = dynamic(() => import('@/components/ar/ArModelPreview'), { ssr: false });
@@ -16,7 +17,7 @@ const ArModelPreview = dynamic(() => import('@/components/ar/ArModelPreview'), {
 const STEPS = [
   'Visez le sol de la pièce et bougez doucement le téléphone.',
   'Le meuble apparaît à taille réelle : faites-le glisser pour le placer, tournez-le avec deux doigts.',
-  'Prenez une photo pour la garder ou la partager.',
+  "Faites une capture d'écran pour garder la photo ou la partager.",
 ];
 
 const dimension = (value: string | string[] | undefined) =>
@@ -62,14 +63,22 @@ export default function ArPage() {
       </>
     );
   } else if (device === 'scene-viewer') {
-    content = <SceneViewerLauncher glbPath={arModelPath(file)} title="Votre meuble" />;
+    content = <AndroidArLauncher glbPath={arModelPath(file)} title="Votre meuble" />;
   } else {
-    content =
-      ar.status === 'ready' ? (
-        <ArLaunchButton label={AR_MESSAGES.launch} onClick={ar.launch} />
-      ) : (
-        <ArLaunchButton label={AR_MESSAGES.preparing} busy />
-      );
+    content = (
+      <>
+        {ar.status === 'ready' ? (
+          <ArLaunchButton label={AR_MESSAGES.launch} onClick={ar.launch} />
+        ) : (
+          <ArLaunchButton label={AR_MESSAGES.preparing} busy />
+        )}
+        {!isQuickLookReliable() && (
+          <p className="text-xs leading-relaxed text-black/65" role="status">
+            {AR_MESSAGES.quickLookFallbackPage}
+          </p>
+        )}
+      </>
+    );
   }
 
   return (

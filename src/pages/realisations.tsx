@@ -1,7 +1,7 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import Head from "next/head";
+import type { GetServerSideProps } from "next";
+import { Seo } from "@/components/Seo";
+import { PUBLIC_PAGE_CACHE, fetchBackend } from "@/lib/backendServer";
 import { AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -18,16 +18,41 @@ import { RealisationsDelaiCta } from "@/components/realisations/RealisationsDela
 
 const ALL_CATEGORY: RealisationCategory = { slug: "all", name: "Toutes" };
 
-export default function RealisationsPage() {
-  const [realisations, setRealisations] = useState<RealisationData[]>([]);
-  const [categories, setCategories] = useState<RealisationCategory[]>([ALL_CATEGORY]);
-  const [isLoading, setIsLoading] = useState(true);
+interface RealisationsPageProps {
+  // Lus par le serveur : les projets (titres, lieux, photos) arrivent dans la page, lisibles par Google.
+  // null si le backend n'a pas répondu à temps : chargement dans le navigateur, comme avant.
+  initialRealisations: RealisationData[] | null;
+  initialCategories: RealisationCategory[] | null;
+}
+
+export const getServerSideProps: GetServerSideProps<RealisationsPageProps> = async ({ res }) => {
+  const [realisationsResult, categoriesResult] = await Promise.all([
+    fetchBackend("/backend/api/realisations.php"),
+    fetchBackend("/backend/api/categories.php?active=true"),
+  ]);
+  const realisations = realisationsResult.status === "ok" ? (realisationsResult.data as { realisations?: unknown }).realisations : null;
+  const categories = categoriesResult.status === "ok" ? (categoriesResult.data as { categories?: unknown }).categories : null;
+  const initialRealisations = Array.isArray(realisations) ? (realisations as RealisationData[]) : null;
+  if (initialRealisations) res.setHeader("Cache-Control", PUBLIC_PAGE_CACHE);
+  return {
+    props: {
+      initialRealisations,
+      initialCategories: Array.isArray(categories) ? (categories as RealisationCategory[]) : null,
+    },
+  };
+};
+
+export default function RealisationsPage({ initialRealisations, initialCategories }: RealisationsPageProps) {
+  const [realisations, setRealisations] = useState<RealisationData[]>(initialRealisations ?? []);
+  const [categories, setCategories] = useState<RealisationCategory[]>([ALL_CATEGORY, ...(initialCategories ?? [])]);
+  const [isLoading, setIsLoading] = useState(!initialRealisations);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [galleryData, setGalleryData] = useState<{ images: RealisationImage[]; startIndex: number } | null>(null);
 
   useEffect(() => {
+    if (initialCategories) return;
     const fetchCategories = async () => {
       try {
         const response = await fetch("/backend/api/categories.php?active=true");
@@ -41,9 +66,11 @@ export default function RealisationsPage() {
     };
 
     fetchCategories();
-  }, []);
+  }, [initialCategories]);
 
   useEffect(() => {
+    // Déjà fournies par le serveur ; « Réessayer » (reloadKey) recharge depuis le navigateur
+    if (initialRealisations && reloadKey === 0) return;
     const fetchRealisations = async () => {
       setIsLoading(true);
       try {
@@ -64,20 +91,14 @@ export default function RealisationsPage() {
     };
 
     fetchRealisations();
-  }, [reloadKey]);
+  }, [initialRealisations, reloadKey]);
 
   const filteredRealisations =
     selectedCategory === "all" ? realisations : realisations.filter((r) => r.categorie === selectedCategory);
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Nos Réalisations — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Découvrez nos réalisations de meubles sur mesure : dressings, bibliothèques, meubles TV. Fabrication artisanale Made in France dans la métropole lilloise."
-        />
-      </Head>
+      <Seo title="Nos réalisations de meubles sur mesure à Lille — ArchiMeuble" description="Dressings, bibliothèques, meubles TV : découvrez les meubles sur mesure fabriqués dans notre atelier lillois et posés chez nos clients de la métropole." />
       <Header />
       <main className="flex-1">
         <RealisationsHero />

@@ -3,6 +3,8 @@ import { IncomingForm, Files, Fields } from 'formidable';
 import fs from 'fs';
 import path from 'path';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
 export const config = {
@@ -54,13 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('[UPLOAD IMAGE] Parsing form data...');
-
     // Parse le formulaire multipart
-    const { fields, files } = await parseForm(req);
-
-    console.log('[UPLOAD IMAGE] Fields:', Object.keys(fields));
-    console.log('[UPLOAD IMAGE] Files:', Object.keys(files));
+    const { files } = await parseForm(req);
 
     // Récupérer le fichier image
     const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
@@ -72,8 +69,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const filename = imageFile.originalFilename || 'image.jpg';
     const mimetype = imageFile.mimetype || 'image/jpeg';
 
-    console.log('[UPLOAD IMAGE] File:', filename, 'Size:', imageFile.size, 'Type:', mimetype);
-
     // Lire le fichier et créer le body multipart manuellement
     const fileContent = fs.readFileSync(imageFile.filepath);
     const { body, boundary } = createMultipartBody(fileContent, filename, mimetype);
@@ -82,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const backendResponse = await fetch(`${BACKEND_URL}/backend/api/admin/upload-image.php`, {
       method: 'POST',
       headers: {
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
         'Content-Length': body.length.toString(),
       },
@@ -97,18 +92,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const responseText = await backendResponse.text();
-    console.log('[UPLOAD IMAGE] Backend response:', responseText.substring(0, 300));
 
     // Parser la réponse JSON
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (e) {
+      // Le détail reste dans les journaux du serveur : il ne doit pas partir vers le navigateur
       console.error('[UPLOAD IMAGE] Backend response not JSON:', responseText.substring(0, 500));
       return res.status(500).json({
         success: false,
         error: 'Réponse backend invalide',
-        details: responseText.substring(0, 200)
       });
     }
 
@@ -117,11 +111,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(200).json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[UPLOAD IMAGE] Error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Erreur interne du serveur'
+      error: 'Erreur interne du serveur'
     });
   }
 }

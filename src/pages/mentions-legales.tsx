@@ -1,4 +1,4 @@
-import Head from 'next/head';
+import { Seo } from "@/components/Seo";
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -6,10 +6,7 @@ import { Footer } from '@/components/Footer';
 export default function MentionsLegales() {
   return (
     <>
-      <Head>
-        <title>Mentions Légales - ArchiMeuble</title>
-        <meta name="description" content="Mentions légales du site ArchiMeuble - Meubles sur mesure à Lille" />
-      </Head>
+      <Seo title="Mentions légales — ArchiMeuble" description="Mentions légales du site ArchiMeuble, menuisier et fabricant de meubles sur mesure à Lille." />
 
       <Header />
 

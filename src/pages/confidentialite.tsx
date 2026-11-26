@@ -1,4 +1,4 @@
-import Head from 'next/head';
+import { Seo } from "@/components/Seo";
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -6,10 +6,7 @@ import { Footer } from '@/components/Footer';
 export default function Confidentialite() {
   return (
     <>
-      <Head>
-        <title>Politique de Confidentialité - ArchiMeuble</title>
-        <meta name="description" content="Politique de confidentialité du site ArchiMeuble - Protection de vos données personnelles" />
-      </Head>
+      <Seo title="Politique de confidentialité — ArchiMeuble" description="Comment ArchiMeuble collecte, utilise et protège vos données personnelles." />
 
       <Header />
 
@@ -21,7 +18,7 @@ export default function Confidentialite() {
               Politique de Confidentialité
             </h1>
             <p className="mt-4 text-black/65">
-              Dernière mise à jour : Décembre 2024
+              Dernière mise à jour : novembre 2026
             </p>
           </div>
         </div>
@@ -60,8 +57,10 @@ export default function Confidentialite() {
                   <li><strong className="text-black">Données d&apos;identification :</strong> nom, prénom, adresse email, numéro de téléphone</li>
                   <li><strong className="text-black">Données de livraison :</strong> adresse postale</li>
                   <li><strong className="text-black">Données de commande :</strong> historique des commandes, configurations de meubles</li>
-                  <li><strong className="text-black">Données de connexion :</strong> adresse IP, données de navigation</li>
-                  <li><strong className="text-black">Données de paiement :</strong> traitées de manière sécurisée par notre prestataire Stripe</li>
+                  <li><strong className="text-black">Demandes de devis et de contact :</strong> votre message et les photos ou plans que vous joignez</li>
+                  <li><strong className="text-black">Avis :</strong> le nom et le texte que vous publiez, visibles par tous les visiteurs</li>
+                  <li><strong className="text-black">Données techniques :</strong> adresse IP, utilisée seulement pour limiter les abus (essais de connexion, envois répétés de formulaires)</li>
+                  <li><strong className="text-black">Données de paiement :</strong> traitées directement par notre prestataire Stripe ; nous ne voyons jamais votre numéro de carte</li>
                 </ul>
               </div>
             </section>
@@ -77,6 +76,7 @@ export default function Confidentialite() {
                   <li>Traiter et suivre vos commandes</li>
                   <li>Confirmer votre adresse email par un code à usage unique (aucun compte ni mot de passe)</li>
                   <li>Vous contacter concernant vos projets de meubles sur mesure</li>
+                  <li>Protéger le site contre les abus (tentatives de connexion répétées, envois automatisés)</li>
                   <li>Améliorer nos services et notre site internet</li>
                   <li>Respecter nos obligations légales et réglementaires</li>
                   <li>Vous envoyer des communications commerciales (avec votre consentement)</li>
@@ -94,7 +94,7 @@ export default function Confidentialite() {
                 <ul className="ml-6 list-disc space-y-2">
                   <li><strong className="text-black">L&apos;exécution d&apos;un contrat :</strong> traitement de vos commandes</li>
                   <li><strong className="text-black">Votre consentement :</strong> envoi de newsletters et communications commerciales</li>
-                  <li><strong className="text-black">L&apos;intérêt légitime :</strong> amélioration de nos services, prévention de la fraude</li>
+                  <li><strong className="text-black">L&apos;intérêt légitime :</strong> amélioration de nos services, prévention de la fraude et des abus</li>
                   <li><strong className="text-black">Les obligations légales :</strong> conservation des factures</li>
                 </ul>
               </div>
@@ -108,11 +108,20 @@ export default function Confidentialite() {
               <div className="mt-6 space-y-4 text-black/65">
                 <p>Vos données sont conservées pendant :</p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-black">Données clients :</strong> 3 ans après la dernière commande</li>
-                  <li><strong className="text-black">Données de facturation :</strong> 10 ans (obligation légale)</li>
-                  <li><strong className="text-black">Données de prospection :</strong> 3 ans après le dernier contact</li>
-                  <li><strong className="text-black">Cookies :</strong> 13 mois maximum</li>
+                  <li><strong className="text-black">Demandes de devis et de contact</strong> (fichiers joints compris) : 3 ans après le dernier échange</li>
+                  <li><strong className="text-black">Rendez-vous :</strong> 3 ans après la date du rendez-vous</li>
+                  <li><strong className="text-black">Comptes clients sans commande :</strong> 3 ans après la dernière modification du compte</li>
+                  <li><strong className="text-black">Clients ayant commandé et factures :</strong> 10 ans après la commande (obligation comptable)</li>
+                  <li><strong className="text-black">Avis publiés :</strong> jusqu&apos;à ce que vous en demandiez la suppression</li>
+                  <li><strong className="text-black">Adresses IP</strong> utilisées contre les abus : 30 jours</li>
+                  <li><strong className="text-black">Codes de vérification et liens de réinitialisation :</strong> supprimés dès leur expiration</li>
+                  <li><strong className="text-black">Modèles 3D de la réalité augmentée</strong> (sans donnée personnelle) : 30 jours</li>
                 </ul>
+                <p>
+                  Ces suppressions sont faites automatiquement chaque jour ; les sauvegardes de notre base de données,
+                  gardées 30 jours, en conservent une copie jusqu&apos;à leur remplacement. Vous pouvez aussi demander la
+                  suppression de vos données à tout moment (voir « Vos droits »).
+                </p>
               </div>
             </section>
 
@@ -126,11 +135,23 @@ export default function Confidentialite() {
                   Vos données peuvent être partagées avec :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li>Nos prestataires de paiement (Stripe)</li>
+                  <li><strong className="text-black">Vercel</strong> : hébergement du site</li>
+                  <li><strong className="text-black">Railway</strong> : hébergement de nos serveurs et de notre base de données</li>
+                  <li><strong className="text-black">Stripe</strong> : paiement en ligne</li>
+                  <li><strong className="text-black">Resend</strong> : envoi des e-mails (confirmations, codes de vérification)</li>
+                  <li><strong className="text-black">Calendly</strong> : prise de rendez-vous en ligne, seulement si vous l&apos;utilisez</li>
                   <li>Nos prestataires de livraison</li>
-                  <li>Nos prestataires d&apos;hébergement (Vercel)</li>
                   <li>Les autorités compétentes si requis par la loi</li>
                 </ul>
+                <p>
+                  Ces prestataires sont des sociétés américaines : vos données peuvent être transférées hors de l&apos;Union
+                  européenne. Ces transferts sont encadrés par les garanties prévues par le RGPD (Data Privacy Framework
+                  UE–États-Unis ou clauses contractuelles types de la Commission européenne).
+                </p>
+                <p>
+                  Les photos et polices du site sont servies par nos propres serveurs : votre navigateur ne contacte aucun
+                  autre service tant que vous n&apos;utilisez pas le paiement ou la prise de rendez-vous.
+                </p>
                 <p>
                   Nous ne vendons jamais vos données personnelles à des tiers.
                 </p>
@@ -184,21 +205,24 @@ export default function Confidentialite() {
             </section>
 
             {/* Cookies */}
-            <section>
+            <section id="cookies">
               <h2 className="text-2xl text-black">
                 Cookies
               </h2>
               <div className="mt-6 space-y-4 text-black/65">
                 <p>
-                  Notre site utilise des cookies pour :
+                  Notre site n&apos;utilise ni cookie de mesure d&apos;audience, ni cookie publicitaire. Il n&apos;utilise que
+                  ce qui est nécessaire à son fonctionnement, qui ne demande pas votre consentement :
                 </p>
                 <ul className="ml-6 list-disc space-y-2">
-                  <li><strong className="text-black">Cookies essentiels :</strong> fonctionnement du site, panier d&apos;achat</li>
-                  <li><strong className="text-black">Cookies analytiques :</strong> analyse de l&apos;utilisation du site</li>
-                  <li><strong className="text-black">Cookies de préférence :</strong> mémorisation de vos choix</li>
+                  <li><strong className="text-black">Cookie de session</strong> (ARCHIMEUBLE_SESSID) : votre connexion et votre panier, supprimé à la fermeture du navigateur</li>
+                  <li><strong className="text-black">Stockage local du navigateur :</strong> le meuble en cours dans le configurateur, le panier d&apos;échantillons et vos préférences d&apos;affichage. Ces informations restent sur votre appareil.</li>
+                  <li><strong className="text-black">Stripe</strong>, sur les pages de paiement seulement : cookies de prévention de la fraude, indispensables au paiement</li>
                 </ul>
                 <p>
-                  Vous pouvez configurer vos préférences de cookies dans les paramètres de votre navigateur.
+                  Le calendrier de prise de rendez-vous (Calendly) dépose ses propres cookies : il ne se charge qu&apos;après
+                  votre accord, donné en cliquant sur « Afficher le calendrier ». Cet accord est retenu 6 mois ; pour le
+                  retirer, effacez les données de ce site dans votre navigateur.
                 </p>
               </div>
             </section>

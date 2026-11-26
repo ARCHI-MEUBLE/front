@@ -8,7 +8,7 @@ import { ComponentColors } from './MaterialSelector';
 import type { ThreeCanvasHandle } from './types';
 import { getSafeColor, getHingeYPositions } from './scene/utils';
 import { TexturedMaterial } from './scene/TexturedMaterial';
-import { PanelSegmentHitbox, StructuralPanel, Handle, DoorHinge } from './scene/StructuralElements';
+import { PanelSegmentHitbox, StructuralPanel, DoorHinge } from './scene/StructuralElements';
 import { AnimatedDoor, AnimatedMirrorDoor, AnimatedPushDoor } from './scene/AnimatedDoors';
 import { AnimatedPushDrawer, AnimatedDrawer } from './scene/AnimatedDrawers';
 import { BackPanelWithOpenings } from './scene/BackPanel';
@@ -29,8 +29,19 @@ import { getZoneFacade } from '@/lib/configurator/zoneStats';
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
 import { RoundedCorner } from './scene/RoundedCorner';
+import {
+    DEFAULT_HANDLE_DEFAULTS,
+    defaultHandleModel,
+    resolveZoneHandle,
+    type HandleDefaults,
+    type HandleModel,
+    type ResolvedHandle,
+} from '@/lib/configurator/handles';
 
 export type { ThreeCanvasHandle };
+
+// Référence stable : sans modèles fournis, la scène n'est pas recalculée à chaque rendu
+const NO_HANDLE_MODELS: HandleModel[] = [];
 
 interface ThreeViewerProps {
     width: number;
@@ -78,6 +89,9 @@ interface ThreeViewerProps {
     onCaptureReady?: (captureFunction: () => string | null) => void;
     // Fourni : les cloisons et étagères portent une poignée qu'on fait glisser, comme dans le plan 2D
     onResizeDivider?: (zoneId: string, ratios: number[]) => void;
+    // Modèles de poignées de l'admin et choix pour tout le meuble (config_data.handles) ; sans eux, barres par défaut
+    handleModels?: HandleModel[];
+    handleDefaults?: HandleDefaults;
 }
 
 interface DividerEvents {
@@ -106,6 +120,8 @@ export function Furniture({
                        selectedPanelIds = new Set(),
                        onSelectPanel,
                        deletedPanelIds = new Set(),
+                       handleModels = NO_HANDLE_MODELS,
+                       handleDefaults,
                        dividerEvents
                    }: ThreeViewerProps & { dividerEvents?: DividerEvents }) {
     const [openCompartments, setOpenCompartments] = useState<Record<string, boolean>>({});
@@ -287,6 +303,26 @@ export function Furniture({
 
     const separatorColor = finalStructureColor;
     const separatorImageUrl = finalStructureImageUrl;
+
+    // Choix de poignée du meuble, recomposé à partir de ses champs : un objet recréé à chaque rendu par la page ne
+    // reconstruit pas toute la scène
+    const furnitureHandleModelId = handleDefaults?.modelId ?? null;
+    const doorHandleOrientation = handleDefaults?.doorOrientation ?? DEFAULT_HANDLE_DEFAULTS.doorOrientation;
+    const drawerHandleOrientation = handleDefaults?.drawerOrientation ?? DEFAULT_HANDLE_DEFAULTS.drawerOrientation;
+    const furnitureHandles = useMemo<HandleDefaults>(
+        () => ({ modelId: furnitureHandleModelId, doorOrientation: doorHandleOrientation, drawerOrientation: drawerHandleOrientation }),
+        [furnitureHandleModelId, doorHandleOrientation, drawerHandleOrientation]
+    );
+    // Porte globale (ancien format) : pas de zone à elle, elle suit le choix du meuble
+    const rootDoorHandle = useMemo<ResolvedHandle>(
+        () => ({
+            model: defaultHandleModel(handleModels, furnitureHandles),
+            legacyType: null,
+            orientation: furnitureHandles.doorOrientation,
+            customized: false,
+        }),
+        [handleModels, furnitureHandles]
+    );
 
     const hasZoneSpecificDoors = useMemo(() => {
         if (!rootZone) return false;
@@ -713,11 +749,6 @@ export function Furniture({
             });
         });
 
-        console.log('ThreeCanvas - Back panel IDs:', allCells.map((cell) => {
-            const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
-            return `panel-back-${pathId}`;
-        }));
-
         // Le dessus est toujours une seule pièce pleine largeur, jamais coupé par une cloison.
         {
             topSegments.push({
@@ -729,23 +760,6 @@ export function Furniture({
             });
         }
 
-        const minY = Math.min(...allCells.map(c => c.y - c.height / 2));
-        const bottomTouchingCells = allCells.filter(cell =>
-            cell.y - cell.height / 2 <= minY + 0.05
-        );
-
-        const uniqueBottomColumns = new Map<number, GridCell[]>();
-        bottomTouchingCells.forEach(cell => {
-            const key = Math.round(cell.x * 1000);
-            if (!uniqueBottomColumns.has(key)) {
-                uniqueBottomColumns.set(key, []);
-            }
-            uniqueBottomColumns.get(key)!.push(cell);
-        });
-
-        const sortedBottomColumns = Array.from(uniqueBottomColumns.entries())
-            .sort(([keyA], [keyB]) => keyA - keyB);
-
         // Le dessous est toujours une seule pièce pleine largeur, jamais coupé par une cloison.
         bottomSegments.push({
             id: 'panel-bottom-0',
@@ -753,16 +767,6 @@ export function Furniture({
             y: yOffset + thickness / 2,
             width: w,
             height: thickness
-        });
-
-        console.log('🔵 BOTTOM PANEL DEBUG:', {
-            allCellsCount: allCells.length,
-            allCellsX: allCells.map(c => ({ x: c.x.toFixed(4), y: c.y.toFixed(4), bottom: (c.y - c.height/2).toFixed(4) })),
-            minY: minY.toFixed(4),
-            bottomTouchingCells: bottomTouchingCells.map(c => ({ x: c.x.toFixed(4), key: Math.round(c.x * 1000) })),
-            uniqueKeys: Array.from(uniqueBottomColumns.keys()),
-            sortedBottomColumnsLength: sortedBottomColumns.length,
-            bottomSegments: bottomSegments.map(s => ({ id: s.id, x: s.x.toFixed(4), width: s.width.toFixed(4) }))
         });
 
         // Les côtés sont toujours une seule pièce pleine hauteur, jamais coupés par une étagère.
@@ -780,11 +784,6 @@ export function Furniture({
             width: thickness,
             height: sideHeight
         });
-
-        console.log('ThreeCanvas - Separators:', allSeparators.map((sep) =>
-            `${sep.orientation === 'vertical' ? 'V' : 'H'}[${sep.path}] at ${sep.orientation === 'vertical' ? `x=${sep.x.toFixed(2)}` : `y=${sep.y.toFixed(2)}`}`
-        ));
-
 
         allSeparators.forEach((sep, i) => {
 
@@ -816,8 +815,6 @@ export function Furniture({
                 });
             }
         });
-
-        console.log('ThreeCanvas - Separator segments:', separatorSegments.map(s => s.id));
 
         if (backSegments.length === 0 && !allCells.every(cell => cell.zone.noBack)) {
             backSegments.push({ id: 'panel-back-c0-r0', x: 0, y: sideHeight/2 + yOffset, width: w, height: sideHeight, colIndex: 0, rowIndex: 0 });
@@ -950,7 +947,7 @@ export function Furniture({
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
-                            handleType={zone.handleType}
+                            handle={resolveZoneHandle(zone, 'drawer', handleModels, furnitureHandles)}
                             isOpen={openCompartments[zone.id]}
                             />
                         </group>
@@ -1026,6 +1023,8 @@ export function Furniture({
 
                     const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
                     const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
+                    // Poignée de la porte (les deux battants d'une double en portent une chacun)
+                    const doorHandle = isPush ? null : resolveZoneHandle(zone, 'door', handleModels, furnitureHandles);
 
                     if (isMirror) {
                         items.push(
@@ -1035,7 +1034,7 @@ export function Furniture({
                                     position={[isMirrorRight ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
                                     width={doorZoneWidth - compartmentGap}
                                     height={height - compartmentGap + totalDoorOverlap}
-                                    handleType={zone.handleType}
+                                    handle={doorHandle}
                                     isOpen={openCompartments[zone.id]}
                                 />
                             </group>
@@ -1065,7 +1064,7 @@ export function Furniture({
                                         height={height - compartmentGap + totalDoorOverlap}
                                         hexColor={doorHexColor}
                                         imageUrl={doorImageUrl}
-                                        handleType={zone.handleType}
+                                        handle={doorHandle}
                                         isOpen={openCompartments[zone.id]}
                                     />
                                 )}
@@ -1077,7 +1076,7 @@ export function Furniture({
                                         height={height - compartmentGap + totalDoorOverlap}
                                         hexColor={doorHexColor}
                                         imageUrl={doorImageUrl}
-                                        handleType={zone.handleType}
+                                        handle={doorHandle}
                                         isOpen={openCompartments[zone.id]}
                                     />
                                 )}
@@ -1086,42 +1085,22 @@ export function Furniture({
                     }
                 }
 
-                if (zone.content === 'glass_shelf') {
-                    const behindDoorGlass = hasDoorInFront || !!zone.doorContent;
-                    const glassDepth = behindDoorGlass && doorRecess > 0 ? d - doorRecess : d;
-                    const glassZ = behindDoorGlass && doorRecess > 0 ? z - doorRecess / 2 : z;
+                // Pas de décoration posée sur une étagère retirée avec l'outil planches : elle flotterait
+                const cellBottom = y - height / 2;
+                const restsOnRemovedShelf = panelSegments.separatorSegments.some((segment) =>
+                    segment.orientation === 'horizontal' &&
+                    deletedPanelIds.has(segment.id) &&
+                    Math.abs(segment.y + thickness / 2 - cellBottom) < 0.01 &&
+                    Math.abs(segment.x - x) < segment.width / 2
+                );
+                if (showDecorations && !restsOnRemovedShelf) {
                     items.push(
-                        <mesh key={zone.id} position={[x, y, glassZ]} castShadow receiveShadow>
-                            <boxGeometry args={[width, thickness, glassDepth]} />
-                            <meshPhysicalMaterial
-                                color="#ffffff"
-                                transparent
-                                opacity={0.3}
-                                roughness={0.1}
-                                metalness={0.1}
-                                transmission={0.9}
-                                thickness={0.5}
-                            />
-                        </mesh>
+                        // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
+                        // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
+                        <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
+                            <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
+                        </group>
                     );
-                } else {
-                    // Pas de décoration posée sur une étagère retirée avec l'outil planches : elle flotterait
-                    const cellBottom = y - height / 2;
-                    const restsOnRemovedShelf = panelSegments.separatorSegments.some((segment) =>
-                        segment.orientation === 'horizontal' &&
-                        deletedPanelIds.has(segment.id) &&
-                        Math.abs(segment.y + thickness / 2 - cellBottom) < 0.01 &&
-                        Math.abs(segment.x - x) < segment.width / 2
-                    );
-                    if (showDecorations && !restsOnRemovedShelf) {
-                        items.push(
-                            // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
-                            // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
-                            <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
-                                <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
-                            </group>
-                        );
-                    }
                 }
             }
 
@@ -1137,6 +1116,7 @@ export function Furniture({
 
                 const doorHexColor = zone.zoneColor?.hex || finalDoorColor;
                 const doorImageUrl = zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl;
+                const groupDoorHandle = isPush ? null : resolveZoneHandle(zone, 'door', handleModels, furnitureHandles);
 
                 if (isMirror) {
                     items.push(
@@ -1146,7 +1126,7 @@ export function Furniture({
                                 position={[isMirrorRightGroup ? (doorZoneWidth/2 - compartmentGap/2) : (-doorZoneWidth/2 + compartmentGap/2), 0, 0]}
                                 width={doorZoneWidth - compartmentGap}
                                 height={height - compartmentGap + totalDoorOverlap}
-                                handleType={zone.handleType}
+                                handle={groupDoorHandle}
                                 isOpen={openCompartments[zone.id]}
                             />
                         </group>
@@ -1176,7 +1156,7 @@ export function Furniture({
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
-                                    handleType={zone.handleType}
+                                    handle={groupDoorHandle}
                                     isOpen={openCompartments[zone.id]}
                                 />
                             )}
@@ -1188,7 +1168,7 @@ export function Furniture({
                                     height={height - compartmentGap + totalDoorOverlap}
                                     hexColor={doorHexColor}
                                     imageUrl={doorImageUrl}
-                                    handleType={zone.handleType}
+                                    handle={groupDoorHandle}
                                     isOpen={openCompartments[zone.id]}
                                 />
                             )}
@@ -1198,7 +1178,6 @@ export function Furniture({
             }
 
             if (zone.children && zone.children.length > 0) {
-                console.log('🎨 parseZone - zone avec enfants:', zone.id, 'type:', zone.type, 'enfants:', zone.children.length);
                 const zoneDoorContent = zone.doorContent || zone.content;
                 const zoneHasDoor = hasDoorInFront || !!(zoneDoorContent && typeof zoneDoorContent === 'string' && zoneDoorContent.includes('door'));
                 let currentPos = 0;
@@ -1211,7 +1190,6 @@ export function Furniture({
                     } else {
                         ratio = 1 / zone.children!.length;
                     }
-                    console.log('🎨 parseZone - enfant', i, 'ratio:', ratio);
 
                     // Largeur/hauteur dispo une fois l'épaisseur des séparateurs retirée.
                     const numSeparators = zone.children!.length - 1;
@@ -1263,7 +1241,8 @@ export function Furniture({
         finalStructureImageUrl, finalShelfImageUrl, finalDrawerImageUrl, finalDoorImageUrl, finalBackImageUrl, finalBaseImageUrl,
         separatorColor, separatorImageUrl,
         openCompartments, showDecorations, hideFacades, zoneHandlers,
-        selectedPanelIds, onSelectPanel
+        selectedPanelIds, onSelectPanel,
+        handleModels, furnitureHandles
     ]);
 
 
@@ -1404,7 +1383,6 @@ export function Furniture({
 
             {panelSegments.bottomSegments.map((segment) => {
                 const isDeleted = deletedPanelIds.has(segment.id);
-                console.log('🟢 BOTTOM RENDER:', segment.id, 'isDeleted:', isDeleted, 'deletedPanelIds:', Array.from(deletedPanelIds));
                 return !isDeleted && (
                     <StructuralPanel
                         key={`visual-${segment.id}`}
@@ -1565,6 +1543,7 @@ export function Furniture({
                             height={sideHeight}
                             hexColor={finalDoorColor}
                             imageUrl={finalDoorImageUrl}
+                            handle={rootDoorHandle}
                             isOpen={doorsOpen}
                         />
                     )}
@@ -1576,6 +1555,7 @@ export function Furniture({
                             height={sideHeight}
                             hexColor={finalDoorColor}
                             imageUrl={finalDoorImageUrl}
+                            handle={rootDoorHandle}
                             isOpen={doorsOpen}
                         />
                     )}

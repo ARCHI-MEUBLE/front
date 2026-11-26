@@ -5,12 +5,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   // Vérifier l'authentification admin
   if (!(await verifyAdminSession(req, res))) {
-    console.log('Authentication failed - no admin session');
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -24,8 +25,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       url += `?${queryString}`;
     }
 
-    console.log('Calling backend URL:', url);
-
     // Déterminer l'URL du frontend
     const protocol = req.headers['x-forwarded-proto'] || (req.connection as any).encrypted ? 'https' : 'http';
     const host = req.headers.host || 'localhost:3000';
@@ -35,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
         'Origin': frontendUrl,
         'Referer': frontendUrl,
       },
@@ -43,28 +42,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       credentials: 'include',
     });
 
-    console.log('Backend response status:', response.status);
-
     // Vérifier si la réponse est du JSON
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
       console.error('Backend returned non-JSON response:', text);
-      res.status(500).json({ error: 'Le backend a retourné une erreur', details: text.substring(0, 500) });
+      res.status(500).json({ error: 'Le backend a retourné une erreur' });
       return;
     }
 
     const data = await response.json();
 
     // Transférer les cookies si nécessaire
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
-    }
-
+    forwardSetCookies(res, response);
     res.status(response.status).json(data);
   } catch (error) {
     console.error('Error proxying to backend:', error);
-    res.status(500).json({ error: 'Erreur de connexion au backend', details: String(error) });
+    res.status(500).json({ error: 'Erreur de connexion au backend' });
   }
 }

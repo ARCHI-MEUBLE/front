@@ -27,7 +27,12 @@ export function RealisationCard({
   return (
     <figure className="m-0 flex flex-col gap-3.5">
       <div className="relative overflow-hidden rounded bg-am-mist/25" style={{ aspectRatio: "4/5" }}>
-        <RealisationCarousel images={realisation.images || []} onGalleryOpen={onGalleryOpen} className="!aspect-auto h-full" />
+        <RealisationCarousel
+          images={realisation.images || []}
+          onGalleryOpen={onGalleryOpen}
+          altBase={`${realisation.titre}, réalisation ArchiMeuble à ${realisation.lieu}`}
+          className="!aspect-auto h-full"
+        />
         {realisation.featured && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-am-navy px-3 py-1 text-xs font-medium text-am-mist">
             Coup de cœur

@@ -277,15 +277,6 @@ export default function PanelPlanCanvas({
         });
         const sortedBottomColumns = Array.from(uniqueBottomColumns.entries()).sort(([a], [b]) => a - b);
 
-        // DEBUG: Afficher les cellules touchant le bas
-        console.log('PanelPlanCanvas - maxBottom:', maxBottom);
-        console.log('PanelPlanCanvas - bottomTouchingCells:', bottomTouchingCells.length, 'cells');
-        console.log('PanelPlanCanvas - sortedBottomColumns:', sortedBottomColumns.length, 'columns');
-        console.log('PanelPlanCanvas - canvasHeight:', canvasHeight);
-        bottomTouchingCells.forEach(cell => {
-            console.log(`  Cell: x=${cell.x}, y=${cell.y}, width=${cell.width}, height=${cell.height}, bottom=${cell.y + cell.height}`);
-        });
-
         // Identifier les rangées uniques pour les panneaux gauche et droit
         const leftCells = allCells.filter(cell => cell.x < 1);
         const uniqueLeftRows = new Map<number, typeof allCells[0][]>();
@@ -430,14 +421,6 @@ export default function PanelPlanCanvas({
             });
         });
         
-        // DEBUG: Log pour vérifier la correspondance
-        if (typeof window !== 'undefined') {
-            console.log('PanelPlanCanvas - Back panel IDs:', allCells.map((cell) => {
-                const pathId = `c${cell.colPath.join('_')}-r${cell.rowPath.join('_')}`;
-                return `panel-back-${pathId}`;
-            }));
-        }
-
         // Traitement des séparateurs - segmentation comme ThreeCanvas
         // Utiliser le path du séparateur pour un ID stable
         allSeparators.forEach((sep, i) => {
@@ -451,13 +434,7 @@ export default function PanelPlanCanvas({
                     // Cellule à gauche (bord droit proche) OU cellule à droite (bord gauche proche)
                     return Math.abs(cellRight - sep.x) < 5 || Math.abs(cellLeft - sep.x) < 5;
                 });
-                
-                // Debug log pour ce séparateur
-                if (typeof window !== 'undefined') {
-                    console.log(`Sep V[${sep.path}] at x=${Math.round(sep.x)}: found ${adjacentCells.length} cells to the left`);
-                    adjacentCells.forEach(c => console.log(`  - cell at y=${Math.round(c.y)}, h=${Math.round(c.height)}`));
-                }
-                
+
                 if (adjacentCells.length > 0) {
                     // Grouper par Y avec haute précision (comme ThreeCanvas * 1000)
                     const uniqueRows = new Map<number, typeof allCells[0]>();
@@ -484,11 +461,6 @@ export default function PanelPlanCanvas({
                     // Donc on doit trier a.y - b.y (Y croissant) pour que j=0 = Y min = haut en CSS
                     const sortedRows = Array.from(uniqueRows.values()).sort((a, b) => a.y - b.y);
                     
-                    if (typeof window !== 'undefined') {
-                        console.log(`  -> ${sortedRows.length} unique rows, creating ${sortedRows.length} segments with IDs:`,
-                            sortedRows.map((_, j) => `separator-v-${sep.path}-${j}`));
-                    }
-                    
                     // Créer un segment pour chaque ligne unique
                     sortedRows.forEach((cell, j) => {
                         segments.push({
@@ -504,9 +476,6 @@ export default function PanelPlanCanvas({
                     });
                 } else {
                     // Pas de cellules adjacentes, segment unique
-                    if (typeof window !== 'undefined') {
-                        console.log(`  -> No adjacent cells, creating single segment`);
-                    }
                     segments.push({
                         id: `separator-v-${sep.path}-0`,
                         type: 'separator' as PanelType,
@@ -564,30 +533,6 @@ export default function PanelPlanCanvas({
             }
         });
         
-        // DEBUG: Log pour les séparateurs avec détails
-        if (typeof window !== 'undefined') {
-            console.log('=== PanelPlanCanvas Debug ===');
-            console.log('All cells:', allCells.map(c => ({
-                x: Math.round(c.x),
-                y: Math.round(c.y),
-                w: Math.round(c.width),
-                h: Math.round(c.height),
-                right: Math.round(c.x + c.width),
-                colPath: c.colPath.join('.'),
-                rowPath: c.rowPath.join('.')
-            })));
-            console.log('Separators:', allSeparators.map((sep) => ({
-                path: sep.path,
-                orientation: sep.orientation,
-                x: Math.round(sep.x),
-                y: Math.round(sep.y)
-            })));
-            
-            // Log des segments créés pour les séparateurs verticaux
-            const verticalSegments = segments.filter(s => s.type === 'separator' && s.orientation === 'vertical');
-            console.log('Vertical separator segments:', verticalSegments.map(s => s.id));
-        }
-
         return segments;
     }, [zone, canvasWidth, canvasHeight, collectGridCells, collectSeparators, panelThickness2D, separatorThickness2D]);
 

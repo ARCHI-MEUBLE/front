@@ -12,7 +12,10 @@ interface ProjectRequestDialogProps {
   onOpenChange: (open: boolean) => void;
   // Enregistre le meuble affiché et renvoie son code de partage et le lien qui le rouvre
   getShare: () => Promise<{ code: string; link: string }>;
-  price: number;
+  // Prix du meuble affiché (estimation du backend) ; null tant qu'il n'est pas calculé ou si le calcul a échoué
+  price: number | null;
+  // Message du backend quand le meuble ne peut pas être chiffré
+  unavailableReason?: string | null;
 }
 
 const EMPTY_FORM = { name: '', phone: '', email: '', message: '' };
@@ -20,7 +23,7 @@ const CONTACT_EMAIL = 'pro.archimeuble@gmail.com';
 
 // « Valider avec un menuisier » sans compte : le client laisse de quoi le recontacter, la demande part par e-mail
 // chez ArchiMeuble avec le lien du meuble, et rien n'est enregistré sur le site (pas de base client).
-export default function ProjectRequestDialog({ open, onOpenChange, getShare, price }: ProjectRequestDialogProps) {
+export default function ProjectRequestDialog({ open, onOpenChange, getShare, price, unavailableReason = null }: ProjectRequestDialogProps) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +39,15 @@ export default function ProjectRequestDialog({ open, onOpenChange, getShare, pri
     event.preventDefault();
     if (!form.phone.trim() && !form.email.trim()) {
       setError('Indiquez un téléphone ou un e-mail pour que nous puissions vous recontacter.');
+      return;
+    }
+    // La demande porte le prix que le client voit : jamais un ancien prix ni un prix faux
+    if (price === null) {
+      setError(
+        unavailableReason
+          ? `Le prix de ce meuble ne peut pas être calculé : ${unavailableReason}`
+          : 'Le prix est en cours de calcul, réessayez dans un instant.',
+      );
       return;
     }
     setSending(true);

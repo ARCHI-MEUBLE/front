@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import toast from 'react-hot-toast';
 import {
   IconRefresh,
@@ -12,10 +12,12 @@ import {
   IconCheck,
   IconPhoto,
   IconPalette,
+  IconAlertTriangle,
 } from '@tabler/icons-react';
 import { uploadImage } from '@/lib/apiClient';
+import { formatEuro } from '@/components/admin/pricing/gridUnits';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +34,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -57,19 +58,142 @@ interface FacadeSetting {
   updated_at: string;
 }
 
+// Un réglage de facade_settings tel que l'admin le saisit. « percent » : stocké en ratio (0.05), saisi en % (5).
+interface FacadeField {
+  key: string;
+  title: string;
+  kind: 'mm' | 'eur' | 'eur_m2' | 'percent';
+  min: number;
+  max: number;
+  step: number;
+  description?: string;
+  showCm?: boolean;
+}
+
+const SUFFIX: Record<FacadeField['kind'], string> = { mm: 'mm', eur: '€', eur_m2: '€/m²', percent: '%' };
+
+const DIMENSION_FIELDS: FacadeField[] = [
+  { key: 'max_width', title: 'Largeur maximale', kind: 'mm', min: 100, max: 5000, step: 1, showCm: true },
+  { key: 'max_height', title: 'Hauteur maximale', kind: 'mm', min: 100, max: 5000, step: 1, showCm: true },
+  { key: 'fixed_depth', title: 'Épaisseur fixe', kind: 'mm', min: 5, max: 100, step: 1 },
+  {
+    key: 'hinge_edge_margin',
+    title: 'Marge des charnières',
+    kind: 'mm',
+    min: 10,
+    max: 1000,
+    step: 1,
+    showCm: true,
+    description: 'Distance minimale entre les premiers/derniers trous de charnières et les bords haut/bas de la façade.',
+  },
+  {
+    key: 'hinge_hole_diameter',
+    title: 'Diamètre des trous',
+    kind: 'mm',
+    min: 5,
+    max: 60,
+    step: 1,
+    description: 'Diamètre des trous de charnières : 26 mm ou 35 mm en standard.',
+  },
+];
+
+const PRICING_FIELDS: FacadeField[] = [
+  {
+    key: 'hinge_base_price',
+    title: 'Prix d’une charnière',
+    kind: 'eur',
+    min: 0,
+    max: 100000,
+    step: 0.01,
+    description: 'Prix TTC de chaque charnière posée (0 = charnières offertes).',
+  },
+  {
+    key: 'hinge_coefficient',
+    title: 'Supplément par charnière',
+    kind: 'percent',
+    min: 0,
+    max: 100,
+    step: 0.1,
+    description: 'Majoration de la façade (surface + charnières), par charnière. Exemple : 5 % × 3 charnières = +15 %.',
+  },
+  {
+    key: 'material_price_per_m2',
+    title: 'Prix au m² par défaut',
+    kind: 'eur_m2',
+    min: 0,
+    max: 100000,
+    step: 0.01,
+    description: 'Appliqué aux matériaux de façade qui n’ont pas leur propre prix au m².',
+  },
+];
+
+// Valeur stockée -> texte du champ (0.05 en % -> « 5 »)
+function toInput(field: FacadeField, stored: string | undefined): string {
+  if (stored === undefined || stored.trim() === '') return '';
+  const n = Number(stored);
+  if (!Number.isFinite(n)) return stored;
+  return field.kind === 'percent' ? String(Math.round(n * 100 * 10_000) / 10_000) : String(n);
+}
+
+// Texte du champ -> valeur à stocker, ou message d'erreur
+function fromInput(field: FacadeField, raw: string): { ok: true; value: string } | { ok: false; error: string } {
+  const text = raw.trim().replace(',', '.');
+  if (text === '') return { ok: false, error: 'Indiquez une valeur.' };
+  const n = Number(text);
+  if (!Number.isFinite(n)) return { ok: false, error: 'Nombre attendu.' };
+  if (field.kind === 'mm' && !Number.isInteger(n)) return { ok: false, error: 'Nombre entier de millimètres attendu.' };
+  if (n < field.min || n > field.max) {
+    return { ok: false, error: `Entre ${field.min.toLocaleString('fr-FR')} et ${field.max.toLocaleString('fr-FR')} ${SUFFIX[field.kind]}.` };
+  }
+  return { ok: true, value: field.kind === 'percent' ? String(Math.round((n / 100) * 1_000_000) / 1_000_000) : String(n) };
+}
+
+function describeStored(field: FacadeField, stored: string): string {
+  const n = Number(stored);
+  if (!Number.isFinite(n)) return stored;
+  if (field.kind === 'eur') return formatEuro(n);
+  if (field.kind === 'eur_m2') return `${formatEuro(n)}/m²`;
+  if (field.kind === 'percent') return `${(n * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %`;
+  return `${n.toLocaleString('fr-FR')} mm`;
+}
+
+// Message d'erreur du backend (facade-settings répond { success: false, message })
+async function putSetting(key: string, value: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch('/backend/api/facade-settings.php', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ setting_key: key, setting_value: value }),
+    });
+  } catch {
+    throw new Error('Le serveur ne répond pas, réessayez.');
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.message || data?.error || `Enregistrement refusé (${response.status})`);
+  }
+}
+
 export function DashboardFacades() {
   const [materials, setMaterials] = useState<FacadeMaterial[]>([]);
   const [settings, setSettings] = useState<FacadeSetting[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<FacadeMaterial | null>(null);
+  const [tab, setTab] = useState('materials');
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  // silent : rechargement après un enregistrement, sans démonter les onglets (on reste sur l'onglet ouvert)
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    setLoadError(null);
+    const problems: string[] = [];
     try {
       const [materialsRes, settingsRes] = await Promise.all([
         fetch('/backend/api/facade-materials.php'),
@@ -86,7 +210,10 @@ export function DashboardFacades() {
           }
         } catch {
           console.error('Erreur parsing materials:', text.substring(0, 100));
+          problems.push('matériaux illisibles');
         }
+      } else {
+        problems.push(`matériaux (${materialsRes.status})`);
       }
 
       if (settingsRes.ok) {
@@ -98,12 +225,16 @@ export function DashboardFacades() {
           }
         } catch {
           console.error('Erreur parsing settings:', text.substring(0, 100));
+          problems.push('réglages illisibles');
         }
+      } else {
+        problems.push(`réglages (${settingsRes.status})`);
       }
     } catch (error) {
       console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement des données');
+      problems.push('le serveur ne répond pas');
     } finally {
+      setLoadError(problems.length ? `Chargement incomplet : ${problems.join(', ')}.` : null);
       setLoading(false);
     }
   };
@@ -129,6 +260,9 @@ export function DashboardFacades() {
     }
   };
 
+  const defaultSetting = settings.find((s) => s.setting_key === 'material_price_per_m2');
+  const defaultPricePerM2 = defaultSetting && Number.isFinite(Number(defaultSetting.setting_value)) ? Number(defaultSetting.setting_value) : null;
+
   return (
     <div className="px-4 lg:px-6 space-y-6">
       {/* Header */}
@@ -136,16 +270,22 @@ export function DashboardFacades() {
         <div>
           <h3 className="text-xl font-semibold tracking-tight">Gestion des Façades</h3>
           <p className="text-sm text-muted-foreground">
-            Configurez les matériaux, paramètres et tarification des façades
+            Configurez les matériaux, paramètres et tarification des façades. Prix TTC.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-          <Button onClick={fetchData} variant="outline" className="flex-1 sm:flex-none">
+          <Button onClick={() => fetchData()} variant="outline" className="flex-1 sm:flex-none">
             <IconRefresh className="w-4 h-4 mr-2" />
             Actualiser
           </Button>
         </div>
       </div>
+
+      {loadError && !loading && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+          {loadError}
+        </p>
+      )}
 
       {/* Tabs */}
       <Card>
@@ -155,7 +295,7 @@ export function DashboardFacades() {
               <IconRefresh className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Tabs defaultValue="materials" className="w-full">
+            <Tabs value={tab} onValueChange={setTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 bg-muted/50 p-2">
                 <TabsTrigger value="materials" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
                   Matériaux ({materials.length})
@@ -192,7 +332,8 @@ export function DashboardFacades() {
                     {materials.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Aucun matériau configuré
+                          Aucun matériau configuré : les façades sont comptées au prix au m² par défaut
+                          {defaultPricePerM2 !== null ? ` (${formatEuro(defaultPricePerM2)}/m²)` : ''}.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -211,7 +352,14 @@ export function DashboardFacades() {
                           </TableCell>
                           <TableCell className="font-medium">{material.name}</TableCell>
                           <TableCell className="text-right">
-                            {Number(material.price_per_m2 || 150).toFixed(2)} €
+                            {Number(material.price_per_m2) > 0 ? (
+                              `${formatEuro(Number(material.price_per_m2))}/m²`
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Prix par défaut
+                                {defaultPricePerM2 !== null ? ` (${formatEuro(defaultPricePerM2)}/m²)` : ''}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant={material.is_active ? 'default' : 'secondary'}>
@@ -224,6 +372,7 @@ export function DashboardFacades() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => { setEditingMaterial(material); setShowMaterialModal(true); }}
+                                aria-label={`Modifier ${material.name}`}
                               >
                                 <IconEdit className="w-4 h-4" />
                               </Button>
@@ -232,6 +381,7 @@ export function DashboardFacades() {
                                 size="sm"
                                 onClick={() => handleDeleteMaterial(material.id)}
                                 className="text-destructive hover:text-destructive"
+                                aria-label={`Supprimer ${material.name}`}
                               >
                                 <IconTrash className="w-4 h-4" />
                               </Button>
@@ -246,12 +396,27 @@ export function DashboardFacades() {
 
               {/* Settings Tab */}
               <TabsContent value="settings" className="space-y-6">
-                <SettingsPanel settings={settings} onUpdate={fetchData} />
+                <SettingsForm
+                  fields={DIMENSION_FIELDS}
+                  settings={settings}
+                  onUpdate={() => fetchData(true)}
+                  icon="ruler"
+                  submitLabel="Enregistrer les paramètres"
+                  gridClassName="md:grid-cols-2"
+                />
               </TabsContent>
 
               {/* Pricing Tab */}
               <TabsContent value="pricing" className="space-y-6">
-                <PricingPanel settings={settings} onUpdate={fetchData} />
+                <SettingsForm
+                  fields={PRICING_FIELDS}
+                  settings={settings}
+                  onUpdate={() => fetchData(true)}
+                  icon="euro"
+                  submitLabel="Enregistrer la tarification"
+                  gridClassName="md:grid-cols-2 lg:grid-cols-3"
+                  footer={(values) => <PricingExample values={values} />}
+                />
               </TabsContent>
             </Tabs>
           )}
@@ -262,8 +427,9 @@ export function DashboardFacades() {
       <MaterialModal
         open={showMaterialModal}
         material={editingMaterial}
+        defaultPricePerM2={defaultPricePerM2}
         onClose={() => { setShowMaterialModal(false); setEditingMaterial(null); }}
-        onSuccess={() => { setShowMaterialModal(false); setEditingMaterial(null); fetchData(); }}
+        onSuccess={() => { setShowMaterialModal(false); setEditingMaterial(null); fetchData(true); }}
       />
     </div>
   );
@@ -273,11 +439,13 @@ export function DashboardFacades() {
 function MaterialModal({
   open,
   material,
+  defaultPricePerM2,
   onClose,
   onSuccess,
 }: {
   open: boolean;
   material: FacadeMaterial | null;
+  defaultPricePerM2: number | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -285,11 +453,10 @@ function MaterialModal({
     name: '',
     color_hex: '#D8C7A1',
     texture_url: '',
-    price_per_m2: 150,
+    price_per_m2: 0,
     is_active: true,
   });
   const [textureFile, setTextureFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [renderMode, setRenderMode] = useState<'color' | 'texture'>('color');
 
@@ -302,39 +469,22 @@ function MaterialModal({
         name: material.name || '',
         color_hex: material.color_hex || '#D8C7A1',
         texture_url: material.texture_url || '',
-        price_per_m2: material.price_per_m2 || 150,
+        price_per_m2: Number(material.price_per_m2) || 0,
         is_active: material.is_active !== false,
       });
       setRenderMode(material.texture_url ? 'texture' : 'color');
     } else {
+      // Nouveau matériau : prix au m² par défaut des façades, modifiable
       setFormData({
         name: '',
         color_hex: '#D8C7A1',
         texture_url: '',
-        price_per_m2: 150,
+        price_per_m2: defaultPricePerM2 ?? 0,
         is_active: true,
       });
       setRenderMode('color');
     }
-  }, [material, open]);
-
-  const handleUploadTexture = async () => {
-    if (!textureFile) return;
-    setUploading(true);
-    try {
-      // Utiliser la même fonction que les échantillons
-      const imageUrl = await uploadImage(textureFile);
-      console.log('Upload response:', imageUrl);
-
-      setFormData(prev => ({ ...prev, texture_url: imageUrl }));
-      toast.success('Texture uploadée');
-    } catch (err) {
-      console.error('Upload error:', err);
-      toast.error("Erreur lors de l'upload");
-    } finally {
-      setUploading(false);
-    }
-  };
+  }, [material, open, defaultPricePerM2]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -352,11 +502,14 @@ function MaterialModal({
         return;
       }
 
+      if (!Number.isFinite(formData.price_per_m2) || formData.price_per_m2 < 0) {
+        toast.error('Le prix au m² ne peut pas être négatif');
+        setLoading(false);
+        return;
+      }
+
       // Si mode texture, uploader le fichier s'il n'est pas encore uploadé
       let finalTextureUrl = formData.texture_url;
-      console.log('handleSubmit - renderMode:', renderMode);
-      console.log('handleSubmit - formData.texture_url:', formData.texture_url);
-      console.log('handleSubmit - textureFile:', textureFile?.name);
 
       if (renderMode === 'texture') {
         if (!finalTextureUrl && textureFile) {
@@ -365,7 +518,7 @@ function MaterialModal({
             toast.loading('Upload de la texture...');
             finalTextureUrl = await uploadImage(textureFile);
             toast.dismiss();
-          } catch (uploadErr) {
+          } catch {
             toast.dismiss();
             toast.error("Erreur lors de l'upload de la texture");
             setLoading(false);
@@ -383,7 +536,7 @@ function MaterialModal({
       // Construire le payload en respectant STRICTEMENT le choix renderMode
       // SI couleur unie → envoyer SEULEMENT color_hex, vider texture_url
       // SI texture image → envoyer SEULEMENT texture_url, vider color_hex
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         name: formData.name,
         price_per_m2: formData.price_per_m2,
         is_active: formData.is_active,
@@ -411,7 +564,7 @@ function MaterialModal({
         toast.success(material ? 'Matériau modifié' : 'Matériau ajouté');
         onSuccess();
       } else {
-        toast.error(data.error || 'Erreur lors de la sauvegarde');
+        toast.error(data.error || data.message || 'Erreur lors de la sauvegarde');
       }
     } catch (error) {
       console.error('Erreur:', error);
@@ -431,8 +584,9 @@ function MaterialModal({
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Nom du matériau */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nom</Label>
+            <Label htmlFor="facade-material-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nom</Label>
             <Input
+              id="facade-material-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Ex: Chêne naturel"
@@ -463,11 +617,13 @@ function MaterialModal({
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
+                    aria-label="Choisir la couleur"
                     value={formData.color_hex}
                     onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
                     className="h-9 w-14 rounded border cursor-pointer bg-transparent"
                   />
                   <Input
+                    aria-label="Code hexadécimal de la couleur"
                     value={formData.color_hex}
                     onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
                     className="flex-1 h-9 font-mono text-xs"
@@ -480,6 +636,7 @@ function MaterialModal({
               <TabsContent value="texture" className="pt-3 space-y-3">
                 <Input
                   type="file"
+                  aria-label="Image de la texture"
                   accept="image/png,image/jpeg,image/jpg,image/webp"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
@@ -523,9 +680,10 @@ function MaterialModal({
           {/* Prix et statut */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Prix/m²</Label>
+              <Label htmlFor="facade-material-price" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Prix/m²</Label>
               <div className="relative">
                 <Input
+                  id="facade-material-price"
                   type="number"
                   step="0.01"
                   min="0"
@@ -535,6 +693,9 @@ function MaterialModal({
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                0 = prix par défaut{defaultPricePerM2 !== null ? ` (${formatEuro(defaultPricePerM2)}/m²)` : ''}.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Statut</Label>
@@ -564,160 +725,135 @@ function MaterialModal({
   );
 }
 
-// Composant pour les paramètres
-function SettingsPanel({
+// Formulaire d'un groupe de réglages : composant de module (et non défini dans le rendu), pour que les champs
+// gardent le focus pendant la saisie
+function SettingsForm({
+  fields,
   settings,
   onUpdate,
+  icon,
+  submitLabel,
+  gridClassName,
+  footer,
 }: {
+  fields: FacadeField[];
   settings: FacadeSetting[];
   onUpdate: () => void;
+  icon: 'ruler' | 'euro';
+  submitLabel: string;
+  gridClassName: string;
+  // Rendu sous les cartes à partir des valeurs saisies (exemple chiffré)
+  footer?: (values: Record<string, number | null>) => React.ReactNode;
 }) {
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
+  const stored = (key: string) => settings.find((s) => s.setting_key === key)?.setting_value;
+
+  // Valeurs rechargées (après un enregistrement) : le formulaire les reprend
   useEffect(() => {
     const data: Record<string, string> = {};
-    settings.forEach(s => {
-      data[s.setting_key] = s.setting_value;
-    });
+    for (const field of fields) {
+      data[field.key] = toInput(field, settings.find((s) => s.setting_key === field.key)?.setting_value);
+    }
     setFormData(data);
-  }, [settings]);
+    setErrors({});
+  }, [settings, fields]);
+
+  const present = fields.filter((field) => stored(field.key) !== undefined);
+  const missing = fields.filter((field) => stored(field.key) === undefined);
+
+  // Valeurs saisies valides, au format stocké (pour l'exemple chiffré)
+  const values: Record<string, number | null> = {};
+  for (const field of fields) {
+    const result = fromInput(field, formData[field.key] ?? '');
+    values[field.key] = result.ok ? Number(result.value) : null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: Record<string, string> = {};
+    const changes: { field: FacadeField; value: string }[] = [];
+    for (const field of present) {
+      const raw = formData[field.key] ?? '';
+      if (raw.trim() === toInput(field, stored(field.key)).trim()) continue;
+      const result = fromInput(field, raw);
+      if (result.ok) changes.push({ field, value: result.value });
+      else nextErrors[field.key] = result.error;
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error('Corrigez les valeurs signalées avant d’enregistrer.');
+      return;
+    }
+    if (changes.length === 0) {
+      toast('Aucune modification à enregistrer.');
+      return;
+    }
+
     setLoading(true);
-
-    try {
-      for (const [key, value] of Object.entries(formData)) {
-        if (['max_width', 'max_height', 'fixed_depth', 'hinge_edge_margin', 'hinge_hole_diameter'].includes(key)) {
-          const response = await fetch('/backend/api/facade-settings.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ setting_key: key, setting_value: value }),
-          });
-
-          const data = await response.json();
-          if (!data.success) {
-            throw new Error('Erreur lors de la mise à jour de ' + key);
-          }
-        }
+    const failed: Record<string, string> = {};
+    for (const { field, value } of changes) {
+      try {
+        await putSetting(field.key, value);
+      } catch (error) {
+        failed[field.key] = error instanceof Error ? error.message : 'Enregistrement impossible';
       }
-
-      toast.success('Paramètres mis à jour');
+    }
+    setLoading(false);
+    const saved = changes.length - Object.keys(failed).length;
+    if (saved > 0) {
+      toast.success(saved > 1 ? `${saved} réglages enregistrés` : 'Réglage enregistré');
       onUpdate();
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la mise à jour');
-    } finally {
-      setLoading(false);
+    }
+    if (Object.keys(failed).length > 0) {
+      setErrors(failed);
+      toast.error('Certains réglages n’ont pas été enregistrés.');
     }
   };
 
-  const SettingCard = ({
-    title,
-    settingKey,
-    unit = 'mm',
-    showCm = true,
-    defaultValue,
-    description,
-    min,
-    max,
-  }: {
-    title: string;
-    settingKey: string;
-    unit?: string;
-    showCm?: boolean;
-    defaultValue: string;
-    description?: string;
-    min?: number;
-    max?: number;
-  }) => (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <IconRuler className="w-4 h-4" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-end gap-4">
-          <div className="flex-1 space-y-2">
-            <Label>Valeur ({unit})</Label>
-            <Input
-              type="number"
-              min={min}
-              max={max}
-              value={formData[settingKey] || ''}
-              onChange={(e) => setFormData({ ...formData, [settingKey]: e.target.value })}
-            />
-          </div>
-          {showCm && (
-            <div className="text-sm text-muted-foreground pb-2">
-              = {Math.round((parseInt(formData[settingKey] || '0')) / 10)} cm
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Valeur par défaut : {defaultValue}
-        </p>
-        {description && (
-          <div className="p-3 bg-muted/50 rounded-lg">
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <SettingCard
-            title="Largeur maximale"
-            settingKey="max_width"
-            defaultValue="600 mm (60 cm)"
-            min={100}
-            max={1000}
-          />
-          <SettingCard
-            title="Hauteur maximale"
-            settingKey="max_height"
-            defaultValue="2300 mm (230 cm)"
-            min={500}
-            max={3000}
-          />
-          <SettingCard
-            title="Épaisseur fixe"
-            settingKey="fixed_depth"
-            defaultValue="19 mm"
-            showCm={false}
-            min={10}
-            max={50}
-          />
-          <SettingCard
-            title="Marge des charnières"
-            settingKey="hinge_edge_margin"
-            defaultValue="150 mm (15 cm)"
-            description="Distance minimale entre les premiers/derniers trous de charnières et les bords haut/bas de la façade."
-            min={10}
-            max={300}
-          />
-          <SettingCard
-            title="Diamètre des trous"
-            settingKey="hinge_hole_diameter"
-            defaultValue="26 mm (standard)"
-            showCm={false}
-            description="Diamètre standard pour charnières de cuisine/meubles : 26mm ou 35mm."
-            min={20}
-            max={50}
-          />
+      {missing.length > 0 && (
+        <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+          <IconAlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <p>
+            {missing.length > 1 ? 'Ces réglages n’existent' : 'Ce réglage n’existe'} pas encore en base :{' '}
+            {missing.map((f) => f.title).join(', ')}. Le calcul utilise une valeur de secours et{' '}
+            {missing.length > 1 ? 'ils ne peuvent' : 'il ne peut'} pas être enregistré{missing.length > 1 ? 's' : ''} tant
+            que la mise à jour de la base de données n&apos;a pas été appliquée.
+          </p>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <div className={`grid gap-4 ${gridClassName}`}>
+          {fields.map((field) => (
+            <SettingCard
+              key={field.key}
+              field={field}
+              icon={icon}
+              value={formData[field.key] ?? ''}
+              stored={stored(field.key)}
+              error={errors[field.key]}
+              onChange={(value) => {
+                setFormData((prev) => ({ ...prev, [field.key]: value }));
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next[field.key];
+                  return next;
+                });
+              }}
+            />
+          ))}
         </div>
 
+        {footer?.(values)}
+
         <div className="flex justify-end">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || present.length === 0}>
             <IconCheck className="w-4 h-4 mr-2" />
-            {loading ? 'Enregistrement...' : 'Enregistrer les paramètres'}
+            {loading ? 'Enregistrement...' : submitLabel}
           </Button>
         </div>
       </form>
@@ -725,133 +861,103 @@ function SettingsPanel({
   );
 }
 
-// Composant pour la tarification
-function PricingPanel({
-  settings,
-  onUpdate,
+function SettingCard({
+  field,
+  icon,
+  value,
+  stored,
+  error,
+  onChange,
 }: {
-  settings: FacadeSetting[];
-  onUpdate: () => void;
+  field: FacadeField;
+  icon: 'ruler' | 'euro';
+  value: string;
+  stored: string | undefined;
+  error?: string;
+  onChange: (value: string) => void;
 }) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const id = useId();
+  const Icon = icon === 'ruler' ? IconRuler : IconCurrencyEuro;
+  const missing = stored === undefined;
+  const mm = Number(value);
 
-  useEffect(() => {
-    const data: Record<string, string> = {};
-    settings.forEach(s => {
-      data[s.setting_key] = s.setting_value;
-    });
-    setFormData(data);
-  }, [settings]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      for (const [key, value] of Object.entries(formData)) {
-        if (['hinge_base_price', 'hinge_coefficient', 'material_price_per_m2'].includes(key)) {
-          const response = await fetch('/backend/api/facade-settings.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ setting_key: key, setting_value: value }),
-          });
-
-          const data = await response.json();
-          if (!data.success) {
-            throw new Error('Erreur lors de la mise à jour de ' + key);
-          }
-        }
-      }
-
-      toast.success('Tarification mise à jour');
-      onUpdate();
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la mise à jour');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const PricingCard = ({
-    title,
-    settingKey,
-    unit,
-    defaultValue,
-    example,
-  }: {
-    title: string;
-    settingKey: string;
-    unit: string;
-    defaultValue: string;
-    example: string;
-  }) => (
-    <Card>
+  return (
+    <Card className={missing ? 'border-amber-300' : undefined}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <IconCurrencyEuro className="w-4 h-4" />
-          {title}
+          <Icon className="w-4 h-4" />
+          {field.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-end gap-4">
           <div className="flex-1 space-y-2">
-            <Label>Montant</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData[settingKey] || ''}
-              onChange={(e) => setFormData({ ...formData, [settingKey]: e.target.value })}
-            />
+            <Label htmlFor={id}>Valeur ({SUFFIX[field.kind]})</Label>
+            <div className="relative">
+              <Input
+                id={id}
+                type="number"
+                inputMode="decimal"
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                value={value}
+                disabled={missing}
+                onChange={(e) => onChange(e.target.value)}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? `${id}-error` : undefined}
+                className="pr-12"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {SUFFIX[field.kind]}
+              </span>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground pb-2">{unit}</div>
+          {field.showCm && value.trim() !== '' && Number.isFinite(mm) && (
+            <div className="text-sm text-muted-foreground pb-2">= {(mm / 10).toLocaleString('fr-FR')} cm</div>
+          )}
         </div>
+        {error && (
+          <p id={`${id}-error`} className="text-xs text-destructive" role="alert">
+            {error}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">
-          Valeur par défaut : {defaultValue}
+          {missing ? (
+            <span className="text-amber-700">Réglage absent de la base : non enregistrable pour le moment.</span>
+          ) : (
+            <>Valeur actuelle : {describeStored(field, stored)}</>
+          )}
         </p>
-        <div className="p-3 bg-muted/50 rounded-lg">
-          <p className="text-xs text-muted-foreground">{example}</p>
-        </div>
+        {field.description && (
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <p className="text-xs text-muted-foreground">{field.description}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
+}
 
+// Exemple chiffré avec les valeurs saisies : même formule que FacadePriceCalculator
+function PricingExample({ values }: { values: Record<string, number | null> }) {
+  const hinge = values.hinge_base_price;
+  const coefficient = values.hinge_coefficient;
+  const perM2 = values.material_price_per_m2;
+  if (hinge === null || coefficient === null || perM2 === null) return null;
+  const surface = 0.6 * 2;
+  const hinges = 3;
+  const base = surface * perM2 + hinges * hinge;
+  const total = base * (1 + coefficient * hinges);
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <PricingCard
-            title="Prix de base charnière"
-            settingKey="hinge_base_price"
-            unit="€ TTC"
-            defaultValue="34.20 €"
-            example="Si 3 charnières à 34.20 € = 102.60 €"
-          />
-          <PricingCard
-            title="Coefficient multiplicateur"
-            settingKey="hinge_coefficient"
-            unit={`= ${((parseFloat(formData.hinge_coefficient || '0')) * 100).toFixed(0)}%`}
-            defaultValue="0.05 (5%)"
-            example="Prix × (coef × nb_charnières)"
-          />
-          <PricingCard
-            title="Prix matériau au m²"
-            settingKey="material_price_per_m2"
-            unit="€/m²"
-            defaultValue="150.00 €/m²"
-            example="Façade 60×200cm = 1.2m² × 150€ = 180€"
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <Button type="submit" disabled={loading}>
-            <IconCheck className="w-4 h-4 mr-2" />
-            {loading ? 'Enregistrement...' : 'Enregistrer la tarification'}
-          </Button>
-        </div>
-      </form>
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+      <p className="font-medium">Exemple avec ces valeurs</p>
+      <p className="text-muted-foreground">
+        Façade de 60 × 200 cm (1,2 m²) avec {hinges} charnières, au prix au m² par défaut : (1,2 m² ×{' '}
+        {formatEuro(perM2)} + {hinges} × {formatEuro(hinge)}) × (1 + {hinges} ×{' '}
+        {(coefficient * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %) ={' '}
+        <span className="font-semibold text-foreground">{formatEuro(Math.round(total * 100) / 100)}</span>
+      </p>
     </div>
   );
 }

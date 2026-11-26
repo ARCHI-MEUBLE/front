@@ -13,13 +13,26 @@ export interface ArReadiness {
   camera: CameraAccess;
 }
 
-type XrNavigator = Navigator & { xr?: { isSessionSupported?: (mode: string) => Promise<boolean> } };
+type XrNavigator = Navigator & { xr?: { isSessionSupported?: (mode: string) => Promise<boolean> }; brave?: unknown };
+
+// Navigateurs Chromium qui ne sont pas Chrome (Edge, Samsung Internet, Opera, Vivaldi, Yandex, navigateurs des
+// fabricants), et vues web d'applications (« ; wv) »)
+const NOT_GOOGLE_CHROME = /EdgA\/|SamsungBrowser\/|OPR\/|OPT\/|Vivaldi\/|YaBrowser\/|DuckDuckGo\/|MiuiBrowser\/|HuaweiBrowser\/|HeyTapBrowser\/|UCBrowser\/|; wv\)/;
+
+// Seul Google Chrome répond « non » parce que le téléphone n'a pas ARCore. Les autres navigateurs (Edge, Brave, Opera,
+// Vivaldi…) disent « non » parce qu'eux-mêmes n'ont pas la réalité augmentée WebXR, alors que l'application Google
+// (Scene Viewer) peut l'ouvrir : leur « non » ne vaut que « inconnu ». Brave envoie l'identifiant de Chrome.
+export function isWebXrVerdictReliable(userAgent: string, isBrave: boolean): boolean {
+  return /Chrome\/\d+/.test(userAgent) && !NOT_GOOGLE_CHROME.test(userAgent) && !isBrave;
+}
 
 export async function checkArSupport(): Promise<ArSupport> {
-  const xr = (navigator as XrNavigator).xr;
+  const nav = navigator as XrNavigator;
+  const xr = nav.xr;
   if (!xr?.isSessionSupported) return 'unknown';
   try {
-    return (await xr.isSessionSupported('immersive-ar')) ? 'supported' : 'unsupported';
+    if (await xr.isSessionSupported('immersive-ar')) return 'supported';
+    return isWebXrVerdictReliable(navigator.userAgent, nav.brave !== undefined) ? 'unsupported' : 'unknown';
   } catch {
     return 'unknown';
   }
@@ -53,4 +66,15 @@ export function arLaunchPlan({ ar, camera }: ArReadiness): { offerAr: boolean; c
     offerAr: ar !== 'unsupported' && camera !== 'missing' && camera !== 'denied',
     canRecheck: camera === 'denied',
   };
+}
+
+// Réalité augmentée dans la page (WebXR) : à appeler dans le clic, sinon Chrome refuse. Chrome demande lui-même
+// l'accès à la caméra ; « overlay » reste affiché par-dessus la caméra (consignes, boutons).
+export function requestImmersiveAr(overlay: HTMLElement): Promise<XRSession> {
+  if (!navigator.xr) return Promise.reject(Object.assign(new Error('WebXR indisponible'), { name: 'NotSupportedError' }));
+  return navigator.xr.requestSession('immersive-ar', {
+    requiredFeatures: ['hit-test'],
+    optionalFeatures: ['dom-overlay'],
+    domOverlay: { root: overlay },
+  });
 }

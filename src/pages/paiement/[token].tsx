@@ -245,6 +245,7 @@ export default function PaymentLinkPage() {
     <>
       <Head>
         <title>Paiement sécurisé - Commande #{orderData.order.order_number}</title>
+        <meta name="robots" content="noindex" />
       </Head>
 
       <div className="min-h-screen bg-am-paper py-8 px-4 sm:py-12">

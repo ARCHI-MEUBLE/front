@@ -21,6 +21,8 @@ type PageWithModelViewer = AppProps["Component"] & { needsModelViewer?: boolean 
 export default function App({ Component, pageProps }: AppProps) {
   // Le script de <model-viewer> n'est chargé que pour ces pages : il embarque sa propre copie de Three.js,
   // qui doublonnait celle des pages 3D (« Multiple instances of Three.js ») quand il était chargé partout.
+  // Servi par le site (public/vendor, copie exacte de la version 3.3.0 de Google) : chargé depuis ajax.googleapis.com,
+  // il transmettait l'adresse IP de chaque visiteur du panier à Google.
   // Garder l'import de next/script dans ce fichier : sans lui, Turbopack (dev) perd next/router sur /checkout
   const needsModelViewer = (Component as PageWithModelViewer).needsModelViewer;
 
@@ -38,7 +40,7 @@ export default function App({ Component, pageProps }: AppProps) {
           {needsModelViewer && (
             <Script
               type="module"
-              src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"
+              src="/vendor/model-viewer-3.3.0.min.js"
               strategy="afterInteractive"
               onError={(e) => {
                 console.error('Erreur chargement model-viewer:', e);

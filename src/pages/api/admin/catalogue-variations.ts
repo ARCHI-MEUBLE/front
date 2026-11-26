@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,10 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'Content-Type': 'application/json',
     };
 
-    if (req.headers.cookie) {
-      headers.Cookie = req.headers.cookie;
-    }
-
+    Object.assign(headers, backendHeaders(req));
     const options: RequestInit = {
       method: req.method,
       headers,
@@ -45,14 +44,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Erreur parsing JSON. Réponse reçue:', text.substring(0, 500));
       return res.status(response.status).json({
         success: false,
-        error: 'Réponse invalide du serveur',
-        details: text.substring(0, 200)
+        error: 'Réponse invalide du serveur'
       });
     }
 
     res.status(response.status).json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur API variations:', error);
-    res.status(500).json({ success: false, error: error.message || 'Erreur serveur' });
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 }

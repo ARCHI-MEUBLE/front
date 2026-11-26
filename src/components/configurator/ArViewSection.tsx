@@ -4,13 +4,13 @@ import type * as THREE from 'three';
 import StepSection from '@/components/configurator/steps/StepSection';
 import type { ThreeViewerProps } from '@/components/configurator/ThreeViewer';
 import ArLaunchButton from '@/components/ar/ArLaunchButton';
-import SceneViewerLauncher from '@/components/ar/SceneViewerLauncher';
+import AndroidArLauncher from '@/components/ar/AndroidArLauncher';
 import { AR_MESSAGES, arErrorDetail, arErrorMessage } from '@/components/ar/arMessages';
 import { useArDevice } from '@/components/ar/useArViewer';
 import { apiClient } from '@/lib/apiClient';
 import { arModelFileFromUrl, arModelPath } from '@/lib/ar/arModelFile';
 import { furnitureToGlb, furnitureToUsdzUrl, prepareFurnitureForExport } from '@/lib/ar/exportFurniture';
-import { openQuickLook } from '@/lib/ar/launchAr';
+import { isQuickLookReliable, openQuickLook } from '@/lib/ar/launchAr';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Scène hors écran montée le temps d'un export (WebGL : navigateur seulement)
@@ -29,8 +29,10 @@ type QrState =
   | { status: 'loading' }
   | { status: 'ready'; image: string; link: string }
   | { status: 'error'; message: string; detail: string | null };
-// Vue AR prête pour une version du meuble : USDZ dans le navigateur (iPhone) ou GLB déposé sur le backend (Android, QR)
-type Prepared = { key: string; usdzUrl: string } | { key: string; file: string };
+// Vue AR prête pour une version du meuble, créée dans le navigateur : USDZ (iPhone, iPad) ou GLB (Android). Le GLB
+// d'Android n'est déposé sur le backend que si Scene Viewer en a besoin (il le télécharge lui-même) : la réalité
+// augmentée dans la page et la vue 3D le lisent sur place, sans envoi à chaque réglage.
+type Prepared = { key: string; usdzUrl: string } | { key: string; glb: ArrayBuffer; glbUrl: string };
 type SnapshotRequest = { id: number; key: string; purpose: 'device' | 'qr' };
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
@@ -74,18 +76,18 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     return () => window.clearTimeout(timer);
   }, [arCapable, configKey, disabledReason, attempt]);
 
-  // Nouvelle vue AR prête : l'USDZ de la précédente n'est plus utile
+  // Nouvelle vue AR prête : le fichier de la précédente n'est plus utile
   const storePrepared = useCallback((next: Prepared) => {
     const previous = preparedCache;
-    if (previous && previous !== next && 'usdzUrl' in previous) URL.revokeObjectURL(previous.usdzUrl);
+    if (previous && previous !== next) URL.revokeObjectURL('usdzUrl' in previous ? previous.usdzUrl : previous.glbUrl);
     preparedCache = next;
     setPrepared(next);
   }, []);
 
   // Le GLB d'un meuble inchangé n'est déposé qu'une fois (et le backend nomme les fichiers d'après leur contenu)
-  const uploadGlb = useCallback(async (root: THREE.Group, key: string) => {
+  const uploadGlb = useCallback(async (glb: ArrayBuffer | (() => Promise<ArrayBuffer>), key: string) => {
     if (uploadedCache?.key === key) return uploadedCache.file;
-    const file = arModelFileFromUrl(await apiClient.arModels.upload(await furnitureToGlb(root)));
+    const file = arModelFileFromUrl(await apiClient.arModels.upload(typeof glb === 'function' ? await glb() : glb));
     if (!file) throw new Error('Adresse du fichier 3D inattendue');
     uploadedCache = { key, file };
     return file;
@@ -114,7 +116,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
 
       if (request.purpose === 'qr') {
         const qrId = qrRequest.current;
-        uploadGlb(root, request.key)
+        uploadGlb(() => furnitureToGlb(root), request.key)
           .then((file) => showQrCode(file, qrId))
           .catch((error) => {
             console.warn('QR code de la réalité augmentée impossible :', error instanceof Error ? error.message : error);
@@ -136,9 +138,11 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
           })
           .catch(fail);
       } else {
-        uploadGlb(root, request.key)
-          .then((file) => {
-            if (!stale()) storePrepared({ key: request.key, file });
+        furnitureToGlb(root)
+          .then((glb) => {
+            if (stale()) return;
+            const glbUrl = URL.createObjectURL(new Blob([glb], { type: 'model/gltf-binary' }));
+            storePrepared({ key: request.key, glb, glbUrl });
           })
           .catch(fail);
       }
@@ -172,7 +176,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
       .catch(() => setCopied(false));
   };
 
-  // iPhone : Quick Look. Android passe par SceneViewerLauncher, qui vérifie le téléphone avant de lancer
+  // iPhone : Quick Look. Android passe par AndroidArLauncher, qui vérifie le téléphone avant de lancer
   const launch = () => {
     if (prepared?.key === configKey && 'usdzUrl' in prepared) openQuickLook(prepared.usdzUrl);
   };
@@ -180,7 +184,7 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
   let button: { label: string; onClick?: () => void; disabled?: boolean; busy?: boolean };
   let note: string | null = null;
   let detail: string | null = null;
-  let sceneViewerFile: string | null = null;
+  let androidModel: { glb: ArrayBuffer; glbUrl: string; key: string } | null = null;
 
   if (device === null) {
     button = { label: AR_MESSAGES.launch, disabled: true };
@@ -195,8 +199,8 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     note = 'Sur ordinateur, un QR code ouvre le meuble sur votre téléphone.';
   } else if (prepared?.key === configKey) {
     button = { label: AR_MESSAGES.launch, onClick: launch };
-    note = AR_MESSAGES.tip;
-    if ('file' in prepared) sceneViewerFile = prepared.file;
+    note = device === 'quick-look' && !isQuickLookReliable() ? `${AR_MESSAGES.tip} ${AR_MESSAGES.quickLookFallbackConfigurator}` : AR_MESSAGES.tip;
+    if ('glbUrl' in prepared) androidModel = prepared;
   } else if (failed?.key === configKey) {
     button = {
       label: AR_MESSAGES.retry,
@@ -211,15 +215,24 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
     button = { label: AR_MESSAGES.preparing, busy: true };
   }
 
+  // Copie constante : le rappel de dépôt ci-dessous la garde telle quelle
+  const android = androidModel;
   const onLocalHost = typeof window !== 'undefined' && LOCAL_HOSTS.includes(window.location.hostname);
+  // Scene Viewer (Android) ne télécharge le meuble qu'en https
+  const onHttp = typeof window !== 'undefined' && window.location.protocol === 'http:';
 
   return (
     <StepSection title="Voir chez moi" aside="Réalité augmentée">
       <p className="text-xs leading-relaxed text-black/65">
-        Posez le meuble à taille réelle dans votre pièce, avec la caméra de votre téléphone.
+        Posez le meuble à taille réelle dans votre pièce, avec la caméra de votre téléphone ou de votre tablette.
       </p>
-      {sceneViewerFile ? (
-        <SceneViewerLauncher glbPath={arModelPath(sceneViewerFile)} title={AR_TITLE} />
+      {android ? (
+        <AndroidArLauncher
+          key={android.key}
+          glbPath={android.glbUrl}
+          title={AR_TITLE}
+          getSceneViewerPath={() => uploadGlb(android.glb, android.key).then(arModelPath)}
+        />
       ) : (
         <>
           <ArLaunchButton {...button} />
@@ -295,6 +308,14 @@ export default function ArViewSection({ furniture, configKey, disabledReason }: 
               <p className="text-[11px] leading-relaxed text-am-wine">
                 Le site est ouvert sur localhost : votre téléphone ne peut pas joindre cette adresse. Ouvrez-le avec
                 l&apos;adresse réseau de l&apos;ordinateur (par exemple http://192.168.x.x:3000) puis réaffichez ce code.
+                Cela suffit pour un iPhone ; Android, lui, n&apos;ouvre la réalité augmentée que depuis le site en ligne
+                (https).
+              </p>
+            )}
+            {qr?.status === 'ready' && !onLocalHost && onHttp && (
+              <p className="text-[11px] leading-relaxed text-am-wine">
+                Adresse en http : la réalité augmentée s&apos;ouvrira sur iPhone, mais Android ne l&apos;ouvre que depuis
+                le site en ligne (https).
               </p>
             )}
           </DialogContent>

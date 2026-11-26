@@ -4,6 +4,8 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,20 +17,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       credentials: 'include',
     });
 
     const data = await response.json();
 
-    const backendCookies = response.headers.getSetCookie?.() || [];
-    if (backendCookies.length > 0) {
-      backendCookies.forEach(cookie => {
-        res.setHeader('Set-Cookie', cookie);
-      });
-    }
-
+    forwardSetCookies(res, response);
     res.status(response.status).json(data);
   } catch (error) {
     console.error('Appointments stats proxy error:', error);

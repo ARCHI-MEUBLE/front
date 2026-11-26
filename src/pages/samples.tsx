@@ -1,11 +1,12 @@
 "use client";
 
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiClient, type SampleColor, type SampleType } from "@/lib/apiClient";
 import { useCustomer } from "@/context/CustomerContext";
+import { notifyCartChanged } from "@/lib/cartCount";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
 import { HOME_SECTION_NO_TOP } from "@/components/home/homeLayout";
@@ -94,6 +95,7 @@ export default function SamplesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erreur lors de l'ajout au panier");
       await loadSamplesCart();
+      notifyCartChanged();
       const color = colorsForMaterial.find((c) => c.id === colorId);
       toast.success(`${displayColorName(color?.name) || "Échantillon"} ajouté à votre kit`);
     } catch (error) {
@@ -109,13 +111,7 @@ export default function SamplesPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-am-paper text-black">
-      <Head>
-        <title>Échantillons — ArchiMeuble</title>
-        <meta
-          name="description"
-          content="Commandez nos échantillons de matériaux et découvrez les textures et finitions de nos meubles sur mesure."
-        />
-      </Head>
+      <Seo title="Échantillons de bois et finitions — ArchiMeuble" description="Commandez nos échantillons de matériaux pour voir teintes, textures et finitions chez vous, à la lumière de votre intérieur, avant votre meuble sur mesure." />
       <Header />
       <main className="flex-1">
         <SamplesHero />

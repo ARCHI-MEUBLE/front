@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAdminSession } from '@/lib/adminAuth';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 /**
@@ -10,7 +12,6 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_A
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Vérifier l'authentification Next.js
   if (!(await verifyAdminSession(req, res))) {
-    console.log('Authentication failed - no admin session');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -20,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       credentials: 'include',
     };
@@ -36,24 +37,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       options.body = JSON.stringify(req.body);
     }
 
-    console.log('Calling backend URL:', backendUrl);
     const response = await fetch(backendUrl, options);
-    console.log('Backend response status:', response.status);
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('Backend error:', text);
-      throw new Error(`Backend returned ${response.status}`);
+      console.error(`Backend error (${response.status}) on ${req.method} ${backendUrl}:`, text.slice(0, 500));
+      // Renvoie le vrai statut et le message du backend au lieu d'un 500 générique
+      let backendMessage: string | undefined;
+      try {
+        const parsed = JSON.parse(text);
+        backendMessage = parsed?.error || parsed?.message;
+      } catch {
+        // corps non JSON (page d'erreur PHP, proxy, WAF…)
+      }
+      return res.status(response.status).json({
+        error: backendMessage || `Le backend a répondu ${response.status}`,
+      });
     }
 
     const data = await response.json();
 
     // Transférer les cookies si nécessaire
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
-    }
-
+    forwardSetCookies(res, response);
     return res.status(200).json(data);
   } catch (error) {
     console.error('Error in admin samples API:', error);

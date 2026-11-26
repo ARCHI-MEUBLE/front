@@ -9,6 +9,8 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { useCustomer } from "@/context/CustomerContext";
 import { displayColorName, displayMaterialName } from "@/lib/displayNames";
 import { formatPrice } from "@/lib/format";
+import { handleModelsApi } from "@/lib/handleModelsApi";
+import { parseHandleDefaults, type HandleModel } from "@/lib/configurator/handles";
 
 // Import dynamique du viewer 3D pour éviter les erreurs SSR
 const ThreeViewer = dynamic(() => import("@/components/configurator/ThreeViewer"), {
@@ -150,11 +152,30 @@ export default function OrderConfirmationPage() {
     loadOrder();
   }, [customer, authLoading, orderId, router, requireIdentity]);
 
+  // Modèles de poignées, pour que l'aperçu 3D des meubles commandés montre les poignées choisies (sans eux : barres
+  // par défaut, la page reste utilisable)
+  const [handleModels, setHandleModels] = useState<HandleModel[]>([]);
+  const orderHasConfigurations = !!order?.items?.length;
+  useEffect(() => {
+    if (!orderHasConfigurations) return;
+    let cancelled = false;
+    handleModelsApi
+      .listPublic()
+      .then((models) => {
+        if (!cancelled) setHandleModels(models);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [orderHasConfigurations]);
+
   if (loading) {
     return (
       <>
         <Head>
           <title>Confirmation de commande - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="flex min-h-screen items-center justify-center">
@@ -172,6 +193,7 @@ export default function OrderConfirmationPage() {
       <>
         <Head>
           <title>Erreur - ArchiMeuble</title>
+          <meta name="robots" content="noindex" />
         </Head>
         <Header />
         <div className="min-h-screen bg-am-paper px-4 py-12">
@@ -262,6 +284,7 @@ export default function OrderConfirmationPage() {
     <>
       <Head>
         <title>Commande confirmée - ArchiMeuble</title>
+        <meta name="robots" content="noindex" />
       </Head>
       <Header />
 
@@ -355,6 +378,8 @@ export default function OrderConfirmationPage() {
                               doorType={configData?.features?.doorType || 'none'}
                               doorSide={configData?.features?.doorSide || 'left'}
                               deletedPanelIds={configData?.deletedPanelIds ? new Set(configData.deletedPanelIds) : undefined}
+                              handleModels={handleModels}
+                              handleDefaults={configData?.handles ? parseHandleDefaults(configData.handles) : undefined}
                             />
                           </div>
                           {/* Infos */}

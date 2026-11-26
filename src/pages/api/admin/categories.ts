@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 /**
@@ -13,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || '',
+        ...backendHeaders(req),
       },
     };
 
@@ -28,16 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       options.body = JSON.stringify(req.body);
     }
 
-    console.log(`[CATEGORIES PROXY] ${req.method} ${backendUrl}`);
-    if (req.body) {
-      console.log('[CATEGORIES PROXY] Body:', JSON.stringify(req.body));
-    }
-
     const response = await fetch(backendUrl, options);
-    console.log('[CATEGORIES PROXY] Backend response status:', response.status);
 
     const text = await response.text();
-    console.log('[CATEGORIES PROXY] Backend response:', text.substring(0, 500));
 
     // Vérifier si la réponse est du JSON valide
     let data;
@@ -47,17 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('[CATEGORIES PROXY] Erreur parsing JSON. Réponse reçue:', text.substring(0, 500));
       return res.status(500).json({
         success: false,
-        error: 'Erreur serveur backend - Réponse invalide',
-        details: text.substring(0, 500)
+        error: 'Erreur serveur backend - Réponse invalide'
       });
     }
 
     // Transférer les cookies si nécessaire
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie);
-    }
-
+    forwardSetCookies(res, response);
     return res.status(response.status).json(data);
   } catch (error) {
     console.error('[CATEGORIES PROXY] Erreur:', error);

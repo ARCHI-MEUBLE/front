@@ -1,4 +1,5 @@
-import Head from "next/head";
+import { Seo } from "@/components/Seo";
+import { businessJsonLd, faqJsonLd, websiteJsonLd } from "@/lib/seo";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
@@ -14,13 +15,12 @@ import { ContactUniqueSection } from "@/components/shared/ContactUniqueSection";
 export default function HomePage() {
   return (
     <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-am-paper font-sans">
-      <Head>
-        <title>Archimeuble | Menuisier sur mesure a Lille</title>
-        <meta
-          name="description"
-          content="Archimeuble, menuisiers a Lille, concoit et fabrique des meubles sur mesure durables : dressing, bibliotheque, buffet, bureau ou meuble TV pour votre interieur."
-        />
-      </Head>
+      <Seo
+        title="Meubles sur mesure à Lille — ArchiMeuble, menuisier"
+        description="Menuisier à Lille, ArchiMeuble conçoit, fabrique et pose vos meubles sur mesure : dressing, bibliothèque, buffet, bureau, meuble TV. Devis gratuit et maquette 3D."
+        path="/"
+        jsonLd={[businessJsonLd(), websiteJsonLd(), faqJsonLd()]}
+      />
       <Header />
       <main className="flex flex-1 flex-col">
         <HeroSection />

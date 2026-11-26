@@ -1,14 +1,15 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Square, Hand, BoxSelect, GripVertical, GripHorizontal, Circle, RectangleHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw, PanelBottomClose, SquareDashed } from 'lucide-react';
-import { Zone, ZoneContent, HandleType } from './types';
-import { getChildRatios, getZoneFacade, isPushContent } from '@/lib/configurator/zoneStats';
+import { useState, useEffect } from 'react';
+import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, ChevronLeft, ChevronRight, PanelBottomClose, SquareDashed } from 'lucide-react';
+import { Zone, ZoneContent } from './types';
+import { getChildRatios } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
 import { getDivisionCount, isShelfGrid, shelfColumnWidths, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 
-// Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie
-export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'handles' | 'accessories';
+// Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie (les poignées ont leur
+// propre sélecteur à l'étape Finitions, voir HandleSelector)
+export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'accessories';
 
-export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'handles', 'accessories', 'division'];
+export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'accessories', 'division'];
 
 
 
@@ -31,9 +32,6 @@ interface ZoneControlsProps {
   onToggleDressing?: (zoneId: string) => void;
   onApplyNoBack?: (zoneId: string) => void;
   onGroupZones?: (zoneIds: string[], forceContent?: ZoneContent) => void;
-  onSetHandleType?: (zoneId: string, handleType: HandleType) => void;
-  onSetGlassShelfCount?: (zoneId: string, count: number) => void;
-  onSetGlassShelfPositions?: (zoneId: string, positions: number[]) => void;
   onSetNicheOffset?: (zoneId: string, offsetMm: number | undefined) => void;
   zoneHeightMm?: number; // Hauteur de la zone en mm
   zoneWidthMm?: number; // Largeur de la zone en mm
@@ -41,142 +39,6 @@ interface ZoneControlsProps {
   selectionWidthMm?: number; // Largeur totale de plusieurs compartiments sélectionnés
   isAdminCreateModel?: boolean;
   sections?: ZoneControlSection[]; // Sections à afficher (toutes par défaut)
-}
-
-// Composant pour l'éditeur visuel de position des étagères
-function ShelfPositionEditor({
-  shelfCount,
-  positions,
-  zoneHeightMm,
-  onChange,
-  onReset,
-}: {
-  shelfCount: number;
-  positions: number[];
-  zoneHeightMm: number;
-  onChange: (index: number, position: number) => void;
-  onReset: () => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-
-  // Convertir % en mm
-  const percentToMm = (percent: number) => Math.round((percent / 100) * zoneHeightMm);
-  // Convertir mm en %
-  const mmToPercent = (mm: number) => Math.round((mm / zoneHeightMm) * 100);
-
-  // Pas d'ajustement en mm (environ 10mm)
-  const stepMm = 10;
-  const stepPercent = mmToPercent(stepMm);
-
-  // Calculer la position depuis un événement souris/touch
-  const getPositionFromEvent = useCallback((clientY: number): number => {
-    if (!containerRef.current) return 50;
-    const rect = containerRef.current.getBoundingClientRect();
-    const relativeY = clientY - rect.top;
-    const percent = 100 - (relativeY / rect.height) * 100;
-    return Math.max(5, Math.min(95, percent));
-  }, []);
-
-  const handleMouseDown = (index: number) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    setDraggingIndex(index);
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const newPos = getPositionFromEvent(moveEvent.clientY);
-      onChange(index, Math.round(newPos));
-    };
-
-    const handleMouseUp = () => {
-      setDraggingIndex(null);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
-
-  return (
-    <div className="mt-4 border border-black/10 bg-am-mist/15 p-3" style={{ borderRadius: '4px' }}>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <span className="text-sm font-medium text-black">Position des étagères</span>
-          <span className="ml-2 text-[10px] text-black/65">(hauteur zone: {zoneHeightMm} mm)</span>
-        </div>
-        <button
-          type="button"
-          onClick={onReset}
-          className="flex items-center gap-1 text-xs text-black/65 hover:text-black transition-colors"
-          title="Répartition uniforme"
-        >
-          <RotateCcw className="h-3 w-3" />
-          <span>Réinitialiser</span>
-        </button>
-      </div>
-
-      <div className="flex gap-4">
-        {/* Aperçu visuel */}
-        <div
-          ref={containerRef}
-          className="relative w-16 h-32 border-2 border-am-navy bg-white cursor-crosshair"
-          style={{ borderRadius: '2px' }}
-        >
-          {/* Étagères */}
-          {positions.map((pos, index) => (
-            <div
-              key={index}
-              className="absolute left-0 right-0 h-1 cursor-ns-resize bg-am-navy"
-              style={{ bottom: `${pos}%`, transform: 'translateY(50%)' }}
-              onMouseDown={handleMouseDown(index)}
-              title={`Étagère ${index + 1}: ${percentToMm(pos)} mm`}
-            >
-              {/* Poignée de glissement */}
-              <div className={`absolute -left-1 -right-1 -top-1 -bottom-1 ${
-                draggingIndex === index ? 'bg-am-mist/60' : ''
-              }`} />
-            </div>
-          ))}
-
-          {/* Labels haut/bas avec hauteur */}
-          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-black/65">{zoneHeightMm} mm</span>
-          <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-black/65">0 mm</span>
-        </div>
-
-        {/* Contrôles par étagère */}
-        <div className="flex-1 space-y-2">
-          {positions.map((pos, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="text-xs text-black/65 w-6">É{index + 1}</span>
-              <button
-                type="button"
-                onClick={() => onChange(index, Math.min(95, pos + stepPercent))}
-                className="p-1 border border-black/10 bg-white hover:border-am-navy transition-colors"
-                style={{ borderRadius: '2px' }}
-                title={`+${stepMm} mm`}
-              >
-                <ChevronUp className="h-3 w-3" />
-              </button>
-              <span className="text-xs font-mono w-12 text-center font-medium">{percentToMm(pos)} mm</span>
-              <button
-                type="button"
-                onClick={() => onChange(index, Math.max(5, pos - stepPercent))}
-                className="p-1 border border-black/10 bg-white hover:border-am-navy transition-colors"
-                style={{ borderRadius: '2px' }}
-                title={`-${stepMm} mm`}
-              >
-                <ChevronDown className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <p className="mt-2 text-[10px] text-black/65">
-        Glissez les lignes ou utilisez ↑↓ (±{stepMm} mm)
-      </p>
-    </div>
-  );
 }
 
 // Composant simplifié pour afficher les dimensions de la zone sélectionnée
@@ -570,13 +432,6 @@ const DOOR_OPTIONS = [
   { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
 ];
 
-const HANDLE_OPTIONS = [
-  { type: 'vertical_bar' as HandleType, icon: GripVertical, label: 'Barre V' },
-  { type: 'horizontal_bar' as HandleType, icon: GripHorizontal, label: 'Barre H' },
-  { type: 'knob' as HandleType, icon: Circle, label: 'Bouton' },
-  { type: 'recessed' as HandleType, icon: RectangleHorizontal, label: 'Encastrée' },
-];
-
 export default function ZoneControls({
   selectedZone,
   selectedZoneIds,
@@ -592,9 +447,6 @@ export default function ZoneControls({
   onToggleDressing,
   onApplyNoBack,
   onGroupZones,
-  onSetHandleType,
-  onSetGlassShelfCount,
-  onSetGlassShelfPositions,
   onSetNicheOffset,
   zoneHeightMm,
   zoneWidthMm,
@@ -613,8 +465,6 @@ export default function ZoneControls({
     isOpen: boolean;
     doorType: 'push' | null;
   }>({ isOpen: false, doorType: null });
-
-  const facade = getZoneFacade(selectedZone);
 
   // Limites physiques : une taille inconnue n'impose aucune restriction
   const zoneWidth = zoneWidthMm ?? 0;
@@ -639,7 +489,6 @@ export default function ZoneControls({
   const cmLabel = (mm: number) => `${Math.round(mm / 10)} cm`;
   const railReason = knownSize ? hangingRailAvailability(zoneWidth, zoneHeight, depth).reason : undefined;
   const currentFacade = isLeaf ? (selectedZone.content ?? 'empty') : (selectedZone.doorContent ?? 'empty');
-  const glassShelfCount = selectedZone.glassShelfCount || 1;
 
   const applyFacade = (content: ZoneContent) => {
     // Plusieurs compartiments : la porte se pose sur l'ensemble, qui est regroupé pour l'occasion
@@ -721,9 +570,6 @@ export default function ZoneControls({
         </button>
       </div>
     );
-
-  const defaultShelfPositions = (count: number) =>
-    Array.from({ length: count }, (_, i) => Math.round(((i + 1) / (count + 1)) * 100));
 
   const renderBreadcrumbs = () => {
     if (!onSelectParent || !parentZone) {
@@ -909,97 +755,10 @@ export default function ZoneControls({
                 })()}
               </div>
             )}
-
-            {selectedZone.content === 'glass_shelf' && onSetGlassShelfCount && (
-              <div className="mt-3 flex items-center justify-between border border-black/10 bg-white p-3" style={{ borderRadius: '4px' }}>
-                <div className="flex items-center gap-2">
-                  <Square className="h-4 w-4 text-black/65" />
-                  <span className="text-sm font-medium text-black">Nombre d&apos;étagères</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => onSetGlassShelfCount(selectedZone.id, Math.max(1, glassShelfCount - 1))}
-                    disabled={glassShelfCount <= 1}
-                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-semibold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
-                    style={{ borderRadius: '4px' }}
-                    aria-label="Retirer une étagère"
-                  >
-                    −
-                  </button>
-                  <span className="w-8 text-center font-mono text-base font-medium text-black">{glassShelfCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => onSetGlassShelfCount(selectedZone.id, Math.min(5, glassShelfCount + 1))}
-                    disabled={glassShelfCount >= 5}
-                    className="flex h-8 w-8 items-center justify-center border-2 border-black/10 bg-white text-lg font-semibold transition-all hover:border-am-navy disabled:cursor-not-allowed disabled:opacity-30"
-                    style={{ borderRadius: '4px' }}
-                    aria-label="Ajouter une étagère"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {selectedZone.content === 'glass_shelf' && onSetGlassShelfPositions && zoneHeightMm && glassShelfCount >= 2 && (
-              <ShelfPositionEditor
-                shelfCount={glassShelfCount}
-                positions={
-                  selectedZone.glassShelfPositions?.length === glassShelfCount
-                    ? selectedZone.glassShelfPositions
-                    : defaultShelfPositions(glassShelfCount)
-                }
-                zoneHeightMm={zoneHeightMm}
-                onChange={(index, position) => {
-                  const positions = selectedZone.glassShelfPositions?.length === glassShelfCount
-                    ? [...selectedZone.glassShelfPositions]
-                    : defaultShelfPositions(glassShelfCount);
-                  positions[index] = position;
-                  onSetGlassShelfPositions(selectedZone.id, positions);
-                }}
-                onReset={() => onSetGlassShelfPositions(selectedZone.id, defaultShelfPositions(glassShelfCount))}
-              />
-            )}
           </div>
         ) : !show('facades') ? (
           <InfoNote>Ce groupe est divisé : cliquez sur l&apos;un de ses compartiments pour y mettre un tiroir.</InfoNote>
         ) : null
-      )}
-
-      {/* ── Poignées ─────────────────────────────────────── */}
-      {show('handles') && (
-        <div>
-          <SectionLabel>Poignées</SectionLabel>
-          {!facade ? (
-            <InfoNote>Posez d&apos;abord une porte ou un tiroir : vous pourrez alors choisir sa poignée.</InfoNote>
-          ) : isPushContent(facade) ? (
-            <InfoNote>Cette façade s&apos;ouvre par simple pression (Push-to-Open) : elle n&apos;a pas de poignée.</InfoNote>
-          ) : onSetHandleType ? (
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {HANDLE_OPTIONS.map(({ type, icon: Icon, label }) => {
-                const isActive = (selectedZone.handleType || 'vertical_bar') === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => onSetHandleType(selectedZone.id, type)}
-                    aria-pressed={isActive}
-                    className={`flex flex-col items-center gap-1.5 border-2 p-3 transition-all ${
-                      isActive
-                        ? 'border-am-navy bg-am-navy text-white'
-                        : 'border-black/10 bg-white text-black hover:border-am-navy'
-                    }`}
-                    style={{ borderRadius: '4px' }}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs font-medium">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
       )}
 
       {/* ── Accessoires (compartiments uniquement) ───────── */}

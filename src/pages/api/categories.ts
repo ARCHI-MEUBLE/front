@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { backendHeaders, forwardSetCookies } from '@/lib/backendProxy';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,19 +20,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: req.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: req.headers.cookie || '',
+        ...backendHeaders(req),
       },
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
 
     const contentType = response.headers.get('content-type') || '';
-    const data = contentType.includes('application/json')
-      ? await response.json()
-      : { error: 'Le backend a retourné une réponse inattendue' };
+    // Page d'erreur PHP (souvent servie en 200) : signalée comme une panne, pas comme une réponse réussie
+    if (!contentType.includes('application/json')) {
+      return res.status(502).json({ error: 'Le backend a retourné une réponse inattendue' });
+    }
+    const data = await response.json();
 
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) res.setHeader('Set-Cookie', setCookie);
-
+    forwardSetCookies(res, response);
     return res.status(response.status).json(data);
   } catch (error) {
     console.error('Erreur lors de la communication avec le backend des catégories', error);

@@ -7,6 +7,8 @@ export type ModelCardData = {
   name: string;
   description: string;
   imagePath: string | null;
+  // Image au survol (champ du formulaire admin), affichée à la place de la photo quand on survole la carte
+  hoverImagePath?: string | null;
   categorySlug: string;
   categoryLabel: string;
 };
