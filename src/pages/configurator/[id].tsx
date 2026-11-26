@@ -84,6 +84,10 @@ import { normalizeZoneSplitRatios } from '@/lib/configurator/zoneUtils';
 import { ConfigurationSummary } from '@/components/configurator/ConfigurationSummary';
 import { computeZoneStats, findParentZone, getZoneSize, listLeafZones } from '@/lib/configurator/zoneStats';
 import { getUsableWidthMm, ROUNDED_EDGE_DEFAULT_WIDTH_MM, ROUNDED_EDGE_DEFAULT_DEPTH_MM } from '@/lib/configurator/zoneBounds';
+
+// Défonce pour plinthe (mm) : valeurs de départ, ajustables à la main dans l'étape Base & bords
+const PLINTHE_DEFONCE_DEFAULT_HEIGHT_MM = 80;
+const PLINTHE_DEFONCE_DEFAULT_WIDTH_MM = 40;
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { findConstraintIssues, type IssueKind } from '@/lib/configurator/constraints';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
@@ -331,6 +335,9 @@ export default function ConfiguratorPage() {
   const [roundedRight, setRoundedRight] = useState(false);
   const [roundedRightWidth, setRoundedRightWidth] = useState(ROUNDED_EDGE_DEFAULT_WIDTH_MM);
   const [roundedRightDepth, setRoundedRightDepth] = useState(ROUNDED_EDGE_DEFAULT_DEPTH_MM);
+  // Défonce pour plinthe (mm) : seulement affichée/utile pour un caisson bois (socle === 'wood')
+  const [plintheDefonceHeight, setPlintheDefonceHeight] = useState(PLINTHE_DEFONCE_DEFAULT_HEIGHT_MM);
+  const [plintheDefonceWidth, setPlintheDefonceWidth] = useState(PLINTHE_DEFONCE_DEFAULT_WIDTH_MM);
   // Largeur réellement disponible pour poser portes/cloisons : la largeur déclarée (width), réduite
   // du côté gauche et/ou droit selon les bords avant arrondis actifs. À utiliser pour toute
   // disposition interne (ZoneEditor, DivisionSteps, taille affichée d'un compartiment...), jamais
@@ -1097,6 +1104,8 @@ export default function ConfiguratorPage() {
       roundedRight,
       roundedRightWidth,
       roundedRightDepth,
+      plintheDefonceHeight,
+      plintheDefonceWidth,
       rootZone,
       finish,
       color,
@@ -1119,7 +1128,7 @@ export default function ConfiguratorPage() {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
+  }, [id, loading, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, plintheDefonceHeight, plintheDefonceWidth, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1672,6 +1681,8 @@ export default function ConfiguratorPage() {
         if (configToRestore.roundedRight !== undefined) setRoundedRight(configToRestore.roundedRight);
         if (configToRestore.roundedRightWidth !== undefined) setRoundedRightWidth(configToRestore.roundedRightWidth);
         if (configToRestore.roundedRightDepth !== undefined) setRoundedRightDepth(configToRestore.roundedRightDepth);
+        if (configToRestore.plintheDefonceHeight !== undefined) setPlintheDefonceHeight(configToRestore.plintheDefonceHeight);
+        if (configToRestore.plintheDefonceWidth !== undefined) setPlintheDefonceWidth(configToRestore.plintheDefonceWidth);
         if (configToRestore.rootZone) setRootZone(normalizeZoneSplitRatios(configToRestore.rootZone));
         if (configToRestore.finish) setFinish(configToRestore.finish);
         if (configToRestore.color) setColor(configToRestore.color);
@@ -2816,6 +2827,7 @@ export default function ConfiguratorPage() {
     width: usableWidthMm,
     height,
     depth,
+    hasSocle: socle !== 'none',
     onSelectZone: handleZoneClick,
     isAdminCreateModel,
     hideCanvas: true,
@@ -3026,6 +3038,11 @@ export default function ConfiguratorPage() {
                       onSelectedZoneIdsChange={setSelectedZoneIds}
                       width={usableWidthMm}
                       height={height}
+                      hasSocle={socle !== 'none'}
+                      roundedLeft={roundedLeft}
+                      roundedLeftWidthMm={roundedLeftWidth}
+                      roundedRight={roundedRight}
+                      roundedRightWidthMm={roundedRightWidth}
                       onSelectZone={isViewMode ? undefined : handleZoneClick}
                       canvasMaxHeight={isMobile ? 190 : planViewportHeight ? Math.min(720, Math.max(240, planViewportHeight - 230)) : undefined}
                       hideControls
@@ -3438,7 +3455,14 @@ export default function ConfiguratorPage() {
                     {activeStep === STEP.BASE_AND_EDGES && (
                       <>
                         <StepSection title="Pieds & socle" aside="Pour tout le meuble">
-                          <SocleSelector value={socle} onChange={setSocle} />
+                          <SocleSelector
+                            value={socle}
+                            onChange={setSocle}
+                            defonceHeight={plintheDefonceHeight}
+                            defonceWidth={plintheDefonceWidth}
+                            onDefonceHeightChange={setPlintheDefonceHeight}
+                            onDefonceWidthChange={setPlintheDefonceWidth}
+                          />
                         </StepSection>
 
                         <StepSection title="Coins avant" aside="Pour tout le meuble">

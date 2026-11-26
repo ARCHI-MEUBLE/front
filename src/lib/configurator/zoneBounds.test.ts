@@ -6,7 +6,10 @@ import {
   getFurnitureBox,
   getFurnitureLayout,
   getZoneBox,
+  getZoneInteriorSizeMm,
   unionBoxes,
+  PANEL_THICKNESS_M,
+  PLINTH_HEIGHT_M,
   type FurnitureLayout,
 } from './zoneBounds';
 import type { Zone } from '@/components/configurator/ZoneEditor/types';
@@ -136,6 +139,36 @@ describe('getFurnitureLayout', () => {
     const layout = getFurnitureLayout(1500, 730, 500, false, 60, 0);
     expect(layout.declaredWidth).toBe(1.5);
     expect(layout.width).toBeCloseTo(1.44, 6);
+  });
+});
+
+describe('getZoneInteriorSizeMm', () => {
+  const thicknessMm = PANEL_THICKNESS_M * 1000;
+  const plinthMm = PLINTH_HEIGHT_M * 1000;
+
+  it('deducts the two side panels and the top/bottom panels from a single compartment', () => {
+    const size = getZoneInteriorSizeMm(leaf('root'), 'root', 1500, 730, false)!;
+    expect(size.width).toBeCloseTo(1500 - 2 * thicknessMm, 6);
+    expect(size.height).toBeCloseTo(730 - 2 * thicknessMm, 6);
+  });
+
+  it('also deducts the plinth height when the furniture has a socle', () => {
+    const size = getZoneInteriorSizeMm(leaf('root'), 'root', 1500, 730, true)!;
+    expect(size.height).toBeCloseTo(730 - plinthMm - 2 * thicknessMm, 6);
+  });
+
+  it('shares the interior between columns, panel thickness of each divider deducted', () => {
+    const root: Zone = { id: 'root', type: 'vertical', children: [leaf('a'), leaf('b'), leaf('c')] };
+    const interiorWidth = 1500 - 2 * thicknessMm;
+    const share = (interiorWidth - 2 * thicknessMm) / 3;
+
+    const a = getZoneInteriorSizeMm(root, 'a', 1500, 730, false)!;
+    expect(a.width).toBeCloseTo(share, 6);
+    expect(a.height).toBeCloseTo(730 - 2 * thicknessMm, 6);
+  });
+
+  it('returns null for an unknown zone', () => {
+    expect(getZoneInteriorSizeMm(leaf('root'), 'missing', 1500, 730, false)).toBeNull();
   });
 });
 

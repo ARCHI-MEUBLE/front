@@ -95,6 +95,44 @@ export function getZoneBox(root: Zone, zoneId: string, layout: FurnitureLayout):
   );
 }
 
+// Taille intérieure utile (mm) d'un compartiment : la largeur/hauteur réellement disponible une fois
+// déduite l'épaisseur des panneaux (côtés, dessus/dessous, séparateurs) — contrairement à getZoneSize
+// (zoneStats.ts), purement proportionnel, qui donne la taille nominale du compartiment, planches
+// comprises. Reproduit le découpage de collectGridCells (ThreeCanvas) : chaque niveau de division
+// retire l'épaisseur des séparateurs entre ses enfants avant de répartir au prorata.
+// `usableWidthMm` est déjà réduite des bords arrondis actifs (voir getUsableWidthMm) ; `heightMm` est
+// la hauteur totale déclarée (socle compris), réduite ici de la hauteur du socle s'il y en a un.
+export function getZoneInteriorSizeMm(
+  root: Zone,
+  zoneId: string,
+  usableWidthMm: number,
+  heightMm: number,
+  hasSocle: boolean
+): { width: number; height: number } | null {
+  const thicknessMm = PANEL_THICKNESS_M * 1000;
+  const sideHeightMm = hasSocle ? (heightMm || 730) - PLINTH_HEIGHT_M * 1000 : heightMm || 730;
+
+  const visit = (zone: Zone, width: number, height: number): { width: number; height: number } | null => {
+    if (zone.id === zoneId) return { width, height };
+
+    const children = zone.children;
+    if (!children?.length) return null;
+
+    const ratios = getChildRatios(zone);
+    const isVertical = zone.type === 'vertical';
+    const available = (isVertical ? width : height) - (children.length - 1) * thicknessMm;
+
+    for (let i = 0; i < children.length; i++) {
+      const childSize = (available * ratios[i]) / 100;
+      const found = isVertical ? visit(children[i], childSize, height) : visit(children[i], width, childSize);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  return visit(root, usableWidthMm - 2 * thicknessMm, sideHeightMm - 2 * thicknessMm);
+}
+
 // Plus petite boîte contenant toutes les boîtes données
 export function unionBoxes(boxes: Box[]): Box | null {
   if (boxes.length === 0) return null;

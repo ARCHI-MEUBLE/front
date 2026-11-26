@@ -1017,11 +1017,6 @@ export function Furniture({
                 const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') ? zone.content : null);
 
                 if (doorToRender && !hideFacades) {
-                    console.log('[FIX-v1] porte (feuille):', JSON.stringify({
-                        id: zone.id, doorToRender, x: +x.toFixed(4), y: +y.toFixed(4), width: +width.toFixed(4), height: +height.toFixed(4),
-                        doorZoneWidth: +doorZoneWidth.toFixed(4), doorXOffset: +doorXOffset.toFixed(4), doorYOffset: +doorYOffset.toFixed(4),
-                        totalDoorOverlap: +totalDoorOverlap.toFixed(4), isAtTop, isAtBottom, isAtLeft, isAtRight, topGap: +topGap.toFixed(4), bottomGap: +bottomGap.toFixed(4), leftGap: +leftGap.toFixed(4), rightGap: +rightGap.toFixed(4),
-                    }));
                     const isDouble = doorToRender === 'door_double';
                     const isRight = doorToRender === 'door_right';
                     const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
@@ -1133,11 +1128,6 @@ export function Furniture({
             const groupDoor = zone.doorContent || (zone.children && zone.children.length > 0 ? zone.content : null);
             if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty' && !hideFacades) {
                 const doorToRender = groupDoor;
-                console.log('[FIX-v1] porte (groupe):', JSON.stringify({
-                    id: zone.id, doorToRender, x: +x.toFixed(4), y: +y.toFixed(4), width: +width.toFixed(4), height: +height.toFixed(4),
-                    doorZoneWidth: +doorZoneWidth.toFixed(4), doorXOffset: +doorXOffset.toFixed(4), doorYOffset: +doorYOffset.toFixed(4),
-                    totalDoorOverlap: +totalDoorOverlap.toFixed(4), isAtTop, isAtBottom, isAtLeft, isAtRight, topGap: +topGap.toFixed(4), bottomGap: +bottomGap.toFixed(4), leftGap: +leftGap.toFixed(4), rightGap: +rightGap.toFixed(4),
-                }));
                 const isDouble = doorToRender === 'door_double';
                 const isRight = doorToRender === 'door_right';
                 const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';

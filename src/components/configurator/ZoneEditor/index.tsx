@@ -22,6 +22,14 @@ interface ZoneEditorProps {
   height: number;
   // Profondeur du meuble : certaines options en dépendent (tiroirs, penderie)
   depth?: number;
+  // Le meuble a des pieds/un socle : réduit la hauteur intérieure utile affichée dans chaque compartiment du plan,
+  // et y ajoute une bande représentant le socle
+  hasSocle?: boolean;
+  // Bords avant arrondis actifs : affiche un repère schématique sur le bord gauche/droit du plan
+  roundedLeft?: boolean;
+  roundedLeftWidthMm?: number;
+  roundedRight?: boolean;
+  roundedRightWidthMm?: number;
   hideControls?: boolean;
   hideCanvas?: boolean;
   // Masque les champs largeur/hauteur de la zone sélectionnée (utile hors de l'étape Division)
@@ -70,6 +78,11 @@ export default function ZoneEditor({
   width,
   height,
   depth,
+  hasSocle,
+  roundedLeft,
+  roundedLeftWidthMm,
+  roundedRight,
+  roundedRightWidthMm,
   hideControls,
   hideCanvas,
   hideDimensions,
@@ -611,6 +624,11 @@ export default function ZoneEditor({
           showNumbers={showNumbers}
           maxCanvasHeight={canvasMaxHeight}
           deletedPanelIds={deletedPanelIds}
+          hasSocle={hasSocle}
+          roundedLeft={roundedLeft}
+          roundedLeftWidthMm={roundedLeftWidthMm}
+          roundedRight={roundedRight}
+          roundedRightWidthMm={roundedRightWidthMm}
         />
       )}
 

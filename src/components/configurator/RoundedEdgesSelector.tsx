@@ -83,9 +83,10 @@ function RoundedEdgeToggle({
   );
 }
 
-// Trois gabarits prédéfinis, exprimés en fraction de la profondeur du meuble : plus de sliders,
+// Quatre gabarits prédéfinis, exprimés en fraction de la profondeur du meuble : plus de sliders,
 // la largeur de l'extension et la profondeur de l'arrondi sont fixées par le gabarit choisi.
 const ROUNDED_EDGE_PRESETS = [
+  { id: 'demi', label: 'Demi-arrondi', width: (depthMm: number) => depthMm / 2, depth: (depthMm: number) => depthMm / 2 },
   { id: 'elance', label: 'Arrondi élancé', width: (depthMm: number) => depthMm / 2, depth: (depthMm: number) => depthMm },
   { id: 'integral', label: 'Arrondi intégral', width: (depthMm: number) => depthMm, depth: (depthMm: number) => depthMm },
   { id: 'epaulement', label: 'Arrondi à épaulement', width: (depthMm: number) => depthMm, depth: (depthMm: number) => depthMm / 2 },
@@ -110,7 +111,7 @@ function RoundedEdgePresets({
     <div className="border border-black/10 bg-white p-3" style={{ borderRadius: '4px' }}>
       <div className="mb-2 text-sm font-semibold text-black">{title}</div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {ROUNDED_EDGE_PRESETS.map((preset) => {
           const presetWidth = preset.width(furnitureDepthMm);
           const presetDepth = preset.depth(furnitureDepthMm);
