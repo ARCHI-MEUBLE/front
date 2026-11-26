@@ -663,6 +663,7 @@ function TypeRow({
               <VariantCard
                 key={color.id}
                 variant={color}
+                materialPrice={pricePerM2 ?? defaultPrice}
                 selected={color.id === selectedColorId}
                 onSelect={() => onSelectColor(color.id)}
                 onChanged={onChanged}
@@ -684,12 +685,14 @@ function TypeRow({
 
 function VariantCard({
   variant,
+  materialPrice,
   selected,
   onSelect,
   onChanged,
   onDelete,
 }: {
   variant: SampleColor;
+  materialPrice: number | null;
   selected: boolean;
   onSelect: () => void;
   onChanged: () => void;
