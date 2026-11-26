@@ -94,6 +94,17 @@ export function DashboardSamples() {
     return map;
   }, [items]);
 
+  // Couleur sélectionnée : retrouvée dans la liste pour rester à jour (et disparaître si elle est supprimée)
+  const [selectedColorId, setSelectedColorId] = useState<number | string | null>(null);
+  const selected = useMemo(() => {
+    if (selectedColorId === null) return null;
+    for (const t of items) {
+      const color = (t.colors ?? []).find((c) => c.id === selectedColorId);
+      if (color) return { color, material: t.material || 'Sans matériau' };
+    }
+    return null;
+  }, [items, selectedColorId]);
+
   const priceFor = (material: string): MaterialPrice | undefined =>
     prices?.materials.find((m) => sameMaterial(m.material, material));
   const defaultPrice = prices?.defaultPricePerM2 ?? null;
@@ -164,19 +175,25 @@ export function DashboardSamples() {
                   defaultPrice={defaultPrice}
                   onChanged={refresh}
                   onPriceSaved={reloadPrices}
+                  selectedColorId={selected?.color.id ?? null}
+                  onSelectColor={(id) => setSelectedColorId((cur) => (cur === id ? null : id))}
                 />
               ))}
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-2">
+        {/* Colonne collée à l'écran ; défile en interne si les deux cadres dépassent la hauteur visible */}
+        <div className="space-y-6 lg:sticky lg:top-4 lg:col-span-2 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto">
           <CreateMaterialCard
             existingMaterials={Object.keys(byMaterial)}
             defaultPrice={defaultPrice}
             pricesAvailable={prices !== null}
             onCreated={refresh}
           />
+          {selected && (
+            <ColorInfoCard color={selected.color} material={selected.material} onClose={() => setSelectedColorId(null)} />
+          )}
         </div>
       </div>
     </div>
@@ -219,7 +236,7 @@ function CreateMaterialCard({
   };
 
   return (
-    <Card className="sticky top-4">
+    <Card>
       <CardHeader>
         <CardTitle>Nouveau matériau</CardTitle>
         <CardDescription>Créez un matériau avec son prix au m² et sa première couleur.</CardDescription>
@@ -305,6 +322,60 @@ function CreateMaterialCard({
             />
           </>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Info couleur : nom, code HEX ou image, et aperçu du rendu sur un meuble */
+function ColorInfoCard({ color, material, onClose }: { color: SampleColor; material: string; onClose: () => void }) {
+  const surface: React.CSSProperties = color.image_url
+    ? { backgroundImage: `url(${JSON.stringify(color.image_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { backgroundColor: color.hex || '#EEE' };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+        <div className="min-w-0">
+          <CardTitle className="truncate">Info couleur</CardTitle>
+          <CardDescription className="truncate uppercase">{material}</CardDescription>
+        </div>
+        <Button variant="ghost" size="icon" className="-mr-2 -mt-2 h-8 w-8" onClick={onClose} aria-label="Fermer l'info couleur">
+          <X className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase text-muted-foreground">Nom</p>
+          <p className="break-words text-sm font-medium">{color.name}</p>
+        </div>
+
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">{color.image_url ? 'Image' : 'Code HEX'}</p>
+            {color.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- vignette servie par le backend
+              <img src={color.image_url} alt={color.name} className="aspect-square w-full rounded-md border object-cover" />
+            ) : (
+              <p className="font-mono text-sm">{(color.hex || '—').toUpperCase()}</p>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">Rendu</p>
+            {/* Petit meuble à deux portes habillé de la couleur */}
+            <div className="relative aspect-square w-full overflow-hidden rounded-md border bg-muted p-3">
+              <div className="grid h-full w-full grid-cols-2 gap-px rounded-sm bg-black/30 p-px shadow-md">
+                {[0, 1].map((i) => (
+                  <div key={i} className="relative" style={surface}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/25 to-black/20" />
+                    <div className={`absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded bg-black/40 ${i === 0 ? 'right-1' : 'left-1'}`} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -477,7 +548,11 @@ function TypeRow({
   defaultPrice,
   onChanged,
   onPriceSaved,
+  selectedColorId,
+  onSelectColor,
 }: {
+  selectedColorId: number | string | null;
+  onSelectColor: (id: number | string) => void;
   material: string;
   types: SampleType[];
   price: MaterialPrice | undefined;
@@ -585,7 +660,14 @@ function TypeRow({
         ) : (
           <div className="flex flex-wrap gap-3">
             {palette.map(({ color, type }) => (
-              <VariantCard key={color.id} variant={color} onChanged={onChanged} onDelete={() => removeColor(color, type)} />
+              <VariantCard
+                key={color.id}
+                variant={color}
+                selected={color.id === selectedColorId}
+                onSelect={() => onSelectColor(color.id)}
+                onChanged={onChanged}
+                onDelete={() => removeColor(color, type)}
+              />
             ))}
           </div>
         )}
@@ -600,7 +682,19 @@ function TypeRow({
   );
 }
 
-function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; onChanged: () => void; onDelete: () => void }) {
+function VariantCard({
+  variant,
+  selected,
+  onSelect,
+  onChanged,
+  onDelete,
+}: {
+  variant: SampleColor;
+  selected: boolean;
+  onSelect: () => void;
+  onChanged: () => void;
+  onDelete: () => void;
+}) {
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -636,14 +730,20 @@ function VariantCard({ variant, onChanged, onDelete }: { variant: SampleColor; o
 
   return (
     <div className="group relative" title={variant.name}>
-      <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform [.group:hover_&]:scale-105">
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        aria-label={`Voir les infos de la couleur ${variant.name}`}
+        className={`block h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform [.group:hover_&]:scale-105 ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      >
         {variant.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- vignette servie par le backend
-          <img src={variant.image_url} alt={variant.name} className="h-full w-full object-cover" />
+          <img src={variant.image_url} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full" style={{ backgroundColor: variant.hex || '#EEE' }} />
         )}
-      </div>
+      </button>
 
       {/* Boutons d'action rapides */}
       {/* Variantes arbitraires plutôt que group-hover: Tailwind v4 réserve ce dernier à @media (hover: hover), jamais vrai sur certains écrans tactiles */}

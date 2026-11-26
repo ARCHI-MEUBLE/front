@@ -66,6 +66,14 @@ export default function AdminDashboardPage() {
   const lastNotificationIdRef = useRef<number>(0);
   const [adminInfo, setAdminInfo] = useState<{ email: string; name: string } | null>(null);
 
+  // overflow-x: hidden sur html/body (globals.css) fait de body une zone de défilement et casse position: sticky.
+  // Cette classe le remplace par overflow-x: clip (voir styles/configurator.css) pour que les cadres restent collés à l'écran.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('configurator-sticky');
+    return () => root.classList.remove('configurator-sticky');
+  }, []);
+
   useEffect(() => {
     // Charger les infos de l'admin connecté
     const loadAdminInfo = async () => {
