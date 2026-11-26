@@ -699,15 +699,23 @@ function VariantCard({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unitPrice, setUnitPrice] = useState(String(Number(variant.unit_price ?? 0)));
+  const [colourPrice, setColourPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [colourError, setColourError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const unitPriceValue = Number(variant.unit_price ?? 0);
+  const ownColourPrice = variant.furniture_price_per_m2 == null ? null : Number(variant.furniture_price_per_m2);
 
   const open = () => {
     setUnitPrice(String(unitPriceValue));
+    setColourPrice(ownColourPrice === null ? '' : String(ownColourPrice));
     setError(null);
+    setColourError(null);
+    setSaveError(null);
     setEditing(true);
   };
 
+  // Les deux prix partent dans la même requête : ils sont enregistrés ensemble ou pas du tout
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = parseSamplePrice(unitPrice);
@@ -715,14 +723,23 @@ function VariantCard({
       setError(result.error);
       return;
     }
+    const colourResult = colourPrice.trim() === '' ? null : parseInput(materialParam(variant.name), colourPrice);
+    if (colourResult && !colourResult.ok) {
+      setColourError(colourResult.error);
+      return;
+    }
     setSaving(true);
+    setSaveError(null);
     try {
-      await apiClient.samples.updateColor(variant.id, { unit_price: result.value });
-      toast.success(`Prix de l'échantillon « ${variant.name} » enregistré`);
+      await apiClient.samples.updateColor(variant.id, {
+        unit_price: result.value,
+        furniture_price_per_m2: colourResult ? colourResult.value : null,
+      });
+      toast.success(`Prix de « ${variant.name} » enregistrés`);
       setEditing(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
     }
@@ -751,8 +768,8 @@ function VariantCard({
         <button
           onClick={open}
           className="h-5 w-5 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-sm"
-          title="Modifier le prix de l'échantillon"
-          aria-label={`Modifier le prix de l'échantillon ${variant.name}`}
+          title="Modifier les prix de cette couleur"
+          aria-label={`Modifier les prix de la couleur ${variant.name}`}
         >
           <Euro className="h-3 w-3" />
         </button>
@@ -769,14 +786,19 @@ function VariantCard({
       <div className="mt-1 max-w-[56px] truncate text-[9px] font-bold text-center uppercase text-zinc-600">
         {unitPriceValue > 0 ? formatPrice(unitPriceValue) : 'OFFERT'}
       </div>
+      {ownColourPrice !== null && (
+        <div className="max-w-[56px] truncate text-center text-[9px] font-semibold text-amber-700" title="Prix au m² propre à cette couleur">
+          {ownColourPrice} €/m²
+        </div>
+      )}
 
       <Dialog open={editing} onOpenChange={(value) => !saving && setEditing(value)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Prix de l&apos;échantillon « {variant.name} »</DialogTitle>
+            <DialogTitle>Prix de « {variant.name} »</DialogTitle>
             <DialogDescription>
-              Ce que le client paie pour recevoir cet échantillon (0 = offert). Le prix des meubles dépend du prix au m²
-              du matériau, réglé sur sa carte.
+              Prix de l&apos;échantillon : ce que le client paie pour le recevoir (0 = offert). Prix au m² : ce que coûte
+              cette couleur dans le calcul des meubles, à la place du prix de son matériau.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={save} className="space-y-4" noValidate>
@@ -807,6 +829,40 @@ function VariantCard({
                 </p>
               )}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-colour-price`}>Prix au m² de cette couleur</Label>
+              <div className="relative max-w-[12rem]">
+                <Input
+                  id={`${id}-colour-price`}
+                  type="number"
+                  inputMode="decimal"
+                  min={M2_SPEC.min}
+                  max={M2_SPEC.max}
+                  step={M2_SPEC.step}
+                  value={colourPrice}
+                  placeholder={materialPrice !== null ? String(materialPrice) : undefined}
+                  onChange={(e) => {
+                    setColourPrice(e.target.value);
+                    setColourError(null);
+                  }}
+                  aria-invalid={colourError ? true : undefined}
+                  aria-describedby={`${id}-colour-help`}
+                  className="pr-14"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  {M2_SPEC.suffix}
+                </span>
+              </div>
+              <p id={`${id}-colour-help`} className={colourError ? 'text-xs text-destructive' : 'text-[11px] text-muted-foreground'}>
+                {colourError ??
+                  `Laissez vide pour appliquer le prix du matériau${materialPrice !== null ? ` (${formatEuro(materialPrice)}/m²)` : ''}.`}
+              </p>
+            </div>
+            {saveError && (
+              <p className="text-xs text-destructive" role="alert">
+                {saveError}
+              </p>
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>
                 Annuler

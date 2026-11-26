@@ -4,6 +4,7 @@ import {
   deliveryLabel,
   fetchPriceEstimate,
   formatPriceRange,
+  installationLabel,
   parsePriceEstimate,
   savedQuoteFrom,
   type PricedConfiguration,
@@ -27,7 +28,7 @@ const CONFIG: PricedConfiguration = {
   deletedPanelIds: ['left'],
 };
 
-const ESTIMATE: PriceEstimate = { price: 1380, low: 1290, high: 1460, sigma: 90, lines: [], delivery: 54 };
+const ESTIMATE: PriceEstimate = { price: 1380, low: 1290, high: 1460, sigma: 90, lines: [], delivery: 54, installation: 90 };
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -52,6 +53,20 @@ describe('parsePriceEstimate', () => {
 
   it('keeps a free delivery (0) apart from an unknown one', () => {
     expect(parsePriceEstimate({ ...ESTIMATE, delivery: 0 }).delivery).toBe(0);
+  });
+
+  it('reads the installation price, quoted even when it is not chosen', () => {
+    expect(parsePriceEstimate({ ...ESTIMATE, installation: '286' }).installation).toBe(286);
+    expect(parsePriceEstimate({ price: 900, low: 800, high: 1000, sigma: 100, lines: [] }).installation).toBeNull();
+    expect(parsePriceEstimate({ ...ESTIMATE, installation: 'n/a' }).installation).toBeNull();
+  });
+});
+
+describe('installationLabel', () => {
+  it('says whether the installation is in the furniture price', () => {
+    expect(plain(installationLabel(true, 90))).toBe('Comprise dans le prix (90 €)');
+    expect(installationLabel(true, null)).toBe('Comprise dans le prix');
+    expect(installationLabel(false, 90)).toBe('Non comprise : livraison seule');
   });
 });
 

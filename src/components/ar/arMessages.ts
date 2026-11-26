@@ -8,7 +8,7 @@ export const AR_MESSAGES = {
   retry: 'Réessayer',
   tip: 'Visez le sol de la pièce et bougez doucement le téléphone : le meuble apparaît à taille réelle.',
   wrongBrowser:
-    "Cet appareil n'ouvre pas la réalité augmentée d'un téléphone : ouvrez cette page sur un téléphone ou une tablette.",
+    "Cet appareil n'ouvre pas la réalité augmentée depuis le navigateur : ouvrez cette page sur un iPhone, un iPad, ou un téléphone ou une tablette Android.",
   // iPhone, iPad : navigateur ou application dont on ne sait pas s'il ouvre Quick Look
   quickLookFallbackPage:
     "Rien ne s'ouvre ? Cette application n'ouvre pas toujours la réalité augmentée : ouvrez la page dans Safari (bouton Partager ou ⋯, puis « Ouvrir dans Safari »).",
@@ -23,8 +23,8 @@ export const AR_MESSAGES = {
   needsHttps:
     "Sur Android, la réalité augmentée ne s'ouvre que depuis le site en ligne (adresse en https), pas depuis l'adresse locale de l'ordinateur.",
   check: 'Vérifier mon téléphone',
-  checking: 'Vérification du téléphone…',
-  checkIntro: "Avant d'ouvrir la caméra, on vérifie que votre téléphone est prêt : il vous demandera l'accès à l'appareil photo.",
+  checking: "Vérification de l'appareil…",
+  checkIntro: "Avant d'ouvrir la caméra, on vérifie que votre appareil est prêt : il vous demandera l'accès à l'appareil photo.",
   launchAr: 'Lancer la réalité augmentée',
   launch3d: 'Voir le meuble en 3D',
   launch3dLink: 'Voir en 3D sans caméra',
@@ -58,7 +58,7 @@ export const sceneViewerIssueMessage = (issue: SceneViewerIssue) => SCENE_VIEWER
 export const AR_CHECK_LABELS = {
   ar: {
     supported: 'Réalité augmentée compatible (ARCore)',
-    unsupported: "Ce téléphone n'est pas compatible avec la réalité augmentée (ARCore)",
+    unsupported: "Cet appareil n'est pas compatible avec la réalité augmentée (ARCore)",
     unknown: 'Compatibilité ARCore non vérifiable dans ce navigateur',
   },
   camera: {

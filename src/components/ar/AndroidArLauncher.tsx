@@ -224,7 +224,7 @@ export default function AndroidArLauncher({ glbPath, title, getSceneViewerPath }
 
   return (
     <>
-      <ul className="space-y-1.5" aria-label="Vérification du téléphone">
+      <ul className="space-y-1.5" aria-label="Vérification de l'appareil">
         {checks.map((check) => (
           <li key={check.key} className="flex gap-2 text-xs leading-relaxed text-black/75">
             {CHECK_ICONS[check.state]}

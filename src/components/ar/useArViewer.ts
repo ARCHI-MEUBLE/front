@@ -1,17 +1,39 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { arModelPath } from '@/lib/ar/arModelFile';
+import { checkArSupport } from '@/lib/ar/arReadiness';
 import {
   createUsdzUrl,
   getArPlatform,
   isPhoneOrTablet,
+  mayBeHiddenAndroid,
   openQuickLook,
   type ArPlatform,
 } from '@/lib/ar/launchAr';
 
 export type ArDevice = ArPlatform | 'phone-without-ar' | 'desktop';
 
-const detectDevice = (): ArDevice => getArPlatform() ?? (isPhoneOrTablet() ? 'phone-without-ar' : 'desktop');
-const subscribe = () => () => {};
+// Android que son identifiant fait passer pour un ordinateur : WebXR dit s'il a ARCore. Demandé une fois par page,
+// sans rien demander au visiteur (ni caméra, ni autorisation).
+let revealedByWebXr = false;
+let webXrProbe: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+const detectDevice = (): ArDevice =>
+  getArPlatform() ?? (revealedByWebXr ? 'scene-viewer' : isPhoneOrTablet() ? 'phone-without-ar' : 'desktop');
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  if (!webXrProbe && mayBeHiddenAndroid()) {
+    webXrProbe = checkArSupport().then((support) => {
+      if (support !== 'supported') return;
+      revealedByWebXr = true;
+      listeners.forEach((notify) => notify());
+    });
+  }
+  return () => {
+    listeners.delete(listener);
+  };
+};
 
 // L'appareil n'est connu que dans le navigateur : null pendant le rendu serveur
 export function useArDevice(): ArDevice | null {

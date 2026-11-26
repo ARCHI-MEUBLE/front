@@ -8,6 +8,10 @@ export interface HandleModelInput {
   finish_hex: string;
   // null pour un bouton (pas de longueur)
   length_mm: number | null;
+  // Cotes du plan du fabricant (mm), null : proportions habituelles de la forme
+  center_distance_mm?: number | null;
+  width_mm?: number | null;
+  projection_mm?: number | null;
   price_per_unit: number;
   image_url?: string | null;
   active?: boolean;

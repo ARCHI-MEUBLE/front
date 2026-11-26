@@ -286,6 +286,8 @@ export interface SampleColor {
   position: number;
   price_per_m2: number;
   unit_price: number;
+  // Prix au m² propre à cette couleur pour le calcul des meubles ; null : celui de son matériau
+  furniture_price_per_m2?: string | null;
 }
 
 export interface SampleType {
@@ -359,7 +361,7 @@ export const samplesApi = {
     });
   },
 
-  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'|'price_per_m2'|'unit_price'>>): Promise<{ success: boolean }> {
+  async updateColor(id: number, payload: Partial<Pick<SampleColor, 'name'|'hex'|'image_url'|'active'|'position'|'price_per_m2'|'unit_price'>> & { furniture_price_per_m2?: number | null }): Promise<{ success: boolean }> {
     return apiRequest('/api/admin/samples', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_color', id, ...payload }),

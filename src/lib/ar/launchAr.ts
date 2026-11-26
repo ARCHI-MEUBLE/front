@@ -32,7 +32,24 @@ const isIOSDevice = ({ userAgent, platform, maxTouchPoints, touchScreen }: Brows
   /iPad|iPhone|iPod/.test(userAgent) ||
   ((platform === 'MacIntel' || /Macintosh/.test(userAgent)) && (maxTouchPoints > 1 || touchScreen));
 
-const isAndroidDevice = ({ userAgent }: BrowserTraits) => /android/i.test(userAgent);
+const hasTouchScreen = ({ maxTouchPoints, touchScreen }: BrowserTraits) => maxTouchPoints > 0 || touchScreen;
+
+// Identifiant de Chrome, Firefox ou Samsung Internet pour Linux, sans « Android » ni ChromeOS
+const looksLikeLinuxComputer = ({ userAgent }: BrowserTraits) => /X11; Linux/.test(userAgent) && !/CrOS|Android/.test(userAgent);
+
+// Android en « version pour ordinateur » : Chrome l'active d'office sur les tablettes haut de gamme (écran de 10" et
+// 8 Go de mémoire, Galaxy Tab S, Pixel Tablet…), et chacun peut l'activer sur un téléphone. L'identifiant devient
+// celui d'un ordinateur sous Linux, sans « Android ». navigator.platform garde la valeur d'Android (« Linux armv81 ») :
+// un écran tactile et un processeur ARM le trahissent. Les ordinateurs Android (Googlebook) annoncent « Linux x86_64 ».
+const isAndroidInDesktopMode = (traits: BrowserTraits) =>
+  looksLikeLinuxComputer(traits) && hasTouchScreen(traits) && /arm|aarch64/i.test(traits.platform);
+
+const isAndroidDevice = (traits: BrowserTraits) => /android/i.test(traits.userAgent) || isAndroidInDesktopMode(traits);
+
+// Casques de réalité virtuelle (Quest, Pico…) : leur navigateur se dit Android ou Linux, sans réalité augmentée de téléphone
+const HEADSET = /OculusBrowser|PicoBrowser|Wolvic|Quest/;
+// Téléphones et tablettes HarmonyOS (Huawei) : ni Quick Look ni ARCore
+const OTHER_MOBILE_OS = /OpenHarmony|HarmonyOS|ArkWeb/;
 
 // Navigateurs iOS dont on sait qu'ils ouvrent Quick Look bien qu'ils soient des vues web
 const IOS_BROWSERS = /CriOS\/|EdgiOS\/|FxiOS\/|DuckDuckGo\//;
@@ -43,11 +60,23 @@ const IN_APP_VIEWS = /GSA\/|FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Snapchat|Twit
 // et ceux qu'on ne connaît pas (Brave, Opera, Vivaldi, vues web d'applications…) l'ouvrent souvent quand même. Bloquer
 // le bouton laissait ces visiteurs sans rien ; quickLookIsReliable dit quand ajouter « sinon, ouvrez dans Safari ».
 // Android : Scene Viewer ou WebXR depuis tous les navigateurs. Firefox ouvre les liens intent:// après avoir demandé la
-// permission d'ouvrir l'application Google. Seuls les casques (Quest) n'ont pas de réalité augmentée de téléphone.
+// permission d'ouvrir l'application Google. Seuls les casques et HarmonyOS n'ont pas de réalité augmentée de téléphone.
 export function arPlatformFor(traits: BrowserTraits): ArPlatform | null {
+  if (HEADSET.test(traits.userAgent)) return null;
   if (isIOSDevice(traits)) return 'quick-look';
-  if (isAndroidDevice(traits) && !/OculusBrowser/i.test(traits.userAgent)) return 'scene-viewer';
+  if (isAndroidDevice(traits)) return 'scene-viewer';
   return null;
+}
+
+// Téléphone, tablette ou casque : le QR code, fait pour l'ordinateur, n'y sert à rien
+export function isMobileDeviceFor(traits: BrowserTraits): boolean {
+  return isIOSDevice(traits) || isAndroidDevice(traits) || HEADSET.test(traits.userAgent) || OTHER_MOBILE_OS.test(traits.userAgent);
+}
+
+// Android en version pour ordinateur dont navigator.platform serait masqué : seule la réalité augmentée WebXR (Chrome,
+// Samsung Internet) peut alors le révéler. Un ordinateur sous Linux n'a pas d'ARCore et répond « non ».
+export function mayBeHiddenAndroidFor(traits: BrowserTraits): boolean {
+  return arPlatformFor(traits) === null && looksLikeLinuxComputer(traits) && hasTouchScreen(traits) && !HEADSET.test(traits.userAgent);
 }
 
 // Quick Look s'ouvre à coup sûr : Safari (lien rel="ar" reconnu) et les navigateurs iOS connus. Sur iPad en « version
@@ -87,8 +116,11 @@ function browserTraits(): BrowserTraits {
 }
 
 export function isPhoneOrTablet(): boolean {
-  const traits = browserTraits();
-  return isIOSDevice(traits) || isAndroidDevice(traits);
+  return isMobileDeviceFor(browserTraits());
+}
+
+export function mayBeHiddenAndroid(): boolean {
+  return typeof window !== 'undefined' && mayBeHiddenAndroidFor(browserTraits());
 }
 
 export function getArPlatform(): ArPlatform | null {
