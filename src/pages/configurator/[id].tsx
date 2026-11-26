@@ -934,12 +934,14 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
           setZoneTouched(true);
         }
       }
+    } else if (step === STEP.HANDLES) {
+      // Poignées : sans façade à poignée sélectionnée, on part du choix pour tout le meuble ; un clic sur une porte
+      // ou un tiroir règle ensuite sa poignée à part
+      const facadeSelected = selectedZoneIds.length === 1 && !!selectedZone && handleFacadeKind(selectedZone) !== null;
+      if (!facadeSelected && selectedZoneIds.length > 0) setSelectedZoneIds([]);
     } else if (step === STEP.FINISHES) {
-      // Une seule zone choisie reste choisie : un compartiment, ou une porte de groupe dont on règle la poignée
-      const keepSelection =
-        selectedZoneIds.length === 1 &&
-        !!selectedZone &&
-        (selectedZone.type === 'leaf' || handleFacadeKind(selectedZone) !== null);
+      // Accessoires : un compartiment sélectionné reste sélectionné, sinon le premier
+      const keepSelection = selectedZoneIds.length === 1 && selectedZone?.type === 'leaf';
       if (!keepSelection) {
         const leafId = firstLeafId(selectedZone ?? rootZone);
         if (leafId) {
@@ -3234,22 +3236,29 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                       </>
                     )}
 
+                    {activeStep === STEP.HANDLES && (
+                      <StepSection title="Poignées" aside="Tout le meuble ou une façade">
+                        {hasHandleFacades ? (
+                          <HandleSelector
+                            rootZone={rootZone}
+                            selectedZone={selectedZoneIds.length === 1 ? selectedZone : null}
+                            models={handleModels}
+                            loading={handleModelsLoading}
+                            defaults={handleDefaults}
+                            onDefaultsChange={setHandleDefaults}
+                            onRootZoneChange={setRootZone}
+                          />
+                        ) : (
+                          <ZoneEmptyState>
+                            Ce meuble n&apos;a ni porte ni tiroir à poignée : rien à choisir ici. Ajoutez des façades à
+                            l&apos;étape Portes ou Tiroirs, ou passez aux finitions.
+                          </ZoneEmptyState>
+                        )}
+                      </StepSection>
+                    )}
+
                     {activeStep === STEP.FINISHES && (
                       <>
-                        {hasHandleFacades && (
-                          <StepSection title="Poignées" aside="Tout le meuble ou une façade">
-                            <HandleSelector
-                              rootZone={rootZone}
-                              selectedZone={selectedZoneIds.length === 1 ? selectedZone : null}
-                              models={handleModels}
-                              loading={handleModelsLoading}
-                              defaults={handleDefaults}
-                              onDefaultsChange={setHandleDefaults}
-                              onRootZoneChange={setRootZone}
-                            />
-                          </StepSection>
-                        )}
-
                         <StepSection title="Accessoires" aside="Pour le compartiment sélectionné">
                           {selectedZoneIds.length === 0 ? (
                             <ZoneEmptyState>

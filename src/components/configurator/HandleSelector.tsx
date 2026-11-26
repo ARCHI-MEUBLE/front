@@ -86,7 +86,7 @@ function ModelTile({
       aria-pressed={selected}
       aria-label={model.name}
       title={modelTitle(model)}
-      className="group flex min-w-0 flex-col gap-1.5 text-left"
+      className="group flex min-w-0 flex-col gap-1 text-left"
     >
       <div
         className={`relative aspect-square border-2 p-0.5 transition-all ${
@@ -99,7 +99,7 @@ function ModelTile({
         </div>
         {selected && <ColorCheckBadge />}
       </div>
-      <span className={`line-clamp-2 text-[11px] leading-tight ${selected ? 'font-medium text-black' : 'text-black/65'}`}>
+      <span className={`line-clamp-2 text-[10px] leading-tight ${selected ? 'font-medium text-black' : 'text-black/65'}`}>
         {model.name}
       </span>
     </button>
@@ -118,7 +118,8 @@ function ModelGrid({
   onSelect: (model: HandleModel) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4">
+    // Vignettes compactes : plus de modèles par ligne, le nom complet reste dans l'infobulle
+    <div className="grid grid-cols-4 gap-x-2 gap-y-3 sm:grid-cols-6">
       {models.map((model) => (
         <ModelTile
           key={model.id}

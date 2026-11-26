@@ -4,9 +4,61 @@ import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { moveDivider } from '@/lib/configurator/zoneResize';
 import { getZoneInteriorSizeMm, PLINTH_HEIGHT_M } from '@/lib/configurator/zoneBounds';
 import { layoutLeafText } from './leafLayout';
+import {
+    activeAxis,
+    dimensionForDivider,
+    setActiveDimension,
+    splitDimsText,
+    useActiveDimension,
+    type DimensionAxis,
+} from '@/lib/configurator/activeDimension';
 
 // Jamais plus large que ça, même sur un très grand écran
 const MAX_CANVAS_WIDTH = 1100;
+
+// Halo autour du nombre en cours de réglage (largeur ou hauteur) : clair sur la case sélectionnée (fond navy),
+// navy sur les cases claires d'un caisson ou d'une étagère sélectionnés
+const DIMENSION_GLOW_ON_DARK =
+    'rounded-[3px] bg-white/25 px-0.5 text-white ring-1 ring-white/80 shadow-[0_0_10px_2px_rgba(255,255,255,0.6)] [text-shadow:0_0_6px_rgba(255,255,255,0.9)]';
+const DIMENSION_GLOW_ON_LIGHT =
+    'rounded-[3px] bg-white px-0.5 font-semibold text-am-navy ring-1 ring-am-navy/70 shadow-[0_0_10px_2px_rgba(59,62,88,0.45)]';
+
+// Cote d'une case « hauteur × largeur » ; highlight éclaire le nombre que l'utilisateur règle
+export function LeafDims({
+    text,
+    size,
+    highlight,
+    onDark = true,
+}: {
+    text: string;
+    size: number;
+    highlight: DimensionAxis | null;
+    onDark?: boolean;
+}) {
+    const parts = highlight ? splitDimsText(text) : null;
+    const DIMENSION_GLOW = onDark ? DIMENSION_GLOW_ON_DARK : DIMENSION_GLOW_ON_LIGHT;
+    return (
+        <span
+            className={`whitespace-nowrap text-center font-mono leading-tight ${parts ? 'opacity-100' : 'opacity-80'}`}
+            style={{ fontSize: size }}
+        >
+            {parts ? (
+                <>
+                    <span className={`transition-shadow ${highlight === 'height' ? DIMENSION_GLOW : ''}`} data-dimension="height">
+                        {parts.height}
+                    </span>
+                    {parts.separator}
+                    <span className={`transition-shadow ${highlight === 'width' ? DIMENSION_GLOW : ''}`} data-dimension="width">
+                        {parts.width}
+                    </span>
+                    {parts.suffix}
+                </>
+            ) : (
+                text
+            )}
+        </span>
+    );
+}
 
 // Place réservée à la ligne de cote globale (largeur en haut, hauteur sur le côté)
 const DIMENSION_GUTTER_PX = 28;
@@ -17,30 +69,68 @@ const PLINTH_HEIGHT_MM = PLINTH_HEIGHT_M * 1000;
 
 // Ligne de cote « à l'architecte » : traits de rappel depuis les bords du plan, puis ligne à
 // double flèche portant la mesure, comme sur un plan technique
+// Halo de la cote générale réglée : pastille blanche bordée de navy, légèrement lumineuse
+function DimensionLabelGlow({ x, y, label, filterId }: { x: number; y: number; label: string; filterId: string }) {
+    const width = label.length * 6.8 + 12;
+    return (
+        <rect
+            x={x - width / 2}
+            y={y - 12}
+            width={width}
+            height={17}
+            rx={3}
+            className="fill-white stroke-am-navy"
+            strokeWidth={1}
+            filter={`url(#${filterId})`}
+            data-glow="true"
+        />
+    );
+}
+
 function DimensionLine({
     length,
     label,
     orientation,
+    highlighted = false,
 }: {
     length: number;
     label: string;
     orientation: 'horizontal' | 'vertical';
+    // La dimension est en cours de réglage (champ Largeur ou Hauteur du meuble) : la cote s'éclaire
+    highlighted?: boolean;
 }) {
-    const markerId = `dim-arrow-${orientation}-${useId()}`;
+    const id = useId();
+    const markerId = `dim-arrow-${orientation}-${id}`;
+    const glowId = `dim-glow-${orientation}-${id}`;
     const axisLength = Math.max(1, length);
     const arrow = DIMENSION_ARROW_PX;
+    const tone = highlighted ? 'text-am-navy' : 'text-black/55';
+    const labelStyle = { fontSize: 11, fontWeight: highlighted ? 700 : 400 };
 
-    const arrowMarker = (
-        <marker id={markerId} markerWidth={arrow} markerHeight={arrow} refX={arrow / 2} refY={arrow / 2} orient="auto-start-reverse">
-            <path d={`M0,0 L${arrow},${arrow / 2} L0,${arrow} Z`} className="fill-current" />
-        </marker>
+    const defs = (
+        <defs>
+            <marker id={markerId} markerWidth={arrow} markerHeight={arrow} refX={arrow / 2} refY={arrow / 2} orient="auto-start-reverse">
+                <path d={`M0,0 L${arrow},${arrow / 2} L0,${arrow} Z`} className="fill-current" />
+            </marker>
+            {highlighted && (
+                <filter id={glowId} x="-50%" y="-100%" width="200%" height="300%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="3.5" floodColor="#3B3E58" floodOpacity="0.55" />
+                </filter>
+            )}
+        </defs>
     );
 
     if (orientation === 'horizontal') {
         const lineY = DIMENSION_GUTTER_PX - 6;
         return (
-            <svg width={axisLength} height={DIMENSION_GUTTER_PX} className="block text-black/55" style={{ overflow: 'visible' }}>
-                <defs>{arrowMarker}</defs>
+            <svg
+                width={axisLength}
+                height={DIMENSION_GUTTER_PX}
+                className={`block transition-colors ${tone}`}
+                style={{ overflow: 'visible' }}
+                data-highlighted={highlighted || undefined}
+            >
+                {defs}
                 <line x1={0} y1={0} x2={0} y2={lineY} className="stroke-current" strokeWidth={1} />
                 <line x1={axisLength} y1={0} x2={axisLength} y2={lineY} className="stroke-current" strokeWidth={1} />
                 <line
@@ -53,7 +143,8 @@ function DimensionLine({
                     markerStart={`url(#${markerId})`}
                     markerEnd={`url(#${markerId})`}
                 />
-                <text x={axisLength / 2} y={lineY - 5} textAnchor="middle" className="fill-current font-mono" style={{ fontSize: 11 }}>
+                {highlighted && <DimensionLabelGlow x={axisLength / 2} y={lineY - 5} label={label} filterId={glowId} />}
+                <text x={axisLength / 2} y={lineY - 5} textAnchor="middle" className="fill-current font-mono" style={labelStyle}>
                     {label}
                 </text>
             </svg>
@@ -62,8 +153,14 @@ function DimensionLine({
 
     const lineX = DIMENSION_GUTTER_PX - 6;
     return (
-        <svg width={DIMENSION_GUTTER_PX} height={axisLength} className="block text-black/55" style={{ overflow: 'visible' }}>
-            <defs>{arrowMarker}</defs>
+        <svg
+            width={DIMENSION_GUTTER_PX}
+            height={axisLength}
+            className={`block transition-colors ${tone}`}
+            style={{ overflow: 'visible' }}
+            data-highlighted={highlighted || undefined}
+        >
+            {defs}
             <line x1={0} y1={0} x2={lineX} y2={0} className="stroke-current" strokeWidth={1} />
             <line x1={0} y1={axisLength} x2={lineX} y2={axisLength} className="stroke-current" strokeWidth={1} />
             <line
@@ -76,16 +173,12 @@ function DimensionLine({
                 markerStart={`url(#${markerId})`}
                 markerEnd={`url(#${markerId})`}
             />
-            <text
-                x={lineX - 5}
-                y={axisLength / 2}
-                textAnchor="middle"
-                className="fill-current font-mono"
-                style={{ fontSize: 11 }}
-                transform={`rotate(-90 ${lineX - 5} ${axisLength / 2})`}
-            >
-                {label}
-            </text>
+            <g transform={`rotate(-90 ${lineX - 5} ${axisLength / 2})`}>
+                {highlighted && <DimensionLabelGlow x={lineX - 5} y={axisLength / 2} label={label} filterId={glowId} />}
+                <text x={lineX - 5} y={axisLength / 2} textAnchor="middle" className="fill-current font-mono" style={labelStyle}>
+                    {label}
+                </text>
+            </g>
         </svg>
     );
 }
@@ -140,6 +233,8 @@ interface ZoneNodeProps {
     // (séparateur « separator-h-<chemin>h<i>-<segment> »)
     deletedPanelIds?: ReadonlySet<string>;
     panelPath?: string;
+    // Une zone parente est sélectionnée (caisson, étagère) : ses cases éclairent aussi la cote réglée
+    insideSelection?: boolean;
 }
 
 function ZoneNode({
@@ -156,8 +251,10 @@ function ZoneNode({
                       pxPerMm,
                       deletedPanelIds,
                       panelPath = '',
+                      insideSelection = false,
                   }: ZoneNodeProps) {
     const isSelected = selectedZoneIds.includes(zone.id);
+    const activeDimension = useActiveDimension();
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -195,6 +292,7 @@ function ZoneNode({
         e.stopPropagation();
         setIsDragging(true);
         setDragIndex(index);
+        setActiveDimension(dimensionForDivider(zone.type));
     };
 
     const handleDragMove = useCallback((e: PointerEvent) => {
@@ -217,6 +315,7 @@ function ZoneNode({
     const handleDragEnd = useCallback(() => {
         setIsDragging(false);
         setDragIndex(null);
+        setActiveDimension(null);
     }, []);
 
     useEffect(() => {
@@ -307,9 +406,12 @@ function ZoneNode({
                             </span>
                         )}
                         {layout.dims && (
-                            <span className="whitespace-nowrap text-center font-mono leading-tight opacity-80" style={{ fontSize: layout.dims.size }}>
-                                {layout.dims.text}
-                            </span>
+                            <LeafDims
+                                text={layout.dims.text}
+                                size={layout.dims.size}
+                                highlight={isSelected || insideSelection ? activeAxis(activeDimension, 'zone') : null}
+                                onDark={isSelected}
+                            />
                         )}
                     </>
                 )}
@@ -415,6 +517,7 @@ function ZoneNode({
                             pxPerMm={pxPerMm}
                             deletedPanelIds={deletedPanelIds}
                             panelPath={childPath}
+                            insideSelection={insideSelection || isSelected}
                         />
 
                         {dividerRemoved && (
@@ -509,6 +612,8 @@ export default function ZoneCanvas({
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
+    // Largeur ou hauteur du meuble en cours de réglage (étape Dimensions) : sa ligne de cote s'éclaire
+    const furnitureAxis = activeAxis(useActiveDimension(), 'furniture');
     // Largeur déclarée d'origine (bords arrondis compris) : `width` reçu ici est déjà réduit des
     // extensions actives (voir getUsableWidthMm). On reconstruit le total pour que la ligne de cote et
     // la mise à l'échelle portent sur l'enveloppe complète, comme `height` le fait déjà pour le socle.
@@ -598,10 +703,20 @@ export default function ZoneCanvas({
                     {/* Cote de largeur : alignée sur le plan, décalée de la gouttière réservée à la cote de hauteur.
                         Porte la largeur totale déclarée, bords arrondis compris. */}
                     <div className="flex" style={{ paddingLeft: DIMENSION_GUTTER_PX }}>
-                        <DimensionLine orientation="horizontal" length={canvasWidth} label={`${Math.round(declaredWidthMm)} mm`} />
+                        <DimensionLine
+                            orientation="horizontal"
+                            length={canvasWidth}
+                            label={`${Math.round(declaredWidthMm)} mm`}
+                            highlighted={furnitureAxis === 'width'}
+                        />
                     </div>
                     <div className="flex">
-                        <DimensionLine orientation="vertical" length={canvasHeight} label={`${Math.round(height)} mm`} />
+                        <DimensionLine
+                            orientation="vertical"
+                            length={canvasHeight}
+                            label={`${Math.round(height)} mm`}
+                            highlighted={furnitureAxis === 'height'}
+                        />
                         <div className="flex flex-col">
                             {/* Caisson, flanqué des bandes de bord arrondi actives : même principe que le socle,
                                 juste des rectangles à l'échelle, de part et d'autre plutôt qu'en dessous */}

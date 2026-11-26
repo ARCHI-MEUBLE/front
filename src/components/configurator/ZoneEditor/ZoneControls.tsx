@@ -4,9 +4,10 @@ import { Zone, ZoneContent } from './types';
 import { getChildRatios } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
 import { getDivisionCount, isShelfGrid, shelfColumnWidths, type DivisionDirection } from '@/lib/configurator/zoneDivision';
+import { dimensionFieldHandlers, setActiveDimension } from '@/lib/configurator/activeDimension';
 
 // Familles de réglages d'une zone : chaque étape du configurateur en affiche une partie (les poignées ont leur
-// propre sélecteur à l'étape Finitions, voir HandleSelector)
+// propre sélecteur à l'étape Poignées, voir HandleSelector)
 export type ZoneControlSection = 'division' | 'facades' | 'storage' | 'accessories';
 
 export const ALL_ZONE_SECTIONS: ZoneControlSection[] = ['facades', 'storage', 'accessories', 'division'];
@@ -63,6 +64,10 @@ export function SelectedZoneDimensions({
   const stepMm = 10;
   const [widthInput, setWidthInput] = useState(widthMm.toString());
   const [heightInput, setHeightInput] = useState(heightMm.toString());
+
+  // Le plan 2D éclaire la cote réglée dans la case sélectionnée : au survol du champ ou pendant la saisie
+  useEffect(() => () => setActiveDimension(null), []);
+  const dimensionFocus = (axis: 'width' | 'height') => dimensionFieldHandlers({ scope: 'zone', axis });
 
   // Sync inputs when props change
   useEffect(() => {
@@ -129,7 +134,7 @@ export function SelectedZoneDimensions({
         </>
       )}
       {/* Largeur */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" {...dimensionFocus('width')}>
         <Columns3 className="h-4 w-4 text-black/65" />
         <span className="text-sm text-black/65">Largeur:</span>
         {canAdjustWidth && onSetWidth ? (
@@ -172,7 +177,7 @@ export function SelectedZoneDimensions({
       <div className="h-6 w-px bg-black/10" />
 
       {/* Hauteur */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" {...dimensionFocus('height')}>
         <Rows3 className="h-4 w-4 text-black/65" />
         <span className="text-sm text-black/65">Hauteur:</span>
         {canAdjustHeight && onSetHeight ? (
