@@ -108,7 +108,7 @@ const PLINTHE_DEFONCE_DEFAULT_HEIGHT_MM = 80;
 const PLINTHE_DEFONCE_DEFAULT_WIDTH_MM = 40;
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { displayColorName } from '@/lib/displayNames';
-import { findConstraintIssues, type ConstraintIssue, type IssueKind } from '@/lib/configurator/constraints';
+import { findConstraintIssues, type ConstraintIssue, type DimensionKey, type IssueKind } from '@/lib/configurator/constraints';
 import { fixConstraintIssues } from '@/lib/configurator/constraintFix';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { extendSelection, groupSelection, selectableNeighborIds } from '@/lib/configurator/zoneSelection';
@@ -967,6 +967,13 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     setSelectedZoneIds(zoneId ? [zoneId] : []);
     if (zoneId) setZoneTouched(true);
   }, [activeStep, rootZone, selectedZoneIds]);
+
+  // Cote du meuble saisie dans le plan 2D (double-clic), déjà ramenée dans les limites
+  const handlePlanDimensionChange = useCallback((key: DimensionKey, valueMm: number) => {
+    if (key === 'width') setWidth(valueMm);
+    else if (key === 'height') setHeight(valueMm);
+    else setDepth(valueMm);
+  }, []);
 
   // Voisins que l'on peut ajouter à la sélection : signalés dans la vue 3D
   const neighborZoneIds = useMemo(
@@ -2673,11 +2680,13 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                       onSelectedZoneIdsChange={setSelectedZoneIds}
                       width={usableWidthMm}
                       height={height}
+                      depth={depth}
                       hasSocle={socle !== 'none'}
                       roundedLeft={roundedLeft}
                       roundedLeftWidthMm={roundedLeftWidth}
                       roundedRight={roundedRight}
                       roundedRightWidthMm={roundedRightWidth}
+                      onFurnitureDimensionChange={isViewMode ? undefined : handlePlanDimensionChange}
                       onSelectZone={isViewMode ? undefined : handleZoneClick}
                       canvasMaxHeight={isMobile ? 190 : planViewportHeight ? Math.min(720, Math.max(240, planViewportHeight - 230)) : undefined}
                       hideControls
