@@ -16,10 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Euro, Plus, Trash2, ImageIcon, Hash, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, ImageIcon, Hash, Loader2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Prix d'un échantillon envoyé au client (0 = offert)
 const SAMPLE_PRICE_MAX = 1000;
@@ -94,6 +93,17 @@ export function DashboardSamples() {
     return map;
   }, [items]);
 
+  // Couleur sélectionnée : retrouvée dans la liste pour rester à jour (et disparaître si elle est supprimée)
+  const [selectedColorId, setSelectedColorId] = useState<number | string | null>(null);
+  const selected = useMemo(() => {
+    if (selectedColorId === null) return null;
+    for (const t of items) {
+      const color = (t.colors ?? []).find((c) => c.id === selectedColorId);
+      if (color) return { color, material: t.material || 'Sans matériau' };
+    }
+    return null;
+  }, [items, selectedColorId]);
+
   const priceFor = (material: string): MaterialPrice | undefined =>
     prices?.materials.find((m) => sameMaterial(m.material, material));
   const defaultPrice = prices?.defaultPricePerM2 ?? null;
@@ -164,19 +174,32 @@ export function DashboardSamples() {
                   defaultPrice={defaultPrice}
                   onChanged={refresh}
                   onPriceSaved={reloadPrices}
+                  selectedColorId={selected?.color.id ?? null}
+                  onSelectColor={(id) => setSelectedColorId((cur) => (cur === id ? null : id))}
                 />
               ))}
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-2">
+        {/* Colonne collée à l'écran ; défile en interne si les deux cadres dépassent la hauteur visible */}
+        <div className="space-y-6 lg:sticky lg:top-4 lg:col-span-2 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto">
           <CreateMaterialCard
             existingMaterials={Object.keys(byMaterial)}
             defaultPrice={defaultPrice}
             pricesAvailable={prices !== null}
             onCreated={refresh}
           />
+          {selected && (
+            <ColorInfoCard
+              key={selected.color.id}
+              color={selected.color}
+              material={selected.material}
+              materialPrice={priceFor(selected.material)?.price_per_m2 ?? defaultPrice}
+              onChanged={refresh}
+              onClose={() => setSelectedColorId(null)}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -219,13 +242,12 @@ function CreateMaterialCard({
   };
 
   return (
-    <Card className="sticky top-4">
+    <Card className="gap-3 py-4">
       <CardHeader>
         <CardTitle>Nouveau matériau</CardTitle>
-        <CardDescription>Créez un matériau avec son prix au m² et sa première couleur.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
           <Label htmlFor={`${id}-material`}>Nom du matériau</Label>
           <Input
             id={`${id}-material`}
@@ -241,7 +263,7 @@ function CreateMaterialCard({
         </div>
 
         {name && askPrice && (
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label htmlFor={`${id}-price`}>Prix au m²</Label>
             <div className="relative">
               <Input
@@ -305,6 +327,185 @@ function CreateMaterialCard({
             />
           </>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Info couleur : nom, code HEX ou image, et aperçu du rendu sur un meuble */
+function ColorInfoCard({
+  color,
+  material,
+  materialPrice,
+  onChanged,
+  onClose,
+}: {
+  color: SampleColor;
+  material: string;
+  materialPrice: number | null;
+  onChanged: () => void;
+  onClose: () => void;
+}) {
+  const id = useId();
+  const unitPriceValue = Number(color.unit_price ?? 0);
+  const ownColourPrice = color.furniture_price_per_m2 == null ? null : Number(color.furniture_price_per_m2);
+  const [unitPrice, setUnitPrice] = useState(String(unitPriceValue));
+  const [colourPrice, setColourPrice] = useState(ownColourPrice === null ? '' : String(ownColourPrice));
+  const [error, setError] = useState<string | null>(null);
+  const [colourError, setColourError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Les deux prix partent dans la même requête : ils sont enregistrés ensemble ou pas du tout
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = parseSamplePrice(unitPrice);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    const colourResult = colourPrice.trim() === '' ? null : parseInput(materialParam(color.name), colourPrice);
+    if (colourResult && !colourResult.ok) {
+      setColourError(colourResult.error);
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await apiClient.samples.updateColor(color.id, {
+        unit_price: result.value,
+        furniture_price_per_m2: colourResult ? colourResult.value : null,
+      });
+      toast.success(`Prix de « ${color.name} » enregistrés`);
+      onChanged();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const surface: React.CSSProperties = color.image_url
+    ? { backgroundImage: `url(${JSON.stringify(color.image_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { backgroundColor: color.hex || '#EEE' };
+
+  return (
+    <Card className="gap-3 py-4">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div className="min-w-0">
+          <CardTitle className="truncate">Info couleur</CardTitle>
+          <CardDescription className="truncate uppercase">{material}</CardDescription>
+        </div>
+        <Button variant="ghost" size="icon" className="-mr-2 -mt-2 h-8 w-8" onClick={onClose} aria-label="Fermer l'info couleur">
+          <X className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase text-muted-foreground">Nom</p>
+          <p className="break-words text-sm font-medium">{color.name}</p>
+        </div>
+
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">{color.image_url ? 'Image' : 'Code HEX'}</p>
+            {color.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- vignette servie par le backend
+              <img src={color.image_url} alt={color.name} className="h-16 w-16 rounded-md border object-cover" />
+            ) : (
+              <p className="font-mono text-sm">{(color.hex || '—').toUpperCase()}</p>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground">Rendu</p>
+            {/* Petit meuble à deux portes habillé de la couleur */}
+            <div className="relative h-16 w-16 overflow-hidden rounded-md border bg-muted p-2">
+              <div className="grid h-full w-full grid-cols-2 gap-px rounded-sm bg-black/30 p-px shadow-md">
+                {[0, 1].map((i) => (
+                  <div key={i} className="relative" style={surface}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/25 to-black/20" />
+                    <div className={`absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded bg-black/40 ${i === 0 ? 'right-1' : 'left-1'}`} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <form onSubmit={save} className="space-y-2" noValidate>
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-unit-price`} className="text-[10px] font-bold uppercase text-muted-foreground">
+              Prix de l&apos;échantillon
+            </Label>
+            <div className="relative max-w-[12rem]">
+              <Input
+                id={`${id}-unit-price`}
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={SAMPLE_PRICE_MAX}
+                step={0.01}
+                value={unitPrice}
+                onChange={(e) => {
+                  setUnitPrice(e.target.value);
+                  setError(null);
+                }}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={`${id}-unit-help`}
+                className="pr-7"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
+            </div>
+            <p id={`${id}-unit-help`} className={error ? 'text-xs text-destructive' : 'text-[11px] text-muted-foreground'} role={error ? 'alert' : undefined}>
+              {error ?? 'Ce que le client paie pour recevoir l’échantillon (0 = offert).'}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-colour-price`} className="text-[10px] font-bold uppercase text-muted-foreground">
+              Prix au m² de cette couleur
+            </Label>
+            <div className="relative max-w-[12rem]">
+              <Input
+                id={`${id}-colour-price`}
+                type="number"
+                inputMode="decimal"
+                min={M2_SPEC.min}
+                max={M2_SPEC.max}
+                step={M2_SPEC.step}
+                value={colourPrice}
+                placeholder={materialPrice !== null ? String(materialPrice) : undefined}
+                onChange={(e) => {
+                  setColourPrice(e.target.value);
+                  setColourError(null);
+                }}
+                aria-invalid={colourError ? true : undefined}
+                aria-describedby={`${id}-colour-help`}
+                className="pr-14"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {M2_SPEC.suffix}
+              </span>
+            </div>
+            <p id={`${id}-colour-help`} className={colourError ? 'text-xs text-destructive' : 'text-[11px] text-muted-foreground'}>
+              {colourError ??
+                `Laissez vide pour appliquer le prix du matériau${materialPrice !== null ? ` (${formatEuro(materialPrice)}/m²)` : ''}.`}
+            </p>
+          </div>
+
+          {saveError && (
+            <p className="text-xs text-destructive" role="alert">
+              {saveError}
+            </p>
+          )}
+          <Button type="submit" size="sm" disabled={saving}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+            Enregistrer les prix
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );
@@ -477,7 +678,12 @@ function TypeRow({
   defaultPrice,
   onChanged,
   onPriceSaved,
+  selectedColorId,
+  onSelectColor,
 }: {
+  selectedColorId: number | string | null;
+  
+  onSelectColor: (id: number | string) => void;
   material: string;
   types: SampleType[];
   price: MaterialPrice | undefined;
@@ -588,8 +794,8 @@ function TypeRow({
               <VariantCard
                 key={color.id}
                 variant={color}
-                materialPrice={pricePerM2 ?? defaultPrice}
-                onChanged={onChanged}
+                selected={color.id === selectedColorId}
+                onSelect={() => onSelectColor(color.id)}
                 onDelete={() => removeColor(color, type)}
               />
             ))}
@@ -608,89 +814,40 @@ function TypeRow({
 
 function VariantCard({
   variant,
-  materialPrice,
-  onChanged,
+  selected,
+  onSelect,
   onDelete,
 }: {
   variant: SampleColor;
-  // Prix au m² du matériau (ou prix par défaut), appliqué tant que cette couleur n'a pas le sien
-  materialPrice: number | null;
-  onChanged: () => void;
+  selected: boolean;
+  onSelect: () => void;
   onDelete: () => void;
 }) {
-  const id = useId();
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [unitPrice, setUnitPrice] = useState(String(Number(variant.unit_price ?? 0)));
-  const [colourPrice, setColourPrice] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [colourError, setColourError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const unitPriceValue = Number(variant.unit_price ?? 0);
   const ownColourPrice = variant.furniture_price_per_m2 == null ? null : Number(variant.furniture_price_per_m2);
 
-  const open = () => {
-    setUnitPrice(String(unitPriceValue));
-    setColourPrice(ownColourPrice === null ? '' : String(ownColourPrice));
-    setError(null);
-    setColourError(null);
-    setSaveError(null);
-    setEditing(true);
-  };
-
-  // Les deux prix partent dans la même requête : ils sont enregistrés ensemble ou pas du tout
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = parseSamplePrice(unitPrice);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    const colourResult = colourPrice.trim() === '' ? null : parseInput(materialParam(variant.name), colourPrice);
-    if (colourResult && !colourResult.ok) {
-      setColourError(colourResult.error);
-      return;
-    }
-    setSaving(true);
-    setSaveError(null);
-    try {
-      await apiClient.samples.updateColor(variant.id, {
-        unit_price: result.value,
-        furniture_price_per_m2: colourResult ? colourResult.value : null,
-      });
-      toast.success(`Prix de « ${variant.name} » enregistrés`);
-      setEditing(false);
-      onChanged();
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="group relative" title={variant.name}>
-      <div className="h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform [.group:hover_&]:scale-105">
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        aria-label={`Voir les infos de la couleur ${variant.name}`}
+        className={`block h-14 w-14 overflow-hidden rounded-lg border bg-muted shadow-sm transition-transform [.group:hover_&]:scale-105 ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      >
         {variant.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- vignette servie par le backend
-          <img src={variant.image_url} alt={variant.name} className="h-full w-full object-cover" />
+          <img src={variant.image_url} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="h-full w-full" style={{ backgroundColor: variant.hex || '#EEE' }} />
         )}
-      </div>
+      </button>
 
       {/* Boutons d'action rapides */}
       {/* Variantes arbitraires plutôt que group-hover: Tailwind v4 réserve ce dernier à @media (hover: hover), jamais vrai sur certains écrans tactiles */}
       <div className="absolute -right-1 -top-1 z-10 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 [.group:hover_&]:opacity-100">
         <button
-          onClick={open}
-          className="h-5 w-5 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-sm"
-          title="Modifier les prix de cette couleur"
-          aria-label={`Modifier les prix de la couleur ${variant.name}`}
-        >
-          <Euro className="h-3 w-3" />
-        </button>
-        <button
+          type="button"
           onClick={onDelete}
           className="h-5 w-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
           title="Supprimer"
@@ -708,90 +865,6 @@ function VariantCard({
           {ownColourPrice} €/m²
         </div>
       )}
-
-      <Dialog open={editing} onOpenChange={(value) => !saving && setEditing(value)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Prix de « {variant.name} »</DialogTitle>
-            <DialogDescription>
-              Prix de l&apos;échantillon : ce que le client paie pour le recevoir (0 = offert). Prix au m² : ce que coûte
-              cette couleur dans le calcul des meubles, à la place du prix de son matériau.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={save} className="space-y-4" noValidate>
-            <div className="space-y-2">
-              <Label htmlFor={`${id}-unit-price`}>Prix de l&apos;échantillon</Label>
-              <div className="relative max-w-[12rem]">
-                <Input
-                  id={`${id}-unit-price`}
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  max={SAMPLE_PRICE_MAX}
-                  step={0.01}
-                  value={unitPrice}
-                  onChange={(e) => {
-                    setUnitPrice(e.target.value);
-                    setError(null);
-                  }}
-                  aria-invalid={error ? true : undefined}
-                  aria-describedby={error ? `${id}-error` : undefined}
-                  className="pr-7"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
-              </div>
-              {error && (
-                <p id={`${id}-error`} className="text-xs text-destructive" role="alert">
-                  {error}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${id}-colour-price`}>Prix au m² de cette couleur</Label>
-              <div className="relative max-w-[12rem]">
-                <Input
-                  id={`${id}-colour-price`}
-                  type="number"
-                  inputMode="decimal"
-                  min={M2_SPEC.min}
-                  max={M2_SPEC.max}
-                  step={M2_SPEC.step}
-                  value={colourPrice}
-                  placeholder={materialPrice !== null ? String(materialPrice) : undefined}
-                  onChange={(e) => {
-                    setColourPrice(e.target.value);
-                    setColourError(null);
-                  }}
-                  aria-invalid={colourError ? true : undefined}
-                  aria-describedby={`${id}-colour-help`}
-                  className="pr-14"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  {M2_SPEC.suffix}
-                </span>
-              </div>
-              <p id={`${id}-colour-help`} className={colourError ? 'text-xs text-destructive' : 'text-[11px] text-muted-foreground'}>
-                {colourError ??
-                  `Laissez vide pour appliquer le prix du matériau${materialPrice !== null ? ` (${formatEuro(materialPrice)}/m²)` : ''}.`}
-              </p>
-            </div>
-            {saveError && (
-              <p className="text-xs text-destructive" role="alert">
-                {saveError}
-              </p>
-            )}
-            <DialogFooter>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>
-                Annuler
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                Enregistrer
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

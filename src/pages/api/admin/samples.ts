@@ -41,8 +41,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('Backend error:', text);
-      throw new Error(`Backend returned ${response.status}`);
+      console.error(`Backend error (${response.status}) on ${req.method} ${backendUrl}:`, text.slice(0, 500));
+      // Renvoie le vrai statut et le message du backend au lieu d'un 500 générique
+      let backendMessage: string | undefined;
+      try {
+        const parsed = JSON.parse(text);
+        backendMessage = parsed?.error || parsed?.message;
+      } catch {
+        // corps non JSON (page d'erreur PHP, proxy, WAF…)
+      }
+      return res.status(response.status).json({
+        error: backendMessage || `Le backend a répondu ${response.status}`,
+      });
     }
 
     const data = await response.json();
