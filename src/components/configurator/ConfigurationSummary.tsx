@@ -131,7 +131,7 @@ function QuotePrice({
 export function ConfigurationSummary({
   width, height, depth, finish, color, socle, rootZone, priceEstimate, priceError = null, savedQuote = null, modelName,
   isAdmin, onEdit, mountingStyle, colorLabel, isOwner, onEditOwn,
-  handleModels = [], handleDefaults = DEFAULT_HANDLE_DEFAULTS
+  handleModels = [], handleDefaults = DEFAULT_HANDLE_DEFAULTS, installation = false
 }: any) {
   const analysis = analyzeConfiguration(rootZone, handleModels, handleDefaults);
 
@@ -225,6 +225,10 @@ export function ConfigurationSummary({
             <span className="font-medium">
               {analysis.handles ?? 'Aucune'}
             </span>
+          </div>
+          <div className="flex justify-between gap-2 py-1.5 border-b border-black/10">
+            <span className="text-black/65">Pose et montage</span>
+            <span className="text-right font-medium">{installation ? 'Comprise' : 'Non comprise'}</span>
           </div>
         </div>
 

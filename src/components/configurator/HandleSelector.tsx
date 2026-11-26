@@ -10,6 +10,7 @@ import {
   HANDLE_ORIENTATION_LABELS,
   HANDLE_SHAPE_LABELS,
   LEGACY_HANDLE_LABELS,
+  legacyOrientation,
   listHandleFacades,
   resolveZoneHandle,
   setZoneHandle,
@@ -45,9 +46,8 @@ const FACADE_LABELS: Partial<Record<ZoneContent, string>> = {
   drawer: 'Tiroir',
 };
 
-// Ordre des boutons : le sens habituel d'abord (portes verticales, tiroirs horizontaux)
-const DOOR_ORIENTATIONS: HandleOrientation[] = ['vertical', 'horizontal'];
-const DRAWER_ORIENTATIONS: HandleOrientation[] = ['horizontal', 'vertical'];
+// Même ordre des boutons pour les portes et les tiroirs, pour ne pas dérouter
+const ORIENTATIONS: HandleOrientation[] = ['horizontal', 'vertical'];
 
 function facadeContent(zone: Zone): ZoneContent | undefined {
   return getZoneFacade(zone) ?? zone.doorContent;
@@ -271,7 +271,7 @@ export default function HandleSelector({
             {hasDoors && (
               <OrientationToggle
                 label="Portes"
-                options={DOOR_ORIENTATIONS}
+                options={ORIENTATIONS}
                 value={defaults.doorOrientation}
                 onChange={(orientation) => chooseFurnitureOrientation('door', orientation)}
               />
@@ -279,14 +279,14 @@ export default function HandleSelector({
             {hasDrawers && (
               <OrientationToggle
                 label="Tiroirs"
-                options={DRAWER_ORIENTATIONS}
+                options={ORIENTATIONS}
                 value={defaults.drawerOrientation}
                 onChange={(orientation) => chooseFurnitureOrientation('drawer', orientation)}
               />
             )}
           </div>
         ) : (
-          <Note>Un bouton se pose sans orientation.</Note>
+          <Note>{furnitureShape === 'recessed' ? 'Une poignée encastrée se pose sans orientation.' : 'Un bouton se pose sans orientation.'}</Note>
         )}
 
         {customizedCount > 0 && (
@@ -361,12 +361,14 @@ function ZoneHandlePanel({
   onRootZoneChange: (root: Zone) => void;
 }) {
   const resolved = resolveZoneHandle(zone, kind, models, defaults);
-  const shape = resolved.model?.shape ?? (resolved.legacyType === 'knob' ? 'knob' : null);
+  const shape = resolved.model?.shape ?? (resolved.legacyType === 'knob' || resolved.legacyType === 'recessed' ? resolved.legacyType : null);
   const label = FACADE_LABELS[facadeContent(zone) ?? 'empty'] ?? (kind === 'drawer' ? 'Tiroir' : 'Porte');
 
   // Le modèle et le sens se choisissent l'un sans l'autre : l'autre réglage reste celui de la façade (ou du meuble)
   const chooseModel = (model: HandleModel) =>
-    onRootZoneChange(setZoneHandle(rootZone, zone.id, { modelId: model.id, orientation: zone.handleOrientation ?? null }));
+    onRootZoneChange(
+      setZoneHandle(rootZone, zone.id, { modelId: model.id, orientation: zone.handleOrientation ?? legacyOrientation(zone.handleType) })
+    );
   const chooseOrientation = (orientation: HandleOrientation) =>
     onRootZoneChange(setZoneHandle(rootZone, zone.id, { modelId: zone.handleModelId ?? null, orientation }));
 
@@ -395,7 +397,7 @@ function ZoneHandlePanel({
       {shapeHasOrientation(shape) && (
         <OrientationToggle
           label={kind === 'drawer' ? 'Ce tiroir' : 'Cette porte'}
-          options={kind === 'drawer' ? DRAWER_ORIENTATIONS : DOOR_ORIENTATIONS}
+          options={ORIENTATIONS}
           value={resolved.orientation}
           onChange={chooseOrientation}
         />

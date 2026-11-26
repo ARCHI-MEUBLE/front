@@ -19,6 +19,7 @@ import {
   type HandleShape,
 } from '@/lib/configurator/handles';
 import { HandleModelPreview } from '@/components/handles/HandleModelPreview';
+import { SHAPE_DEFAULT_DIMENSIONS, modelHandleDimensions } from '@/components/configurator/scene/handleGeometry';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,17 +46,25 @@ const FINISH_PRESETS = [
 ];
 
 // Entraxes standard des poignées du commerce
-const LENGTH_SHORTCUTS = [96, 128, 160, 192, 256, 320];
+const CENTER_DISTANCE_SHORTCUTS = [96, 128, 160, 192, 256, 320];
 
 // Mêmes bornes que la validation du backend (admin/handle-models.php)
 const NAME_MAX = 80;
 const LENGTH_MIN = 20;
 const LENGTH_MAX = 800;
 const PRICE_MAX = 1000;
+const CENTER_DISTANCE_RANGE = { min: 10, max: 800 };
+const WIDTH_RANGE = { min: 2, max: 100 };
+const PROJECTION_RANGE = { min: 0, max: 100 };
+
+// Cote facultative en mm : vide → null ; sinon le nombre saisi (NaN si illisible)
+const optionalMm = (raw: string): number | null => (raw.trim() === '' ? null : Number(raw));
+const mmError = (value: number | null, { min, max }: { min: number; max: number }): string | undefined =>
+  value !== null && (!Number.isInteger(value) || value < min || value > max) ? `Entre ${min} et ${max} mm, nombre entier.` : undefined;
 
 const priceFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
-type PreviewModel = Pick<HandleModel, 'name' | 'shape' | 'finish_hex' | 'length_mm' | 'image_url'>;
+type PreviewModel = Pick<HandleModel, 'name' | 'shape' | 'finish_hex' | 'length_mm' | 'image_url' | 'center_distance_mm'>;
 
 function normalizeHex(value: string): string | null {
   const raw = value.trim().replace(/^#/, '');
@@ -65,6 +74,16 @@ function normalizeHex(value: string): string | null {
 function formatPrice(value: string | number): string {
   const amount = Number(value);
   return Number.isFinite(amount) ? priceFormatter.format(amount) : '—';
+}
+
+// « entraxe 128 · largeur 10 · saillie 30 mm » : cotes du plan saisies, null s'il n'y en a aucune
+function planSummary(model: Pick<HandleModel, 'center_distance_mm' | 'width_mm' | 'projection_mm'>): string | null {
+  const parts = [
+    model.center_distance_mm != null ? `entraxe ${model.center_distance_mm}` : null,
+    model.width_mm != null ? `largeur ${model.width_mm}` : null,
+    model.projection_mm != null ? `saillie ${model.projection_mm}` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? `${parts.join(' · ')} mm` : null;
 }
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -231,7 +250,7 @@ export function DashboardHandles() {
         <p className="max-w-3xl text-sm text-muted-foreground">
           Les modèles actifs sont proposés dans le configurateur, à l&apos;étape Finitions : le client choisit la
           poignée de tout le meuble, puis peut la changer porte par porte ou tiroir par tiroir. Chaque modèle se pose à
-          l&apos;horizontale ou à la verticale, selon l&apos;orientation choisie (sauf les boutons).
+          l&apos;horizontale ou à la verticale, selon l&apos;orientation choisie (sauf les boutons et les poignées encastrées).
         </p>
       </div>
 
@@ -429,6 +448,8 @@ function HandleModelCard({ model, isFirst, isLast, busy, reorderLocked, onToggle
                 <dd>{HANDLE_SHAPE_LABELS[model.shape] ?? model.shape}</dd>
                 <dt className="text-muted-foreground">Longueur</dt>
                 <dd>{hasOrientation && model.length_mm ? `${model.length_mm} mm` : '—'}</dd>
+                <dt className="text-muted-foreground">Cotes</dt>
+                <dd>{planSummary(model) ?? 'proportions de la forme'}</dd>
                 <dt className="text-muted-foreground">Finition</dt>
                 <dd className="flex min-w-0 items-center gap-1.5">
                   <span
@@ -535,7 +556,7 @@ function ActiveSwitch({
   );
 }
 
-type FieldName = 'name' | 'finish' | 'length' | 'price';
+type FieldName = 'name' | 'finish' | 'length' | 'centerDistance' | 'width' | 'projection' | 'price';
 
 interface HandleModelFormProps {
   initial?: AdminHandleModel;
@@ -554,6 +575,9 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
   const [shape, setShape] = useState<HandleShape>(initial && isHandleShape(initial.shape) ? initial.shape : 'bar');
   const [finish, setFinish] = useState(initial?.finish_hex.toUpperCase() ?? FINISH_PRESETS[0].hex);
   const [length, setLength] = useState(String(initial?.length_mm ?? 160));
+  const [centerDistance, setCenterDistance] = useState(initial?.center_distance_mm != null ? String(initial.center_distance_mm) : '');
+  const [width, setWidth] = useState(initial?.width_mm != null ? String(initial.width_mm) : '');
+  const [projection, setProjection] = useState(initial?.projection_mm != null ? String(initial.projection_mm) : '');
   const [price, setPrice] = useState(initial ? String(Number(initial.price_per_unit) || 0) : '0');
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
   const [file, setFile] = useState<File | null>(null);
@@ -578,6 +602,9 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
   const hasLength = shapeHasOrientation(shape);
   const finishHex = normalizeHex(finish);
   const lengthMm = Number(length);
+  const centerDistanceMm = hasLength ? optionalMm(centerDistance) : null;
+  const widthMm = optionalMm(width);
+  const projectionMm = optionalMm(projection);
   const priceValue = Number(price.replace(',', '.'));
 
   const errors: Partial<Record<FieldName, string>> = {};
@@ -590,7 +617,16 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
   if (hasLength) {
     if (length.trim() === '' || !Number.isInteger(lengthMm)) errors.length = 'Longueur en millimètres, nombre entier.';
     else if (lengthMm < LENGTH_MIN || lengthMm > LENGTH_MAX) errors.length = `Entre ${LENGTH_MIN} et ${LENGTH_MAX} mm.`;
+    const centerDistanceError = mmError(centerDistanceMm, CENTER_DISTANCE_RANGE);
+    if (centerDistanceError) errors.centerDistance = centerDistanceError;
+    else if (centerDistanceMm !== null && !errors.length && centerDistanceMm > lengthMm) {
+      errors.centerDistance = "L'entraxe ne peut pas dépasser la longueur.";
+    }
   }
+  const widthError = mmError(widthMm, WIDTH_RANGE);
+  if (widthError) errors.width = widthError;
+  const projectionError = mmError(projectionMm, PROJECTION_RANGE);
+  if (projectionError) errors.projection = projectionError;
   if (price.trim() === '' || !Number.isFinite(priceValue)) errors.price = 'Indiquez un prix (0 si la poignée est offerte).';
   else if (priceValue < 0) errors.price = 'Le prix ne peut pas être négatif.';
   else if (priceValue > PRICE_MAX) errors.price = `${formatPrice(PRICE_MAX)} au maximum.`;
@@ -612,8 +648,10 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
     shape,
     finish_hex: finishHex ?? '#1C1C1C',
     length_mm: hasLength && !errors.length ? lengthMm : null,
+    center_distance_mm: errors.centerDistance ? null : centerDistanceMm,
     image_url: null,
   };
+  const shapeDefaults = SHAPE_DEFAULT_DIMENSIONS[shape];
   const photoSrc = filePreview ?? imageUrl;
 
   const removePhoto = () => {
@@ -649,6 +687,9 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
         shape,
         finish_hex: finishHex,
         length_mm: hasLength ? lengthMm : null,
+        center_distance_mm: centerDistanceMm,
+        width_mm: widthMm,
+        projection_mm: projectionMm,
         price_per_unit: Math.round(priceValue * 100) / 100,
       };
       // Sans photo, rien à envoyer à la création ; en modification, null efface l'ancienne
@@ -672,7 +713,7 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
             <HandleModelPreview model={preview} orientation="horizontal" />
           </div>
           <figcaption className="text-center text-[11px] text-muted-foreground">
-            {hasLength ? "À l'horizontale" : 'Bouton'}
+            {hasLength ? "À l'horizontale" : shape === 'recessed' ? 'Encastrée' : 'Bouton'}
           </figcaption>
         </figure>
         {hasLength && (
@@ -783,7 +824,7 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
         <FieldError id={`${id}-finish-error`} message={errorFor('finish')} />
       </fieldset>
 
-      {/* Longueur : sans objet pour un bouton (envoyée à null) */}
+      {/* Longueur : sans objet pour un bouton ou une poignée encastrée (envoyée à null) */}
       {hasLength ? (
         <div className="space-y-2">
           <Label htmlFor={`${id}-length`}>Longueur</Label>
@@ -805,15 +846,77 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
               mm
             </span>
           </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Longueurs courantes">
-            {LENGTH_SHORTCUTS.map((mm) => {
-              const selected = length.trim() !== '' && lengthMm === mm;
+          {errorFor('length') ? (
+            <FieldError id={`${id}-length-error`} message={errorFor('length')} />
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Longueur totale, d&apos;un bout à l&apos;autre de la poignée.</p>
+          )}
+        </div>
+      ) : (
+        <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+          {shape === 'recessed' ? 'Une poignée encastrée ronde' : 'Un bouton'} n&apos;a ni longueur ni sens de pose.
+        </p>
+      )}
+
+      {/* Cotes du plan du fabricant : la vue 3D les reprend ; vides, elle garde les proportions de la forme */}
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-medium leading-none">
+          Cotes du plan <span className="font-normal text-muted-foreground">(facultatives)</span>
+        </legend>
+        <p className="text-[11px] text-muted-foreground">
+          Reprises de la fiche du fabricant. Un champ vide garde la valeur habituelle de la forme, affichée en gris.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {hasLength && (
+            <MmField
+              id={`${id}-center-distance`}
+              label="Entraxe"
+              hint="entre les vis"
+              value={centerDistance}
+              placeholder={
+                length.trim() !== '' && !errors.length
+                  ? String(Math.round(modelHandleDimensions({ shape, length_mm: lengthMm }, lengthMm / 1000).spacing * 1000))
+                  : undefined
+              }
+              range={CENTER_DISTANCE_RANGE}
+              onChange={setCenterDistance}
+              onBlur={() => touch('centerDistance')}
+              fieldProps={fieldProps('centerDistance')}
+            />
+          )}
+          <MmField
+            id={`${id}-width`}
+            label="Largeur"
+            hint={shape === 'bar' || shape === 'knob' || shape === 'recessed' ? 'diamètre' : 'vue de face'}
+            value={width}
+            placeholder={String(shapeDefaults.width)}
+            range={WIDTH_RANGE}
+            onChange={setWidth}
+            onBlur={() => touch('width')}
+            fieldProps={fieldProps('width')}
+          />
+          <MmField
+            id={`${id}-projection`}
+            label="Saillie"
+            hint="depuis la façade"
+            value={projection}
+            placeholder={String(shapeDefaults.projection)}
+            range={PROJECTION_RANGE}
+            onChange={setProjection}
+            onBlur={() => touch('projection')}
+            fieldProps={fieldProps('projection')}
+          />
+        </div>
+        {hasLength && (
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Entraxes courants">
+            {CENTER_DISTANCE_SHORTCUTS.map((mm) => {
+              const selected = centerDistanceMm === mm;
               return (
                 <button
                   key={mm}
                   type="button"
                   aria-pressed={selected}
-                  onClick={() => setLength(String(mm))}
+                  onClick={() => setCenterDistance(String(mm))}
                   className={cn(
                     'rounded-md border px-2 py-0.5 text-xs tabular-nums transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
                     selected ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-accent'
@@ -824,13 +927,11 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
               );
             })}
           </div>
-          <FieldError id={`${id}-length-error`} message={errorFor('length')} />
-        </div>
-      ) : (
-        <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-          Un bouton n&apos;a ni longueur ni sens de pose.
-        </p>
-      )}
+        )}
+        {(['centerDistance', 'width', 'projection'] as const).map((field) => (
+          <FieldError key={field} id={`${id}-${field}-error`} message={errorFor(field)} />
+        ))}
+      </fieldset>
 
       {/* Prix */}
       <div className="space-y-2">
@@ -911,6 +1012,54 @@ function HandleModelForm({ initial, takenNames, submitLabel, onSubmit, onCancel 
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Cote du plan en millimètres (vide : valeur habituelle de la forme, en placeholder) */
+function MmField({
+  id,
+  label,
+  hint,
+  value,
+  placeholder,
+  range,
+  onChange,
+  onBlur,
+  fieldProps,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  value: string;
+  placeholder?: string;
+  range: { min: number; max: number };
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  fieldProps: { 'aria-invalid'?: boolean; 'aria-describedby'?: string };
+}) {
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={id} className="text-xs">
+        {label} <span className="font-normal text-muted-foreground">({hint})</span>
+      </Label>
+      <div className="relative">
+        <Input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={range.min}
+          max={range.max}
+          step={1}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          className="pr-9"
+          {...fieldProps}
+        />
+        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">mm</span>
+      </div>
+    </div>
   );
 }
 
