@@ -29,6 +29,7 @@ import { getZoneFacade } from '@/lib/configurator/zoneStats';
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
 import { RoundedCorner } from './scene/RoundedCorner';
+import { roundedFootPositions, roundedPlinthProfile, type RoundedSide } from './scene/roundedBase';
 import {
     DEFAULT_HANDLE_DEFAULTS,
     defaultHandleModel,
@@ -1678,33 +1679,83 @@ export function Furniture({
             )}
         </group>
         {roundedLeft && (
-            <RoundedCorner
-                outerX={-declaredW / 2}
-                innerX={-declaredW / 2 + radiusLeft}
-                frontZ={-d / 2}
-                backZ={d / 2}
+            <RoundedSideWithBase
+                side={{ outerX: -declaredW / 2, innerX: -declaredW / 2 + radiusLeft, furnitureDepth: d, roundDepth: roundedLeftDepth / 1000 }}
                 bottomY={yOffset}
                 topY={yOffset + sideHeight}
-                width={radiusLeft}
-                depth={roundedLeftDepth / 1000}
-                hexColor={finalStructureColor}
-                imageUrl={finalStructureImageUrl}
+                base={hasSocle ? (socle === 'metal' ? 'metal' : 'wood') : null}
+                structure={{ hexColor: finalStructureColor, imageUrl: finalStructureImageUrl }}
+                plinth={{ hexColor: finalBaseColor, imageUrl: finalBaseImageUrl }}
             />
         )}
         {roundedRight && (
-            <RoundedCorner
-                outerX={declaredW / 2}
-                innerX={declaredW / 2 - radiusRight}
-                frontZ={-d / 2}
-                backZ={d / 2}
+            <RoundedSideWithBase
+                side={{ outerX: declaredW / 2, innerX: declaredW / 2 - radiusRight, furnitureDepth: d, roundDepth: roundedRightDepth / 1000 }}
                 bottomY={yOffset}
                 topY={yOffset + sideHeight}
-                width={radiusRight}
-                depth={roundedRightDepth / 1000}
-                hexColor={finalStructureColor}
-                imageUrl={finalStructureImageUrl}
+                base={hasSocle ? (socle === 'metal' ? 'metal' : 'wood') : null}
+                structure={{ hexColor: finalStructureColor, imageUrl: finalStructureImageUrl }}
+                plinth={{ hexColor: finalBaseColor, imageUrl: finalBaseImageUrl }}
             />
         )}
+        </>
+    );
+}
+
+// Joue arrondie et ce qui la porte quand le meuble est surélevé : le même socle bois que le caisson, épousant
+// l'arrondi, ou deux pieds métal. Sans cela elle flottait à côté du caisson, à la hauteur du socle.
+function RoundedSideWithBase({
+    side,
+    bottomY,
+    topY,
+    base,
+    structure,
+    plinth,
+}: {
+    side: RoundedSide;
+    bottomY: number;
+    topY: number;
+    base: 'wood' | 'metal' | null;
+    structure: { hexColor: string; imageUrl?: string | null };
+    plinth: { hexColor: string; imageUrl?: string | null };
+}) {
+    const width = Math.abs(side.innerX - side.outerX);
+    const plinthProfile = roundedPlinthProfile(side);
+    return (
+        <>
+            <RoundedCorner
+                outerX={side.outerX}
+                innerX={side.innerX}
+                frontZ={-side.furnitureDepth / 2}
+                backZ={side.furnitureDepth / 2}
+                bottomY={bottomY}
+                topY={topY}
+                width={width}
+                depth={side.roundDepth}
+                hexColor={structure.hexColor}
+                imageUrl={structure.imageUrl}
+            />
+            {base === 'wood' && bottomY > 0 && (
+                <RoundedCorner
+                    outerX={side.outerX}
+                    innerX={side.innerX}
+                    frontZ={plinthProfile.wallZ}
+                    backZ={plinthProfile.frontZ}
+                    bottomY={0}
+                    topY={bottomY}
+                    width={width}
+                    depth={plinthProfile.roundDepth}
+                    hexColor={plinth.hexColor}
+                    imageUrl={plinth.imageUrl}
+                />
+            )}
+            {base === 'metal' && bottomY > 0 &&
+                roundedFootPositions(side).map(([x, z]) => (
+                    <mesh key={`${x}-${z}`} position={[x, bottomY / 2, z]} castShadow>
+                        <boxGeometry args={[0.03, bottomY, 0.03]} />
+                        <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
+                    </mesh>
+                ))}
         </>
     );
 }
@@ -1844,9 +1895,11 @@ const ThreeCanvas = forwardRef<ThreeCanvasHandle, ThreeViewerProps>((props, ref)
 
                 <Suspense fallback={null}>
                     <RoomLightsContext.Provider value={roomLights}>
+                        {/* Largeur déclarée (bords arrondis compris) : layout.width n'est que l'intérieur, entre
+                            les arrondis, et le décor rangé à côté entrait dans les joues arrondies */}
                         <Room
                             scene={roomScene}
-                            furnitureWidth={layout.width}
+                            furnitureWidth={layout.declaredWidth}
                             furnitureDepth={layout.depth}
                             furnitureHeight={layout.sideHeight + layout.yOffset}
                         />

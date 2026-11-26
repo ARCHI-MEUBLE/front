@@ -1,4 +1,4 @@
-export type ConfigStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type ConfigStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 // Ordre du parcours : du global (taille) au local (compartiments), puis matières et finitions
 export const STEP = {
@@ -8,7 +8,8 @@ export const STEP = {
   DOORS: 4,
   DRAWERS: 5,
   MATERIALS: 6,
-  FINISHES: 7,
+  HANDLES: 7,
+  FINISHES: 8,
 } as const satisfies Record<string, ConfigStep>;
 
 export interface StepDefinition {
@@ -64,10 +65,17 @@ export const CONFIG_STEPS: StepDefinition[] = [
     view: '3d',
   },
   {
+    id: STEP.HANDLES,
+    label: 'Poignées',
+    title: 'Poignées',
+    hint: 'Choisissez la poignée de tout le meuble, puis, si vous le souhaitez, celle d’une porte ou d’un tiroir en cliquant dessus.',
+    view: '3d',
+  },
+  {
     id: STEP.FINISHES,
     label: 'Finitions',
-    title: 'Poignées, pieds & accessoires',
-    hint: 'Dernières touches : poignées, pieds, éclairage, penderie, puis vérifiez le récapitulatif.',
+    title: 'Accessoires & finitions',
+    hint: 'Dernières touches : éclairage, penderie, pose et montage, puis vérifiez le récapitulatif.',
     view: '3d',
   },
 ];

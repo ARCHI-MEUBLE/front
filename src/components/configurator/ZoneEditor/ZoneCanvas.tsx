@@ -1,93 +1,110 @@
-import { useState, useRef, useCallback, useEffect, useId, SyntheticEvent, KeyboardEvent } from 'react';
-import { Archive, BoxSelect, DoorClosed, Frame, Hand, Shirt, Sparkles, Square, SquareDashed, type LucideIcon } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
+import { Archive, BoxSelect, DoorClosed, Frame, Hand, Pencil, Shirt, Sparkles, SquareDashed, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { moveDivider } from '@/lib/configurator/zoneResize';
 import { getZoneInteriorSizeMm, PLINTH_HEIGHT_M } from '@/lib/configurator/zoneBounds';
+import { planChain, type ChainSegment, type PlanFrame } from '@/lib/configurator/planDimensions';
+import type { DimensionKey } from '@/lib/configurator/constraints';
 import { layoutLeafText } from './leafLayout';
+import { CHAIN_GUTTER_PX, DIMENSION_GUTTER_PX, DimensionChain, DimensionLine, PlanValue, type ChainItem } from './PlanDimensions';
+import {
+    activeAxis,
+    dimensionForDivider,
+    setActiveDimension,
+    splitDimsText,
+    useActiveDimension,
+    type DimensionAxis,
+} from '@/lib/configurator/activeDimension';
 
 // Jamais plus large que ça, même sur un très grand écran
 const MAX_CANVAS_WIDTH = 1100;
 
-// Place réservée à la ligne de cote globale (largeur en haut, hauteur sur le côté)
-const DIMENSION_GUTTER_PX = 28;
-const DIMENSION_ARROW_PX = 7;
+// Halo autour du nombre en cours de réglage (largeur ou hauteur) : clair sur la case sélectionnée (fond navy),
+// navy sur les cases claires d'un caisson ou d'une étagère sélectionnés
+const DIMENSION_GLOW_ON_DARK =
+    'rounded-[3px] bg-white/25 px-0.5 text-white ring-1 ring-white/80 shadow-[0_0_10px_2px_rgba(255,255,255,0.6)] [text-shadow:0_0_6px_rgba(255,255,255,0.9)]';
+const DIMENSION_GLOW_ON_LIGHT =
+    'rounded-[3px] bg-white px-0.5 font-semibold text-am-navy ring-1 ring-am-navy/70 shadow-[0_0_10px_2px_rgba(59,62,88,0.45)]';
+
+// Saisie des deux nombres d'une case (taille intérieure, mm)
+export interface LeafDimsEdit {
+    onHeight: (valueMm: number) => void;
+    onWidth: (valueMm: number) => void;
+}
+
+// Cote d'une case « hauteur × largeur » ; highlight éclaire le nombre que l'utilisateur règle, edit rend chaque
+// nombre modifiable au double-clic
+export function LeafDims({
+    text,
+    size,
+    highlight,
+    onDark = true,
+    edit,
+}: {
+    text: string;
+    size: number;
+    highlight: DimensionAxis | null;
+    onDark?: boolean;
+    edit?: LeafDimsEdit;
+}) {
+    const parts = highlight || edit ? splitDimsText(text) : null;
+    const DIMENSION_GLOW = onDark ? DIMENSION_GLOW_ON_DARK : DIMENSION_GLOW_ON_LIGHT;
+    const number = (axis: DimensionAxis, value: string) => {
+        const glow = `transition-shadow ${highlight === axis ? DIMENSION_GLOW : ''}`;
+        if (!edit) {
+            return (
+                <span className={glow} data-dimension={axis}>
+                    {value}
+                </span>
+            );
+        }
+        return (
+            <PlanValue
+                valueMm={Number(value)}
+                name={axis === 'width' ? 'Largeur intérieure de la case' : 'Hauteur intérieure de la case'}
+                onCommit={axis === 'width' ? edit.onWidth : edit.onHeight}
+                onDark={onDark}
+                className={`px-px ${glow}`}
+                dimension={axis}
+            >
+                {value}
+            </PlanValue>
+        );
+    };
+    return (
+        <span
+            className={`whitespace-nowrap text-center font-mono leading-tight ${highlight && parts ? 'opacity-100' : 'opacity-80'}`}
+            style={{ fontSize: size }}
+        >
+            {parts ? (
+                <>
+                    {number('height', parts.height)}
+                    {parts.separator}
+                    {number('width', parts.width)}
+                    {parts.suffix}
+                </>
+            ) : (
+                text
+            )}
+        </span>
+    );
+}
 
 // Hauteur (mm) du socle quand il est actif
 const PLINTH_HEIGHT_MM = PLINTH_HEIGHT_M * 1000;
 
-// Ligne de cote « à l'architecte » : traits de rappel depuis les bords du plan, puis ligne à
-// double flèche portant la mesure, comme sur un plan technique
-function DimensionLine({
-    length,
-    label,
-    orientation,
-}: {
-    length: number;
-    label: string;
-    orientation: 'horizontal' | 'vertical';
-}) {
-    const markerId = `dim-arrow-${orientation}-${useId()}`;
-    const axisLength = Math.max(1, length);
-    const arrow = DIMENSION_ARROW_PX;
+// Parties que le plan affiche sans les régler : la raison s'affiche au double-clic
+const LOCKED_REASONS: Record<NonNullable<ChainSegment['locked']>, string> = {
+    rounded: "La largeur d'un arrondi se choisit à l'étape Base & bords.",
+    socle: `Le socle mesure toujours ${PLINTH_HEIGHT_MM} mm de haut.`,
+};
 
-    const arrowMarker = (
-        <marker id={markerId} markerWidth={arrow} markerHeight={arrow} refX={arrow / 2} refY={arrow / 2} orient="auto-start-reverse">
-            <path d={`M0,0 L${arrow},${arrow / 2} L0,${arrow} Z`} className="fill-current" />
-        </marker>
-    );
-
-    if (orientation === 'horizontal') {
-        const lineY = DIMENSION_GUTTER_PX - 6;
-        return (
-            <svg width={axisLength} height={DIMENSION_GUTTER_PX} className="block text-black/55" style={{ overflow: 'visible' }}>
-                <defs>{arrowMarker}</defs>
-                <line x1={0} y1={0} x2={0} y2={lineY} className="stroke-current" strokeWidth={1} />
-                <line x1={axisLength} y1={0} x2={axisLength} y2={lineY} className="stroke-current" strokeWidth={1} />
-                <line
-                    x1={1}
-                    y1={lineY}
-                    x2={axisLength - 1}
-                    y2={lineY}
-                    className="stroke-current"
-                    strokeWidth={1}
-                    markerStart={`url(#${markerId})`}
-                    markerEnd={`url(#${markerId})`}
-                />
-                <text x={axisLength / 2} y={lineY - 5} textAnchor="middle" className="fill-current font-mono" style={{ fontSize: 11 }}>
-                    {label}
-                </text>
-            </svg>
-        );
-    }
-
-    const lineX = DIMENSION_GUTTER_PX - 6;
-    return (
-        <svg width={DIMENSION_GUTTER_PX} height={axisLength} className="block text-black/55" style={{ overflow: 'visible' }}>
-            <defs>{arrowMarker}</defs>
-            <line x1={0} y1={0} x2={lineX} y2={0} className="stroke-current" strokeWidth={1} />
-            <line x1={0} y1={axisLength} x2={lineX} y2={axisLength} className="stroke-current" strokeWidth={1} />
-            <line
-                x1={lineX}
-                y1={1}
-                x2={lineX}
-                y2={axisLength - 1}
-                className="stroke-current"
-                strokeWidth={1}
-                markerStart={`url(#${markerId})`}
-                markerEnd={`url(#${markerId})`}
-            />
-            <text
-                x={lineX - 5}
-                y={axisLength / 2}
-                textAnchor="middle"
-                className="fill-current font-mono"
-                style={{ fontSize: 11 }}
-                transform={`rotate(-90 ${lineX - 5} ${axisLength / 2})`}
-            >
-                {label}
-            </text>
-        </svg>
-    );
+// Cotes saisies dans le plan. Absent : le plan se lit seulement (consultation, récapitulatif)
+export interface PlanDimensionEditing {
+    // Taille intérieure d'une zone (case, colonne, niveau), comme affichée dans le plan
+    onResizeZone: (zoneId: string, axis: DimensionAxis, interiorMm: number) => void;
+    // Cote extérieure du meuble (largeur totale, hauteur totale, profondeur)
+    onFurnitureDimensionChange: (key: DimensionKey, valueMm: number) => void;
 }
 
 interface LeafVisual {
@@ -140,6 +157,10 @@ interface ZoneNodeProps {
     // (séparateur « separator-h-<chemin>h<i>-<segment> »)
     deletedPanelIds?: ReadonlySet<string>;
     panelPath?: string;
+    // Une zone parente est sélectionnée (caisson, étagère) : ses cases éclairent aussi la cote réglée
+    insideSelection?: boolean;
+    // Cotes des cases modifiables au double-clic
+    editing?: PlanDimensionEditing;
 }
 
 function ZoneNode({
@@ -156,8 +177,11 @@ function ZoneNode({
                       pxPerMm,
                       deletedPanelIds,
                       panelPath = '',
+                      insideSelection = false,
+                      editing,
                   }: ZoneNodeProps) {
     const isSelected = selectedZoneIds.includes(zone.id);
+    const activeDimension = useActiveDimension();
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -167,7 +191,9 @@ function ZoneNode({
         onSelect(zone.id, false);
     };
 
-    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement | HTMLButtonElement>) => {
+    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        // Touche venue d'un nombre de la case (saisie de cote) : ce n'est pas une sélection
+        if (event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             const isMulti = event.shiftKey || event.ctrlKey || event.metaKey;
@@ -195,6 +221,7 @@ function ZoneNode({
         e.stopPropagation();
         setIsDragging(true);
         setDragIndex(index);
+        setActiveDimension(dimensionForDivider(zone.type));
     };
 
     const handleDragMove = useCallback((e: PointerEvent) => {
@@ -217,6 +244,7 @@ function ZoneNode({
     const handleDragEnd = useCallback(() => {
         setIsDragging(false);
         setDragIndex(null);
+        setActiveDimension(null);
     }, []);
 
     useEffect(() => {
@@ -270,14 +298,16 @@ function ZoneNode({
         const Icon = visual.Icon;
         const layout = layoutLeafText({ pxWidth, pxHeight, label: meta.shortLabel, widthMm, heightMm, hasIcon: !!Icon });
 
+        // Une div plutôt qu'un bouton : les nombres de la case sont eux-mêmes cliquables (saisie de cote)
         return (
-            <button
-                type="button"
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
                 title={description}
                 aria-label={description}
-                className={`relative flex h-full w-full flex-col items-center justify-center gap-px overflow-hidden border-2 transition-all duration-200 ${
+                className={`relative flex h-full w-full cursor-pointer select-none flex-col items-center justify-center gap-px overflow-hidden border-2 transition-all duration-200 ${
                     isSelected
                         ? 'border-am-navy bg-am-navy text-white z-10 shadow-[0_0_0_3px_rgba(59,62,88,0.25)]'
                         : isOpenSpace
@@ -307,13 +337,22 @@ function ZoneNode({
                             </span>
                         )}
                         {layout.dims && (
-                            <span className="whitespace-nowrap text-center font-mono leading-tight opacity-80" style={{ fontSize: layout.dims.size }}>
-                                {layout.dims.text}
-                            </span>
+                            <LeafDims
+                                text={layout.dims.text}
+                                size={layout.dims.size}
+                                highlight={isSelected || insideSelection ? activeAxis(activeDimension, 'zone') : null}
+                                onDark={isSelected}
+                                edit={
+                                    editing && {
+                                        onHeight: (valueMm) => editing.onResizeZone(zone.id, 'height', valueMm),
+                                        onWidth: (valueMm) => editing.onResizeZone(zone.id, 'width', valueMm),
+                                    }
+                                }
+                            />
                         )}
                     </>
                 )}
-            </button>
+            </div>
         );
     }
 
@@ -415,6 +454,8 @@ function ZoneNode({
                             pxPerMm={pxPerMm}
                             deletedPanelIds={deletedPanelIds}
                             panelPath={childPath}
+                            insideSelection={insideSelection || isSelected}
+                            editing={editing}
                         />
 
                         {dividerRemoved && (
@@ -489,6 +530,10 @@ interface ZoneCanvasProps {
     roundedLeftWidthMm?: number;
     roundedRight?: boolean;
     roundedRightWidthMm?: number;
+    // Profondeur du meuble : affichée en tête du plan (vue de face, elle n'a pas de ligne de cote)
+    depth?: number;
+    // Cotes modifiables au double-clic. Absent : plan en lecture seule
+    editing?: PlanDimensionEditing;
 }
 
 export default function ZoneCanvas({
@@ -506,21 +551,37 @@ export default function ZoneCanvas({
                                        roundedLeftWidthMm = 0,
                                        roundedRight = false,
                                        roundedRightWidthMm = 0,
+                                       depth,
+                                       editing,
                                    }: ZoneCanvasProps) {
                                        const canvasContainerRef = useRef<HTMLDivElement>(null);
                                        const [availableWidth, setAvailableWidth] = useState<number | null>(null);
+    // Largeur ou hauteur du meuble en cours de réglage (étape Dimensions) : sa ligne de cote s'éclaire
+    const furnitureAxis = activeAxis(useActiveDimension(), 'furniture');
     // Largeur déclarée d'origine (bords arrondis compris) : `width` reçu ici est déjà réduit des
     // extensions actives (voir getUsableWidthMm). On reconstruit le total pour que la ligne de cote et
     // la mise à l'échelle portent sur l'enveloppe complète, comme `height` le fait déjà pour le socle.
-    const declaredWidthMm = width + (roundedLeft ? roundedLeftWidthMm : 0) + (roundedRight ? roundedRightWidthMm : 0);
+    const leftMm = roundedLeft ? roundedLeftWidthMm : 0;
+    const rightMm = roundedRight ? roundedRightWidthMm : 0;
+    const declaredWidthMm = width + leftMm + rightMm;
+
+    // Chaînes de cotes entre la cote générale et le plan : colonnes en haut, niveaux sur le côté, avec les
+    // arrondis et le socle. Seulement quand elles apportent plus qu'une seule mesure.
+    const frame: PlanFrame = { usableWidthMm: width, heightMm: height, hasSocle, roundedWidthMm: leftMm + rightMm };
+    const widthChain = planChain(zone, 'width', frame, { leftMm, rightMm });
+    const heightChain = planChain(zone, 'height', frame);
+    const showWidthChain = widthChain.length >= 2;
+    const showHeightChain = heightChain.length >= 2;
+    const topGutter = DIMENSION_GUTTER_PX + (showWidthChain ? CHAIN_GUTTER_PX : 0);
+    const sideGutter = DIMENSION_GUTTER_PX + (showHeightChain ? CHAIN_GUTTER_PX : 0);
 
     // Calcul du ratio réel du meuble (identique au modèle 3D), dans la boîte disponible. La boîte
     // réserve en plus la place des lignes de cote (gutter) pour que l'ensemble tienne dans l'espace alloué.
     const aspectRatio = declaredWidthMm / height;
     const boxWidth = availableWidth === null ? 500 : Math.max(1, Math.min(availableWidth - 32, MAX_CANVAS_WIDTH));
     const boxHeight = Math.max(1, maxCanvasHeight);
-    const drawableWidth = Math.max(1, boxWidth - DIMENSION_GUTTER_PX);
-    const drawableHeight = Math.max(1, boxHeight - DIMENSION_GUTTER_PX);
+    const drawableWidth = Math.max(1, boxWidth - sideGutter);
+    const drawableHeight = Math.max(1, boxHeight - topGutter);
 
     let canvasWidth: number;
     let canvasHeight: number;
@@ -578,11 +639,74 @@ export default function ZoneCanvas({
     };
     computeNumbers(zone);
 
+    const chainItems = (segments: ChainSegment[], axis: DimensionAxis): ChainItem[] =>
+        segments.map((segment) => {
+            const zoneId = segment.zoneId;
+            return {
+                key: segment.key,
+                startPx: segment.startMm * mmToPx,
+                endPx: segment.endMm * mmToPx,
+                valueMm: segment.valueMm,
+                name: segment.name,
+                onCommit: editing && zoneId ? (valueMm: number) => editing.onResizeZone(zoneId, axis, valueMm) : undefined,
+                lockedReason: editing && segment.locked ? LOCKED_REASONS[segment.locked] : undefined,
+            };
+        });
+
+    // Nombres des bandes (arrondis, socle) : la hauteur et la largeur du meuble s'y règlent aussi
+    const changeFurniture = (key: DimensionKey) =>
+        editing ? (valueMm: number) => editing.onFurnitureDimensionChange(key, valueMm) : undefined;
+    const bandValue = (valueMm: number, name: string, onCommit?: (valueMm: number) => void, lockedReason?: string) => (
+        <PlanValue
+            valueMm={Math.round(valueMm)}
+            name={name}
+            onCommit={onCommit}
+            lockedReason={editing ? lockedReason : undefined}
+            isolateClicks
+            className="px-px"
+        />
+    );
+    const plinthMm = hasSocle ? PLINTH_HEIGHT_MM : 0;
+    const roundedBand = (side: 'left' | 'right', widthMm: number, canvasWidthPx: number) => (
+        <div
+            className="flex flex-col items-center justify-center gap-0.5 overflow-hidden border border-black/15 bg-am-mist/50"
+            style={{ width: canvasWidthPx, height: carcassCanvasHeight }}
+            title={`Bord ${side === 'left' ? 'gauche' : 'droit'} arrondi : ${Math.round(widthMm)} mm`}
+        >
+            <span className="whitespace-nowrap font-semibold leading-tight text-black/65" style={{ fontSize: 18 }}>
+                Arrondis
+            </span>
+            <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
+                {bandValue(
+                    sideHeightMm,
+                    'Hauteur du caisson',
+                    editing ? (valueMm) => editing.onFurnitureDimensionChange('height', valueMm + plinthMm) : undefined
+                )}
+                {' × '}
+                {bandValue(widthMm, `Largeur de l'arrondi ${side === 'left' ? 'gauche' : 'droit'}`, undefined, LOCKED_REASONS.rounded)}
+                {' mm'}
+            </span>
+        </div>
+    );
+
     return (
         <div className="border border-black/10 bg-white p-5" style={{ borderRadius: '4px' }}>
-            {/* Header - Titre seul : les dimensions sont maintenant portées par les lignes de cote */}
-            <div className="mb-4 flex items-center justify-between">
+            {/* En-tête : la profondeur, seule mesure que le plan vu de face ne peut pas coter */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold text-black">Plan du meuble</h3>
+                {depth !== undefined && (
+                    <span className="flex items-center gap-1 text-xs text-black/65">
+                        Profondeur
+                        <PlanValue
+                            valueMm={Math.round(depth)}
+                            name="Profondeur du meuble"
+                            onCommit={changeFurniture('depth')}
+                            className="px-1 py-px font-mono font-semibold text-black"
+                        >
+                            {Math.round(depth)} mm
+                        </PlanValue>
+                    </span>
+                )}
             </div>
 
             {/* Canvas GRAND - Conteneur qui s'adapte au canvas */}
@@ -595,31 +719,40 @@ export default function ZoneCanvas({
                 }}
             >
                 <div className="inline-flex flex-col">
-                    {/* Cote de largeur : alignée sur le plan, décalée de la gouttière réservée à la cote de hauteur.
+                    {/* Cote de largeur : alignée sur le plan, décalée des gouttières réservées aux cotes de hauteur.
                         Porte la largeur totale déclarée, bords arrondis compris. */}
-                    <div className="flex" style={{ paddingLeft: DIMENSION_GUTTER_PX }}>
-                        <DimensionLine orientation="horizontal" length={canvasWidth} label={`${Math.round(declaredWidthMm)} mm`} />
+                    <div className="flex" style={{ paddingLeft: sideGutter }}>
+                        <DimensionLine
+                            orientation="horizontal"
+                            length={canvasWidth}
+                            valueMm={Math.round(declaredWidthMm)}
+                            name="Largeur du meuble"
+                            highlighted={furnitureAxis === 'width'}
+                            onCommit={changeFurniture('width')}
+                        />
                     </div>
+                    {showWidthChain && (
+                        <div className="flex" style={{ paddingLeft: sideGutter }}>
+                            <DimensionChain orientation="horizontal" length={canvasWidth} items={chainItems(widthChain, 'width')} />
+                        </div>
+                    )}
                     <div className="flex">
-                        <DimensionLine orientation="vertical" length={canvasHeight} label={`${Math.round(height)} mm`} />
+                        <DimensionLine
+                            orientation="vertical"
+                            length={canvasHeight}
+                            valueMm={Math.round(height)}
+                            name="Hauteur du meuble"
+                            highlighted={furnitureAxis === 'height'}
+                            onCommit={changeFurniture('height')}
+                        />
+                        {showHeightChain && (
+                            <DimensionChain orientation="vertical" length={canvasHeight} items={chainItems(heightChain, 'height')} />
+                        )}
                         <div className="flex flex-col">
                             {/* Caisson, flanqué des bandes de bord arrondi actives : même principe que le socle,
                                 juste des rectangles à l'échelle, de part et d'autre plutôt qu'en dessous */}
                             <div className="flex" style={{ height: carcassCanvasHeight }}>
-                                {roundedLeft && (
-                                    <div
-                                        className="flex flex-col items-center justify-center gap-0.5 overflow-hidden border border-black/15 bg-am-mist/50"
-                                        style={{ width: roundedLeftCanvasWidth, height: carcassCanvasHeight }}
-                                        title={`Bord gauche arrondi : ${Math.round(roundedLeftWidthMm)} mm`}
-                                    >
-                                        <span className="whitespace-nowrap font-semibold leading-tight text-black/65" style={{ fontSize: 18 }}>
-                                            Arrondis
-                                        </span>
-                                        <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
-                                            {Math.round(sideHeightMm)} × {Math.round(roundedLeftWidthMm)} mm
-                                        </span>
-                                    </div>
-                                )}
+                                {roundedLeft && roundedBand('left', roundedLeftWidthMm, roundedLeftCanvasWidth)}
                                 <div
                                     className="relative"
                                     style={{
@@ -639,22 +772,10 @@ export default function ZoneCanvas({
                                         leafInteriorSizes={leafInteriorSizes}
                                         pxPerMm={mmToPx}
                                         deletedPanelIds={deletedPanelIds}
+                                        editing={editing}
                                     />
                                 </div>
-                                {roundedRight && (
-                                    <div
-                                        className="flex flex-col items-center justify-center gap-0.5 overflow-hidden border border-black/15 bg-am-mist/50"
-                                        style={{ width: roundedRightCanvasWidth, height: carcassCanvasHeight }}
-                                        title={`Bord droit arrondi : ${Math.round(roundedRightWidthMm)} mm`}
-                                    >
-                                        <span className="whitespace-nowrap font-semibold leading-tight text-black/65" style={{ fontSize: 18 }}>
-                                            Arrondis
-                                        </span>
-                                        <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
-                                            {Math.round(sideHeightMm)} × {Math.round(roundedRightWidthMm)} mm
-                                        </span>
-                                    </div>
-                                )}
+                                {roundedRight && roundedBand('right', roundedRightWidthMm, roundedRightCanvasWidth)}
                             </div>
 
                             {/* Socle : bande pleine largeur sous le caisson, à la même échelle que le reste du plan */}
@@ -668,7 +789,10 @@ export default function ZoneCanvas({
                                         Socle
                                     </span>
                                     <span className="whitespace-nowrap font-mono text-[10px] text-black/65">
-                                        {Math.round(PLINTH_HEIGHT_MM)} × {Math.round(declaredWidthMm)} mm
+                                        {bandValue(PLINTH_HEIGHT_MM, 'Hauteur du socle', undefined, LOCKED_REASONS.socle)}
+                                        {' × '}
+                                        {bandValue(declaredWidthMm, 'Largeur du meuble', changeFurniture('width'))}
+                                        {' mm'}
                                     </span>
                                 </div>
                             )}
@@ -681,6 +805,13 @@ export default function ZoneCanvas({
             <p className="mt-4 text-center text-base text-black/65">
                 {showNumbers ? "Les numéros correspondent à l'inventaire détaillé" : "Cliquez sur une zone pour la modifier"}
             </p>
+            {editing && !showNumbers && (
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-center text-sm text-black/65">
+                    <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="pointer-coarse:hidden">Double-cliquez sur une mesure pour la changer</span>
+                    <span className="hidden pointer-coarse:inline">Touchez deux fois une mesure pour la changer</span>
+                </p>
+            )}
         </div>
     );
 }

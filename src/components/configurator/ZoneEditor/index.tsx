@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useEffect } from 'react';
-import ZoneCanvas from './ZoneCanvas';
+import toast from 'react-hot-toast';
+import ZoneCanvas, { type PlanDimensionEditing } from './ZoneCanvas';
 import ZoneControls, { SelectedZoneDimensions, type ZoneControlSection } from './ZoneControls';
 import { Zone, ZoneContent } from './types';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
@@ -8,6 +9,8 @@ import { MIN_COMPARTMENT_HEIGHT_MM, MIN_COMPARTMENT_WIDTH_MM } from '@/lib/confi
 import { setDivisionCount, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 import { removeSection } from '@/lib/configurator/zoneRemoval';
 import { applySplitRatios } from '@/lib/configurator/zoneResize';
+import type { DimensionKey } from '@/lib/configurator/constraints';
+import { clampFurnitureDimension, planResizeNotice, resizeFromPlan } from '@/lib/configurator/planDimensions';
 
 export { default as PanelPlanCanvas } from './PanelPlanCanvas';
 export type { ZoneControlSection } from './ZoneControls';
@@ -36,6 +39,9 @@ interface ZoneEditorProps {
   hideDimensions?: boolean;
   // Hauteur maximale du plan 2D en pixels
   canvasMaxHeight?: number;
+  // Cotes du plan modifiables au double-clic : reçoit la nouvelle largeur totale, hauteur totale ou profondeur du
+  // meuble (les cases se règlent dans l'arbre de zones). Absent : le plan se lit seulement.
+  onFurnitureDimensionChange?: (key: DimensionKey, valueMm: number) => void;
   // Sections de réglages affichées sous le plan (toutes par défaut)
   controlSections?: ZoneControlSection[];
   showNumbers?: boolean;
@@ -86,6 +92,7 @@ export default function ZoneEditor({
   hideCanvas,
   hideDimensions,
   canvasMaxHeight,
+  onFurnitureDimensionChange,
   controlSections,
   showNumbers,
   deletedPanelIds,
@@ -513,6 +520,33 @@ export default function ZoneEditor({
     [rootZone, onRootZoneChange]
   );
 
+  // Cotes saisies dans le plan 2D. Une valeur ajustée (taille minimale d'une case, limites du meuble) est expliquée.
+  const planEditing = useMemo<PlanDimensionEditing | undefined>(() => {
+    if (!onFurnitureDimensionChange) return undefined;
+    const roundedWidthMm = (roundedLeft ? roundedLeftWidthMm ?? 0 : 0) + (roundedRight ? roundedRightWidthMm ?? 0 : 0);
+    const frame = { usableWidthMm: width, heightMm: height, hasSocle: !!hasSocle, roundedWidthMm };
+    const notify = (notice: string | null) => {
+      if (notice) toast(notice, { id: 'plan-dimension', duration: 5000 });
+    };
+    return {
+      onResizeZone: (zoneId, axis, interiorMm) => {
+        const result = resizeFromPlan(rootZone, zoneId, axis, interiorMm, frame);
+        if (!result) return;
+        if (result.kind === 'zone') {
+          if (result.root !== rootZone) onRootZoneChange(result.root);
+        } else {
+          onFurnitureDimensionChange(result.axis, result.furnitureMm);
+        }
+        notify(planResizeNotice(result));
+      },
+      onFurnitureDimensionChange: (key, valueMm) => {
+        const { valueMm: applied, notice } = clampFurnitureDimension(key, valueMm);
+        onFurnitureDimensionChange(key, applied);
+        notify(notice);
+      },
+    };
+  }, [onFurnitureDimensionChange, roundedLeft, roundedLeftWidthMm, roundedRight, roundedRightWidthMm, width, height, hasSocle, rootZone, onRootZoneChange]);
+
   // Compteurs Colonnes / Étagères : la zone reste sélectionnée pour continuer à l'ajuster
   const setZoneDivisionCount = useCallback(
     (zoneId: string, direction: DivisionDirection, count: number) => {
@@ -569,6 +603,8 @@ export default function ZoneEditor({
           roundedLeftWidthMm={roundedLeftWidthMm}
           roundedRight={roundedRight}
           roundedRightWidthMm={roundedRightWidthMm}
+          depth={depth}
+          editing={planEditing}
         />
       )}
 

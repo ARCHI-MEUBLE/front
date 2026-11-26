@@ -4,6 +4,13 @@ import { DivisionStepper } from '../ZoneEditor/ZoneControls';
 import { partSize, splitAvailability } from '@/lib/configurator/constraints';
 import { getDivisionCount, isShelfGrid, setDivisionCount, shelfColumnWidths, type DivisionDirection } from '@/lib/configurator/zoneDivision';
 import { getZoneSize } from '@/lib/configurator/zoneStats';
+import { dimensionFieldHandlers, setActiveDimension } from '@/lib/configurator/activeDimension';
+import { useEffect } from 'react';
+
+// Le plan 2D éclaire, dans la zone sélectionnée, la cote que change le compteur : largeur des caissons et des
+// compartiments, hauteur des casiers
+const widthGlow = dimensionFieldHandlers({ scope: 'zone', axis: 'width' });
+const heightGlow = dimensionFieldHandlers({ scope: 'zone', axis: 'height' });
 
 interface DivisionStepsProps {
   rootZone: Zone;
@@ -107,6 +114,7 @@ export default function DivisionSteps({
   onOpenStepChange,
 }: DivisionStepsProps) {
   const { caisson, shelf, compartment } = resolveLevels(rootZone, selectedZoneIds[0] ?? 'root');
+  useEffect(() => () => setActiveDimension(null), []);
 
   const sizeOf = (zone: Zone) => getZoneSize(rootZone, zone.id, width, height) ?? { width, height };
   const caissonSize = sizeOf(caisson);
@@ -151,15 +159,17 @@ export default function DivisionSteps({
         open={openStep === 1}
         onToggle={() => toggle(1)}
       >
-        <DivisionStepper
-          icon={Columns3}
-          label="Caissons"
-          value={caissonCount}
-          max={Math.max(caissonsSplit.maxParts, caissonCount ?? 1)}
-          sizeLabel={caissonCount ? `Caissons de ${cm(partSize(width, caissonCount))} de large` : undefined}
-          reason={caissonsSplit.reason}
-          onChange={(count) => apply(rootZone, 'vertical', count)}
-        />
+        <div {...widthGlow}>
+          <DivisionStepper
+            icon={Columns3}
+            label="Caissons"
+            value={caissonCount}
+            max={Math.max(caissonsSplit.maxParts, caissonCount ?? 1)}
+            sizeLabel={caissonCount ? `Caissons de ${cm(partSize(width, caissonCount))} de large` : undefined}
+            reason={caissonsSplit.reason}
+            onChange={(count) => apply(rootZone, 'vertical', count)}
+          />
+        </div>
       </Accordion>
 
       <Accordion
@@ -170,16 +180,18 @@ export default function DivisionSteps({
         onToggle={() => toggle(2)}
       >
         <p className="text-xs text-[#706F6C]">Cliquez sur un caisson du meuble pour le sélectionner.</p>
-        <DivisionStepper
-          icon={Rows3}
-          label="Étagères dans ce caisson"
-          value={shelfCount}
-          max={Math.max(shelvesSplit.maxParts, shelfCount ?? 1)}
-          sizeLabel={shelfCount ? `Casiers de ${cm(partSize(caissonSize.height, shelfCount))} de haut` : undefined}
-          reason={shelvesSplit.reason}
-          blockedReason={shelvesGrid ? undefined : 'Ce caisson contient des groupes imbriqués : sélectionnez-en une colonne.'}
-          onChange={(count) => apply(caisson, 'horizontal', count)}
-        />
+        <div {...heightGlow}>
+          <DivisionStepper
+            icon={Rows3}
+            label="Étagères dans ce caisson"
+            value={shelfCount}
+            max={Math.max(shelvesSplit.maxParts, shelfCount ?? 1)}
+            sizeLabel={shelfCount ? `Casiers de ${cm(partSize(caissonSize.height, shelfCount))} de haut` : undefined}
+            reason={shelvesSplit.reason}
+            blockedReason={shelvesGrid ? undefined : 'Ce caisson contient des groupes imbriqués : sélectionnez-en une colonne.'}
+            onChange={(count) => apply(caisson, 'horizontal', count)}
+          />
+        </div>
       </Accordion>
 
       <Accordion
@@ -190,15 +202,17 @@ export default function DivisionSteps({
         onToggle={() => toggle(3)}
       >
         <p className="text-xs text-[#706F6C]">Cliquez sur une étagère du meuble pour la sélectionner.</p>
-        <DivisionStepper
-          icon={Columns3}
-          label="Compartiments dans cette étagère"
-          value={dividerCount}
-          max={Math.max(dividersSplit.maxParts, dividerCount ?? 1)}
-          sizeLabel={dividerCount ? `Compartiments de ${cm(partSize(shelfSize.width, dividerCount))} de large` : undefined}
-          reason={dividersSplit.reason}
-          onChange={(count) => apply(shelf, 'vertical', count)}
-        />
+        <div {...widthGlow}>
+          <DivisionStepper
+            icon={Columns3}
+            label="Compartiments dans cette étagère"
+            value={dividerCount}
+            max={Math.max(dividersSplit.maxParts, dividerCount ?? 1)}
+            sizeLabel={dividerCount ? `Compartiments de ${cm(partSize(shelfSize.width, dividerCount))} de large` : undefined}
+            reason={dividersSplit.reason}
+            onChange={(count) => apply(shelf, 'vertical', count)}
+          />
+        </div>
       </Accordion>
 
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DIMENSION_LIMITS } from '@/lib/configurator/constraints';
+import { dimensionFieldHandlers, setActiveDimension, type DimensionAxis } from '@/lib/configurator/activeDimension';
 
 /* ****************************************
  * 
@@ -17,10 +18,18 @@ interface DimensionInputProps {
   step: number;
   unit: string;
   hint?: string;
+  // Cote du plan 2D éclairée pendant le réglage (la profondeur n'y figure pas : vue de face)
+  axis?: DimensionAxis;
 }
 
-function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: DimensionInputProps) {
+function DimensionInput({ label, value, onChange, min, max, step, unit, hint, axis }: DimensionInputProps) {
   const [inputValue, setInputValue] = useState(String(value));
+  const glow = axis ? dimensionFieldHandlers({ scope: 'furniture', axis }) : {};
+
+  useEffect(() => {
+    if (!axis) return;
+    return () => setActiveDimension(null);
+  }, [axis]);
 
   useEffect(() => {
     setInputValue(String(value));
@@ -56,7 +65,7 @@ function DimensionInput({ label, value, onChange, min, max, step, unit, hint }: 
   const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5" {...glow}>
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-medium text-black">{label}</label>
         <div className="flex items-center gap-1.5">
@@ -159,6 +168,7 @@ export default function DimensionsPanel({
 
       <DimensionInput
         label="Largeur"
+        axis="width"
         value={width}
         onChange={onWidthChange}
         min={DIMENSION_LIMITS.width.min}
@@ -181,6 +191,7 @@ export default function DimensionsPanel({
 
       <DimensionInput
         label="Hauteur"
+        axis="height"
         value={height}
         onChange={onHeightChange}
         min={DIMENSION_LIMITS.height.min}
