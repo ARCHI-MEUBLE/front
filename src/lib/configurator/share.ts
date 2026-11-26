@@ -95,6 +95,8 @@ export function configDataToRestore(data: any) {
     doorType: data.features?.doorType,
     doorSide: data.features?.doorSide,
     mountingStyle: data.features?.mountingStyle,
+    // Pose et montage chez le client : seulement si elle a été choisie (les modèles du catalogue ne l'ont pas)
+    installation: data.features?.installation === true,
     deletedPanelIds: data.deletedPanelIds,
     // Poignées du meuble ; absentes des configurations d'avant les modèles : réglages par défaut
     handleDefaults: parseHandleDefaults(data.handles),

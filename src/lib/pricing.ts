@@ -15,7 +15,13 @@ export interface PriceEstimate {
   lines: { key: string; label: string; amount: number }[];
   // null : le backend n'a pas donné la livraison (ancienne version) ; on n'affiche alors rien plutôt qu'un montant faux
   delivery: number | null;
+  // Prix de la pose et du montage chez le client pour ce meuble, donné même quand l'option n'est pas choisie (pour
+  // l'annoncer) ; compris dans price seulement si features.installation est vrai. null : backend d'avant l'option.
+  installation: number | null;
 }
+
+const amountOrNull = (value: unknown): number | null =>
+  value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 
 // Couleur d'une partie du meuble : le backend en déduit la matière, donc le prix au m² de cette partie
 type PartColor = { colorId: number | null; hex?: string | null; imageUrl?: string | null };
@@ -25,7 +31,8 @@ type PartColor = { colorId: number | null; hex?: string | null; imageUrl?: strin
 export interface PricedConfiguration {
   dimensions: { width: number; height: number; depth: number };
   styling: { materialKey: string; finish: string; socle: string; colorId?: number | null };
-  features: { doorType: 'none' | 'single' | 'double'; mountingStyle?: 'applique' | 'encastre' };
+  // installation : pose et montage chez le client, ajoutés au prix du meuble
+  features: { doorType: 'none' | 'single' | 'double'; mountingStyle?: 'applique' | 'encastre'; installation?: boolean };
   advancedZones: Zone;
   // Poignée du meuble : prix des façades qui n'ont pas leur propre modèle
   handles: HandleDefaults;
@@ -44,7 +51,6 @@ const toNumber = (value: unknown): number => {
 
 // Réponse du backend -> PriceEstimate ; les montants peuvent arriver en texte
 export function parsePriceEstimate(data: any): PriceEstimate {
-  const delivery = data?.delivery;
   return {
     price: toNumber(data?.price),
     low: toNumber(data?.low),
@@ -53,8 +59,15 @@ export function parsePriceEstimate(data: any): PriceEstimate {
     lines: Array.isArray(data?.lines)
       ? data.lines.map((line: any) => ({ key: String(line?.key ?? ''), label: String(line?.label ?? ''), amount: toNumber(line?.amount) }))
       : [],
-    delivery: delivery === null || delivery === undefined || !Number.isFinite(Number(delivery)) ? null : Number(delivery),
+    delivery: amountOrNull(data?.delivery),
+    installation: amountOrNull(data?.installation),
   };
+}
+
+// Ligne « Pose et montage » des récapitulatifs
+export function installationLabel(chosen: boolean, amount: number | null): string {
+  if (!chosen) return 'Non comprise : livraison seule';
+  return amount !== null && amount > 0 ? `Comprise dans le prix (${formatPrice(amount)})` : 'Comprise dans le prix';
 }
 
 export async function fetchPriceEstimate(config: PricedConfiguration, signal?: AbortSignal): Promise<PriceEstimate> {

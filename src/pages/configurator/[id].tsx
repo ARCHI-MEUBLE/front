@@ -39,6 +39,7 @@ import {
 import ZoneEditor, { Zone, ZoneContent, ZoneColor, stringToPanelId, PANEL_META } from '@/components/configurator/ZoneEditor';
 import ZoneColorPicker from '@/components/configurator/ZoneColorPicker';
 import SocleSelector from '@/components/configurator/SocleSelector';
+import InstallationToggle from '@/components/configurator/InstallationToggle';
 import MaterialSelector, { ComponentColors, type ColorComponent } from '@/components/configurator/MaterialSelector';
 import PriceDisplay from '@/components/configurator/PriceDisplay';
 import { fetchPriceEstimate, formatPriceRange, savedQuoteFrom, type PriceEstimate } from '@/lib/pricing';
@@ -425,6 +426,8 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const [doorType, setDoorType] = useState<'none' | 'single' | 'double'>('none');
   const [doorSide, setDoorSide] = useState<'left' | 'right'>('left');
   const [mountingStyle, setMountingStyle] = useState<'applique' | 'encastre'>('applique');
+  // Pose et montage chez le client (Finitions) : ajoutés au prix du meuble par le backend
+  const [installation, setInstallation] = useState(false);
 
   useEffect(() => {
     doorsOpenRef.current = doorsOpen;
@@ -1146,7 +1149,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         {
           dimensions: { width, height, depth },
           styling: { materialKey: selectedMaterialKey, finish, socle, colorId: selectedColorId },
-          features: { doorType, mountingStyle },
+          features: { doorType, mountingStyle, installation },
           advancedZones: rootZone,
           handles: handleDefaults,
           useMultiColor,
@@ -1169,7 +1172,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [initialConfigApplied, width, height, depth, selectedMaterialKey, finish, socle, selectedColorId, doorType, mountingStyle, rootZone, handleDefaults, useMultiColor, componentColors, deletedPanelIds]);
+  }, [initialConfigApplied, width, height, depth, selectedMaterialKey, finish, socle, selectedColorId, doorType, mountingStyle, installation, rootZone, handleDefaults, useMultiColor, componentColors, deletedPanelIds]);
 
   // Devis de la configuration ouverte (prix enregistré, éventuellement ajusté par l'atelier) : c'est lui qui est payé
   const savedQuote = useMemo(() => (editingConfiguration ? savedQuoteFrom(editingConfiguration) : null), [editingConfiguration]);
@@ -1201,6 +1204,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
       doorType,
       doorSide,
       mountingStyle,
+      installation,
       doorsOpen,
       showDecorations,
       deletedPanelIds: Array.from(deletedPanelIds),
@@ -1213,7 +1217,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     } catch (e) {
       console.warn('❌ Impossible de sauvegarder dans localStorage', e);
     }
-  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds, handleDefaults]);
+  }, [id, loading, width, height, depth, socle, rootZone, finish, selectedColorId, useMultiColor, componentColors, doorType, doorSide, mountingStyle, installation, color, localStorageKey, isViewMode, initialConfigApplied, showRestoreDialog, doorsOpen, showDecorations, deletedPanelIds, handleDefaults]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1690,6 +1694,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         if (configToRestore.doorType) setDoorType(configToRestore.doorType);
         if (configToRestore.doorSide) setDoorSide(configToRestore.doorSide);
         if (configToRestore.mountingStyle) setMountingStyle(configToRestore.mountingStyle);
+        if (configToRestore.installation !== undefined) setInstallation(configToRestore.installation === true);
         if (configToRestore.deletedPanelIds) setDeletedPanelIds(new Set(configToRestore.deletedPanelIds));
         if (configToRestore.handleDefaults) setHandleDefaults(configToRestore.handleDefaults);
         setInitialConfigApplied(true);
@@ -1785,6 +1790,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     if (c.doorType) setDoorType(c.doorType);
     if (c.doorSide) setDoorSide(c.doorSide);
     if (c.mountingStyle) setMountingStyle(c.mountingStyle);
+    if (c.installation !== undefined) setInstallation(c.installation === true);
     if (c.doorsOpen !== undefined) setDoorsOpen(c.doorsOpen);
     if (c.showDecorations !== undefined) setShowDecorations(c.showDecorations);
     if (c.deletedPanelIds) setDeletedPanelIds(new Set(c.deletedPanelIds));
@@ -2131,7 +2137,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         selectedColorId,
         socle,
       },
-      features: { doorsOpen, doorType, doorSide, mountingStyle },
+      features: { doorsOpen, doorType, doorSide, mountingStyle, installation },
       advancedZones: rootZone,
       // Poignée du meuble ; celle d'une porte ou d'un tiroir est dans sa zone
       handles: handleDefaults,
@@ -2894,6 +2900,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                 isAdmin={isAdmin}
                 onEdit={handleAdminEdit}
                 mountingStyle={mountingStyle}
+                installation={installation}
                 isOwner={isConfigOwner}
                 onEditOwn={handleOwnerEdit}
                 handleModels={handleModels}
@@ -3092,6 +3099,14 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                           )}
                         </StepSection>
 
+                        <StepSection title="Pose et montage" aside="Pour tout le meuble">
+                          <InstallationToggle
+                            checked={installation}
+                            onChange={setInstallation}
+                            price={priceEstimate?.installation ?? null}
+                          />
+                        </StepSection>
+
                         <StepSection title="Récapitulatif">
                           <ConfigRecap
                             width={width}
@@ -3106,6 +3121,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                             socle={socle}
                             stats={zoneStats}
                             handles={handlesSummary}
+                            installation={installation}
                             estimate={priceEstimate}
                             priceError={priceError}
                           />

@@ -37,6 +37,8 @@ interface OrderItem {
   price: number;
   prompt: string;
   name: string;
+  // Configuration commandée, telle qu'enregistrée (features.installation : pose et montage chez le client)
+  config_data?: { features?: { installation?: unknown } } | null;
 }
 
 interface CatalogueOrderItem {
@@ -759,6 +761,9 @@ export function DashboardOrders() {
                               <span className="font-semibold">{item.quantity * item.price}€</span>
                             </p>
                           </div>
+                          <Badge variant={item.config_data?.features?.installation === true ? 'default' : 'outline'}>
+                            {item.config_data?.features?.installation === true ? 'Pose et montage compris' : 'Livraison seule'}
+                          </Badge>
                         </div>
 
                         <div className="bg-muted p-3 rounded-md">

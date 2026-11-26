@@ -1,7 +1,7 @@
 import type { ZoneStats } from '@/lib/configurator/zoneStats';
 import { displayColorName, displayMaterialName } from '@/lib/displayNames';
 import { formatPrice } from '@/lib/format';
-import { formatPriceRange, type PriceEstimate } from '@/lib/pricing';
+import { formatPriceRange, installationLabel, type PriceEstimate } from '@/lib/pricing';
 import type { MountingStyle } from './MountingStyleSelector';
 
 interface ConfigRecapProps {
@@ -19,6 +19,8 @@ interface ConfigRecapProps {
   stats: ZoneStats;
   // Poignées posées (summarizeHandles) ; null : aucune porte ni aucun tiroir à poignée
   handles?: string | null;
+  // Pose et montage chez le client choisis (Finitions) : compris dans le prix du meuble
+  installation?: boolean;
   // Prix du meuble (estimation du backend) et livraison, ajoutée à part au panier. Sur téléphone, la barre du bas
   // n'affiche que la fourchette : le récapitulatif donne le prix central et la livraison.
   estimate?: PriceEstimate | null;
@@ -57,6 +59,7 @@ export default function ConfigRecap({
   socle,
   stats,
   handles,
+  installation = false,
   estimate = null,
   priceError = null,
 }: ConfigRecapProps) {
@@ -97,6 +100,7 @@ export default function ConfigRecap({
         {handles && <Row label="Poignées">{handles}</Row>}
         <Row label="Pieds">{SOCLE_LABELS[socle] ?? socle}</Row>
         <Row label="Équipements">{equipment.length > 0 ? equipment.join(' · ') : 'Aucun'}</Row>
+        <Row label="Pose et montage">{installationLabel(installation, estimate?.installation ?? null)}</Row>
         {priceError ? (
           <Row label="Prix du meuble">
             <span className="text-am-wine">Prix indisponible</span>

@@ -60,10 +60,10 @@ export const GRID_TABS: GridTab[] = [
   },
   {
     key: 'shipping',
-    label: 'Livraison',
-    categories: ['shipping'],
+    label: 'Livraison & pose',
+    categories: ['shipping', 'installation'],
     intro:
-      'La livraison ne fait plus partie du prix du meuble : elle s’ajoute à part au panier et à la commande. Meuble sur mesure : largeur × hauteur du meuble (en m²) × prix au m², avec un minimum par meuble. Façades, articles du catalogue et échantillons : un forfait colis par commande, offert à partir du seuil de gratuité.',
+      'La livraison ne fait plus partie du prix du meuble : elle s’ajoute à part au panier et à la commande. Meuble sur mesure : largeur × hauteur du meuble (en m²) × prix au m², avec un minimum par meuble. Façades, articles du catalogue et échantillons : un forfait colis par commande, offert à partir du seuil de gratuité. La pose et le montage chez le client sont une option du configurateur (étape Finitions) : même calcul que la livraison d’un meuble, ajouté au prix du meuble quand le client la choisit.',
   },
   {
     key: 'payment',
@@ -109,6 +109,8 @@ export const PARAM_HELP: Record<string, string> = {
   'shipping.furniture.minimum': 'Montant minimal de livraison par meuble (0 = pas de minimum).',
   'shipping.parcel.flat': 'Par commande contenant façades, articles du catalogue ou échantillons (0 = offert).',
   'shipping.parcel.free_from': 'Sous-total colis à partir duquel le forfait est offert (0 = jamais offert).',
+  'installation.furniture.price_per_m2': 'Exemple : une armoire de 2,60 m × 2,20 m fait 5,72 m² de façade.',
+  'installation.furniture.minimum': 'Montant minimal de la pose et du montage par meuble (0 = pas de minimum).',
   'payment.deposit.default_percent': 'Entre 1 et 99 %.',
   'rounding.price.step': 'Exemple : un pas de 10 € arrondit 1 234 € à 1 230 €.',
 };
