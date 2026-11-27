@@ -1,6 +1,7 @@
 // Appels au backend pour les modèles de poignées, par le proxy du site (/backend/api/... → /api/proxy/...) : même
 // origine pour le navigateur, cookies de session admin transmis, statut et message d'erreur du backend conservés.
 import type { AdminHandleModel, HandleModel, HandleShape } from '@/lib/configurator/handles';
+import type { HandleImportRow } from '@/lib/handleSheet';
 
 export interface HandleModelInput {
   name: string;
@@ -16,6 +17,18 @@ export interface HandleModelInput {
   image_url?: string | null;
   active?: boolean;
   position?: number;
+  reference?: string | null;
+  supplier_url?: string | null;
+}
+
+// Résultat d'un import (ou de son aperçu, dryRun) : ce qui est créé, modifié ou déjà à jour, et les lignes refusées
+export interface HandleImportResult {
+  created: number;
+  updated: number;
+  unchanged: number;
+  saved: boolean;
+  changes: Array<{ line: number; name: string; action: 'create' | 'update' | 'unchanged' }>;
+  errors: Array<{ line: number; message: string }>;
 }
 
 export class HandleModelsApiError extends Error {
@@ -67,5 +80,9 @@ export const handleModelsApi = {
   },
   async remove(id: number): Promise<void> {
     await post({ action: 'delete', id });
+  },
+  // Lignes du fichier Excel : dryRun = aperçu, rien n'est enregistré. Tout ou rien : une ligne refusée bloque l'import.
+  async importRows(rows: HandleImportRow[], dryRun: boolean): Promise<HandleImportResult> {
+    return post<HandleImportResult>({ action: 'import', dryRun, rows });
   },
 };

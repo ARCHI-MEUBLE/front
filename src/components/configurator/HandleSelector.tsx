@@ -102,6 +102,14 @@ function ModelTile({
         <div className="h-full w-full overflow-hidden" aria-hidden="true">
           <HandleModelPreview model={model} orientation={orientation} />
         </div>
+        {model.image_url && (
+          // Photo du fabricant : pastille de la finition, pour distinguer les finitions d'une même poignée d'un coup d'œil
+          <span
+            className="absolute bottom-1 left-1 h-3 w-3 rounded-full border border-white shadow-sm ring-1 ring-black/15"
+            style={{ backgroundColor: model.finish_hex }}
+            aria-hidden="true"
+          />
+        )}
         {selected && <ColorCheckBadge />}
       </div>
       <span className={`line-clamp-2 text-[10px] leading-tight ${selected ? 'font-medium text-black' : 'text-black/65'}`}>

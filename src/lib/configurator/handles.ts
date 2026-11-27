@@ -58,6 +58,9 @@ export interface AdminHandleModel extends HandleModel {
   // DECIMAL PostgreSQL : chaîne, comme les prix des échantillons
   price_per_unit: string;
   active: boolean;
+  // Référence du fabricant (LMC), qui retrouve le modèle à l'import du fichier Excel, et lien de sa fiche produit
+  reference?: string | null;
+  supplier_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }

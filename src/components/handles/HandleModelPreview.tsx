@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { HandleModel, HandleOrientation } from '@/lib/configurator/handles';
 
 type PreviewModel = Pick<HandleModel, 'name' | 'shape' | 'finish_hex' | 'length_mm' | 'image_url' | 'center_distance_mm'>;
@@ -10,13 +11,23 @@ interface HandleModelPreviewProps {
 
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 
-// Vignette d'un modèle de poignée : la photo envoyée dans l'admin, sinon un dessin de la forme dans sa finition, posée
-// sur une façade claire. Le dessin suit l'orientation choisie (un bouton n'en a pas).
+// Vignette d'un modèle de poignée : sa photo (celle du fabricant, ou envoyée dans l'admin), entière sur fond blanc ;
+// sinon, ou si la photo ne se charge pas, un dessin de la forme dans sa finition, posée sur une façade claire. Le dessin
+// suit l'orientation choisie (un bouton n'en a pas).
 export function HandleModelPreview({ model, orientation = 'horizontal', className = '' }: HandleModelPreviewProps) {
-  if (model.image_url) {
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  if (model.image_url && brokenUrl !== model.image_url) {
+    const url = model.image_url;
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- photo du backend, taille de vignette
-      <img src={model.image_url} alt={model.name} className={`h-full w-full object-cover ${className}`} loading="lazy" />
+      // eslint-disable-next-line @next/next/no-img-element -- photo du fabricant ou du backend, taille de vignette
+      <img
+        src={url}
+        alt={model.name}
+        className={`h-full w-full bg-white object-contain ${className}`}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setBrokenUrl(url)}
+      />
     );
   }
 
