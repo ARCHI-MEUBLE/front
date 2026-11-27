@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, SyntheticEvent, KeyboardEvent } from 'react';
-import { Archive, BoxSelect, DoorClosed, Frame, Hand, Pencil, Shirt, Sparkles, SquareDashed, type LucideIcon } from 'lucide-react';
+import { Archive, ArrowLeftRight, BoxSelect, DoorClosed, Frame, Hand, Pencil, Shirt, Sparkles, SquareDashed, type LucideIcon } from 'lucide-react';
 import { Zone, ZoneContent, ZONE_CONTENT_META } from './types';
 import { moveDivider } from '@/lib/configurator/zoneResize';
 import { getZoneInteriorSizeMm, PLINTH_HEIGHT_M } from '@/lib/configurator/zoneBounds';
@@ -126,6 +126,7 @@ function getLeafVisual(content: ZoneContent | undefined): LeafVisual {
         case 'door':
         case 'door_right':
         case 'door_double': return DOOR_VISUAL(DoorClosed);
+        case 'sliding_door': return DOOR_VISUAL(ArrowLeftRight);
         case 'push_door':
         case 'push_door_right': return DOOR_VISUAL(Hand);
         case 'mirror_door':

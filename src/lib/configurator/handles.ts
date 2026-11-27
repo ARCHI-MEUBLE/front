@@ -12,7 +12,7 @@
 // dès qu'on lui choisit une poignée (ou qu'on applique un choix à tout le meuble), handleType est retiré.
 
 import type { HandleType, Zone, ZoneContent } from '@/components/configurator/ZoneEditor/types';
-import { getZoneFacade, isDoorContent, isDrawerContent, isPushContent } from './zoneStats';
+import { getZoneFacade, isDoorContent, isDrawerContent, isPushContent, isSlidingDoor } from './zoneStats';
 
 export type HandleShape = 'bar' | 'flat_bar' | 'profile' | 'knob' | 'cup' | 'recessed' | 'leather';
 export type HandleOrientation = 'horizontal' | 'vertical';
@@ -58,6 +58,9 @@ export interface AdminHandleModel extends HandleModel {
   // DECIMAL PostgreSQL : chaîne, comme les prix des échantillons
   price_per_unit: string;
   active: boolean;
+  // Référence du fabricant (LMC), qui retrouve le modèle à l'import du fichier Excel, et lien de sa fiche produit
+  reference?: string | null;
+  supplier_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -97,6 +100,29 @@ export function isHandleOrientation(value: unknown): value is HandleOrientation 
 // Un bouton ou une poignée encastrée ronde n'a ni sens de pose ni longueur
 export function shapeHasOrientation(shape: HandleShape | null | undefined): boolean {
   return shape !== 'knob' && shape !== 'recessed';
+}
+
+// Poignées qui ne dépassent pas de la façade : les seules possibles sur une porte coulissante, dont les vantaux
+// passent l'un devant l'autre
+const FLUSH_SHAPES: HandleShape[] = ['cup', 'recessed'];
+
+export function isFlushHandle(model: HandleModel | null | undefined): boolean {
+  return !!model && FLUSH_SHAPES.includes(model.shape);
+}
+
+// Modèles proposés pour une façade : tous, sauf sur une porte coulissante (encastrés seulement)
+export function handleModelsFor(zone: Zone | null, models: HandleModel[]): HandleModel[] {
+  return zone && isSlidingDoor(facadeOf(zone)) ? models.filter(isFlushHandle) : models;
+}
+
+// La zone porte une porte coulissante (feuille ou groupe)
+export function hasSlidingDoor(zone: Zone): boolean {
+  return isSlidingDoor(facadeOf(zone));
+}
+
+// Cuvette de repli d'une porte coulissante quand ni la porte ni le meuble n'ont de poignée encastrée
+export function firstFlushModel(models: HandleModel[]): HandleModel | null {
+  return models.find(isFlushHandle) ?? null;
 }
 
 // Façade de la zone, comme la dessine la vue 3D (contenu d'une feuille, ou porte posée sur un groupe)
@@ -153,6 +179,19 @@ export function resolveZoneHandle(
   const ownModel = findModel(models, zone.handleModelId);
   const ownOrientation = isHandleOrientation(zone.handleOrientation) ? zone.handleOrientation : null;
   const customized = zone.handleModelId != null || ownOrientation !== null;
+
+  // Porte coulissante : une poignée encastrée seulement. Son propre choix s'il l'est, sinon celui du meuble s'il l'est,
+  // sinon la première cuvette de l'admin (aucune : pas de poignée, plutôt qu'une barre qui bloquerait le vantail)
+  if (hasSlidingDoor(zone)) {
+    const furnitureModel = defaultHandleModel(models, defaults);
+    const model = [ownModel, furnitureModel].find(isFlushHandle) ?? firstFlushModel(models);
+    return {
+      model,
+      legacyType: null,
+      orientation: ownOrientation ?? furnitureOrientation,
+      customized: isFlushHandle(ownModel) || ownOrientation !== null,
+    };
+  }
 
   // Ancienne configuration : la zone n'a que handleType, on garde son rendu d'origine
   if (!customized && zone.handleType) {

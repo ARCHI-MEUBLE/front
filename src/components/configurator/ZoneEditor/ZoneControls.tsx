@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Rows3, Columns3, Archive, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, ChevronLeft, ChevronRight, PanelBottomClose, SquareDashed } from 'lucide-react';
+import { Rows3, Columns3, Archive, ArrowLeftRight, Shirt, Minus, Trash2, Lightbulb, Plug, DoorClosed, Hand, BoxSelect, ChevronLeft, ChevronRight, PanelBottomClose, SquareDashed } from 'lucide-react';
 import { Zone, ZoneContent } from './types';
 import { getChildRatios } from '@/lib/configurator/zoneStats';
 import { facadeAvailability, hangingRailAvailability, partSize, splitAvailability } from '@/lib/configurator/constraints';
@@ -434,6 +434,7 @@ const DOOR_OPTIONS = [
   { id: 'door' as ZoneContent, icon: DoorClosed, label: 'Porte gauche', desc: 'Une seule porte' },
   { id: 'door_right' as ZoneContent, icon: DoorClosed, label: 'Porte droite', desc: 'Une seule porte' },
   { id: 'door_double' as ZoneContent, icon: DoorClosed, label: 'Double porte', desc: 'Deux portes' },
+  { id: 'sliding_door' as ZoneContent, icon: ArrowLeftRight, label: 'Coulissante', desc: 'Rail noir, idéale dressing' },
   { id: 'push_door' as ZoneContent, icon: Hand, label: 'Porte Push', desc: 'Sans poignée', needsSideChoice: true, dialogType: 'push' as const },
 ];
 

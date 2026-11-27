@@ -16,6 +16,7 @@ import {
   maxPartsFor,
 } from './constraints';
 import { getChildRatios, isDoorContent, isDrawerContent } from './zoneStats';
+import { SLIDING_DOOR_MIN_WIDTH_MM } from './slidingDoor';
 
 /**
  * Correction automatique d'un meuble hors limites de fabrication (bouton « Corriger ») : on garde ce que le
@@ -28,7 +29,10 @@ import { getChildRatios, isDoorContent, isDrawerContent } from './zoneStats';
  * - Ce qui ne peut pas être sauvé (tiroir trop étroit, penderie trop basse…) est retiré.
  */
 
-type Dims = { width: number; height: number; depth: number };
+// Mêmes dimensions que la vérification de la page : `usableWidth` est la largeur intérieure, bords arrondis déduits.
+// Sans elle, la correction travaillait sur la largeur totale et ne voyait pas les façades trop étroites.
+// `roundedWidth` : largeur des bords arrondis actifs (gauche + droite), qui ne change pas quand la largeur est corrigée.
+type Dims = { width: number; height: number; depth: number; usableWidth?: number; roundedWidth?: number };
 
 export interface ConstraintFix {
   root: Zone;
@@ -56,6 +60,7 @@ const FACADE_NAMES: Partial<Record<ZoneContent, string>> = {
   door: 'porte',
   door_right: 'porte',
   door_double: 'double porte',
+  sliding_door: 'porte coulissante',
   push_door: 'porte push',
   push_door_right: 'porte push',
   mirror_door: 'porte vitrée',
@@ -81,7 +86,8 @@ const narrowest = (a: WidthLimit, b: WidthLimit) => (b.max < a.max ? b : a);
 
 // Largeur maximale d'une façade ; une porte simple ordinaire peut devenir double porte, elle va donc jusqu'à 1,2 m
 function facadeLimit(content?: ZoneContent): WidthLimit {
-  if (!hasFacade(content)) return NO_LIMIT;
+  // Porte coulissante : un vantail de plus quand l'ouverture s'élargit, jamais besoin de la partager
+  if (!hasFacade(content) || content === 'sliding_door') return NO_LIMIT;
   if (isDrawerContent(content)) return { max: DRAWER_LIMITS.maxWidth, cause: `tiroirs : ${length(DRAWER_LIMITS.maxWidth)} max` };
   if (content === 'door_double' || PLAIN_DOORS.includes(content!)) {
     return { max: DOOR_LEAF_WIDTH.max * 2, cause: `doubles portes : ${length(DOOR_LEAF_WIDTH.max * 2)} max` };
@@ -161,10 +167,50 @@ function fixFacade(content: ZoneContent, width: number, depth: number, changes: 
     changes.push(`Double porte de ${cm(width)} remplacée par une porte simple.`);
     return 'door';
   }
+  // Trop étroite pour deux vantaux : une porte battante tient encore
+  if (
+    content === 'sliding_door' &&
+    width < SLIDING_DOOR_MIN_WIDTH_MM - 0.5 &&
+    facadeAvailability('door', width, depth).allowed
+  ) {
+    changes.push(`Porte coulissante de ${cm(width)} remplacée par une porte simple.`);
+    return 'door';
+  }
   const availability = facadeAvailability(content, width, depth);
   if (availability.allowed) return content;
   changes.push(`Retiré : ${FACADE_NAMES[content] ?? 'façade'} de ${cm(width)} de large (${availability.reason?.toLowerCase()}).`);
   return undefined;
+}
+
+// Une colonne reçoit la porte du groupe, sauf si elle a déjà sa façade (ou une niche, qui reste ouverte)
+function giveDoor(child: Zone, door: ZoneContent): Zone | null {
+  if (!isLeaf(child)) return hasFacade(child.doorContent) ? null : { ...child, doorContent: door };
+  if (hasFacade(child.content) || child.content === 'niche' || child.content === 'shelf' || child.isOpenSpace) return null;
+  const next: Zone = { ...child, content: door };
+  if (child.content === 'dressing') next.hasDressing = true;
+  return next;
+}
+
+// Porte trop large sur un groupe de colonnes : chaque colonne reçoit la sienne, ajustée ensuite à sa largeur (une
+// double porte trop étroite y devient porte simple). Portes simples : à gauche sur la moitié gauche, à droite après.
+function spreadDoorOverColumns(zone: Zone, w: number, changes: string[]): Zone {
+  const door = zone.doorContent!;
+  const { doorContent: _door, ...group } = zone;
+  const count = zone.children!.length;
+  let given = 0;
+  const children = zone.children!.map((child, i) => {
+    const side = i < count / 2 ? door : LEFT_TO_RIGHT[door] ?? door;
+    const withDoor = giveDoor(child, side);
+    if (withDoor) given += 1;
+    return withDoor ?? child;
+  });
+  const name = FACADE_NAMES[door] ?? 'porte';
+  changes.push(
+    given > 0
+      ? `${name.charAt(0).toUpperCase()}${name.slice(1)} de ${cm(w)} de large remplacée par une porte par colonne.`
+      : `Retiré : ${name} de ${cm(w)} de large (ses colonnes ont déjà leurs façades).`
+  );
+  return { ...group, children };
 }
 
 function fixZone(zone: Zone, w: number, h: number, depth: number, taken: Set<string>, changes: string[]): Zone {
@@ -176,6 +222,8 @@ function fixZone(zone: Zone, w: number, h: number, depth: number, taken: Set<str
       changes.push(`Partie de ${cm(w)} de large partagée en ${count} colonnes de ${cm(w / count)} (${limit.cause}).`);
       return fixZone(splitIntoColumns(zone, count, taken), w, h, depth, taken, changes);
     }
+  } else if (zone.children?.length && hasFacade(zone.doorContent) && w > facadeLimit(zone.doorContent).max + 0.5) {
+    return fixZone(spreadDoorOverColumns(zone, w, changes), w, h, depth, taken, changes);
   }
 
   let next: Zone = { ...zone };
@@ -234,9 +282,12 @@ function fixZone(zone: Zone, w: number, h: number, depth: number, taken: Set<str
 
 const DIMENSION_LABELS: Record<DimensionKey, string> = { width: 'Largeur', height: 'Hauteur', depth: 'Profondeur' };
 
+// Largeur intérieure minimale, comme getUsableWidthMm (zoneBounds.ts)
+const MIN_USABLE_WIDTH_MM = 100;
+
 export function fixConstraintIssues(root: Zone, dims: Dims): ConstraintFix {
   const changes: string[] = [];
-  const fixedDims = { ...dims };
+  const fixedDims: Dims = { ...dims };
   (Object.keys(DIMENSION_LIMITS) as DimensionKey[]).forEach((key) => {
     const value = clampDimension(key, dims[key]);
     if (value !== dims[key]) {
@@ -244,13 +295,36 @@ export function fixConstraintIssues(root: Zone, dims: Dims): ConstraintFix {
       fixedDims[key] = value;
     }
   });
+  // Les bords arrondis gardent leur largeur : la place intérieure suit la largeur corrigée
+  if (dims.usableWidth !== undefined || dims.roundedWidth !== undefined) {
+    const rounded = dims.roundedWidth ?? dims.width - (dims.usableWidth ?? dims.width);
+    // Arrondis si larges qu'il ne reste pas la place d'un compartiment : le meuble s'élargit
+    if (fixedDims.width - rounded < MIN_COMPARTMENT_WIDTH_MM - 0.5) {
+      fixedDims.width = clampDimension('width', Math.ceil(rounded + MIN_COMPARTMENT_WIDTH_MM));
+      changes.push(`Largeur portée à ${cm(fixedDims.width)} : les bords arrondis laissent la place d'un compartiment.`);
+    }
+    fixedDims.usableWidth = Math.max(MIN_USABLE_WIDTH_MM, fixedDims.width - rounded);
+  }
+  const innerWidth = fixedDims.usableWidth ?? fixedDims.width;
 
-  // Une correction peut en appeler une autre (colonnes créées, puis façades adaptées) : quelques passes suffisent
+  // Une correction peut en appeler une autre (colonnes créées, puis façades adaptées) : on repasse tant qu'il reste
+  // un problème et que la passe précédente a changé quelque chose
   const taken = collectIds(root, new Set());
   let next = root;
-  for (let pass = 0; pass < 4 && findConstraintIssues(next, fixedDims).length > 0; pass += 1) {
-    next = fixZone(next, fixedDims.width, fixedDims.height, fixedDims.depth, taken, changes);
+  for (let pass = 0; pass < 8 && findConstraintIssues(next, fixedDims).length > 0; pass += 1) {
+    const before = changes.length;
+    next = fixZone(next, innerWidth, fixedDims.height, fixedDims.depth, taken, changes);
+    if (changes.length === before) break;
   }
 
   return { root: next, dims: fixedDims, changes: [...new Set(changes)], remaining: findConstraintIssues(next, fixedDims) };
+}
+
+// Phrase annoncée après « Corriger » : la première modification, et combien d'autres
+export function describeConstraintFix(changes: string[]): string {
+  if (changes.length === 0) return 'Meuble corrigé.';
+  const [first, ...others] = changes;
+  if (others.length === 0) return `Meuble corrigé : ${first}`;
+  const plural = others.length > 1 ? 's' : '';
+  return `Meuble corrigé : ${first} (et ${others.length} autre${plural} modification${plural})`;
 }

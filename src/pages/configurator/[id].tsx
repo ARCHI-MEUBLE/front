@@ -109,7 +109,7 @@ const PLINTHE_DEFONCE_DEFAULT_WIDTH_MM = 40;
 import { nicheDefaultColor } from '@/lib/configurator/niche';
 import { displayColorName } from '@/lib/displayNames';
 import { findConstraintIssues, type ConstraintIssue, type DimensionKey, type IssueKind } from '@/lib/configurator/constraints';
-import { fixConstraintIssues } from '@/lib/configurator/constraintFix';
+import { describeConstraintFix, fixConstraintIssues } from '@/lib/configurator/constraintFix';
 import { setZoneFacade } from '@/lib/configurator/zoneFacades';
 import { extendSelection, groupSelection, selectableNeighborIds } from '@/lib/configurator/zoneSelection';
 import { removeSection, removeSeparators } from '@/lib/configurator/zoneRemoval';
@@ -385,12 +385,9 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const [generating, setGenerating] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [pendingRestoreConfig, setPendingRestoreDialog] = useState<any>(null);
-  const [glbUrl, setGlbUrl] = useState<string | null>(null);
-  const [dxfUrl, setDxfUrl] = useState<string | null>(null);
   const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
   const [editingConfigName, setEditingConfigName] = useState<string>('');
   const [initialConfigApplied, setInitialConfigApplied] = useState(false);
-  const [skipNextAutoGenerate, setSkipNextAutoGenerate] = useState(false);
 
   const [templatePrompt, setTemplatePrompt] = useState<string | null>(null);
 
@@ -653,7 +650,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
   const hasZoneSpecificDoors = useMemo(() => {
     const checkZone = (zone: Zone): boolean => {
-      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double')) {
+      if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'sliding_door')) {
         return true;
       }
       if (zone.children) {
@@ -774,7 +771,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   const isSelectedZoneColorizable = useMemo(() => {
     if (!selectedZone) return false;
 
-    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right', 'niche'];
+    const colorableContents = ['drawer', 'push_drawer', 'door', 'door_right', 'door_double', 'sliding_door', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right', 'niche'];
 
     if (selectedZone.type === 'leaf' && colorableContents.includes(selectedZone.content || '')) {
       return true;
@@ -801,16 +798,15 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     return countHorizontalDivisions(rootZone);
   }, [rootZone]);
 
-  const furnitureStructure = useMemo(() => {
-    if (!glbUrl) return null;
-    
-    const isBuffet = templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3');
-    
-    return {
-      isBuffet,
-      shelfCount: shelfCount,
-    };
-  }, [glbUrl, templatePrompt, shelfCount]);
+  // Mansarde (M2) et sous-escalier (M3) : rendus en buffet. Ne dépend plus du modèle généré par le serveur, qui n'est
+  // fait qu'à l'enregistrement.
+  const furnitureStructure = useMemo(
+    () => ({
+      isBuffet: templatePrompt?.startsWith('M2') || templatePrompt?.startsWith('M3'),
+      shelfCount,
+    }),
+    [templatePrompt, shelfCount]
+  );
 
   // Meuble exporté pour la réalité augmentée (section « Voir chez moi ») : celui de la vue 3D, sans pièce ni sélection
   const arFurniture = useMemo<ThreeViewerProps>(() => ({
@@ -1012,10 +1008,13 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
   // Limites physiques non respectées : le meuble ne peut pas être fabriqué (et le générateur 3D peut
   // échouer), on ne l'envoie donc pas au backend et on ne l'enregistre pas tant que ce n'est pas corrigé
-  const constraintIssues = useMemo(
-    () => findConstraintIssues(rootZone, { width, height, depth, usableWidth: usableWidthMm }),
-    [rootZone, width, height, depth, usableWidthMm]
+  // Mêmes dimensions pour la vérification et pour le bouton « Corriger » (largeur intérieure : bords arrondis déduits)
+  const roundedWidthMm = (roundedLeft ? roundedLeftWidth : 0) + (roundedRight ? roundedRightWidth : 0);
+  const constraintDims = useMemo(
+    () => ({ width, height, depth, usableWidth: usableWidthMm, roundedWidth: roundedWidthMm }),
+    [width, height, depth, usableWidthMm, roundedWidthMm]
   );
+  const constraintIssues = useMemo(() => findConstraintIssues(rootZone, constraintDims), [rootZone, constraintDims]);
   const hasZoneIssues = constraintIssues.length > 0;
 
   // Ouvre l'étape où se corrige un problème, avec la zone concernée sélectionnée
@@ -1036,22 +1035,20 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
   // Bouton « Corriger » : rend le meuble fabricable en gardant au mieux ce qui a été dessiné (annulable comme
   // toute modification) ; ce qui ne peut pas être corrigé seul ouvre l'étape concernée
   const fixZoneIssues = useCallback(() => {
-    const fix = fixConstraintIssues(rootZone, { width, height, depth });
+    const fix = fixConstraintIssues(rootZone, constraintDims);
     if (fix.root !== rootZone) setRootZone(fix.root);
     if (fix.dims.width !== width) setWidth(fix.dims.width);
     if (fix.dims.height !== height) setHeight(fix.dims.height);
     if (fix.dims.depth !== depth) setDepth(fix.dims.depth);
 
+    // Un seul message à la fois, même si l'on clique plusieurs fois
     if (fix.remaining.length > 0) {
-      toast.error(`À corriger à la main : ${fix.remaining[0].message}`);
+      toast.error(`À corriger à la main : ${fix.remaining[0].message}`, { id: 'constraint-fix' });
       focusIssue(fix.remaining[0]);
       return;
     }
-    const [first, ...others] = fix.changes;
-    toast.success(others.length > 0 ? `Meuble corrigé : ${first} (et ${others.length} autre${others.length > 1 ? 's' : ''} modification${others.length > 1 ? 's' : ''})` : `Meuble corrigé : ${first}`, {
-      duration: 6000,
-    });
-  }, [rootZone, width, height, depth, setRootZone, focusIssue]);
+    toast.success(describeConstraintFix(fix.changes), { id: 'constraint-fix', duration: 6000 });
+  }, [rootZone, constraintDims, width, height, depth, setRootZone, focusIssue]);
 
   // Menu de la zone sélectionnée : son titre, sa taille, ses voisines et son groupe parent
   const quickMenu = useMemo(() => {
@@ -1478,6 +1475,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
           str.includes('T') ? 'drawer' :
           str.includes('D') ? 'dressing' :
           str.includes('P2') ? 'door_double' :
+          str.includes('Pc') ? 'sliding_door' :
           str.includes('Pm') ? 'mirror_door' :
           str.includes('Po') ? 'push_door' :
           str.includes('Pd') ? 'door_right' :
@@ -1872,7 +1870,6 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     if (!pendingRestoreConfig) return;
     const c = pendingRestoreConfig;
     
-    setSkipNextAutoGenerate(false); 
     setInitialConfigApplied(false);
 
     if (c.width) setWidth(c.width);
@@ -1997,7 +1994,41 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
     return zoneCode;
   }, [deletedPanelIds, handleModels, handleDefaults]);
 
-  const generateModel = useCallback(async (prompt: string) => {
+  // Code de génération Python (modèle GLB et plan DXF de fabrication) du meuble affiché ; null sans modèle de départ
+  const buildGenerationPrompt = useCallback((): string | null => {
+    const match = templatePrompt?.match(/^(M[1-5])\(([^)]+)\)(.*)$/);
+    if (!match) return null;
+
+    let prompt = `${match[1]}(${width},${depth},${height})`;
+    const flagsMatch = (match[3] || '').match(/^([^HV\[]*)/);
+    let flags = (flagsMatch ? flagsMatch[1] : '').replace(/[PTD]/g, '');
+
+    flags = flags.replace(/S2?/g, '');
+    if (socle === 'metal') flags += 'S';
+    else if (socle === 'wood') flags += 'S2';
+
+    // Z (bords arrondis) doit précéder tout ce qui pose les planches latérales (E, déjà dans
+    // originalFlags le cas échéant) — voir char=="Z" dans procedure_real.py
+    flags = flags.replace(/Z[gd]?(\([^)]*\))?/g, '');
+    flags = `${roundedFlag}${flags}`;
+
+    if (!hasZoneSpecificDoors) {
+      if (doorType === 'double') flags += 'P2';
+      else if (doorType === 'single') flags += doorSide === 'left' ? 'Pg' : 'Pd';
+    }
+
+    prompt += flags;
+    const zonePrompt = buildPromptFromZoneTree(rootZone);
+    if (zonePrompt && zonePrompt.trim()) prompt += zonePrompt;
+    return prompt;
+  }, [templatePrompt, width, depth, height, socle, roundedFlag, hasZoneSpecificDoors, doorType, doorSide, buildPromptFromZoneTree, rootZone]);
+
+  // Modèle GLB et plan DXF de fabrication, générés par le serveur au moment d'enregistrer : ils correspondent au meuble
+  // enregistré. (Ils étaient refaits à chaque modification : une exécution Python par réglage, inutile tant qu'on
+  // n'enregistre pas, et vite bloquée par la limite du serveur, 60 générations par 10 minutes.)
+  const generateManufacturingFiles = useCallback(async (): Promise<{ glbUrl: string | null; dxfUrl: string | null }> => {
+    const prompt = buildGenerationPrompt();
+    if (!prompt) return { glbUrl: null, dxfUrl: null };
     setGenerating(true);
     try {
       let singleColor: string | undefined;
@@ -2031,61 +2062,15 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
         zonesForSegmentation
       );
 
-      let glbUrlAbsolute = result.glb_url;
-      setGlbUrl(glbUrlAbsolute);
-      setDxfUrl(result.dxf_url || null);
+      return { glbUrl: result.glb_url || null, dxfUrl: result.dxf_url || null };
     } catch (error) {
-      console.warn('Génération 3D impossible :', error instanceof Error ? error.message : error);
+      // Enregistrement quand même : l'admin garde le DXF générique (Admin › Configurations) et peut régénérer
+      console.warn('Génération du modèle de fabrication impossible :', error instanceof Error ? error.message : error);
+      return { glbUrl: null, dxfUrl: null };
     } finally {
       setGenerating(false);
     }
-  }, [selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds, rootZone]);
-
-  useEffect(() => {
-    if (!templatePrompt || !initialConfigApplied) return;
-    if (skipNextAutoGenerate) {
-      setSkipNextAutoGenerate(false);
-      return;
-    }
-
-    const regex = /^(M[1-5])\(([^)]+)\)(.*)$/;
-    const match = templatePrompt.match(regex);
-    if (!match) return;
-
-    const meubleType = match[1];
-    let prompt = `${meubleType}(${width},${depth},${height})`;
-
-    const rest = match[3] || '';
-    const flagsMatch = rest.match(/^([^HV\[]*)/);
-    const originalFlags = flagsMatch ? flagsMatch[1] : '';
-    let flags = originalFlags.replace(/[PTD]/g, '');
-
-    flags = flags.replace(/S2?/g, '');
-    if (socle === 'metal') flags += 'S';
-    else if (socle === 'wood') flags += 'S2';
-
-    // Z (bords arrondis) doit précéder tout ce qui pose les planches latérales (E, déjà dans
-    // originalFlags le cas échéant) — voir char=="Z" dans procedure_real.py
-    flags = flags.replace(/Z[gd]?(\([^)]*\))?/g, '');
-    flags = `${roundedFlag}${flags}`;
-
-    if (!hasZoneSpecificDoors) {
-      if (doorType === 'double') flags += 'P2';
-      else if (doorType === 'single') flags += doorSide === 'left' ? 'Pg' : 'Pd';
-    }
-    
-    prompt += flags;
-
-    const zonePrompt = buildPromptFromZoneTree(rootZone);
-    if (zonePrompt && zonePrompt.trim()) {
-      prompt += zonePrompt;
-    }
-
-    if (hasZoneIssues) return;
-
-    const timer = setTimeout(() => generateModel(prompt), 300);
-    return () => clearTimeout(timer);
-  }, [templatePrompt, width, height, depth, socle, roundedLeft, roundedLeftWidth, roundedLeftDepth, roundedRight, roundedRightWidth, roundedRightDepth, finish, rootZone, initialConfigApplied, skipNextAutoGenerate, buildPromptFromZoneTree, generateModel, useMultiColor, componentColors, doorType, doorSide, selectedColorOption, selectedColorId, hasZoneIssues]);
+  }, [buildGenerationPrompt, selectedColorOption, useMultiColor, componentColors, doorType, deletedPanelIds, rootZone]);
 
   const handleToggleDoors = useCallback(() => {
     setDoorsOpen(prev => !prev);
@@ -2318,6 +2303,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
 
     try {
       const { fullPrompt, configData } = buildConfigPayload();
+      const { glbUrl, dxfUrl } = await generateManufacturingFiles();
 
       const payload = {
         id: editingConfigId ?? undefined,
@@ -3006,7 +2992,7 @@ function ConfiguratorPage({ serverSeo }: { serverSeo: boolean }) {
                     style={{ borderRadius: '2px' }}
                   >
                     <span className="h-3 w-3 animate-spin border-2 border-am-navy border-t-transparent" style={{ borderRadius: '50%' }} />
-                    Mise à jour…
+                    Préparation des plans de fabrication…
                   </div>
                 )}
               </div>

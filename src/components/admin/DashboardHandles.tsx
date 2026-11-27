@@ -19,6 +19,7 @@ import {
   type HandleShape,
 } from '@/lib/configurator/handles';
 import { HandleModelPreview } from '@/components/handles/HandleModelPreview';
+import { HandleSheetPanel } from './HandleSheetPanel';
 import { SHAPE_DEFAULT_DIMENSIONS, modelHandleDimensions } from '@/components/configurator/scene/handleGeometry';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,7 +52,7 @@ const CENTER_DISTANCE_SHORTCUTS = [96, 128, 160, 192, 256, 320];
 // Mêmes bornes que la validation du backend (admin/handle-models.php)
 const NAME_MAX = 80;
 const LENGTH_MIN = 20;
-const LENGTH_MAX = 800;
+const LENGTH_MAX = 1200;
 const PRICE_MAX = 1000;
 const CENTER_DISTANCE_RANGE = { min: 10, max: 800 };
 const WIDTH_RANGE = { min: 2, max: 100 };
@@ -253,6 +254,8 @@ export function DashboardHandles() {
           l&apos;horizontale ou à la verticale, selon l&apos;orientation choisie (sauf les boutons et les poignées encastrées).
         </p>
       </div>
+
+      {!loading && !error && <HandleSheetPanel models={sorted} onImported={() => load(true)} />}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
@@ -462,6 +465,20 @@ function HandleModelCard({ model, isFirst, isLast, busy, reorderLocked, onToggle
                 </dd>
                 <dt className="text-muted-foreground">Prix</dt>
                 <dd className="font-medium">{formatPrice(model.price_per_unit)} / poignée</dd>
+                {model.reference && (
+                  <>
+                    <dt className="text-muted-foreground">Référence</dt>
+                    <dd className="font-mono">
+                      {model.supplier_url ? (
+                        <a href={model.supplier_url} target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                          {model.reference}
+                        </a>
+                      ) : (
+                        model.reference
+                      )}
+                    </dd>
+                  </>
+                )}
               </dl>
             </div>
           </div>

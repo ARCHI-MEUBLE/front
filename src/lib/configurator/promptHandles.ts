@@ -23,6 +23,9 @@ function doorCodeOf(zone: Zone, door: ZoneContent | null | undefined): string {
       return 'Pd';
     case 'door_double':
       return 'P2';
+    // Vantaux sur rail encastré : le générateur en déduit 2 ou 3 selon la largeur
+    case 'sliding_door':
+      return 'Pc';
     // Le format n'a pas de côté pour les portes vitrées et Push : la porte est transmise sans son sens d'ouverture
     case 'mirror_door':
     case 'mirror_door_right':
@@ -63,11 +66,12 @@ export function zoneFacadeCodes(
 
 // Porte posée sur un groupe : « Pg1(H2(,)) », « P2(V3(,,)) », « G(...) » (groupe sans porte). Les codes longs passent
 // avant « P » : « P2( » est une double porte, jamais une porte « P » à poignée horizontale.
-const GROUP_DOOR = /^(G|P2|Pm|Po|Pd|Pg|P)(\d)?(?:\[([^\]]+)\])?\((.*)\)$/;
+const GROUP_DOOR = /^(G|P2|Pc|Pm|Po|Pd|Pg|P)(\d)?(?:\[([^\]]+)\])?\((.*)\)$/;
 
 const GROUP_DOOR_CONTENT: Record<string, ZoneContent | undefined> = {
   G: undefined,
   P2: 'door_double',
+  Pc: 'sliding_door',
   Pm: 'mirror_door',
   Po: 'push_door',
   Pd: 'door_right',
@@ -97,8 +101,8 @@ export function matchGroupDoor(str: string): GroupDoorMatch | null {
 }
 
 // Chiffre de poignée d'une feuille : après T (tiroir) ou après le code d'une porte à poignée (« Pg1 », « P21 »,
-// « Pm3 »). « P2 » seul est une double porte sans chiffre, « To » et « Po » n'ont pas de poignée.
+// « Pm3 », « Pc2 »). « P2 » seul est une double porte sans chiffre, « To » et « Po » n'ont pas de poignée.
 export function leafHandleFromPrompt(str: string): ZoneHandleFields {
-  const match = str.match(/(?:T|P2|Pm|Pd|Pg)(\d)/);
+  const match = str.match(/(?:T|P2|Pc|Pm|Pd|Pg)(\d)/);
   return match ? zoneHandleFromPromptCode(match[1]) : {};
 }

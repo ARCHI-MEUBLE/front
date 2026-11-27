@@ -1,5 +1,6 @@
 import type { Zone, ZoneContent } from '@/components/configurator/ZoneEditor/types';
 import { getChildRatios, isDoorContent, isDrawerContent } from './zoneStats';
+import { SLIDING_DOOR, SLIDING_DOOR_MIN_WIDTH_MM } from './slidingDoor';
 
 /**
  * Limites physiques du meuble, appliquées directement dans le configurateur : les options qui ne
@@ -82,6 +83,12 @@ export function splitAvailability(
 
 // Une porte ou un tiroir peut-il occuper une zone de cette taille ?
 export function facadeAvailability(content: ZoneContent, zoneWidthMm: number, depthMm: number): Availability {
+  // Porte coulissante : pas de largeur maximale (2 puis 3 vantaux), mais deux vantaux qui se chevauchent au minimum
+  if (content === 'sliding_door') {
+    if (zoneWidthMm < SLIDING_DOOR_MIN_WIDTH_MM - 0.5) return { allowed: false, reason: `Min ${cm(SLIDING_DOOR_MIN_WIDTH_MM)}` };
+    if (depthMm < SLIDING_DOOR.minFurnitureDepthMm - 0.5) return { allowed: false, reason: `Profondeur min ${cm(SLIDING_DOOR.minFurnitureDepthMm)}` };
+    return ALLOWED;
+  }
   if (content === 'door_double') {
     const leaf = zoneWidthMm / 2;
     if (leaf > DOOR_LEAF_WIDTH.max + 0.5) return { allowed: false, reason: `Max ${length(DOOR_LEAF_WIDTH.max * 2)}` };
@@ -125,6 +132,7 @@ const FACADE_LABELS: Partial<Record<ZoneContent, string>> = {
   door: 'Porte',
   door_right: 'Porte',
   door_double: 'Double porte',
+  sliding_door: 'Porte coulissante',
   push_door: 'Porte Push',
   push_door_right: 'Porte Push',
   mirror_door: 'Porte vitrée',
