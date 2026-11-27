@@ -6,7 +6,11 @@ import { HandleModelPreview } from '@/components/handles/HandleModelPreview';
 import {
   clearZoneHandles,
   defaultHandleModel,
+  firstFlushModel,
   handleFacadeKind,
+  handleModelsFor,
+  hasSlidingDoor,
+  isFlushHandle,
   HANDLE_ORIENTATION_LABELS,
   HANDLE_SHAPE_LABELS,
   LEGACY_HANDLE_LABELS,
@@ -41,6 +45,7 @@ const FACADE_LABELS: Partial<Record<ZoneContent, string>> = {
   door: 'Porte',
   door_right: 'Porte',
   door_double: 'Double porte',
+  sliding_door: 'Porte coulissante',
   mirror_door: 'Porte vitrée',
   mirror_door_right: 'Porte vitrée',
   drawer: 'Tiroir',
@@ -243,6 +248,9 @@ export default function HandleSelector({
   }
 
   const furnitureShape = furnitureModel?.shape ?? null;
+  // Les portes coulissantes ne prennent qu'une poignée encastrée : on le dit quand le modèle du meuble dépasse
+  const slidingFallback = facades.some(({ zone }) => hasSlidingDoor(zone)) && !isFlushHandle(furnitureModel) ? firstFlushModel(models) : null;
+  const slidingWithoutFlush = facades.some(({ zone }) => hasSlidingDoor(zone)) && !firstFlushModel(models);
 
   return (
     <div className="space-y-5">
@@ -288,6 +296,16 @@ export default function HandleSelector({
           </div>
         ) : (
           <Note>{furnitureShape === 'recessed' ? 'Une poignée encastrée se pose sans orientation.' : 'Un bouton se pose sans orientation.'}</Note>
+        )}
+
+        {slidingFallback && (
+          <Note>
+            Les portes coulissantes gardent une <span className="font-medium text-black">{slidingFallback.name}</span> : une
+            poignée qui dépasse bloquerait le vantail voisin.
+          </Note>
+        )}
+        {slidingWithoutFlush && (
+          <Note>Aucune poignée encastrée n&apos;est proposée : les portes coulissantes se tirent par la tranche de leurs vantaux.</Note>
         )}
 
         {customizedCount > 0 && (
@@ -364,6 +382,8 @@ function ZoneHandlePanel({
   const resolved = resolveZoneHandle(zone, kind, models, defaults);
   const shape = resolved.model?.shape ?? (resolved.legacyType === 'knob' || resolved.legacyType === 'recessed' ? resolved.legacyType : null);
   const label = FACADE_LABELS[facadeContent(zone) ?? 'empty'] ?? (kind === 'drawer' ? 'Tiroir' : 'Porte');
+  const sliding = hasSlidingDoor(zone);
+  const choices = handleModelsFor(zone, models);
 
   // Le modèle et le sens se choisissent l'un sans l'autre : l'autre réglage reste celui de la façade (ou du meuble)
   const chooseModel = (model: HandleModel) =>
@@ -393,9 +413,19 @@ function ZoneHandlePanel({
         )}
       </div>
 
-      <ModelGrid models={models} orientation={resolved.orientation} selectedId={resolved.model?.id ?? null} onSelect={chooseModel} />
+      {sliding && (
+        <Note>
+          {choices.length > 0
+            ? 'Porte coulissante : seules les poignées encastrées sont proposées, une poignée qui dépasse bloquerait le vantail voisin.'
+            : "Aucune poignée encastrée n'est proposée : les vantaux se tirent par leur tranche."}
+        </Note>
+      )}
 
-      {shapeHasOrientation(shape) && (
+      {choices.length > 0 && (
+        <ModelGrid models={choices} orientation={resolved.orientation} selectedId={resolved.model?.id ?? null} onSelect={chooseModel} />
+      )}
+
+      {(!sliding || resolved.model) && shapeHasOrientation(shape) && (
         <OrientationToggle
           label={kind === 'drawer' ? 'Ce tiroir' : 'Cette porte'}
           options={ORIENTATIONS}

@@ -64,6 +64,7 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   door: 'Porte Gauche',
   door_right: 'Porte Droite',
   door_double: 'Double Porte',
+  sliding_door: 'Porte coulissante',
   mirror_door: 'Porte Vitrée',
   push_door: 'Porte Push-to-Open',
   niche: 'Niche',

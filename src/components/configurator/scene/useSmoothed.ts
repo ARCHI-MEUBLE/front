@@ -11,6 +11,14 @@ export function useSmoothedRotationY(ref: RefObject<THREE.Object3D | null>, targ
   });
 }
 
+// Anime l'objet vers une position horizontale (vantail de porte coulissante qui glisse)
+export function useSmoothedPositionX(ref: RefObject<THREE.Object3D | null>, target: number) {
+  useFrame((_, delta) => {
+    const object = ref.current;
+    if (object) object.position.x = smoothStep(object.position.x, target, delta);
+  });
+}
+
 // Anime l'objet vers une position en profondeur (tiroir qui sort)
 export function useSmoothedPositionZ(ref: RefObject<THREE.Object3D | null>, target: number) {
   useFrame((_, delta) => {

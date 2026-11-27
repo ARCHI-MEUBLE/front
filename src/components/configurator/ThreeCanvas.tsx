@@ -10,6 +10,8 @@ import { getSafeColor, getHingeYPositions } from './scene/utils';
 import { TexturedMaterial } from './scene/TexturedMaterial';
 import { PanelSegmentHitbox, StructuralPanel, DoorHinge } from './scene/StructuralElements';
 import { AnimatedDoor, AnimatedMirrorDoor, AnimatedPushDoor } from './scene/AnimatedDoors';
+import { SlidingDoor } from './scene/SlidingDoors';
+import { SLIDING_DOOR } from '@/lib/configurator/slidingDoor';
 import { AnimatedPushDrawer, AnimatedDrawer } from './scene/AnimatedDrawers';
 import { BackPanelWithOpenings } from './scene/BackPanel';
 import { NicheLining } from './scene/Niche';
@@ -43,6 +45,14 @@ export type { ThreeCanvasHandle };
 
 // Référence stable : sans modèles fournis, la scène n'est pas recalculée à chaque rendu
 const NO_HANDLE_MODELS: HandleModel[] = [];
+
+// Derrière une porte coulissante, l'avant du meuble est pris par ses vantaux et son rail : ce qui est dedans recule
+const SLIDING_DOOR_RECESS = SLIDING_DOOR.depthMm / 1000;
+const slidingRecessOf = (door: string | null | undefined) => (door === 'sliding_door' ? SLIDING_DOOR_RECESS : 0);
+
+// Façades d'une feuille dessinées comme une porte
+const LEAF_DOORS = ['door', 'door_right', 'door_double', 'sliding_door', 'push_door', 'push_door_right', 'mirror_door', 'mirror_door_right'];
+const isLeafDoor = (content: string | undefined) => !!content && LEAF_DOORS.includes(content);
 
 interface ThreeViewerProps {
     width: number;
@@ -131,7 +141,7 @@ export function Furniture({
         if (rootZone) {
             const newOpenStates: Record<string, boolean> = {};
             const applyOpenState = (zone: Zone) => {
-                const hasLeafFacade = zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right');
+                const hasLeafFacade = zone.type === 'leaf' && (zone.content === 'drawer' || zone.content === 'push_drawer' || isLeafDoor(zone.content));
                 const hasGroupDoor = !!zone.doorContent && zone.doorContent !== 'empty';
                 if (hasLeafFacade || hasGroupDoor) {
                     newOpenStates[zone.id] = doorsOpen || false;
@@ -329,7 +339,7 @@ export function Furniture({
         if (!rootZone) return false;
 
         const checkZone = (zone: Zone): boolean => {
-            if (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right')) {
+            if (zone.type === 'leaf' && isLeafDoor(zone.content)) {
                 return true;
             }
             if (zone.children) {
@@ -406,7 +416,14 @@ export function Furniture({
         segmentIndex: number;
         behindDoor?: boolean;
         isCaisson?: boolean;
+        // Recul (m) derrière une porte coulissante : ses vantaux et son rail occupent l'avant
+        frontRecess?: number;
     }
+
+    // Recul d'une étagère ou d'une cloison : derrière une porte coulissante, ou derrière une porte (doorRecess, nul
+    // pour l'instant)
+    const separatorRecess = (segment: SeparatorSegment) =>
+        Math.max(segment.frontRecess ?? 0, segment.behindDoor ? doorRecess : 0);
 
     const panelSegments = useMemo(() => {
         const topSegments: PanelSegment[] = [];
@@ -530,6 +547,7 @@ export function Furniture({
             path: string;
             behindDoor: boolean;
             isCaisson?: boolean;
+            frontRecess: number;
         }
 
         const collectSeparators = (
@@ -539,7 +557,8 @@ export function Furniture({
             width: number,
             height: number,
             path: string = '',
-            hasDoorAbove: boolean = false
+            hasDoorAbove: boolean = false,
+            recessAbove: number = 0
         ): SeparatorInfo[] => {
             const separators: SeparatorInfo[] = [];
 
@@ -558,7 +577,8 @@ export function Furniture({
                     width,
                     height,
                     `${path}c0-`,
-                    childHasDoor
+                    childHasDoor,
+                    Math.max(recessAbove, slidingRecessOf(zoneDoor))
                 );
                 separators.push(...childSeparators);
                 return separators;
@@ -566,6 +586,7 @@ export function Furniture({
 
             const zoneDoor = zone.doorContent || zone.content;
             const currentHasDoor = hasDoorAbove || !!(zoneDoor && typeof zoneDoor === 'string' && zoneDoor.includes('door'));
+            const currentRecess = Math.max(recessAbove, slidingRecessOf(zoneDoor));
 
             if (zone.type === 'vertical') {
                 const sepThickness = separatorThickness(zone);
@@ -595,7 +616,8 @@ export function Furniture({
                             orientation: 'vertical',
                             path: `${path}v${i}`,
                             behindDoor: currentHasDoor,
-                            isCaisson
+                            isCaisson,
+                            frontRecess: currentRecess
                         });
                     }
 
@@ -606,7 +628,8 @@ export function Furniture({
                         colWidth,
                         height,
                         `${path}c${i}-`,
-                        currentHasDoor
+                        currentHasDoor,
+                        currentRecess
                     );
                     separators.push(...childSeparators);
 
@@ -641,7 +664,8 @@ export function Furniture({
                             height: thickness,
                             orientation: 'horizontal',
                             path: `${path}h${i}`,
-                            behindDoor: currentHasDoor
+                            behindDoor: currentHasDoor,
+                            frontRecess: currentRecess
                         });
                     }
 
@@ -652,7 +676,8 @@ export function Furniture({
                         width,
                         rowHeight,
                         `${path}r${i}-`,
-                        currentHasDoor
+                        currentHasDoor,
+                        currentRecess
                     );
                     separators.push(...childSeparators);
 
@@ -800,7 +825,8 @@ export function Furniture({
                     orientation: 'vertical',
                     segmentIndex: 0,
                     behindDoor: sep.behindDoor,
-                    isCaisson: sep.isCaisson
+                    isCaisson: sep.isCaisson,
+                    frontRecess: sep.frontRecess
                 });
             } else {
                 // Une étagère est toujours une seule pièce pleine largeur (confinée à sa zone).
@@ -812,7 +838,8 @@ export function Furniture({
                     height: sep.height,
                     orientation: 'horizontal',
                     segmentIndex: 0,
-                    behindDoor: sep.behindDoor
+                    behindDoor: sep.behindDoor,
+                    frontRecess: sep.frontRecess
                 });
             }
         });
@@ -837,7 +864,8 @@ export function Furniture({
         // rien de l'autre côté à ménager), ou la moitié de l'épaisseur du séparateur contre une
         // cloison/caisson interne (les deux portes voisines se partagent la même planche,
         // chacune n'en recouvre que sa moitié pour ne pas se chevaucher).
-        const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true, hasDoorInFront: boolean = false, isAtLeft: boolean = true, isAtRight: boolean = true, topGap: number = doorOverlap, bottomGap: number = doorOverlap, leftGap: number = doorOverlap, rightGap: number = doorOverlap) => {
+        // frontRecess : recul (m) de tout ce qui est derrière une porte coulissante d'un groupe parent
+        const parseZone = (zone: Zone, x: number, y: number, z: number, width: number, height: number, isAtTop: boolean = true, isAtBottom: boolean = true, hasDoorInFront: boolean = false, isAtLeft: boolean = true, isAtRight: boolean = true, topGap: number = doorOverlap, bottomGap: number = doorOverlap, leftGap: number = doorOverlap, rightGap: number = doorOverlap, frontRecess: number = 0) => {
             const topOverlap = topGap;
             const bottomOverlap = bottomGap;
             const totalDoorOverlap = topOverlap + bottomOverlap;
@@ -911,12 +939,16 @@ export function Furniture({
                     </mesh>
                 );
 
+                // Recul du contenu de la case : derrière une porte coulissante, la sienne ou celle d'un groupe parent
+                const leafRecess = Math.max(frontRecess, slidingRecessOf(zone.doorContent), slidingRecessOf(zone.content));
+
                 if (zone.content === 'shelf') {
                     const behindDoor = hasDoorInFront || !!zone.doorContent;
 
                     // Profondeur réduite de l'épaisseur du fond pour s'arrêter juste devant lui.
-                    const baseDepth = behindDoor && doorRecess > 0 ? d - doorRecess : d;
-                    const baseZ = behindDoor && doorRecess > 0 ? z - doorRecess / 2 : z;
+                    const shelfRecess = Math.max(leafRecess, behindDoor ? doorRecess : 0);
+                    const baseDepth = d - shelfRecess;
+                    const baseZ = z - shelfRecess / 2;
                     const shelfDepth = baseDepth - backPanelThickness;
                     const shelfZ = baseZ + backPanelThickness / 2;
                     items.push(
@@ -938,13 +970,13 @@ export function Furniture({
                     items.push(
                         <group key={zone.id} {...zoneHandlers(zone.id, true)}>
                             <AnimatedDrawer
-                            position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
+                            position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009 - leafRecess]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
                             boxWidth={Math.min(width, doorZoneWidth - compartmentGap)}
                             boxCenterX={-doorXOffset}
                             boxBottomY={-height / 2 - doorYOffset}
-                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004}
+                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004 - leafRecess}
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
@@ -959,13 +991,13 @@ export function Furniture({
                     items.push(
                         <group key={zone.id} {...zoneHandlers(zone.id, true)}>
                             <AnimatedPushDrawer
-                            position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009]}
+                            position={[x + doorXOffset, y + doorYOffset, d / 2 + mountingOffset + 0.009 - leafRecess]}
                             width={doorZoneWidth - compartmentGap}
                             height={height - compartmentGap + totalDoorOverlap}
                             boxWidth={Math.min(width, doorZoneWidth - compartmentGap)}
                             boxCenterX={-doorXOffset}
                             boxBottomY={-height / 2 - doorYOffset}
-                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004}
+                            boxDepth={d + mountingOffset + 0.009 - backPanelThickness - 0.004 - leafRecess}
                             depth={d}
                             hexColor={drawerHexColor}
                             imageUrl={drawerImageUrl}
@@ -984,11 +1016,12 @@ export function Furniture({
                     // fond fixe (collé au fond réel du meuble) : négatif = encastrée (creusée),
                     // positif = débordante (dépasse la façade), borné à ±30% de la profondeur du
                     // meuble (voir ZoneControls.tsx, même borne côté slider).
-                    const flushNicheDepth = d - backPanelThickness;
+                    const flushNicheDepth = d - backPanelThickness - leafRecess;
                     const maxOffset = d * 0.3;
-                    const offset = Math.min(maxOffset, Math.max(-maxOffset, (zone.nicheOffset ?? 0) / 1000));
+                    // Derrière une porte coulissante, la niche ne peut pas déborder dans ses vantaux
+                    const offset = Math.min(leafRecess > 0 ? 0 : maxOffset, Math.max(-maxOffset, (zone.nicheOffset ?? 0) / 1000));
                     const nicheDepth = Math.max(0.02, flushNicheDepth + offset);
-                    const nicheCenterZ = z + backPanelThickness / 2 + offset / 2;
+                    const nicheCenterZ = z + backPanelThickness / 2 - leafRecess / 2 + offset / 2;
                     items.push(
                         <NicheLining
                             key={`${zone.id}-niche`}
@@ -1012,9 +1045,24 @@ export function Furniture({
                     );
                 }
 
-                const doorToRender = zone.doorContent || (zone.type === 'leaf' && (zone.content === 'door' || zone.content === 'door_right' || zone.content === 'door_double' || zone.content === 'push_door' || zone.content === 'push_door_right' || zone.content === 'mirror_door' || zone.content === 'mirror_door_right') ? zone.content : null);
+                const doorToRender = zone.doorContent || (zone.type === 'leaf' && isLeafDoor(zone.content) ? zone.content : null);
 
-                if (doorToRender && !hideFacades) {
+                if (doorToRender === 'sliding_door' && !hideFacades) {
+                    // À l'intérieur de la case, quel que soit le montage des autres façades
+                    items.push(
+                        <group key={`${zone.id}-door`} {...zoneHandlers(zone.id, true)}>
+                            <SlidingDoor
+                                position={[x, y, d / 2]}
+                                width={width}
+                                height={height}
+                                hexColor={zone.zoneColor?.hex || finalDoorColor}
+                                imageUrl={zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl}
+                                handle={resolveZoneHandle(zone, 'door', handleModels, furnitureHandles)}
+                                isOpen={openCompartments[zone.id]}
+                            />
+                        </group>
+                    );
+                } else if (doorToRender && !hideFacades) {
                     const isDouble = doorToRender === 'door_double';
                     const isRight = doorToRender === 'door_right';
                     const isPush = doorToRender === 'push_door' || doorToRender === 'push_door_right';
@@ -1098,15 +1146,30 @@ export function Furniture({
                     items.push(
                         // Le bas de la case est déjà le dessus de l'étagère (les cases excluent les planches) :
                         // un décalage d'une demi-épaisseur faisait flotter les objets 9,5 mm au-dessus
-                        <group key={`${zone.id}-deco`} position={[x, y - height/2, z]}>
-                            <ShelfDecoration width={width} height={height} depth={d} seed={zone.id} />
+                        <group key={`${zone.id}-deco`} position={[x, y - height/2, z - leafRecess / 2]}>
+                            <ShelfDecoration width={width} height={height} depth={d - leafRecess} seed={zone.id} />
                         </group>
                     );
                 }
             }
 
             const groupDoor = zone.doorContent || (zone.children && zone.children.length > 0 ? zone.content : null);
-            if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty' && !hideFacades) {
+            if (zone.children && zone.children.length > 0 && groupDoor === 'sliding_door' && !hideFacades) {
+                // Porte coulissante du groupe : dans l'ouverture entre les planches qui l'entourent, rail dans celles-ci
+                items.push(
+                    <group key={`${zone.id}-group-door`} {...zoneHandlers(zone.id, true)}>
+                        <SlidingDoor
+                            position={[x, y, d / 2]}
+                            width={width}
+                            height={height}
+                            hexColor={zone.zoneColor?.hex || finalDoorColor}
+                            imageUrl={zone.zoneColor?.imageUrl !== undefined ? zone.zoneColor.imageUrl : finalDoorImageUrl}
+                            handle={resolveZoneHandle(zone, 'door', handleModels, furnitureHandles)}
+                            isOpen={openCompartments[zone.id]}
+                        />
+                    </group>
+                );
+            } else if (zone.children && zone.children.length > 0 && groupDoor && groupDoor.includes('door') && groupDoor !== 'empty' && !hideFacades) {
                 const doorToRender = groupDoor;
                 const isDouble = doorToRender === 'door_double';
                 const isRight = doorToRender === 'door_right';
@@ -1181,6 +1244,7 @@ export function Furniture({
             if (zone.children && zone.children.length > 0) {
                 const zoneDoorContent = zone.doorContent || zone.content;
                 const zoneHasDoor = hasDoorInFront || !!(zoneDoorContent && typeof zoneDoorContent === 'string' && zoneDoorContent.includes('door'));
+                const childRecess = Math.max(frontRecess, slidingRecessOf(zoneDoorContent));
                 let currentPos = 0;
                 zone.children.forEach((child, i) => {
                     let ratio: number;
@@ -1208,7 +1272,7 @@ export function Furniture({
                         // encastré, où aucune façade ne recouvre une planche, interne ou non.
                         const childTopGap = isFirst ? topGap : (mountingStyle === 'encastre' ? 0 : thickness / 2);
                         const childBottomGap = isLast ? bottomGap : (mountingStyle === 'encastre' ? 0 : thickness / 2);
-                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight, childTopGap, childBottomGap, leftGap, rightGap);
+                        parseZone(child, x, (y + height/2) - currentPos - childHeight/2, z, width, childHeight, childIsAtTop, childIsAtBottom, zoneHasDoor, isAtLeft, isAtRight, childTopGap, childBottomGap, leftGap, rightGap, childRecess);
                         currentPos += childHeight;
                         if (i < zone.children!.length - 1) currentPos += thickness;
                     } else {
@@ -1225,7 +1289,7 @@ export function Furniture({
                         // recouvrement du tout, quelle que soit l'épaisseur du séparateur.
                         const childLeftGap = isFirst ? leftGap : (mountingStyle === 'encastre' ? 0 : sepThickness / 2);
                         const childRightGap = isLast ? rightGap : (mountingStyle === 'encastre' ? 0 : sepThickness / 2);
-                        parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight, topGap, bottomGap, childLeftGap, childRightGap);
+                        parseZone(child, x - width/2 + currentPos + childWidth/2, y, z, childWidth, height, isAtTop, isAtBottom, zoneHasDoor, childIsAtLeft, childIsAtRight, topGap, bottomGap, childLeftGap, childRightGap, childRecess);
                         currentPos += childWidth;
                         if (i < zone.children!.length - 1) currentPos += sepThickness;
                     }
@@ -1410,8 +1474,9 @@ export function Furniture({
                 Un caisson (segment.isCaisson) est une cloison double : 2 planches distinctes,
                 chacune de l'épaisseur normale, plutôt qu'une seule large de segment.width. */}
             {panelSegments.separatorSegments.map((segment) => {
-                const sepBaseDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
-                const sepBaseZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
+                const recess = separatorRecess(segment);
+                const sepBaseDepth = d - recess;
+                const sepBaseZ = -recess / 2;
                 const sepDepth = sepBaseDepth - backPanelThickness;
                 const sepZ = sepBaseZ + backPanelThickness / 2;
                 if (deletedPanelIds.has(segment.id)) return null;
@@ -1445,8 +1510,9 @@ export function Furniture({
                 );
             })}
             {panelSegments.separatorSegments.map((segment) => {
-                const sepHitBaseDepth = segment.behindDoor && doorRecess > 0 ? d - doorRecess : d;
-                const sepHitBaseZ = segment.behindDoor && doorRecess > 0 ? -doorRecess / 2 : 0;
+                const hitRecess = separatorRecess(segment);
+                const sepHitBaseDepth = d - hitRecess;
+                const sepHitBaseZ = -hitRecess / 2;
                 const sepHitDepth = sepHitBaseDepth - backPanelThickness;
                 const sepHitZ = sepHitBaseZ + backPanelThickness / 2;
                 return <PanelSegmentHitbox

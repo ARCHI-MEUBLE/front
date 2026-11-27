@@ -1,4 +1,4 @@
-export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer' | 'niche';
+export type ZoneContent = 'empty' | 'drawer' | 'dressing' | 'shelf' | 'door' | 'door_right' | 'door_double' | 'sliding_door' | 'mirror_door' | 'mirror_door_right' | 'push_door' | 'push_door_right' | 'push_drawer' | 'niche';
 
 export type HandleType = 'vertical_bar' | 'horizontal_bar' | 'knob' | 'recessed';
 
@@ -74,6 +74,12 @@ export const ZONE_CONTENT_META: Record<ZoneContent, ZoneContentMeta> = {
     shortLabel: 'Porte x2',
     icon: 'D2',
     description: 'Deux petites portes battantes',
+  },
+  sliding_door: {
+    label: 'Porte coulissante',
+    shortLabel: 'Coulissante',
+    icon: 'PC',
+    description: 'Vantaux qui glissent sur un rail noir encastré, idéale pour un dressing',
   },
   shelf: {
     label: 'Étagère',

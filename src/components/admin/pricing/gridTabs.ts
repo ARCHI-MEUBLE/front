@@ -42,7 +42,7 @@ export const GRID_TABS: GridTab[] = [
     label: 'Portes & tiroirs',
     categories: ['fronts'],
     intro:
-      'Chaque porte ou tiroir coûte un forfait (charnières ou coulisses, pose) plus sa façade : surface × prix au m² de sa matière × majoration façade (chants, finition). Une double porte compte deux forfaits. Le mécanisme push remplace la poignée. Une porte vitrée ajoute son supplément au m².',
+      'Chaque porte ou tiroir coûte un forfait (charnières ou coulisses, pose) plus sa façade : surface × prix au m² de sa matière × majoration façade (chants, finition). Une double porte compte deux forfaits. Le mécanisme push remplace la poignée. Une porte vitrée ajoute son supplément au m². Une porte coulissante compte un forfait et une cuvette par vantail (2 jusqu’à 1,60 m d’ouverture, 3 au-delà), plus le rail et sa défonce au mètre, en haut et en bas.',
   },
   {
     key: 'options',
@@ -102,6 +102,8 @@ export const PARAM_HELP: Record<string, string> = {
   'panels.back.surface_factor': 'Exemple : × 0,5 compte le fond à la moitié du prix au m² de sa matière.',
   'fronts.facade.material_factor': 'Exemple : × 1,3 compte une façade 30 % plus cher que le même panneau brut.',
   'fronts.glass.supplement_per_m2': 'Ajouté à la façade d’une porte vitrée, par m² de porte.',
+  'fronts.sliding.rail_price_per_m': 'Compté deux fois la largeur de l’ouverture (rail du haut et rail du bas). Exemple : 1,80 m d’ouverture = 3,60 m de rail.',
+  'fronts.sliding.groove_price_per_m': 'Usinage de la défonce qui reçoit le rail, deux fois la largeur de l’ouverture.',
   'options.flush_mounting.supplement': 'Ajouté une fois par meuble monté en encastré (0 = sans supplément).',
   'bases.metal.foot_spacing_mm': 'Exemple : 1 000 mm pose une paire de pieds de plus par mètre de largeur.',
   'bases.metal.min_pairs': 'Nombre de paires de pieds facturées au minimum, même pour un petit meuble.',

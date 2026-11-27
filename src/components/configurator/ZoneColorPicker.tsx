@@ -26,6 +26,7 @@ const CONTENT_LABELS: Record<string, string> = {
   door: 'Porte',
   door_right: 'Porte',
   door_double: 'Portes',
+  sliding_door: 'Porte coulissante',
   push_door: 'Porte',
   push_door_right: 'Porte',
   mirror_door: 'Porte vitrée',

@@ -15,7 +15,12 @@ const DRAWER_CONTENTS: ZoneContent[] = ['drawer', 'push_drawer'];
 const PUSH_CONTENTS: ZoneContent[] = ['push_door', 'push_door_right', 'push_drawer'];
 
 export function isDoorContent(content?: ZoneContent): boolean {
-  return !!content && (content === 'door_double' || SINGLE_DOOR_CONTENTS.includes(content));
+  return !!content && (content === 'door_double' || content === 'sliding_door' || SINGLE_DOOR_CONTENTS.includes(content));
+}
+
+// Porte coulissante : vantaux sur rail, à l'intérieur du meuble (voir lib/configurator/slidingDoor.ts)
+export function isSlidingDoor(content?: ZoneContent | null): boolean {
+  return content === 'sliding_door';
 }
 
 export function isDrawerContent(content?: ZoneContent): boolean {
